@@ -276,7 +276,7 @@ tbody tr:hover td{background:#FAFAF8}
 const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
 const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
 const REDIRECT='https://lililbc.github.io/portal-lbc/';
-const SCOPES=['https://lbcsolicitadorapt.sharepoint.com/.default'];
+const SCOPES=['https://lbcsolicitadorapt.sharepoint.com/AllSites.Manage','https://lbcsolicitadorapt.sharepoint.com/AllSites.Read'];
 const SITE_DADOS='https://lbcsolicitadorapt.sharepoint.com/sites/lbcsolicitadora2';
 const SITE_PASTAS='https://lbcsolicitadorapt.sharepoint.com/sites/Escritrio';
 const LISTA='Escritura_Listagem';
@@ -313,7 +313,7 @@ async function fazerLogin(){
 }
 
 async function renovarToken(){
-  try{const r=await msalApp.acquireTokenSilent({scopes:SCOPES,account:contaAtual});tokenAtual=r.accessToken;}
+  try{const r=await msalApp.acquireTokenSilent({scopes:['https://lbcsolicitadorapt.sharepoint.com/AllSites.Manage'],account:contaAtual});tokenAtual=r.accessToken;}
   catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});}
 }
 
