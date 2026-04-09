@@ -9,7 +9,16 @@
 :root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
-.app{display:flex;min-height:100vh}
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:3rem 2.5rem;text-align:center;max-width:380px;width:100%;box-shadow:var(--shadow-md)}
+.login-logo{width:52px;height:52px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;margin:0 auto 1.5rem}
+.login-title{font-size:22px;font-weight:600;margin-bottom:.5rem}
+.login-sub{font-size:13px;color:var(--text-muted);margin-bottom:2rem;line-height:1.6}
+.login-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s}
+.login-btn:hover{background:var(--accent-dark)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{margin-top:1rem;padding:.75rem;background:var(--red-light);color:var(--red);border-radius:8px;font-size:12px;display:none;text-align:left;line-height:1.5}
+.app{display:none;min-height:100vh}
 .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
 .sidebar-logo{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border)}
 .logo-mark{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-bottom:.6rem}
@@ -21,6 +30,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .nav-item.active{background:var(--accent-light);color:var(--accent-dark);border-left-color:var(--accent);font-weight:500}
 .nav-icon{width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sidebar-footer{margin-top:auto;padding:.75rem 1.25rem;border-top:1px solid var(--border);font-size:10px;color:var(--text-faint);line-height:1.8}
+.user-info{display:flex;align-items:center;gap:8px;margin-bottom:.5rem}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-name{font-size:12px;color:var(--text-muted);font-weight:500}
+.btn-logout{width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.btn-logout:hover{background:var(--red-light);color:var(--red);border-color:var(--red)}
 .main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.75rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .page-title{font-size:14px;font-weight:600}
@@ -106,15 +120,25 @@ tbody tr:hover td{background:#FAFAF8}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{background:var(--green)}
 .toast.error{background:var(--red)}
-.instrucoes{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow)}
-.instrucoes h3{font-size:13px;font-weight:600;margin-bottom:.75rem}
-.passo{display:flex;gap:.75rem;margin-bottom:.6rem;font-size:12px;color:var(--text-muted);align-items:flex-start}
-.passo-num{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 </style>
 </head>
 <body>
 <div class="toast" id="toast"></div>
-<div class="app">
+
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">LB</div>
+    <div class="login-title">LBC Solicitadora</div>
+    <div class="login-sub">Portal interno de gestão de escrituras.<br>Entra com a tua conta Microsoft do escritório.</div>
+    <button class="login-btn" id="login-btn" onclick="fazerLogin()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><path d="M10 1H1v9h9V1z" fill="#f25022"/><path d="M20 1h-9v9h9V1z" fill="#7fba00"/><path d="M10 11H1v9h9v-9z" fill="#00a4ef"/><path d="M20 11h-9v9h9v-9z" fill="#ffb900"/></svg>
+      Entrar com conta Microsoft
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-mark">LB</div>
@@ -140,8 +164,11 @@ tbody tr:hover td{background:#FAFAF8}
       <span id="sup-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;display:none"></span>
     </div>
     <div class="sidebar-footer">
-      Portal LBC Solicitadora<br>
-      <span id="footer-date"></span>
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-name" id="user-name">...</div>
+      </div>
+      <button class="btn-logout" onclick="fazerLogout()">Sair</button>
     </div>
   </aside>
 
@@ -155,18 +182,9 @@ tbody tr:hover td{background:#FAFAF8}
     </div>
     <div class="content">
 
-      <!-- DASHBOARD -->
       <div class="screen active" id="screen-dashboard">
-        <div class="instrucoes">
-          <h3>⚡ Como usar este portal</h3>
-          <div class="passo"><div class="passo-num">1</div><div>Abre o SharePoint num separador: <a href="https://lbcsolicitadorapt.sharepoint.com/sites/lbcsolicitadora2" target="_blank" style="color:var(--accent)">lbcsolicitadora2</a> — garante que estás com sessão iniciada</div></div>
-          <div class="passo"><div class="passo-num">2</div><div>Regressa a este separador e clica <strong>"Carregar dados"</strong> abaixo</div></div>
-          <div class="passo"><div class="passo-num">3</div><div>Os dados da tua lista SharePoint aparecem aqui automaticamente</div></div>
-          <button class="btn btn-primary" onclick="carregarDashboard()" style="margin-top:.5rem">Carregar dados</button>
-        </div>
-
         <div class="metrics-row">
-          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">Clica "Carregar dados"</div></div>
+          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
           <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
           <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
           <div class="metric-card"><div class="metric-label">Suprimentos</div><div class="metric-value" style="color:var(--red)" id="m-suprimentos">—</div><div class="metric-sub">requer atenção</div></div>
@@ -176,7 +194,7 @@ tbody tr:hover td{background:#FAFAF8}
           <button class="btn btn-sm" onclick="nav('registo',document.querySelectorAll('.nav-item')[3])">Ver todas</button>
         </div>
         <div class="table-container">
-          <div id="dash-loading" style="padding:2rem;text-align:center;color:var(--text-faint);font-size:12px">Clica "Carregar dados" para começar</div>
+          <div id="dash-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar dados...</div></div>
           <div class="table-scroll" id="dash-table" style="display:none">
             <table><thead><tr><th>Referência</th><th>Cliente</th><th>Data</th><th>Produto</th><th>Procurador</th><th>Estado</th></tr></thead>
             <tbody id="dash-tbody"></tbody></table>
@@ -184,50 +202,20 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
-      <!-- AGENDAMENTO -->
       <div class="screen" id="screen-agendar">
         <div class="notice notice-info">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5h.01"/></svg>
-          Cria a pasta em <strong>Escritório/ESCRITURAS</strong> e regista na <strong>Escritura_Listagem</strong> automaticamente. Garante que tens sessão iniciada no SharePoint.
+          Cria a pasta em <strong>Escritório/ESCRITURAS</strong>. O registo na listagem é feito após a escritura ser realizada.
         </div>
         <div class="form-card">
           <div class="form-grid-2">
-            <div class="form-group form-full">
-              <label class="form-label">Nome do cliente *</label>
-              <input class="form-input" id="ag-nome" type="text" placeholder="Nome completo em maiúsculas" oninput="updatePreview()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Data da escritura *</label>
-              <input class="form-input" id="ag-data" type="date" oninput="updatePreview()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Produto</label>
-              <select class="form-select" id="ag-produto">
-                <option value="">Selecionar...</option><option>CVMH</option><option>MH</option><option>Liq. Rep.</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Entidade autenticadora</label>
-              <select class="form-select" id="ag-entidade">
-                <option value="">Selecionar...</option><option>CGD</option><option>BPI</option><option>Santander</option><option>Novobanco</option><option>BCP</option><option>Montepio</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Procurador</label>
-              <select class="form-select" id="ag-procurador">
-                <option value="">Selecionar...</option><option>Luís Vieira</option><option>Filipa Pendigão</option><option>Catarina Parreira</option><option>Liliana Cardoso</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Concelho</label>
-              <input class="form-input" id="ag-concelho" type="text" placeholder="Ex: Arraiolos">
-            </div>
-            <div class="form-group form-full">
-              <div class="form-preview">
-                <div class="form-preview-label">Pasta a criar</div>
-                <div class="form-preview-value" id="pasta-preview">— preenche o nome e data —</div>
-              </div>
-            </div>
+            <div class="form-group form-full"><label class="form-label">Nome do cliente *</label><input class="form-input" id="ag-nome" type="text" placeholder="Nome completo em maiúsculas" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Data da escritura *</label><input class="form-input" id="ag-data" type="date" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Produto</label><select class="form-select" id="ag-produto"><option value="">Selecionar...</option><option>CVMH</option><option>MH</option><option>Liq. Rep.</option></select></div>
+            <div class="form-group"><label class="form-label">Entidade autenticadora</label><select class="form-select" id="ag-entidade"><option value="">Selecionar...</option><option>CGD</option><option>BPI</option><option>Santander</option><option>Novobanco</option><option>BCP</option><option>Montepio</option></select></div>
+            <div class="form-group"><label class="form-label">Procurador</label><select class="form-select" id="ag-procurador"><option value="">Selecionar...</option><option>Luís Vieira</option><option>Filipa Pendigão</option><option>Catarina Parreira</option><option>Liliana Cardoso</option></select></div>
+            <div class="form-group"><label class="form-label">Concelho</label><input class="form-input" id="ag-concelho" type="text" placeholder="Ex: Arraiolos"></div>
+            <div class="form-group form-full"><div class="form-preview"><div class="form-preview-label">Pasta a criar em Escritório/ESCRITURAS</div><div class="form-preview-value" id="pasta-preview">— preenche o nome e data —</div></div></div>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" id="btn-agendar" onclick="agendar()">Agendar e criar pasta</button>
@@ -236,29 +224,27 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
-      <!-- PASTAS -->
       <div class="screen" id="screen-pastas">
         <div class="search-row">
           <div class="search-wrap">
             <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
             <input class="search-input" id="search-pastas" placeholder="Pesquisar por nome do cliente..." oninput="filtrarPastas()">
           </div>
-          <button class="btn btn-primary" onclick="carregarPastas()">↺ Carregar pastas</button>
+          <button class="btn btn-primary" onclick="carregarPastas()">↺ Atualizar</button>
         </div>
-        <div id="pastas-loading" style="padding:2rem;text-align:center;color:var(--text-faint);font-size:12px">Clica "Carregar pastas" para começar</div>
+        <div id="pastas-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>
         <div id="pastas-count" style="font-size:11px;color:var(--text-faint);margin-bottom:.75rem;display:none"></div>
         <div id="pastas-list" style="display:none"></div>
       </div>
 
-      <!-- REGISTO -->
       <div class="screen" id="screen-registo">
         <div class="notice notice-warning">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1 14h14L8 2z"/><path d="M8 7v3M8 11h.01"/></svg>
           Edita os campos e clica <strong>Guardar</strong> na linha para gravar no SharePoint.
         </div>
         <div class="section-header">
-          <div><div class="section-title">Listagem de escrituras</div><div class="section-sub" id="reg-count">Clica "Carregar" para começar</div></div>
-          <button class="btn btn-sm btn-primary" onclick="carregarRegistos()">↺ Carregar</button>
+          <div><div class="section-title">Listagem de escrituras</div><div class="section-sub" id="reg-count">A carregar...</div></div>
+          <button class="btn btn-sm" onclick="carregarRegistos()">↺ Atualizar</button>
         </div>
         <div class="filter-row">
           <button class="filter-chip active" onclick="filtrarRegistos('',this)">Todas</button>
@@ -266,7 +252,7 @@ tbody tr:hover td{background:#FAFAF8}
           <button class="filter-chip" onclick="filtrarRegistos('Concluído',this)">Concluídas</button>
           <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
         </div>
-        <div id="reg-loading" style="padding:2rem;text-align:center;color:var(--text-faint);font-size:12px">Clica "Carregar" para ver os registos</div>
+        <div id="reg-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar registos...</div></div>
         <div class="table-container" id="reg-table-wrap" style="display:none">
           <div class="table-scroll">
             <table>
@@ -277,13 +263,8 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
-      <!-- SUPRIMENTOS -->
       <div class="screen" id="screen-suprimentos">
-        <div class="section-header">
-          <div class="section-title">Suprimentos pendentes</div>
-          <button class="btn btn-sm btn-primary" onclick="carregarSuprimentos()">↺ Carregar</button>
-        </div>
-        <div id="sup-loading" style="padding:2rem;text-align:center;color:var(--text-faint);font-size:12px">Clica "Carregar" para ver suprimentos</div>
+        <div id="sup-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar suprimentos...</div></div>
         <div id="sup-list" style="display:none"></div>
       </div>
 
@@ -292,17 +273,91 @@ tbody tr:hover td{background:#FAFAF8}
 </div>
 
 <script>
-const SITE_DADOS  = 'https://lbcsolicitadorapt.sharepoint.com/sites/lbcsolicitadora2';
-const SITE_PASTAS = 'https://lbcsolicitadorapt.sharepoint.com/sites/Escritrio';
-const LISTA       = 'Escritura_Listagem';
-const BIBLIOTECA  = 'ESCRITURAS';
+const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
+const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+const REDIRECT='https://lililbc.github.io/portal-lbc/';
+const SCOPES=['https://lbcsolicitadorapt.sharepoint.com/AllSites.Manage'];
+const SITE_DADOS='https://lbcsolicitadorapt.sharepoint.com/sites/lbcsolicitadora2';
+const SITE_PASTAS='https://lbcsolicitadorapt.sharepoint.com/sites/Escritrio';
+const LISTA='Escritura_Listagem';
+const BIBLIOTECA='ESCRITURAS';
+
+let msalApp=null,tokenAtual=null,contaAtual=null;
+
+async function init(){
+  const s=document.createElement('script');
+  s.src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
+  document.head.appendChild(s);
+  s.onload=async()=>{
+    msalApp=new msal.PublicClientApplication({
+      auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT},
+      cache:{cacheLocation:'sessionStorage'}
+    });
+    await msalApp.initialize();
+    const resp=await msalApp.handleRedirectPromise().catch(()=>null);
+    if(resp){contaAtual=resp.account;tokenAtual=resp.accessToken;mostrarApp();return;}
+    const contas=msalApp.getAllAccounts();
+    if(contas.length>0){contaAtual=contas[0];await renovarToken();mostrarApp();}
+  };
+}
+
+async function fazerLogin(){
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true;btn.textContent='A iniciar sessão...';
+  try{await msalApp.loginRedirect({scopes:SCOPES});}
+  catch(e){
+    const el=document.getElementById('login-error');
+    el.textContent='Erro: '+e.message;el.style.display='block';
+    btn.disabled=false;btn.innerHTML='<svg width="18" height="18" viewBox="0 0 21 21"><path d="M10 1H1v9h9V1z" fill="#f25022"/><path d="M20 1h-9v9h9V1z" fill="#7fba00"/><path d="M10 11H1v9h9v-9z" fill="#00a4ef"/><path d="M20 11h-9v9h9v-9z" fill="#ffb900"/></svg> Entrar com conta Microsoft';
+  }
+}
+
+async function renovarToken(){
+  try{const r=await msalApp.acquireTokenSilent({scopes:SCOPES,account:contaAtual});tokenAtual=r.accessToken;}
+  catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});}
+}
+
+function fazerLogout(){msalApp.logoutRedirect();}
+
+function mostrarApp(){
+  document.getElementById('login-screen').style.display='none';
+  const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='row';
+  const nome=contaAtual.name||contaAtual.username;
+  document.getElementById('user-name').textContent=nome.split(' ')[0];
+  document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
+  setDates();carregarDashboard();
+}
+
+async function spGet(url){
+  await renovarToken();
+  const r=await fetch(url,{headers:{'Accept':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual}});
+  if(!r.ok)throw new Error(`Erro ${r.status}`);
+  return r.json();
+}
+
+async function spMerge(siteUrl,url,body){
+  await renovarToken();
+  const dR=await fetch(siteUrl+'/_api/contextinfo',{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual}});
+  const dD=await dR.json();
+  const r=await fetch(url,{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual,'X-RequestDigest':dD.FormDigestValue,'X-HTTP-Method':'MERGE','IF-MATCH':'*'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(await r.text());
+}
+
+async function spPost(siteUrl,url,body){
+  await renovarToken();
+  const dR=await fetch(siteUrl+'/_api/contextinfo',{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual}});
+  const dD=await dR.json();
+  const r=await fetch(url,{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual,'X-RequestDigest':dD.FormDigestValue},body:JSON.stringify(body)});
+  if(!r.ok&&r.status!==409)throw new Error(await r.text());
+  return r.status===204||r.status===409?{}:r.json();
+}
 
 function fmtData(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('pt-PT')}
 function nomePasta(n,d){if(!n||!d)return'';return d.replace(/-/g,'')+' '+n.toUpperCase().trim()}
 function estadoBadge(e){const m={'Concluído':'badge-green','Em curso':'badge-amber','Suprimento':'badge-red','Agendado':'badge-blue'};return`<span class="badge ${m[e]||'badge-gray'}">${e||'—'}</span>`}
 function produtoBadge(p){return p?`<span class="badge badge-purple">${p}</span>`:'—'}
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500)}
-function setDates(){const s=new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'});document.getElementById('topbar-date').textContent=s;document.getElementById('footer-date').textContent=s}
+function setDates(){const s=new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'});document.getElementById('topbar-date').textContent=s}
 
 const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes'};
 function nav(id,el){
@@ -311,37 +366,14 @@ function nav(id,el){
   document.getElementById('screen-'+id).classList.add('active');
   if(el)el.classList.add('active');
   document.getElementById('page-title').textContent=pageTitles[id]||id;
+  if(id==='pastas'&&!pastasCarregadas)carregarPastas();
+  if(id==='registo'&&!registosCarregados)carregarRegistos();
+  if(id==='suprimentos')carregarSuprimentos();
 }
 
-async function spGet(url){
-  const r=await fetch(url,{headers:{'Accept':'application/json;odata=nometadata'},credentials:'include'});
-  if(!r.ok)throw new Error(`Erro ${r.status} — Abre o SharePoint num separador primeiro e tenta de novo`);
-  return r.json();
-}
-
-async function getDigest(siteUrl){
-  const r=await fetch(siteUrl+'/_api/contextinfo',{method:'POST',headers:{'Accept':'application/json;odata=nometadata'},credentials:'include'});
-  const d=await r.json();
-  return d.FormDigestValue;
-}
-
-async function spMerge(siteUrl,url,body){
-  const digest=await getDigest(siteUrl);
-  const r=await fetch(url,{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata','X-RequestDigest':digest,'X-HTTP-Method':'MERGE','IF-MATCH':'*'},credentials:'include',body:JSON.stringify(body)});
-  if(!r.ok)throw new Error(await r.text());
-}
-
-async function spPost(siteUrl,url,body){
-  const digest=await getDigest(siteUrl);
-  const r=await fetch(url,{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata','X-RequestDigest':digest},credentials:'include',body:JSON.stringify(body)});
-  if(!r.ok&&r.status!==409)throw new Error(await r.text());
-  return r.status===204||r.status===409?{}:r.json();
-}
-
-let todosRegistos=[],todosRegistosReg=[],todasPastas=[];
+let todosRegistos=[],registosCarregados=false,pastasCarregadas=false,todosRegistosReg=[],todasPastas=[];
 
 async function carregarDashboard(){
-  document.getElementById('dash-loading').innerHTML='<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar dados...</div></div>';
   try{
     const data=await spGet(`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items?$select=Title,Nome_Cliente,Data_Escritura,Produto,Procurador,Estado&$orderby=Created desc&$top=500`);
     todosRegistos=data.value||[];
@@ -357,23 +389,21 @@ async function carregarDashboard(){
     document.getElementById('dash-tbody').innerHTML=todosRegistos.slice(0,10).map(i=>`<tr><td><span class="cell-ref">${i.Title||'—'}</span></td><td>${i.Nome_Cliente||'—'}</td><td class="cell-muted">${fmtData(i.Data_Escritura)}</td><td>${produtoBadge(i.Produto)}</td><td class="cell-muted">${i.Procurador||'—'}</td><td>${estadoBadge(i.Estado)}</td></tr>`).join('');
     document.getElementById('dash-loading').style.display='none';
     document.getElementById('dash-table').style.display='block';
-    showToast('Dados carregados com sucesso!','success');
   }catch(e){
-    document.getElementById('dash-loading').innerHTML=`<div class="notice notice-error" style="margin:1rem"><strong>Não foi possível carregar.</strong><br><small>${e.message}</small><br><br><a href="${SITE_DADOS}" target="_blank" style="color:var(--red);font-weight:500">Clica aqui para abrir o SharePoint</a> → faz login → regressa e tenta novamente.</div>`;
+    document.getElementById('dash-loading').innerHTML=`<div class="notice notice-error" style="margin:0"><strong>Erro ao carregar dados.</strong><br><small>${e.message}</small></div>`;
   }
 }
 
 async function carregarPastas(){
-  document.getElementById('pastas-loading').innerHTML='<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>';
+  pastasCarregadas=true;
+  document.getElementById('pastas-loading').style.display='flex';
   document.getElementById('pastas-list').style.display='none';
   document.getElementById('pastas-count').style.display='none';
   try{
     const data=await spGet(`${SITE_PASTAS}/_api/web/lists/getbytitle('${BIBLIOTECA}')/items?$select=Title,FileLeafRef,Modified&$orderby=Modified desc&$top=300`);
     todasPastas=(data.value||[]).filter(i=>i.FileLeafRef&&!i.FileLeafRef.includes('.'));
     renderPastas(todasPastas);
-  }catch(e){
-    document.getElementById('pastas-loading').innerHTML=`<div class="notice notice-error" style="margin:1rem"><strong>Erro ao carregar pastas.</strong><br><small>${e.message}</small><br><br><a href="${SITE_PASTAS}" target="_blank" style="color:var(--red);font-weight:500">Abre o site Escritório</a> → faz login → tenta novamente.</div>`;
-  }
+  }catch(e){document.getElementById('pastas-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
 function renderPastas(lista){
@@ -381,26 +411,22 @@ function renderPastas(lista){
   const el=document.getElementById('pastas-list'),count=document.getElementById('pastas-count');
   count.textContent=`${lista.length} pastas encontradas`;count.style.display='block';
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
-  el.innerHTML=lista.map(p=>{
-    const nome=p.FileLeafRef||'—';
-    return`<div class="pasta-card"><div style="flex:1;min-width:0"><div class="pasta-ref">${nome}</div><div class="pasta-meta">Modificado: ${fmtData(p.Modified)}</div></div><div class="pasta-actions"><a href="${SITE_PASTAS}/${BIBLIOTECA}/${encodeURIComponent(nome)}" target="_blank" class="btn btn-sm">Abrir pasta</a><button class="btn btn-primary btn-sm" onclick="nav('registo',document.querySelectorAll('.nav-item')[3])">Registar</button></div></div>`;
-  }).join('');
+  el.innerHTML=lista.map(p=>`<div class="pasta-card"><div style="flex:1;min-width:0"><div class="pasta-ref">${p.FileLeafRef||'—'}</div><div class="pasta-meta">Modificado: ${fmtData(p.Modified)}</div></div><div class="pasta-actions"><a href="${SITE_PASTAS}/${BIBLIOTECA}/${encodeURIComponent(p.FileLeafRef||'')}" target="_blank" class="btn btn-sm">Abrir pasta</a><button class="btn btn-primary btn-sm" onclick="nav('registo',document.querySelectorAll('.nav-item')[3])">Registar</button></div></div>`).join('');
   el.style.display='block';
 }
 
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.FileLeafRef||'').toLowerCase().includes(q)))}
 
 async function carregarRegistos(){
-  document.getElementById('reg-loading').innerHTML='<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar registos...</div></div>';
+  registosCarregados=true;
+  document.getElementById('reg-loading').style.display='flex';
   document.getElementById('reg-table-wrap').style.display='none';
   try{
     const data=await spGet(`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items?$select=Id,Title,Nome_Cliente,Data_Escritura,Produto,Procurador,Estado,AP_Registo,AP_Conservatoria,N_mero_Processo,Cod_Dep_sito,Margem_L_quida,Valor_Procurador,Valor_Servico,Observacoes&$orderby=Created desc&$top=500`);
     todosRegistosReg=data.value||[];
     document.getElementById('reg-count').textContent=`${todosRegistosReg.length} registos totais`;
     renderRegistos(todosRegistosReg);
-  }catch(e){
-    document.getElementById('reg-loading').innerHTML=`<div class="notice notice-error" style="margin:1rem"><strong>Erro ao carregar.</strong><br><small>${e.message}</small></div>`;
-  }
+  }catch(e){document.getElementById('reg-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
 function renderRegistos(lista){
@@ -450,61 +476,15 @@ async function guardarLinha(id){
 }
 
 async function carregarSuprimentos(){
-  document.getElementById('sup-loading').innerHTML='<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>';
+  document.getElementById('sup-loading').style.display='flex';
   document.getElementById('sup-list').style.display='none';
   try{
     const data=await spGet(`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items?$filter=Estado eq 'Suprimento'&$select=Id,Title,Nome_Cliente,Data_Escritura,Produto,Procurador,Observacoes&$orderby=Created desc`);
     const sups=data.value||[];
     document.getElementById('sup-loading').style.display='none';
     const el=document.getElementById('sup-list');
-    el.innerHTML=!sups.length?'<div class="notice notice-success">Sem suprimentos pendentes! Tudo em ordem.</div>'
+    el.innerHTML=!sups.length?'<div class="notice notice-success">Sem suprimentos pendentes!</div>'
       :`<div class="notice notice-warning" style="margin-bottom:1rem"><strong>${sups.length} processo(s)</strong> com suprimentos pendentes</div>`
       +sups.map(i=>`<div class="sup-card"><div style="flex:1"><div class="sup-title">${i.Title||'—'} — ${i.Nome_Cliente||'—'}</div><div class="sup-meta">${fmtData(i.Data_Escritura)} · ${i.Produto||'—'} · ${i.Procurador||'—'}</div>${i.Observacoes?`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${i.Observacoes}</div>`:''}</div><div style="display:flex;gap:5px;flex-shrink:0"><button class="btn btn-sm btn-success" onclick="resolverSuprimento(${i.Id})">Marcar resolvido</button></div></div>`).join('');
     el.style.display='block';
-  }catch(e){document.getElementById('sup-loading').innerHTML=`<div class="notice notice-error" style="margin:1rem">Erro: ${e.message}</div>`;}
-}
-
-async function resolverSuprimento(id){
-  try{
-    await spMerge(SITE_DADOS,`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items(${id})`,{Estado:'Em curso'});
-    showToast('Suprimento resolvido!','success');
-    carregarSuprimentos();
-  }catch(e){showToast('Erro: '+e.message,'error');}
-}
-
-function updatePreview(){
-  const n=document.getElementById('ag-nome').value.toUpperCase().trim();
-  const d=document.getElementById('ag-data').value;
-  document.getElementById('pasta-preview').textContent=nomePasta(n,d)||'— preenche o nome e data —';
-}
-
-async function agendar(){
-  const nome=document.getElementById('ag-nome').value.toUpperCase().trim();
-  const data=document.getElementById('ag-data').value;
-  const prod=document.getElementById('ag-produto').value;
-  const entid=document.getElementById('ag-entidade').value;
-  const proc=document.getElementById('ag-procurador').value;
-  const conc=document.getElementById('ag-concelho').value;
-  if(!nome||!data){showToast('Preenche o nome e a data.','error');return;}
-  const pasta=nomePasta(nome,data);
-  const btn=document.getElementById('btn-agendar');
-  btn.disabled=true;btn.textContent='A criar...';
-  try{
-    await spPost(SITE_PASTAS,`${SITE_PASTAS}/_api/web/folders`,{ServerRelativeUrl:`/sites/Escritrio/${BIBLIOTECA}/${pasta}`});
-    await spPost(SITE_DADOS,`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items`,{Title:pasta,Nome_Cliente:nome,Data_Escritura:data,Produto:prod,Ent_Autenticadora:entid,Procurador:proc,Concelho:conc,Estado:'Agendado'});
-    showToast('✓ Pasta criada e registo guardado!','success');
-    limparForm();
-  }catch(e){showToast('Erro: '+e.message,'error');}
-  finally{btn.disabled=false;btn.textContent='Agendar e criar pasta';}
-}
-
-function limparForm(){
-  ['ag-nome','ag-data','ag-concelho'].forEach(id=>document.getElementById(id).value='');
-  ['ag-produto','ag-entidade','ag-procurador'].forEach(id=>document.getElementById(id).selectedIndex=0);
-  updatePreview();
-}
-
-setDates();
-</script>
-</body>
-</html>
+  }catch(e){document.getElementById('sup-loading').innerHTML=`<div class="not
