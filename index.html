@@ -1,1 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBC Solicitadora — Portal Interno</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:3rem 2.5rem;text-align:center;max-width:380px;width:100%;box-shadow:var(--shadow-md)}
+.login-logo{width:52px;height:52px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;margin:0 auto 1.5rem}
+.login-title{font-size:22px;font-weight:600;margin-bottom:.5rem}
+.login-sub{font-size:13px;color:var(--text-muted);margin-bottom:2rem;line-height:1.6}
+.login-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s}
+.login-btn:hover{background:var(--accent-dark)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{margin-top:1rem;padding:.75rem;background:var(--red-light);color:var(--red);border-radius:8px;font-size:12px;display:none;text-align:left;line-height:1.5}
+.app{display:none;min-height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border)}
+.logo-mark{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-bottom:.6rem}
+.logo-name{font-size:13px;font-weight:600}
+.logo-sub{font-size:11px;color:var(--text-faint)}
+.nav-section{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:1rem 1.25rem .3rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.45rem 1.25rem;cursor:pointer;font-size:13px;color:var(--text-muted);transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-light);color:var(--accent-dark);border-left-color:var(--accent);font-weight:500}
+.nav-icon{width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:.75rem 1.25rem;border-top:1px solid var(--border);font-size:10px;color:var(--text-faint);line-height:1.8}
+.user-info{display:flex;align-items:center;gap:8px;margin-bottom:.5rem}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-name{font-size:12px;color:var(--text-muted);font-weight:500}
+.btn-logout{width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.btn-logout:hover{background:var(--red-light);color:var(--red);border-color:var(--red)}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.75rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.page-title{font-size:14px;font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:.6rem}
+.date-badge{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:3px 9px;border-radius:5px}
+.content{padding:1.5rem;flex:1}
+.screen{display:none}
+.screen.active{display:block}
+.loading-overlay{display:flex;align-items:center;justify-content:center;padding:3rem;flex-direction:column;gap:1rem}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:12px;color:var(--text-faint)}
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1.5rem}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.25rem;box-shadow:var(--shadow)}
+.metric-label{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+.metric-value{font-size:30px;font-weight:300;line-height:1;font-family:'DM Mono',monospace;letter-spacing:-1px}
+.metric-sub{font-size:11px;color:var(--text-faint);margin-top:.4rem}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.section-title{font-size:13px;font-weight:600}
+.section-sub{font-size:11px;color:var(--text-faint);margin-top:1px}
+.table-container{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--surface2);padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FAFAF8}
+.cell-ref{font-family:'DM Mono',monospace;font-size:11px;font-weight:500}
+.cell-muted{color:var(--text-muted);font-size:11px}
+.td-input{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif}
+.td-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.td-select{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-amber{background:var(--amber-light);color:var(--amber)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-purple{background:var(--accent-light);color:var(--accent-dark)}
+.badge-gray{background:var(--surface2);color:var(--text-muted)}
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;box-shadow:var(--shadow);max-width:660px}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.form-hint{font-size:11px;color:var(--text-faint)}
+.form-preview{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.6rem .9rem}
+.form-preview-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.form-preview-value{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;word-break:break-all}
+.form-actions{display:flex;gap:.6rem;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.search-row{display:flex;gap:.6rem;margin-bottom:1rem;align-items:center}
+.search-wrap{position:relative;flex:1}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--text-faint);pointer-events:none}
+.search-input{width:100%;padding:8px 11px 8px 32px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif}
+.search-input:focus{outline:none;border-color:var(--accent)}
+.pasta-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:var(--shadow);transition:all .15s;margin-bottom:.4rem}
+.pasta-card:hover{border-color:var(--accent)}
+.pasta-ref{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
+.pasta-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.pasta-actions{display:flex;gap:5px;flex-shrink:0}
+.notice{display:flex;align-items:flex-start;gap:9px;padding:.65rem .9rem;border-radius:7px;font-size:12px;margin-bottom:1rem;line-height:1.5}
+.notice-info{background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
+.notice-warning{background:var(--amber-light);color:var(--amber);border:1px solid #FAC775}
+.notice-success{background:var(--green-light);color:var(--green);border:1px solid #9FE1CB}
+.notice-error{background:var(--red-light);color:var(--red);border:1px solid #F7C1C1}
+.filter-row{display:flex;gap:.4rem;margin-bottom:.9rem;flex-wrap:wrap;align-items:center}
+.filter-chip{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.filter-chip:hover{border-color:var(--border-strong);color:var(--text)}
+.filter-chip.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.sup-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:9px;padding:.9rem 1.1rem;margin-bottom:.5rem;box-shadow:var(--shadow);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.sup-title{font-size:13px;font-weight:500}
+.sup-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
 
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">LB</div>
+    <div class="login-title">LBC Solicitadora</div>
+    <div class="login-sub">Portal interno de gestão de escrituras.<br>Entra com a tua conta Microsoft do escritório.</div>
+    <button class="login-btn" id="login-btn" onclick="tentarLogin()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><path d="M10 1H1v9h9V1z" fill="#f25022"/><path d="M20 1h-9v9h9V1z" fill="#7fba00"/><path d="M10 11H1v9h9v-9z" fill="#00a4ef"/><path d="M20 11h-9v9h9v-9z" fill="#ffb900"/></svg>
+      Entrar com conta Microsoft
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">LB</div>
+      <div class="logo-name">LBC Solicitadora</div>
+      <div class="logo-sub">Portal interno</div>
+    </div>
+    <div class="nav-section">Visão geral</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></span>Dashboard
+    </div>
+    <div class="nav-section">Escrituras</div>
+    <div class="nav-item" onclick="nav('agendar',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Novo agendamento
+    </div>
+    <div class="nav-item" onclick="nav('pastas',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg></span>Pastas / clientes
+    </div>
+    <div class="nav-item" onclick="nav('registo',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span>Registo de escrituras
+    </div>
+    <div class="nav-item" onclick="nav('suprimentos',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 5v3.5l2 1.5"/></svg></span>Suprimentos
+      <span id="sup-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;display:none"></span>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-name" id="user-name">...</div>
+      </div>
+      <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="page-title" id="page-title">Dashboard</span>
+      <div class="topbar-right">
+        <div class="date-badge" id="topbar-date"></div>
+        <button class="btn btn-primary btn-sm" onclick="nav('agendar',document.querySelectorAll('.nav-item')[1])">+ Nova escritura</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <div class="screen active" id="screen-dashboard">
+        <div class="metrics-row">
+          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
+          <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
+          <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
+          <div class="metric-card"><div class="metric-label">Suprimentos</div><div class="metric-value" style="color:var(--red)" id="m-suprimentos">—</div><div class="metric-sub">requer atenção</div></div>
+        </div>
+        <div class="section-header">
+          <div><div class="section-title">Escrituras recentes</div><div class="section-sub">Últimas 10 entradas</div></div>
+          <button class="btn btn-sm" onclick="nav('registo',document.querySelectorAll('.nav-item')[3])">Ver todas</button>
+        </div>
+        <div class="table-container">
+          <div id="dash-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar dados...</div></div>
+          <div class="table-scroll" id="dash-table" style="display:none">
+            <table><thead><tr><th>Referência</th><th>Cliente</th><th>Data</th><th>Produto</th><th>Procurador</th><th>Estado</th></tr></thead>
+            <tbody id="dash-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-agendar">
+        <div class="notice notice-info">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5h.01"/></svg>
+          Cria a pasta em <strong>Escritório/ESCRITURAS</strong>. O registo na listagem é feito após a escritura ser realizada.
+        </div>
+        <div class="form-card">
+          <div class="form-grid-2">
+            <div class="form-group form-full"><label class="form-label">Nome do cliente *</label><input class="form-input" id="ag-nome" type="text" placeholder="Nome completo em maiúsculas" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Data da escritura *</label><input class="form-input" id="ag-data" type="date" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Produto</label><select class="form-select" id="ag-produto"><option value="">Selecionar...</option><option>CVMH</option><option>MH</option><option>Liq. Rep.</option></select></div>
+            <div class="form-group"><label class="form-label">Entidade autenticadora</label><select class="form-select" id="ag-entidade"><option value="">Selecionar...</option><option>CGD</option><option>BPI</option><option>Santander</option><option>Novobanco</option><option>BCP</option><option>Montepio</option></select></div>
+            <div class="form-group"><label class="form-label">Procurador</label><select class="form-select" id="ag-procurador"><option value="">Selecionar...</option><option>Luís Vieira</option><option>Filipa Pendigão</option><option>Catarina Parreira</option><option>Liliana Cardoso</option></select></div>
+            <div class="form-group"><label class="form-label">Concelho</label><input class="form-input" id="ag-concelho" type="text" placeholder="Ex: Arraiolos"></div>
+            <div class="form-group form-full"><div class="form-preview"><div class="form-preview-label">Pasta a criar em Escritório/ESCRITURAS</div><div class="form-preview-value" id="pasta-preview">— preenche o nome e data —</div></div></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-agendar" onclick="agendar()">Agendar e criar pasta</button>
+            <button class="btn" onclick="limparForm()">Limpar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-pastas">
+        <div class="search-row">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+            <input class="search-input" id="search-pastas" placeholder="Pesquisar por nome do cliente..." oninput="filtrarPastas()">
+          </div>
+          <button class="btn btn-primary" onclick="carregarPastas()">↺ Atualizar</button>
+        </div>
+        <div id="pastas-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>
+        <div id="pastas-count" style="font-size:11px;color:var(--text-faint);margin-bottom:.75rem;display:none"></div>
+        <div id="pastas-list" style="display:none"></div>
+      </div>
+
+      <div class="screen" id="screen-registo">
+        <div class="notice notice-warning">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1 14h14L8 2z"/><path d="M8 7v3M8 11h.01"/></svg>
+          Edita os campos e clica <strong>Guardar</strong> na linha para gravar no SharePoint.
+        </div>
+        <div class="section-header">
+          <div><div class="section-title">Listagem de escrituras</div><div class="section-sub" id="reg-count">A carregar...</div></div>
+          <button class="btn btn-sm" onclick="carregarRegistos()">↺ Atualizar</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="filtrarRegistos('',this)">Todas</button>
+          <button class="filter-chip" onclick="filtrarRegistos('Em curso',this)">Em curso</button>
+          <button class="filter-chip" onclick="filtrarRegistos('Concluído',this)">Concluídas</button>
+          <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
+        </div>
+        <div id="reg-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar registos...</div></div>
+        <div class="table-container" id="reg-table-wrap" style="display:none">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Referência</th><th>Cliente</th><th>Data</th><th>Produto</th><th>Procurador</th><th>AP Registo</th><th>AP Conserv.</th><th>Nº Processo</th><th>Cod. Depósito</th><th>Margem €</th><th>Val. Proc. €</th><th>Val. Serv. €</th><th>Estado</th><th>Obs.</th><th></th></tr></thead>
+              <tbody id="reg-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-suprimentos">
+        <div id="sup-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar suprimentos...</div></div>
+        <div id="sup-list" style="display:none"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
+const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+const REDIRECT='https://lililbc.github.io/portal-lbc/';
+const SCOPES=['https://lbcsolicitadorapt.sharepoint.com/.default'];
+const SITE_DADOS='https://lbcsolicitadorapt.sharepoint.com/sites/lbcsolicitadora2';
+const SITE_PASTAS='https://lbcsolicitadorapt.sharepoint.com/sites/Escritrio';
+const LISTA='Escritura_Listagem';
+const BIBLIOTECA='ESCRITURAS';
+
+let msalApp=null,tokenAtual=null,contaAtual=null;
+
+async function tentarLogin(){if(!msalApp){const el=document.getElementById("login-error");el.textContent="A carregar... tenta novamente em 2 segundos.";el.style.display="block";setTimeout(()=>{el.style.display="none";},2000);return;}fazerLogin();}async function init(){
+  const s=document.createElement('script');
+  s.src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
+  document.head.appendChild(s);
+  s.onload=async()=>{
+    msalApp=new msal.PublicClientApplication({
+      auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT},
+      cache:{cacheLocation:'sessionStorage'}
+    });
+    await msalApp.initialize();
+    const resp=await msalApp.handleRedirectPromise().catch(()=>null);
+    if(resp){contaAtual=resp.account;tokenAtual=resp.accessToken;mostrarApp();return;}
+    const contas=msalApp.getAllAccounts();
+    if(contas.length>0){contaAtual=contas[0];await renovarToken();mostrarApp();}
+  };
+}
+
+async function fazerLogin(){
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true;btn.textContent='A iniciar sessão...';
+  try{await msalApp.loginRedirect({scopes:SCOPES});}
+  catch(e){
+    const el=document.getElementById('login-error');
+    el.textContent='Erro: '+e.message;el.style.display='block';
+    btn.disabled=false;btn.innerHTML='<svg width="18" height="18" viewBox="0 0 21 21"><path d="M10 1H1v9h9V1z" fill="#f25022"/><path d="M20 1h-9v9h9V1z" fill="#7fba00"/><path d="M10 11H1v9h9v-9z" fill="#00a4ef"/><path d="M20 11h-9v9h9v-9z" fill="#ffb900"/></svg> Entrar com conta Microsoft';
+  }
+}
+
+async function renovarToken(){
+  try{const r=await msalApp.acquireTokenSilent({scopes:SCOPES,account:contaAtual});tokenAtual=r.accessToken;}
+  catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});}
+}
+
+function fazerLogout(){msalApp.logoutRedirect();}
+
+function mostrarApp(){
+  document.getElementById('login-screen').style.display='none';
+  const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='row';
+  const nome=contaAtual.name||contaAtual.username;
+  document.getElementById('user-name').textContent=nome.split(' ')[0];
+  document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
+  setDates();carregarDashboard();
+}
+
+async function spGet(url){
+  await renovarToken();
+  const r=await fetch(url,{headers:{'Accept':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual}});
+  if(!r.ok)throw new Error(`Erro ${r.status}`);
+  return r.json();
+}
+
+async function spMerge(siteUrl,url,body){
+  await renovarToken();
+  const dR=await fetch(siteUrl+'/_api/contextinfo',{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual}});
+  const dD=await dR.json();
+  const r=await fetch(url,{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual,'X-RequestDigest':dD.FormDigestValue,'X-HTTP-Method':'MERGE','IF-MATCH':'*'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(await r.text());
+}
+
+async function spPost(siteUrl,url,body){
+  await renovarToken();
+  const dR=await fetch(siteUrl+'/_api/contextinfo',{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual}});
+  const dD=await dR.json();
+  const r=await fetch(url,{method:'POST',headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata','Authorization':'Bearer '+tokenAtual,'X-RequestDigest':dD.FormDigestValue},body:JSON.stringify(body)});
+  if(!r.ok&&r.status!==409)throw new Error(await r.text());
+  return r.status===204||r.status===409?{}:r.json();
+}
+
+function fmtData(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('pt-PT')}
+function nomePasta(n,d){if(!n||!d)return'';return d.replace(/-/g,'')+' '+n.toUpperCase().trim()}
+function estadoBadge(e){const m={'Concluído':'badge-green','Em curso':'badge-amber','Suprimento':'badge-red','Agendado':'badge-blue'};return`<span class="badge ${m[e]||'badge-gray'}">${e||'—'}</span>`}
+function produtoBadge(p){return p?`<span class="badge badge-purple">${p}</span>`:'—'}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500)}
+function setDates(){const s=new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'});document.getElementById('topbar-date').textContent=s}
+
+const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes'};
+function nav(id,el){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[id]||id;
+  if(id==='pastas'&&!pastasCarregadas)carregarPastas();
+  if(id==='registo'&&!registosCarregados)carregarRegistos();
+  if(id==='suprimentos')carregarSuprimentos();
+}
+
+let todosRegistos=[],registosCarregados=false,pastasCarregadas=false,todosRegistosReg=[],todasPastas=[];
+
+async function carregarDashboard(){
+  try{
+    const data=await spGet(`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items?$select=Title,Nome_Cliente,Data_Escritura,Produto,Procurador,Estado&$orderby=Created desc&$top=500`);
+    todosRegistos=data.value||[];
+    const total=todosRegistos.length,concl=todosRegistos.filter(i=>i.Estado==='Concluído').length,emcurso=todosRegistos.filter(i=>i.Estado==='Em curso').length,sups=todosRegistos.filter(i=>i.Estado==='Suprimento').length;
+    document.getElementById('m-total').textContent=total;
+    document.getElementById('m-concluidos').textContent=concl;
+    document.getElementById('m-emcurso').textContent=emcurso;
+    document.getElementById('m-suprimentos').textContent=sups;
+    document.getElementById('m-total-sub').textContent=`${total} registos totais`;
+    document.getElementById('m-concluidos-sub').textContent=`${Math.round(concl/(total||1)*100)}% do total`;
+    document.getElementById('m-emcurso-sub').textContent=`${emcurso} em aberto`;
+    if(sups>0){const b=document.getElementById('sup-badge');b.textContent=sups;b.style.display='inline-block';}
+    document.getElementById('dash-tbody').innerHTML=todosRegistos.slice(0,10).map(i=>`<tr><td><span class="cell-ref">${i.Title||'—'}</span></td><td>${i.Nome_Cliente||'—'}</td><td class="cell-muted">${fmtData(i.Data_Escritura)}</td><td>${produtoBadge(i.Produto)}</td><td class="cell-muted">${i.Procurador||'—'}</td><td>${estadoBadge(i.Estado)}</td></tr>`).join('');
+    document.getElementById('dash-loading').style.display='none';
+    document.getElementById('dash-table').style.display='block';
+  }catch(e){
+    document.getElementById('dash-loading').innerHTML=`<div class="notice notice-error" style="margin:0"><strong>Erro ao carregar dados.</strong><br><small>${e.message}</small></div>`;
+  }
+}
+
+async function carregarPastas(){
+  pastasCarregadas=true;
+  document.getElementById('pastas-loading').style.display='flex';
+  document.getElementById('pastas-list').style.display='none';
+  document.getElementById('pastas-count').style.display='none';
+  try{
+    const data=await spGet(`${SITE_PASTAS}/_api/web/lists/getbytitle('${BIBLIOTECA}')/items?$select=Title,FileLeafRef,Modified&$orderby=Modified desc&$top=300`);
+    todasPastas=(data.value||[]).filter(i=>i.FileLeafRef&&!i.FileLeafRef.includes('.'));
+    renderPastas(todasPastas);
+  }catch(e){document.getElementById('pastas-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function renderPastas(lista){
+  document.getElementById('pastas-loading').style.display='none';
+  const el=document.getElementById('pastas-list'),count=document.getElementById('pastas-count');
+  count.textContent=`${lista.length} pastas encontradas`;count.style.display='block';
+  if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
+  el.innerHTML=lista.map(p=>`<div class="pasta-card"><div style="flex:1;min-width:0"><div class="pasta-ref">${p.FileLeafRef||'—'}</div><div class="pasta-meta">Modificado: ${fmtData(p.Modified)}</div></div><div class="pasta-actions"><a href="${SITE_PASTAS}/${BIBLIOTECA}/${encodeURIComponent(p.FileLeafRef||'')}" target="_blank" class="btn btn-sm">Abrir pasta</a><button class="btn btn-primary btn-sm" onclick="nav('registo',document.querySelectorAll('.nav-item')[3])">Registar</button></div></div>`).join('');
+  el.style.display='block';
+}
+
+function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.FileLeafRef||'').toLowerCase().includes(q)))}
+
+async function carregarRegistos(){
+  registosCarregados=true;
+  document.getElementById('reg-loading').style.display='flex';
+  document.getElementById('reg-table-wrap').style.display='none';
+  try{
+    const data=await spGet(`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items?$select=Id,Title,Nome_Cliente,Data_Escritura,Produto,Procurador,Estado,AP_Registo,AP_Conservatoria,N_mero_Processo,Cod_Dep_sito,Margem_L_quida,Valor_Procurador,Valor_Servico,Observacoes&$orderby=Created desc&$top=500`);
+    todosRegistosReg=data.value||[];
+    document.getElementById('reg-count').textContent=`${todosRegistosReg.length} registos totais`;
+    renderRegistos(todosRegistosReg);
+  }catch(e){document.getElementById('reg-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function renderRegistos(lista){
+  document.getElementById('reg-loading').style.display='none';
+  const tbody=document.getElementById('reg-tbody');
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:2rem;color:var(--text-faint)">Nenhum registo.</td></tr>';document.getElementById('reg-table-wrap').style.display='block';return;}
+  tbody.innerHTML=lista.map(i=>`<tr id="row-${i.Id}">
+    <td><span class="cell-ref">${i.Title||'—'}</span></td>
+    <td style="white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${i.Nome_Cliente||''}">${i.Nome_Cliente||'—'}</td>
+    <td class="cell-muted" style="white-space:nowrap">${fmtData(i.Data_Escritura)}</td>
+    <td>${produtoBadge(i.Produto)}</td>
+    <td class="cell-muted" style="white-space:nowrap">${i.Procurador||'—'}</td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="AP_Registo" value="${i.AP_Registo||''}" style="width:75px"></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="AP_Conservatoria" value="${i.AP_Conservatoria||''}" style="width:95px"></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="N_mero_Processo" value="${i.N_mero_Processo||''}" style="width:105px"></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="Cod_Dep_sito" value="${i.Cod_Dep_sito||''}" style="width:75px"></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="Margem_L_quida" value="${i.Margem_L_quida||''}" style="width:60px"></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="Valor_Procurador" value="${i.Valor_Procurador||''}" style="width:60px"></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="Valor_Servico" value="${i.Valor_Servico||''}" style="width:60px"></td>
+    <td><select class="td-select" data-id="${i.Id}" data-field="Estado" style="width:95px;${i.Estado==='Suprimento'?'border-color:var(--red)':''}">
+      <option ${i.Estado==='Agendado'?'selected':''}>Agendado</option>
+      <option ${i.Estado==='Em curso'?'selected':''}>Em curso</option>
+      <option ${i.Estado==='Concluído'?'selected':''}>Concluído</option>
+      <option ${i.Estado==='Suprimento'?'selected':''}>Suprimento</option>
+    </select></td>
+    <td><input class="td-input" data-id="${i.Id}" data-field="Observacoes" value="${i.Observacoes||''}" style="width:120px" placeholder="Obs..."></td>
+    <td><button class="btn btn-sm btn-primary" onclick="guardarLinha(${i.Id})">Guardar</button></td>
+  </tr>`).join('');
+  document.getElementById('reg-table-wrap').style.display='block';
+}
+
+function filtrarRegistos(estado,el){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderRegistos(estado?todosRegistosReg.filter(i=>i.Estado===estado):todosRegistosReg);
+}
+
+async function guardarLinha(id){
+  const row=document.getElementById('row-'+id),body={};
+  row.querySelectorAll('[data-id]').forEach(inp=>{body[inp.dataset.field]=inp.value;});
+  try{
+    await spMerge(SITE_DADOS,`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items(${id})`,body);
+    showToast('Guardado com sucesso!','success');
+    const idx=todosRegistosReg.findIndex(i=>i.Id===id);
+    if(idx>-1)Object.assign(todosRegistosReg[idx],body);
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function carregarSuprimentos(){
+  document.getElementById('sup-loading').style.display='flex';
+  document.getElementById('sup-list').style.display='none';
+  try{
+    const data=await spGet(`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items?$filter=Estado eq 'Suprimento'&$select=Id,Title,Nome_Cliente,Data_Escritura,Produto,Procurador,Observacoes&$orderby=Created desc`);
+    const sups=data.value||[];
+    document.getElementById('sup-loading').style.display='none';
+    const el=document.getElementById('sup-list');
+    el.innerHTML=!sups.length?'<div class="notice notice-success">Sem suprimentos pendentes!</div>'
+      :`<div class="notice notice-warning" style="margin-bottom:1rem"><strong>${sups.length} processo(s)</strong> com suprimentos pendentes</div>`
+      +sups.map(i=>`<div class="sup-card"><div style="flex:1"><div class="sup-title">${i.Title||'—'} — ${i.Nome_Cliente||'—'}</div><div class="sup-meta">${fmtData(i.Data_Escritura)} · ${i.Produto||'—'} · ${i.Procurador||'—'}</div>${i.Observacoes?`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${i.Observacoes}</div>`:''}</div><div style="display:flex;gap:5px;flex-shrink:0"><button class="btn btn-sm btn-success" onclick="resolverSuprimento(${i.Id})">Marcar resolvido</button></div></div>`).join('');
+    el.style.display='block';
+  }catch(e){document.getElementById('sup-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
+}
+
+async function resolverSuprimento(id){
+  try{
+    await spMerge(SITE_DADOS,`${SITE_DADOS}/_api/web/lists/getbytitle('${LISTA}')/items(${id})`,{Estado:'Em curso'});
+    showToast('Suprimento resolvido!','success');carregarSuprimentos();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+function updatePreview(){
+  const n=document.getElementById('ag-nome').value.toUpperCase().trim();
+  const d=document.getElementById('ag-data').value;
+  document.getElementById('pasta-preview').textContent=nomePasta(n,d)||'— preenche o nome e data —';
+}
+
+async function agendar(){
+  const nome=document.getElementById('ag-nome').value.toUpperCase().trim();
+  const data=document.getElementById('ag-data').value;
+  const prod=document.getElementById('ag-produto').value;
+  const entid=document.getElementById('ag-entidade').value;
+  const proc=document.getElementById('ag-procurador').value;
+  const conc=document.getElementById('ag-concelho').value;
+  if(!nome||!data){showToast('Preenche o nome e a data.','error');return;}
+  const pasta=nomePasta(nome,data);
+  const btn=document.getElementById('btn-agendar');
+  btn.disabled=true;btn.textContent='A criar...';
+  try{
+    await spPost(SITE_PASTAS,`${SITE_PASTAS}/_api/web/folders`,{ServerRelativeUrl:`/sites/Escritrio/${BIBLIOTECA}/${pasta}`});
+    showToast('✓ Pasta criada: '+pasta,'success');
+    limparForm();pastasCarregadas=false;
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Agendar e criar pasta';}
+}
+
+function limparForm(){
+  ['ag-nome','ag-data','ag-concelho'].forEach(id=>document.getElementById(id).value='');
+  ['ag-produto','ag-entidade','ag-procurador'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  updatePreview();
+}
+
+init();
+</script>
+</body>
+</html>
