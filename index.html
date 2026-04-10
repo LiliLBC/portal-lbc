@@ -1,1 +1,1839 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBC Solicitadora — Portal Interno</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:3rem 2.5rem;text-align:center;max-width:380px;width:100%;box-shadow:var(--shadow-md)}
+.login-logo{width:52px;height:52px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;margin:0 auto 1.5rem}
+.login-title{font-size:22px;font-weight:600;margin-bottom:.5rem}
+.login-sub{font-size:13px;color:var(--text-muted);margin-bottom:2rem;line-height:1.6}
+.login-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s}
+.login-btn:hover{background:var(--accent-dark)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{margin-top:1rem;padding:.75rem;background:var(--red-light);color:var(--red);border-radius:8px;font-size:12px;display:none;text-align:left;line-height:1.5}
+.app{display:none;min-height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border)}
+.logo-mark{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-bottom:.6rem}
+.logo-name{font-size:13px;font-weight:600}
+.logo-sub{font-size:11px;color:var(--text-faint)}
+.nav-section{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:1rem 1.25rem .3rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.45rem 1.25rem;cursor:pointer;font-size:13px;color:var(--text-muted);transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-light);color:var(--accent-dark);border-left-color:var(--accent);font-weight:500}
+.nav-item.em-construcao{opacity:.45;cursor:default;font-style:italic}
+.nav-item.em-construcao:hover{background:none;color:var(--text-muted)}
+.nav-icon{width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-badge{margin-left:auto;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;display:none;background:var(--red)}
+.nav-badge-amber{background:var(--amber)}
+.sidebar-footer{margin-top:auto;padding:.75rem 1.25rem;border-top:1px solid var(--border);font-size:10px;color:var(--text-faint);line-height:1.8}
+.user-info{display:flex;align-items:center;gap:8px;margin-bottom:.5rem}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-name{font-size:12px;color:var(--text-muted);font-weight:500}
+.btn-logout{width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.btn-logout:hover{background:var(--red-light);color:var(--red);border-color:var(--red)}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.75rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.page-title{font-size:14px;font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:.6rem}
+.date-badge{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:3px 9px;border-radius:5px}
+.content{padding:1.5rem;flex:1}
+.screen{display:none}
+.screen.active{display:block}
+.loading-overlay{display:flex;align-items:center;justify-content:center;padding:3rem;flex-direction:column;gap:1rem}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:12px;color:var(--text-faint)}
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1.5rem}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.25rem;box-shadow:var(--shadow)}
+.metric-label{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+.metric-value{font-size:30px;font-weight:300;line-height:1;font-family:'DM Mono',monospace;letter-spacing:-1px}
+.metric-sub{font-size:11px;color:var(--text-faint);margin-top:.4rem}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#236040}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.section-title{font-size:13px;font-weight:600}
+.section-sub{font-size:11px;color:var(--text-faint);margin-top:1px}
+.table-container{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--surface2);padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FAFAF8}
+.cell-muted{color:var(--text-muted);font-size:11px}
+.td-input{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif}
+.td-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.td-select{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-amber{background:var(--amber-light);color:var(--amber)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-purple{background:var(--accent-light);color:var(--accent-dark)}
+.badge-gray{background:var(--surface2);color:var(--text-muted)}
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;box-shadow:var(--shadow);max-width:560px}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.form-textarea{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px}
+.form-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-preview{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.6rem .9rem}
+.form-preview-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.form-preview-value{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;word-break:break-all}
+.form-actions{display:flex;gap:.6rem;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.search-row{display:flex;gap:.6rem;margin-bottom:1rem;align-items:center}
+.search-wrap{position:relative;flex:1}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--text-faint);pointer-events:none}
+.search-input{width:100%;padding:8px 11px 8px 32px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif}
+.search-input:focus{outline:none;border-color:var(--accent)}
+.pasta-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:var(--shadow);transition:all .15s;margin-bottom:.4rem}
+.pasta-card:hover{border-color:var(--accent)}
+.pasta-ref{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
+.pasta-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.pasta-actions{display:flex;gap:5px;flex-shrink:0}
+.notice{display:flex;align-items:flex-start;gap:9px;padding:.65rem .9rem;border-radius:7px;font-size:12px;margin-bottom:1rem;line-height:1.5}
+.notice-info{background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
+.notice-warning{background:var(--amber-light);color:var(--amber);border:1px solid #FAC775}
+.notice-success{background:var(--green-light);color:var(--green);border:1px solid #9FE1CB}
+.notice-error{background:var(--red-light);color:var(--red);border:1px solid #F7C1C1}
+.filter-row{display:flex;gap:.4rem;margin-bottom:.9rem;flex-wrap:wrap;align-items:center}
+.filter-chip{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.filter-chip:hover{border-color:var(--border-strong);color:var(--text)}
+.filter-chip.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.sup-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:9px;padding:.85rem 1.1rem;margin-bottom:.4rem;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.sup-card-title{font-size:13px;font-weight:500}
+.sup-card-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.sup-card-obs{font-size:11px;color:var(--text-muted);margin-top:3px;font-style:italic}
+.tarefa-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.85rem 1.1rem;margin-bottom:.4rem;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.tarefa-card.urgente{border-left:3px solid var(--red)}
+.tarefa-card-title{font-size:13px;font-weight:500}
+.tarefa-card-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.prazo-hoje{color:var(--red);font-weight:600}
+.prazo-passado{color:var(--red)}
+.dash-section{margin-bottom:1.75rem}
+.dash-section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem}
+.dash-section-title{font-size:13px;font-weight:600}
+.dash-section-sub{font-size:11px;color:var(--text-faint);margin-top:1px}
+.reg-search-bar{display:flex;gap:.5rem;margin-bottom:.75rem;align-items:center;flex-wrap:wrap}
+.reg-search-wrap{position:relative;flex:1;min-width:180px}
+.reg-search-input{width:100%;padding:7px 11px 7px 30px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif}
+.reg-search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.reg-search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:12px;height:12px;color:var(--text-faint);pointer-events:none}
+.reg-search-label{font-size:11px;color:var(--text-faint);white-space:nowrap;padding:0 2px}
 
+/* PAINEL LATERAL REGISTO */
+.side-panel{position:fixed;top:0;right:0;bottom:0;width:520px;background:var(--surface);border-left:1px solid var(--border);z-index:300;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 20px rgba(0,0,0,.08)}
+.side-panel.open{transform:translateX(0)}
+.side-panel-header{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.side-panel-title{font-size:13px;font-weight:600}
+.side-panel-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s}
+.side-panel-close:hover{background:var(--red-light);color:var(--red);border-color:var(--red)}
+.side-panel-body{flex:1;overflow-y:auto;padding:1.25rem}
+.side-panel-footer{padding:.9rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0;flex-wrap:wrap}
+.side-panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:299;display:none}
+.side-panel-overlay.show{display:block}
+.field-group{margin-bottom:.85rem}
+.field-label{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+.field-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem}
+.field-full{grid-column:1/-1}
+.section-divider{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.25rem;grid-column:1/-1}
+/* LISTA COMPACTA */
+.reg-list-item{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.7rem 1rem;margin-bottom:.3rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:all .15s}
+.reg-list-item:hover{border-color:var(--accent);background:var(--accent-light)}
+.reg-list-main{flex:1;min-width:0}
+.reg-list-nome{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reg-list-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.reg-list-right{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+/* PASTA SELECTOR NO PAINEL */
+.pasta-sp-wrap{position:relative}
+.pasta-sp-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:160px;overflow-y:auto;z-index:400;box-shadow:var(--shadow-md);display:none}
+.pasta-sp-item{padding:7px 11px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace}
+.pasta-sp-item:hover{background:var(--accent-light);color:var(--accent-dark)}
+.search-clear{padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.search-clear:hover{border-color:var(--border-strong);color:var(--text)}
+.reg-result-count{font-size:11px;color:var(--text-faint);margin-bottom:.5rem}
+.highlight{background:var(--accent-light);color:var(--accent-dark);border-radius:2px;padding:0 1px}
+.construcao-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:1rem;color:var(--text-faint);text-align:center}
+.construcao-icon{font-size:36px;margin-bottom:.5rem}
+.construcao-title{font-size:15px;font-weight:600;color:var(--text-muted)}
+.construcao-sub{font-size:12px;line-height:1.6;max-width:300px}
+.tarefa-form-inline{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+
+/* DROPDOWN CONTRATOS */
+.topbar-dropdown{position:relative}
+.dropdown-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.dropdown-btn:hover{background:var(--surface2)}
+.dropdown-btn svg{transition:transform .15s}
+.dropdown-btn.open svg.chevron{transform:rotate(180deg)}
+.dropdown-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow-md);min-width:200px;z-index:200;overflow:hidden;display:none}
+.dropdown-menu.show{display:block}
+.dropdown-item{display:flex;align-items:center;gap:9px;padding:.6rem 1rem;font-size:12px;color:var(--text-muted);cursor:pointer;transition:all .15s}
+.dropdown-item:hover{background:var(--accent-light);color:var(--accent-dark)}
+.dropdown-item-label{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;padding:.5rem 1rem .2rem}
+.dropdown-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0}
+
+/* CALENDÁRIO */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.cal-nav{display:flex;align-items:center;gap:.5rem}
+.cal-title{font-size:14px;font-weight:600}
+.cal-view-btns{display:flex;gap:.3rem}
+.cal-view-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--text-muted)}
+.cal-view-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.cal-day-header{background:var(--surface2);padding:.4rem;text-align:center;font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em}
+.cal-day{background:var(--surface);min-height:90px;padding:.35rem;cursor:pointer;transition:background .1s;position:relative}
+.cal-day:hover{background:var(--accent-light)}
+.cal-day.today{background:#F0EDF8}
+.cal-day.other-month .cal-day-num{color:var(--text-faint)}
+.cal-day-num{font-size:11px;font-weight:500;margin-bottom:.3rem;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.cal-day.today .cal-day-num{background:var(--accent);color:#fff}
+.cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font-weight:500}
+.cal-event-escritura{background:#EDE9F8;color:var(--accent-dark)}
+.cal-event-reuniao{background:var(--blue-light);color:var(--blue)}
+.cal-event-ausencia{background:var(--amber-light);color:var(--amber)}
+.cal-event-outro{background:var(--surface2);color:var(--text-muted)}
+.cal-event-tarefa{background:var(--red-light);color:var(--red)}
+.cal-more{font-size:10px;color:var(--text-faint);padding:1px 5px}
+
+/* MODAL EVENTO */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal-box{background:var(--surface);border-radius:12px;padding:1.5rem;max-width:440px;width:90%;box-shadow:var(--shadow-md);transform:translateY(6px);transition:transform .2s}
+.modal-overlay.show .modal-box{transform:translateY(0)}
+.modal-box-title{font-size:14px;font-weight:600;margin-bottom:1.1rem}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">LB</div>
+    <div class="login-title">LBC Solicitadora</div>
+    <div class="login-sub">Portal interno de gestão de escrituras.<br>Entra com a tua conta Microsoft do escritório.</div>
+    <button class="login-btn" id="login-btn" onclick="tentarLogin()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><path d="M10 1H1v9h9V1z" fill="#f25022"/><path d="M20 1h-9v9h9V1z" fill="#7fba00"/><path d="M10 11H1v9h9v-9z" fill="#00a4ef"/><path d="M20 11h-9v9h9v-9z" fill="#ffb900"/></svg>
+      Entrar com conta Microsoft
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">LB</div>
+      <div class="logo-name">LBC Solicitadora</div>
+      <div class="logo-sub">Portal interno</div>
+    </div>
+    <div class="nav-section">Visão geral</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></span>Dashboard
+    </div>
+    <div class="nav-section">Escrituras</div>
+    <div class="nav-item" onclick="nav('agendar',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Agendamento
+    </div>
+    <div class="nav-item" onclick="nav('pastas',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg></span>Pastas / clientes
+    </div>
+    <div class="nav-item" onclick="nav('registo',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span>Registo de escrituras
+    </div>
+    <div class="nav-section">Contratos</div>
+    <div class="nav-item em-construcao">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1z"/><path d="M5 6h6M5 9h4"/></svg></span>CVMH · MH · Procurações
+    </div>
+    <div class="nav-section">Clientes &amp; Serviços</div>
+    <div class="nav-item" onclick="nav('processos',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
+    </div>
+    <div class="nav-item em-construcao">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14s1-4 5-4 5 4 5 4"/><path d="M13 7v4M11 9h4"/></svg></span>Clientes
+    </div>
+    <div class="nav-item em-construcao">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 7h6M5 10h4"/></svg></span>Serviços em curso
+    </div>
+    <div class="nav-section">Escritório</div>
+    <div class="nav-item" id="nav-tarefas" onclick="nav('tarefas',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 6l2 2 4-4"/></svg></span>Tarefas
+      <span class="nav-badge nav-badge-amber" id="tarefas-badge"></span>
+    </div>
+    <div class="nav-item" onclick="nav('calendario',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Calendário
+    </div>
+    <div class="nav-item em-construcao">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 11V5l7-4 7 4v6l-7 4-7-4z"/></svg></span>Dashboard financeiro
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-name" id="user-name">...</div>
+      </div>
+      <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="page-title" id="page-title">Dashboard</span>
+      <div class="topbar-right">
+        <div class="date-badge" id="topbar-date"></div>
+        <div class="topbar-dropdown" id="contratos-dropdown">
+          <button class="dropdown-btn" onclick="toggleDropdown()" id="contratos-btn">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 7h6M5 10h4"/></svg>
+            Contratos
+            <svg class="chevron" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </button>
+          <div class="dropdown-menu" id="contratos-menu">
+            <div class="dropdown-item-label">CGD</div>
+            <div class="dropdown-item" onclick="abrirContrato('cvmh')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
+              CVMH CGD
+            </div>
+            <div class="dropdown-item" onclick="abrirContrato('mh')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
+              MH CGD
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="screen active" id="screen-dashboard">
+        <div class="metrics-row">
+          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
+          <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
+          <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
+          <div class="metric-card"><div class="metric-label">Suprimentos</div><div class="metric-value" style="color:var(--red)" id="m-suprimentos">—</div><div class="metric-sub" id="m-suprimentos-sub">requer atenção</div></div>
+        </div>
+        <div style="margin-bottom:1rem"><button class="btn btn-sm" onclick="descobrirCampos()">🔍 Ver nomes internos campos</button></div>
+        <div class="dash-section">
+          <div class="dash-section-header">
+            <div><div class="dash-section-title">Suprimentos pendentes</div><div class="dash-section-sub">Requerem atenção urgente</div></div>
+            <button class="btn btn-sm" onclick="nav('suprimentos',document.querySelectorAll('.nav-item')[4])">Ver todos</button>
+          </div>
+          <div id="dash-sup-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
+          <div id="dash-sup-lista"></div>
+          <div id="dash-sup-vazio" class="notice notice-success" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
+            Sem suprimentos pendentes!
+          </div>
+        </div>
+        <div class="dash-section">
+          <div class="dash-section-header">
+            <div><div class="dash-section-title">Tarefas urgentes</div><div class="dash-section-sub">Por fazer e em curso</div></div>
+            <button class="btn btn-sm" onclick="nav('tarefas',document.getElementById('nav-tarefas'))">Ver todas</button>
+          </div>
+          <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
+          <div id="dash-tar-lista"></div>
+          <div id="dash-tar-vazio" class="notice notice-success" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
+            Sem tarefas urgentes pendentes!
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENDAMENTO -->
+      <div class="screen" id="screen-agendar">
+        <div class="notice notice-info">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5h.01"/></svg>
+          Cria a pasta em <strong>Escritório/ESCRITURAS</strong>. O registo na listagem é feito após a escritura ser realizada.
+        </div>
+        <div class="form-card">
+          <div class="form-grid-2">
+            <div class="form-group form-full"><label class="form-label">Nome do cliente *</label><input class="form-input" id="ag-nome" type="text" placeholder="Nome completo em maiúsculas" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Data da escritura *</label><input class="form-input" id="ag-data" type="date" oninput="updatePreview()"></div>
+            <div class="form-group"><label class="form-label">Produto</label>
+              <select class="form-select" id="ag-produto">
+                <option value="">Selecionar...</option>
+                <option>CVMH</option><option>MH</option><option>TOIC</option>
+                <option>LEASING</option><option>CV</option><option>DOAÇÃO</option>
+                <option>PARTILHAS</option><option>PERMUTA</option><option>Liq. Repr.</option>
+                <option>PH</option><option>DIVISÃO</option>
+              </select>
+            </div>
+            <div class="form-group form-full"><div class="form-preview"><div class="form-preview-label">Pasta a criar em Escritório/ESCRITURAS</div><div class="form-preview-value" id="pasta-preview">— preenche o nome e data —</div></div></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-agendar" onclick="agendar()">Agendar e criar pasta</button>
+            <button class="btn" onclick="limparForm()">Limpar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASTAS -->
+      <div class="screen" id="screen-pastas">
+        <div class="search-row">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+            <input class="search-input" id="search-pastas" placeholder="Pesquisar por nome do cliente..." oninput="filtrarPastas()">
+          </div>
+          <button class="btn btn-primary" onclick="carregarPastas()">↺ Atualizar</button>
+        </div>
+        <div id="pastas-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>
+        <div id="pastas-count" style="font-size:11px;color:var(--text-faint);margin-bottom:.75rem;display:none"></div>
+        <div id="pastas-list" style="display:none"></div>
+      </div>
+
+      <!-- REGISTO -->
+      <div class="screen" id="screen-registo">
+        <div style="display:flex;gap:1rem;height:calc(100vh - 130px)">
+
+          <!-- COLUNA ESQUERDA: LISTA -->
+          <div style="width:400px;flex-shrink:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="padding:.65rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+              <div><div style="font-size:13px;font-weight:600">Listagem</div><div style="font-size:11px;color:var(--text-faint)" id="reg-count">A carregar...</div></div>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-sm" onclick="carregarRegistos()">↺</button>
+                <button class="btn btn-primary btn-sm" onclick="abrirPainelNovo()">+ Novo</button>
+              </div>
+            </div>
+            <div style="padding:.4rem .5rem;flex-shrink:0">
+              <div class="reg-search-wrap" style="width:100%">
+                <svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+                <input class="reg-search-input" id="reg-search" placeholder="Pesquisar nome, prédio..." oninput="pesquisarRegistos()" style="width:100%">
+              </div>
+            </div>
+            <div class="filter-row" style="padding:.2rem .5rem .4rem;flex-shrink:0">
+              <button class="filter-chip active" onclick="filtrarRegistos('',this)">Todas</button>
+              <button class="filter-chip" onclick="filtrarRegistos('Em curso',this)">Em curso</button>
+              <button class="filter-chip" onclick="filtrarRegistos('Concluído',this)">Concluídas</button>
+              <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
+            </div>
+            <div id="reg-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
+            <div id="reg-list" style="display:none;overflow-y:auto;flex:1"></div>
+          </div>
+
+          <!-- COLUNA DIREITA: MÉTRICAS + TABELA -->
+          <div style="flex:1;display:flex;flex-direction:column;gap:.75rem;overflow:hidden;min-width:0">
+
+            <!-- CARDS MÉTRICAS -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;flex-shrink:0">
+              <div class="metric-card" id="mc-cgd">
+                <div class="metric-label">CGD</div>
+                <div class="metric-value" id="mv-cgd">—</div>
+                <div class="metric-sub" id="ms-cgd">escrituras · média —€</div>
+              </div>
+              <div class="metric-card" id="mc-remax">
+                <div class="metric-label">REMAX</div>
+                <div class="metric-value" id="mv-remax" style="color:var(--green)">—</div>
+                <div class="metric-sub" id="ms-remax">escrituras · média —€</div>
+              </div>
+              <div class="metric-card" id="mc-part">
+                <div class="metric-label">Particulares</div>
+                <div class="metric-value" id="mv-part" style="color:var(--amber)">—</div>
+                <div class="metric-sub" id="ms-part">escrituras · média —€</div>
+              </div>
+            </div>
+
+            <!-- TABELA POR PERÍODO/ENTIDADE -->
+            <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden">
+              <div style="padding:.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+                <span style="font-size:12px;font-weight:600;flex:1">Escrituras por período e entidade</span>
+                <input class="reg-search-input" id="reg-tabela-search" placeholder="Filtrar ano, mês, entidade..." oninput="filtrarTabelaMetricas()" style="width:180px;padding:4px 8px">
+              </div>
+              <div style="overflow:auto;flex:1">
+                <table style="width:100%;border-collapse:collapse;font-size:11px" id="reg-tabela-metricas">
+                  <thead>
+                    <tr style="background:var(--surface2)">
+                      <th style="padding:.35rem .75rem;text-align:left;font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)">Ano</th>
+                      <th style="padding:.35rem .75rem;text-align:left;font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)">Mês</th>
+                      <th style="padding:.35rem .75rem;text-align:left;font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)">Entidade</th>
+                      <th style="padding:.35rem .75rem;text-align:right;font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)">Escrituras</th>
+                      <th style="padding:.35rem .75rem;text-align:right;font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)">Média €</th>
+                      <th style="padding:.35rem .75rem;text-align:right;font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)">Total €</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reg-tabela-tbody"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-faint)">A aguardar dados...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINEL LATERAL REGISTO -->
+      <div class="side-panel-overlay" id="reg-overlay" onclick="fecharPainel()"></div>
+      <div class="side-panel" id="reg-painel">
+        <div class="side-panel-header">
+          <div>
+            <div class="side-panel-title" id="painel-titulo">Nova escritura</div>
+            <div style="font-size:10px;color:var(--text-faint);font-family:'DM Mono',monospace;margin-top:2px" id="painel-ref"></div>
+          </div>
+          <button class="side-panel-close" onclick="fecharPainel()">✕</button>
+        </div>
+        <div class="side-panel-body">
+
+          <!-- SELECTOR PASTA (só no modo novo) -->
+          <div id="painel-pasta-wrap" class="field-group">
+            <div class="field-label">Pasta do cliente *</div>
+            <div class="pasta-sp-wrap">
+              <input class="form-input" id="painel-pasta-search" placeholder="A carregar pastas..." disabled oninput="filtrarPastasPainel()" autocomplete="off" style="font-family:'DM Mono',monospace;font-size:12px">
+              <div class="pasta-sp-dropdown" id="painel-pasta-dropdown"></div>
+            </div>
+            <div id="painel-pasta-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="painel-pasta-ok-nome"></span></div>
+          </div>
+
+          <div class="field-grid">
+            <div class="section-divider">Identificação</div>
+            <div class="field-group">
+              <div class="field-label">Nome do cliente</div>
+              <input class="form-input" id="p-nome" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Data escritura</div>
+              <input class="form-input" id="p-data" type="date">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Produto</div>
+              <select class="form-select" id="p-produto">
+                <option value="">—</option>
+                <option>CVMH CGD</option><option>MH CGD</option><option>CVMH BPI</option><option>MH BPI</option>
+                <option>CVMH Santander</option><option>MH Santander</option><option>CVMH Caixa Agrícola</option>
+                <option>CVMH Millennium</option><option>MH Millennium</option><option>Compra e Venda</option><option>Outro</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Entidade</div>
+              <input class="form-input" id="p-entidade" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Procurador</div>
+              <input class="form-input" id="p-procurador" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Estado</div>
+              <select class="form-select" id="p-estado">
+                <option>Agendado</option><option>Em curso</option><option>Concluído</option><option>Suprimento</option><option>Desistência</option>
+              </select>
+            </div>
+
+            <div class="section-divider">Imóvel</div>
+            <div class="field-group field-full">
+              <div class="field-label">Prédio</div>
+              <input class="form-input" id="p-predio" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Freguesia</div>
+              <input class="form-input" id="p-freguesia" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Concelho</div>
+              <input class="form-input" id="p-concelho" placeholder="—">
+            </div>
+
+            <div class="section-divider">Registo</div>
+            <div class="field-group">
+              <div class="field-label">AP Registo</div>
+              <input class="form-input" id="p-apRegisto" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">AP Data</div>
+              <input class="form-input" id="p-apData" type="date">
+            </div>
+            <div class="field-group field-full">
+              <div class="field-label">AP Conservatória</div>
+              <input class="form-input" id="p-apConserv" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Nº Pedido</div>
+              <input class="form-input" id="p-numPedido" placeholder="—">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Cód. Depósito</div>
+              <input class="form-input" id="p-codDeposito" placeholder="—">
+            </div>
+
+            <div class="section-divider">Valores</div>
+            <div class="field-group">
+              <div class="field-label">Montante Crédito €</div>
+              <input class="form-input" id="p-montCredito" placeholder="0,00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Val. Procurador €</div>
+              <input class="form-input" id="p-valorProc" placeholder="0,00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Val. Serviço €</div>
+              <input class="form-input" id="p-valorServico" placeholder="0,00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Margem Líquida €</div>
+              <input class="form-input" id="p-margemLiq" placeholder="0,00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Custo Suprimento €</div>
+              <input class="form-input" id="p-custoSup" placeholder="0,00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Data Resolução Sup.</div>
+              <input class="form-input" id="p-dataResolSup" type="date">
+            </div>
+
+            <div class="section-divider">Outros</div>
+            <div class="field-group field-full">
+              <div class="field-label">Observações</div>
+              <textarea class="form-textarea" id="p-observacoes" rows="3" placeholder="—"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="side-panel-footer">
+          <button class="btn" onclick="fecharPainel()" style="flex:1">Cancelar</button>
+          <button class="btn btn-primary" id="painel-btn-guardar" onclick="guardarPainel()" style="flex:2">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg>
+            Guardar
+          </button>
+          <button class="btn btn-sm" id="painel-btn-pasta" onclick="abrirPastaSP()" style="display:none" title="Abrir pasta no SharePoint">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
+            Abrir pasta
+          </button>
+        </div>
+      </div>
+
+      <!-- SUPRIMENTOS -->
+      <div class="screen" id="screen-suprimentos">
+        <div id="sup-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar suprimentos...</div></div>
+        <div id="sup-list" style="display:none"></div>
+      </div>
+
+      <!-- TAREFAS -->
+      <div class="screen" id="screen-tarefas">
+        <div class="section-header">
+          <div><div class="section-title">Tarefas do escritório</div><div class="section-sub">Partilhadas por toda a equipa</div></div>
+          <button class="btn btn-primary btn-sm" onclick="toggleFormTarefa()">+ Nova tarefa</button>
+        </div>
+        <div class="tarefa-form-inline" id="tarefa-form" style="display:none">
+          <div class="form-grid-2" style="gap:.75rem">
+            <div class="form-group form-full"><label class="form-label">Descrição *</label><input class="form-input" id="tar-titulo" type="text" placeholder="O que é preciso fazer?"></div>
+            <div class="form-group"><label class="form-label">Responsável</label>
+              <select class="form-select" id="tar-responsavel">
+                <option value="">Selecionar...</option>
+                <option>Liliana Cardoso</option><option>Andreia Cabanas</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="tar-prazo" type="date"></div>
+            <div class="form-group"><label class="form-label">Prioridade</label>
+              <select class="form-select" id="tar-prioridade">
+                <option>Normal</option><option>Urgente</option><option>Baixa</option>
+              </select>
+            </div>
+            <div class="form-group form-full"><label class="form-label">Observações</label><textarea class="form-textarea" id="tar-obs" placeholder="Detalhes adicionais..."></textarea></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="criarTarefa()">Criar tarefa</button>
+            <button class="btn" onclick="toggleFormTarefa()">Cancelar</button>
+          </div>
+        </div>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="filtrarTarefas('',this)">Todas</button>
+          <button class="filter-chip" onclick="filtrarTarefas('Urgente',this)">Urgentes</button>
+          <button class="filter-chip" onclick="filtrarTarefas('Por fazer',this)">Por fazer</button>
+          <button class="filter-chip" onclick="filtrarTarefas('Em curso',this)">Em curso</button>
+          <button class="filter-chip" onclick="filtrarTarefas('Concluída',this)">Concluídas</button>
+        </div>
+        <div id="tar-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar tarefas...</div></div>
+        <div id="tar-list" style="display:none"></div>
+      </div>
+
+      <!-- CALENDÁRIO -->
+      <div class="screen" id="screen-calendario">
+        <div class="cal-header">
+          <div class="cal-nav">
+            <button class="btn btn-sm" onclick="calNav(-1)">‹</button>
+            <span class="cal-title" id="cal-title"></span>
+            <button class="btn btn-sm" onclick="calNav(1)">›</button>
+            <button class="btn btn-sm" onclick="calHoje()">Hoje</button>
+          </div>
+          <div class="cal-view-btns">
+            <button class="cal-view-btn active" onclick="calSetView('mes',this)">Mês</button>
+            <button class="cal-view-btn" onclick="calSetView('semana',this)">Semana</button>
+          </div>
+        </div>
+        <div id="cal-grid-wrap"></div>
+      </div>
+
+      <!-- MODAL NOVO EVENTO -->
+      <div class="modal-overlay" id="modal-evento">
+        <div class="modal-box">
+          <div class="modal-box-title" id="modal-evento-titulo">Novo evento</div>
+          <div class="form-grid-2" style="display:grid;gap:.75rem">
+            <div class="form-group form-full"><label class="form-label">Descrição *</label><input class="form-input" id="ev-titulo" type="text" placeholder="Ex: Escritura João Silva"></div>
+            <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="ev-data" type="date"></div>
+            <div class="form-group"><label class="form-label">Hora</label><input class="form-input" id="ev-hora" type="time" value="10:00"></div>
+            <div class="form-group"><label class="form-label">Tipo</label>
+              <select class="form-select" id="ev-tipo">
+                <option value="Escritura">Escritura</option>
+                <option value="Reunião">Reunião</option>
+                <option value="Ausência">Ausência</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div class="form-group form-full"><label class="form-label">Responsável</label>
+              <select class="form-select" id="ev-responsavel">
+                <option value="">Ambas</option>
+                <option>Liliana Cardoso</option>
+                <option>Andreia Cabanas</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn" onclick="fecharModalEvento()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarEvento()">Guardar evento</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-processos">
+        <!-- TABS -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.75rem;align-items:center;justify-content:space-between">
+          <div style="display:flex;gap:.4rem">
+            <button class="filter-chip active" id="proc-tab-pastas" onclick="procSetTab('pastas',this)">Pastas de clientes</button>
+            <button class="filter-chip" id="proc-tab-novo" onclick="procSetTab('novo',this)">+ Nova pasta cliente</button>
+            <button class="filter-chip" id="proc-tab-subpasta" onclick="procSetTab('subpasta',this)">+ Novo processo</button>
+          </div>
+          <button class="btn btn-sm" onclick="carregarProcessos()">↺ Atualizar</button>
+        </div>
+
+        <!-- LISTA DE PASTAS -->
+        <div id="proc-tab-content-pastas">
+          <div class="reg-search-bar">
+            <div class="reg-search-wrap">
+              <svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+              <input class="reg-search-input" id="proc-search" placeholder="Pesquisar cliente..." oninput="filtrarProcessos()">
+            </div>
+          </div>
+          <div id="proc-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>
+          <div id="proc-list" style="display:none"></div>
+        </div>
+
+        <!-- NOVA PASTA CLIENTE -->
+        <div id="proc-tab-content-novo" style="display:none">
+          <div class="section-card" style="max-width:500px">
+            <div class="section-card-header">
+              <div class="section-num">1</div>
+              <div><div class="section-name">Nova pasta de cliente</div><div class="section-desc">Cria a pasta principal do cliente em PROCESSOS</div></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nome do cliente *</label>
+              <input class="form-input" id="proc-novo-nome" placeholder="Ex: JOAQUIM MIGUEL VELEZ" style="text-transform:uppercase">
+            </div>
+            <div class="form-actions" style="margin-top:1rem">
+              <button class="btn btn-primary" onclick="criarPastaCliente()">Criar pasta cliente</button>
+            </div>
+            <div id="proc-novo-preview" style="font-size:11px;color:var(--text-faint);margin-top:.5rem;font-family:'DM Mono',monospace"></div>
+          </div>
+        </div>
+
+        <!-- NOVO PROCESSO (SUBPASTA) -->
+        <div id="proc-tab-content-subpasta" style="display:none">
+          <div class="section-card" style="max-width:560px">
+            <div class="section-card-header">
+              <div class="section-num">2</div>
+              <div><div class="section-name">Novo processo</div><div class="section-desc">Cria subpasta dentro da pasta do cliente</div></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cliente *</label>
+              <div class="pasta-sp-wrap">
+                <input class="form-input" id="proc-sub-cliente-search" placeholder="Pesquisar pasta do cliente..." oninput="filtrarPastasCliente()" autocomplete="off" style="font-family:'DM Mono',monospace;font-size:12px">
+                <div class="pasta-sp-dropdown" id="proc-sub-cliente-dropdown"></div>
+              </div>
+              <div id="proc-sub-cliente-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="proc-sub-cliente-ok-nome"></span></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data *</label>
+              <input class="form-input" id="proc-sub-data" type="date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo de processo *</label>
+              <select class="form-select" id="proc-sub-tipo">
+                <option value="">Selecionar...</option>
+                <option>IMOBILIARIO</option>
+                <option>SOCIETARIO</option>
+                <option>AUTOMOVEL</option>
+                <option>TRABALHO</option>
+                <option>INJUNCOES</option>
+                <option>DTO CIVIL</option>
+                <option>DTO FAMILIA</option>
+                <option>ENTIDADES PUBLICAS</option>
+                <option>AVENCAS</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Descrição *</label>
+              <input class="form-input" id="proc-sub-desc" placeholder="Ex: Harmonização de áreas">
+            </div>
+            <div id="proc-sub-preview" style="font-size:11px;color:var(--text-faint);margin-top:.25rem;font-family:'DM Mono',monospace"></div>
+            <div class="form-actions" style="margin-top:1rem">
+              <button class="btn btn-primary" onclick="criarSubpastaProcesso()">Criar processo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EM CONSTRUÇÃO -->
+      <div class="screen" id="screen-contratos">
+        <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
+      </div>
+      <div class="screen" id="screen-clientes">
+        <div class="construcao-screen"><div class="construcao-icon">👤</div><div class="construcao-title">Clientes &amp; Serviços</div><div class="construcao-sub">Registo de clientes, histórico de serviços, adiantamentos e saldos. Em desenvolvimento — Fase 3.</div></div>
+      </div>
+      <div class="screen" id="screen-financeiro">
+        <div class="construcao-screen"><div class="construcao-icon">📊</div><div class="construcao-title">Dashboard Financeiro</div><div class="construcao-sub">Somatórios de margem, valor de serviço e suprimentos por mês e ano. Em desenvolvimento — Fase 3.</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
+const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+const REDIRECT='https://lililbc.github.io/portal-lbc/';
+const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read'];
+const GRAPH_BASE='https://graph.microsoft.com/v1.0';
+const TENANT_HOST='lbcsolicitadorapt.sharepoint.com';
+const SITE_DADOS_PATH='sites/lbcsolicitadora2';
+const SITE_PASTAS_PATH='sites/Escritrio';
+const LISTA='Escritura_Listagem';
+const LISTA_TAREFAS='Tarefas_Escritorio';
+const BIBLIOTECA='ESCRITURAS';
+const BIBLIOTECA_PROCESSOS='PROCESSOS';
+
+const F={
+  titulo:'Title',nome:'Nome_Cliente',data:'Data_Escritura',produto:'Produto',
+  entidade:'Entidade',procurador:'Procurador',valorProc:'Valor_Procurador',
+  montCredito:'Montante_Credito',predio:'Pr_x00e9_dio',freguesia:'Freguesia',
+  concelho:'Concelho',apRegisto:'AP_x002e__Registo',apData:'AP_Data',
+  apConserv:'AP_Conservat_x00f3_ria',valorServico:'Valor_Servico',estado:'Estado',
+  codDeposito:'Cod_Dep_x00f3_sito',observacoes:'Observa_x00e7__x00f5_es',
+  numPedido:'Num_Pedido',ligacaoPasta:'Ligacao_Pasta',margemLiq:'Margem_L_x00ed_quida',
+  custoSup:'Custo_Suprimento',dataResolSup:'Data_Resolucao_Suprimento',
+};
+const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
+const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Responsavel'};
+const LISTA_AGENDA='Agenda_Escritorio';
+
+let msalApp=null,graphToken=null,contaAtual=null;
+let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null;
+let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
+let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
+let todasTarefas=[],tarefasCarregadas=false;
+let filtroEstadoAtual='';
+
+function tentarLogin(){
+  if(!msalApp){const el=document.getElementById('login-error');el.textContent='A carregar... aguarda 2 segundos.';el.style.display='block';setTimeout(()=>el.style.display='none',2000);return;}
+  fazerLogin();
+}
+async function fazerLogin(){
+  const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='A iniciar sessão...';
+  try{await msalApp.loginRedirect({scopes:GRAPH_SCOPES});}
+  catch(e){
+    const el=document.getElementById('login-error');el.textContent='Erro: '+e.message;el.style.display='block';
+    btn.disabled=false;
+    btn.innerHTML='<svg width="18" height="18" viewBox="0 0 21 21"><path d="M10 1H1v9h9V1z" fill="#f25022"/><path d="M20 1h-9v9h9V1z" fill="#7fba00"/><path d="M10 11H1v9h9v-9z" fill="#00a4ef"/><path d="M20 11h-9v9h9v-9z" fill="#ffb900"/></svg> Entrar com conta Microsoft';
+  }
+}
+async function renovarToken(){
+  try{const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:contaAtual});graphToken=r.accessToken;}
+  catch(e){await msalApp.acquireTokenRedirect({scopes:GRAPH_SCOPES});}
+}
+function fazerLogout(){msalApp.logoutRedirect();}
+
+async function mostrarApp(){
+  document.getElementById('login-screen').style.display='none';
+  const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='row';
+  const nome=contaAtual.name||contaAtual.username;
+  document.getElementById('user-name').textContent=nome.split(' ')[0];
+  document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
+  setDates();await resolverSiteIds();carregarDashboard();
+}
+
+async function graphGet(url){
+  await renovarToken();
+  const r=await fetch(url,{headers:{'Authorization':'Bearer '+graphToken,'Accept':'application/json'}});
+  if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+async function graphPatch(url,body){
+  await renovarToken();
+  const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
+  return r.status===204?{}:r.json();
+}
+async function graphPost(url,body){
+  await renovarToken();
+  const r=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok&&r.status!==409)throw new Error(`Erro ${r.status}: ${await r.text()}`);
+  return r.status===204||r.status===409?{}:r.json();
+}
+
+async function resolverSiteIds(){
+  try{
+    const [s1,s2]=await Promise.all([
+      graphGet(`${GRAPH_BASE}/sites/${TENANT_HOST}:/${SITE_DADOS_PATH}`),
+      graphGet(`${GRAPH_BASE}/sites/${TENANT_HOST}:/${SITE_PASTAS_PATH}`)
+    ]);
+    siteIdDados=s1.id;siteIdPastas=s2.id;
+    const [listas,drives,drivesDados]=await Promise.all([
+      graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA}'`),
+      graphGet(`${GRAPH_BASE}/sites/${siteIdPastas}/drives`),
+      graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`)
+    ]);
+    listaId=listas.value[0]?.id;
+    bibliotecaId=drives.value.find(d=>d.name===BIBLIOTECA)?.id;
+    bibliotecaProcessosId=drivesDados.value.find(d=>d.name===BIBLIOTECA_PROCESSOS)?.id;
+    const tr=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_TAREFAS}'`);
+    listaIdTarefas=tr.value[0]?.id;
+    const ag=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_AGENDA}'`);
+    listaIdAgenda=ag.value[0]?.id;
+  }catch(e){console.error('Erro IDs:',e);}
+}
+
+function fmtData(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('pt-PT')}
+function nomePasta(n,d){if(!n||!d)return'';return d.replace(/-/g,'')+' '+n.toUpperCase().trim()}
+function estadoBadge(e){const m={'Concluído':'badge-green','Em curso':'badge-amber','Suprimento':'badge-red','Agendado':'badge-blue'};return`<span class="badge ${m[e]||'badge-gray'}">${e||'—'}</span>`}
+function produtoBadge(p){return p?`<span class="badge badge-purple">${p}</span>`:'—'}
+function prioridadeBadge(p){const m={'Urgente':'badge-red','Normal':'badge-blue','Baixa':'badge-gray'};return`<span class="badge ${m[p]||'badge-gray'}">${p||'—'}</span>`}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500)}
+function setDates(){document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'})}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function highlight(texto,q){if(!texto||!q)return escHtml(texto||'');const idx=texto.toLowerCase().indexOf(q.toLowerCase());if(idx===-1)return escHtml(texto);return escHtml(texto.slice(0,idx))+`<span class="highlight">${escHtml(texto.slice(idx,idx+q.length))}</span>`+escHtml(texto.slice(idx+q.length))}
+function fmtPrazo(iso){
+  if(!iso)return'';
+  const d=new Date(iso),hoje=new Date();
+  hoje.setHours(0,0,0,0);d.setHours(0,0,0,0);
+  const diff=Math.round((d-hoje)/(864e5));
+  if(diff===0)return'<span class="prazo-hoje">Prazo: hoje</span>';
+  if(diff<0)return`<span class="prazo-passado">Prazo: ${Math.abs(diff)}d atrás</span>`;
+  if(diff===1)return'Prazo: amanhã';
+  return`Prazo: ${fmtData(iso)}`;
+}
+
+const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos'};
+
+function nav(id,el){
+  if(el&&el.classList&&el.classList.contains('em-construcao'))return;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[id]||id;
+  if(id==='pastas'&&!pastasCarregadas)carregarPastas();
+  if(id==='registo'&&!registosCarregados)carregarRegistos();
+  if(id==='suprimentos')carregarSuprimentos();
+  if(id==='tarefas')carregarTarefas();
+  if(id==='processos')carregarProcessos();
+}
+
+// ─── DROPDOWN CONTRATOS ────────────────────────────────────────────────────────
+function toggleDropdown(){
+  const menu=document.getElementById('contratos-menu');
+  const btn=document.getElementById('contratos-btn');
+  const open=menu.classList.toggle('show');
+  btn.classList.toggle('open',open);
+  if(open){setTimeout(()=>document.addEventListener('click',fecharDropdownFora,{once:true}),0);}
+}
+function fecharDropdownFora(e){
+  if(!document.getElementById('contratos-dropdown').contains(e.target)){
+    document.getElementById('contratos-menu').classList.remove('show');
+    document.getElementById('contratos-btn').classList.remove('open');
+  }
+}
+function abrirContrato(tipo){
+  document.getElementById('contratos-menu').classList.remove('show');
+  document.getElementById('contratos-btn').classList.remove('open');
+  const urls={cvmh:'cvmh.html',mh:'mh.html'};
+  const url=urls[tipo];
+  if(url){
+    // Passar token para o formulário via localStorage
+    if(graphToken) localStorage.setItem('lbc_graph_token', graphToken);
+    window.open(url,'_blank');
+  }
+  else showToast('Em desenvolvimento...','');
+}
+
+async function carregarDashboard(){
+  try{
+    const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico}`;
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
+    todosRegistos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    const total=todosRegistos.length,
+          concl=todosRegistos.filter(i=>i[F.estado]==='Concluído').length,
+          emcurso=todosRegistos.filter(i=>i[F.estado]==='Em curso').length,
+          sups=todosRegistos.filter(i=>i[F.estado]==='Suprimento').length;
+
+    // Total anual em custos de suprimentos
+    const totalCustoSup=todosRegistos.reduce((acc,i)=>{
+      const v=parseFloat(String(i[F.custoSup]||'0').replace(',','.'));
+      return acc+(isNaN(v)?0:v);
+    },0);
+
+    document.getElementById('m-total').textContent=total;
+    document.getElementById('m-concluidos').textContent=concl;
+    document.getElementById('m-emcurso').textContent=emcurso;
+    document.getElementById('m-suprimentos').textContent=sups;
+    document.getElementById('m-total-sub').textContent=`${total} registos totais`;
+    document.getElementById('m-concluidos-sub').textContent=`${Math.round(concl/(total||1)*100)}% do total`;
+    document.getElementById('m-emcurso-sub').textContent=`${emcurso} em aberto`;
+    document.getElementById('m-suprimentos-sub').textContent=totalCustoSup>0?`${totalCustoSup.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})}€ acumulados`:'requer atenção';
+
+    if(sups>0){const b=document.getElementById('sup-badge');b.textContent=sups;b.style.display='inline-block';}
+    const supsLista=todosRegistos.filter(i=>i[F.estado]==='Suprimento');
+    document.getElementById('dash-sup-loading').style.display='none';
+    if(!supsLista.length){
+      document.getElementById('dash-sup-vazio').style.display='flex';
+    } else {
+      document.getElementById('dash-sup-lista').innerHTML=supsLista.slice(0,3).map(i=>`
+        <div class="sup-card">
+          <div style="flex:1">
+            <div class="sup-card-title">${escHtml(i[F.titulo]||'—')} — ${escHtml(i[F.nome]||'—')}</div>
+            <div class="sup-card-meta">${fmtData(i[F.data])} · ${escHtml(i[F.produto]||'—')} · ${escHtml(i[F.procurador]||'—')}</div>
+            ${i[F.observacoes]?`<div class="sup-card-obs">${escHtml(i[F.observacoes])}</div>`:''}
+          </div>
+          <span class="badge badge-red">Suprimento</span>
+        </div>`).join('');
+    }
+  }catch(e){
+    document.getElementById('dash-sup-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;
+  }
+  try{
+    if(!listaIdTarefas){document.getElementById('dash-tar-loading').style.display='none';document.getElementById('dash-tar-vazio').style.display='flex';return;}
+    const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado}`;
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
+    const urgentes=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>i[T.prioridade]==='Urgente'&&i[T.estado]!=='Concluída');
+    if(urgentes.length>0){const b=document.getElementById('tarefas-badge');b.textContent=urgentes.length;b.style.display='inline-block';}
+    document.getElementById('dash-tar-loading').style.display='none';
+    if(!urgentes.length){
+      document.getElementById('dash-tar-vazio').style.display='flex';
+    } else {
+      document.getElementById('dash-tar-lista').innerHTML=urgentes.slice(0,4).map(i=>`
+        <div class="tarefa-card urgente">
+          <div style="flex:1">
+            <div class="tarefa-card-title">${escHtml(i[T.titulo]||'—')}</div>
+            <div class="tarefa-card-meta">${escHtml(i[T.responsavel]||'—')}${i[T.prazo]?' · '+fmtPrazo(i[T.prazo]):''}</div>
+          </div>
+          ${prioridadeBadge(i[T.prioridade])}
+        </div>`).join('');
+    }
+  }catch(e){
+    document.getElementById('dash-tar-loading').style.display='none';
+    document.getElementById('dash-tar-vazio').style.display='flex';
+  }
+}
+
+async function carregarPastas(){
+  pastasCarregadas=true;
+  document.getElementById('pastas-loading').style.display='flex';
+  document.getElementById('pastas-list').style.display='none';
+  document.getElementById('pastas-count').style.display='none';
+  try{
+    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    todasPastas=(data.value||[]).filter(i=>i.folder);renderPastas(todasPastas);
+  }catch(e){document.getElementById('pastas-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function renderPastas(lista){
+  document.getElementById('pastas-loading').style.display='none';
+  const el=document.getElementById('pastas-list'),count=document.getElementById('pastas-count');
+  count.textContent=`${lista.length} pastas encontradas`;count.style.display='block';
+  if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
+  el.innerHTML=lista.map(p=>`
+    <div class="pasta-card">
+      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div></div>
+      <div class="pasta-actions">
+        <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
+      </div>
+    </div>`).join('');
+  el.style.display='block';
+}
+function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
+
+async function carregarRegistos(){
+  registosCarregados=true;
+  document.getElementById('reg-loading').style.display='flex';
+  document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
+  document.getElementById('reg-result-count').style.display='none';
+  try{
+    const sf=[F.titulo,F.nome,F.data,F.produto,F.procurador,F.estado,F.predio,F.apRegisto,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorProc,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup].join(',');
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
+    todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    registosFiltradosAtual=[...todosRegistosReg];
+    document.getElementById('reg-count').textContent=`${todosRegistosReg.length} registos totais`;
+    renderRegistos(todosRegistosReg);
+    carregarPastasPainel();
+  }catch(e){document.getElementById('reg-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function pesquisarRegistos(){
+  const q=document.getElementById('reg-search').value.toLowerCase().trim();
+  const base=filtroEstadoAtual?todosRegistosReg.filter(i=>i[F.estado]===filtroEstadoAtual):todosRegistosReg;
+  if(!q){registosFiltradosAtual=base;document.getElementById('reg-result-count').style.display='none';renderRegistos(base,'');return;}
+  const resultado=base.filter(i=>(i[F.nome]||'').toLowerCase().includes(q)||(i[F.predio]||'').toLowerCase().includes(q)||(i[F.apConserv]||'').toLowerCase().includes(q)||(i[F.titulo]||'').toLowerCase().includes(q));
+  registosFiltradosAtual=resultado;
+  const c=document.getElementById('reg-result-count');c.textContent=`${resultado.length} resultado(s) para "${document.getElementById('reg-search').value}"`;c.style.display='block';
+  renderRegistos(resultado,document.getElementById('reg-search').value);
+}
+
+function limparPesquisa(){
+  document.getElementById('reg-search').value='';document.getElementById('reg-result-count').style.display='none';
+  const base=filtroEstadoAtual?todosRegistosReg.filter(i=>i[F.estado]===filtroEstadoAtual):todosRegistosReg;
+  registosFiltradosAtual=base;renderRegistos(base,'');
+}
+
+function filtrarRegistos(estado,el){
+  filtroEstadoAtual=estado;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));if(el)el.classList.add('active');
+  const base=estado?todosRegistosReg.filter(i=>i[F.estado]===estado):todosRegistosReg;
+  const q=(document.getElementById('reg-search').value||'').toLowerCase().trim();
+  if(q){const r=base.filter(i=>(i[F.nome]||'').toLowerCase().includes(q)||(i[F.predio]||'').toLowerCase().includes(q)||(i[F.apConserv]||'').toLowerCase().includes(q));registosFiltradosAtual=r;renderRegistos(r,document.getElementById('reg-search').value);}
+  else{registosFiltradosAtual=base;renderRegistos(base,'');}
+}
+
+function renderRegistos(lista,q=''){
+  document.getElementById('reg-loading').style.display='none';
+  const el=document.getElementById('reg-list');
+  if(!lista.length){el.innerHTML='<div class="notice notice-info" style="margin:.5rem">Nenhum registo encontrado.</div>';el.style.display='block';return;}
+  el.innerHTML=lista.map(i=>`
+    <div class="reg-list-item" onclick="abrirPainelRegisto('${i.id}')">
+      <div class="reg-list-main">
+        <div class="reg-list-nome">${highlight(i[F.nome]||'—',q)}</div>
+        <div class="reg-list-meta">${fmtData(i[F.data])} · ${escHtml(i[F.produto]||'—')} · ${escHtml(i[F.apConserv]||'—')}</div>
+        ${i[F.numPedido]?`<div style="font-size:10px;color:var(--text-faint);font-family:'DM Mono',monospace;margin-top:1px">${escHtml(i[F.numPedido])}</div>`:''}
+      </div>
+      <div class="reg-list-right">
+        ${estadoBadge(i[F.estado])}
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
+      </div>
+    </div>`).join('');
+  el.style.display='block';
+  atualizarMetricas(todosRegistosReg);
+}
+
+function atualizarMetricas(lista){
+  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const anoAtual=new Date().getFullYear();
+  const anuais=lista.filter(i=>{
+    if(!i[F.data])return false;
+    return new Date(i[F.data]).getFullYear()===anoAtual;
+  });
+
+  // Cards CGD / REMAX / Particulares
+  const grupos={CGD:[],REMAX:[],Particulares:[]};
+  anuais.forEach(i=>{
+    const ent=(i[F.entidade]||'').toUpperCase();
+    if(ent.includes('CGD')||ent.includes('CAIXA'))grupos.CGD.push(i);
+    else if(ent.includes('REMAX')||ent.includes('RE/MAX'))grupos.REMAX.push(i);
+    else if(!ent||ent.includes('PARTICULAR'))grupos.Particulares.push(i);
+  });
+  const media=arr=>{
+    const vals=arr.map(i=>parseFloat((i[F.valorServico]||'0').replace(',','.'))).filter(v=>v>0);
+    return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+  };
+  [['cgd','CGD'],['remax','REMAX'],['part','Particulares']].forEach(([k,g])=>{
+    const n=grupos[g].length, m=media(grupos[g]);
+    document.getElementById(`mv-${k}`).textContent=n;
+    document.getElementById(`ms-${k}`).textContent=`escrituras · média ${m?m+'€':'—'}`;
+  });
+
+  // Tabela por período/entidade
+  const tabMap={};
+  lista.forEach(i=>{
+    if(!i[F.data])return;
+    const d=new Date(i[F.data]);
+    const ano=d.getFullYear(), mes=MESES[d.getMonth()];
+    const ent=(i[F.entidade]||'Sem entidade').trim()||'Sem entidade';
+    const key=`${ano}|${String(d.getMonth()).padStart(2,'0')}|${mes}|${ent}`;
+    if(!tabMap[key])tabMap[key]={ano,mes,mesN:d.getMonth(),ent,n:0,total:0};
+    tabMap[key].n++;
+    tabMap[key].total+=parseFloat((i[F.valorServico]||'0').replace(',','.'));
+  });
+  window._tabelaMetricasDados=Object.values(tabMap).sort((a,b)=>b.ano-a.ano||b.mesN-a.mesN||a.ent.localeCompare(b.ent));
+  renderTabelaMetricas(window._tabelaMetricasDados);
+}
+
+function renderTabelaMetricas(dados){
+  const tbody=document.getElementById('reg-tabela-tbody');
+  if(!dados.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-faint)">Sem dados</td></tr>';return;}
+  tbody.innerHTML=dados.map(d=>`
+    <tr style="border-bottom:0.5px solid var(--border)">
+      <td style="padding:.35rem .75rem">${d.ano}</td>
+      <td style="padding:.35rem .75rem">${d.mes}</td>
+      <td style="padding:.35rem .75rem">${escHtml(d.ent)}</td>
+      <td style="padding:.35rem .75rem;text-align:right;font-family:'DM Mono',monospace">${d.n}</td>
+      <td style="padding:.35rem .75rem;text-align:right;font-family:'DM Mono',monospace">${d.n?Math.round(d.total/d.n)+'€':'—'}</td>
+      <td style="padding:.35rem .75rem;text-align:right;font-family:'DM Mono',monospace">${Math.round(d.total).toLocaleString('pt-PT')}€</td>
+    </tr>`).join('');
+}
+
+function filtrarTabelaMetricas(){
+  const q=(document.getElementById('reg-tabela-search').value||'').toLowerCase();
+  if(!window._tabelaMetricasDados)return;
+  const filtrado=q?window._tabelaMetricasDados.filter(d=>
+    String(d.ano).includes(q)||d.mes.toLowerCase().includes(q)||d.ent.toLowerCase().includes(q)
+  ):window._tabelaMetricasDados;
+  renderTabelaMetricas(filtrado);
+}
+
+// ─── PAINEL LATERAL ───────────────────────────────────────────────────────────
+let painelItemId=null,painelPastaUrl=null,pastasPainel=[];
+
+async function carregarPastasPainel(){
+  try{
+    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    pastasPainel=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
+    const inp=document.getElementById('painel-pasta-search');
+    if(inp){inp.placeholder=`Pesquisar entre ${pastasPainel.length} pastas...`;inp.disabled=false;}
+  }catch(e){console.warn('Pastas não carregadas:',e);}
+}
+
+function filtrarPastasPainel(){
+  const q=(document.getElementById('painel-pasta-search').value||'').toLowerCase().trim();
+  const dd=document.getElementById('painel-pasta-dropdown');
+  if(!q||!pastasPainel.length){dd.style.display='none';return;}
+  const res=pastasPainel.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarPastaPainel(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
+    ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  dd.style.display='block';
+}
+
+function selecionarPastaPainel(pasta){
+  document.getElementById('painel-pasta-search').value=pasta.nome;
+  document.getElementById('painel-pasta-dropdown').style.display='none';
+  document.getElementById('painel-pasta-ok-nome').textContent=pasta.nome;
+  document.getElementById('painel-pasta-ok').style.display='block';
+  painelPastaUrl=pasta.webUrl;
+  // Só extrai o nome do cliente — data fica para preenchimento manual
+  const match=pasta.nome.match(/^\d{8}\s+(.+)$/);
+  if(match) document.getElementById('p-nome').value=match[1].trim();
+  document.getElementById('painel-ref').textContent=pasta.nome;
+}
+
+function abrirPainelNovo(){
+  painelItemId=null;painelPastaUrl=null;
+  document.getElementById('painel-titulo').textContent='Nova escritura';
+  document.getElementById('painel-ref').textContent='';
+  document.getElementById('painel-pasta-wrap').style.display='block';
+  document.getElementById('painel-btn-pasta').style.display='none';
+  document.getElementById('painel-pasta-ok').style.display='none';
+  document.getElementById('painel-pasta-search').value='';
+  ['p-nome','p-data','p-produto','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
+   'p-apRegisto','p-apData','p-apConserv','p-numPedido','p-codDeposito','p-montCredito',
+   'p-valorProc','p-valorServico','p-margemLiq','p-custoSup','p-dataResolSup','p-observacoes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('p-estado').value='Agendado';
+  abrirPainel();
+}
+
+function abrirPainelRegisto(itemId){
+  const i=todosRegistosReg.find(r=>r.id===itemId);if(!i)return;
+  painelItemId=itemId;
+  painelPastaUrl=i[F.ligacaoPasta]||null;
+  document.getElementById('painel-titulo').textContent=i[F.nome]||'Escritura';
+  document.getElementById('painel-ref').textContent=i[F.titulo]||'';
+  document.getElementById('painel-pasta-wrap').style.display='none';
+  document.getElementById('painel-btn-pasta').style.display=painelPastaUrl?'inline-flex':'none';
+  const sv=id=>document.getElementById(id);
+  sv('p-nome').value=i[F.nome]||'';
+  sv('p-data').value=i[F.data]?i[F.data].substring(0,10):'';
+  sv('p-produto').value=i[F.produto]||'';
+  sv('p-entidade').value=i[F.entidade]||'';
+  sv('p-procurador').value=i[F.procurador]||'';
+  sv('p-estado').value=i[F.estado]||'Agendado';
+  sv('p-predio').value=i[F.predio]||'';
+  sv('p-freguesia').value=i[F.freguesia]||'';
+  sv('p-concelho').value=i[F.concelho]||'';
+  sv('p-apRegisto').value=i[F.apRegisto]||'';
+  sv('p-apData').value=i[F.apData]?i[F.apData].substring(0,10):'';
+  sv('p-apConserv').value=i[F.apConserv]||'';
+  sv('p-numPedido').value=i[F.numPedido]||'';
+  sv('p-codDeposito').value=i[F.codDeposito]||'';
+  sv('p-montCredito').value=i[F.montCredito]||'';
+  sv('p-valorProc').value=i[F.valorProc]||'';
+  sv('p-valorServico').value=i[F.valorServico]||'';
+  sv('p-margemLiq').value=i[F.margemLiq]||'';
+  sv('p-custoSup').value=i[F.custoSup]||'';
+  sv('p-dataResolSup').value=i[F.dataResolSup]?i[F.dataResolSup].substring(0,10):'';
+  sv('p-observacoes').value=i[F.observacoes]||'';
+  abrirPainel();
+}
+
+function abrirPainel(){
+  document.getElementById('reg-painel').classList.add('open');
+  document.getElementById('reg-overlay').classList.add('show');
+}
+
+function fecharPainel(){
+  document.getElementById('reg-painel').classList.remove('open');
+  document.getElementById('reg-overlay').classList.remove('show');
+  document.getElementById('painel-pasta-dropdown').style.display='none';
+}
+
+function abrirPastaSP(){if(painelPastaUrl)window.open(painelPastaUrl,'_blank');}
+
+async function guardarPainel(){
+  const btn=document.getElementById('painel-btn-guardar');
+  btn.disabled=true;btn.textContent='A guardar...';
+  const sv=id=>document.getElementById(id)?.value||'';
+  const body={
+    [F.nome]:sv('p-nome'),[F.data]:sv('p-data')||null,[F.produto]:sv('p-produto'),
+    [F.entidade]:sv('p-entidade'),[F.procurador]:sv('p-procurador'),[F.estado]:sv('p-estado'),
+    [F.predio]:sv('p-predio'),[F.freguesia]:sv('p-freguesia'),[F.concelho]:sv('p-concelho'),
+    [F.apRegisto]:sv('p-apRegisto'),[F.apData]:sv('p-apData')||null,[F.apConserv]:sv('p-apConserv'),
+    [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
+    [F.montCredito]:sv('p-montCredito'),[F.valorProc]:sv('p-valorProc'),
+    [F.valorServico]:sv('p-valorServico'),[F.margemLiq]:sv('p-margemLiq'),
+    [F.custoSup]:sv('p-custoSup'),[F.dataResolSup]:sv('p-dataResolSup')||null,
+    [F.observacoes]:sv('p-observacoes'),[F.ligacaoPasta]:painelPastaUrl||'',
+  };
+  try{
+    if(painelItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${painelItemId}/fields`,body);
+      const idx=todosRegistosReg.findIndex(i=>i.id===painelItemId);
+      if(idx>-1)Object.assign(todosRegistosReg[idx],body);
+      showToast('Guardado!','success');
+    }else{
+      body[F.titulo]=document.getElementById('painel-ref').textContent||sv('p-nome');
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:body});
+      showToast('Registo criado!','success');
+      registosCarregados=false;await carregarRegistos();
+    }
+    fecharPainel();
+    renderRegistos(registosFiltradosAtual);
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  btn.disabled=false;
+  btn.innerHTML='<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg> Guardar';
+}
+
+function registarDePasta(nomePastaCompleto){
+  nav('registo',document.querySelectorAll('.nav-item')[3]);
+  setTimeout(()=>{
+    const pasta=pastasPainel.find(p=>p.nome===nomePastaCompleto)||{nome:nomePastaCompleto,webUrl:''};
+    abrirPainelNovo();
+    if(pastasPainel.length)selecionarPastaPainel(pasta);
+    else{const nomeCliente=nomePastaCompleto.replace(/^\d{8}\s*/,'').trim();document.getElementById('p-nome').value=nomeCliente;}
+  },400);
+}
+
+async function carregarSuprimentos(){
+  document.getElementById('sup-loading').style.display='flex';document.getElementById('sup-list').style.display='none';
+  try{
+    const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.procurador},${F.observacoes},${F.estado}`;
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$filter=fields/${F.estado} eq 'Suprimento'&$top=100`);
+    const sups=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    document.getElementById('sup-loading').style.display='none';
+    const el=document.getElementById('sup-list');
+    el.innerHTML=!sups.length?'<div class="notice notice-success">Sem suprimentos pendentes! ✓</div>'
+      :`<div class="notice notice-warning" style="margin-bottom:1rem"><strong>${sups.length} processo(s)</strong> com suprimentos pendentes</div>`
+      +sups.map(i=>`
+        <div class="sup-card">
+          <div style="flex:1">
+            <div class="sup-card-title">${escHtml(i[F.titulo]||'—')} — ${escHtml(i[F.nome]||'—')}</div>
+            <div class="sup-card-meta">${fmtData(i[F.data])} · ${escHtml(i[F.produto]||'—')} · ${escHtml(i[F.procurador]||'—')}</div>
+            ${i[F.observacoes]?`<div class="sup-card-obs">${escHtml(i[F.observacoes])}</div>`:''}
+          </div>
+          <button class="btn btn-sm btn-success" onclick="resolverSuprimento('${i.id}')">Marcar resolvido</button>
+        </div>`).join('');
+    el.style.display='block';
+  }catch(e){document.getElementById('sup-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
+}
+
+async function resolverSuprimento(itemId){
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${itemId}/fields`,{[F.estado]:'Em curso'});
+    showToast('Suprimento resolvido!','success');carregarSuprimentos();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function carregarTarefas(){
+  tarefasCarregadas=true;
+  document.getElementById('tar-loading').style.display='flex';document.getElementById('tar-list').style.display='none';
+  try{
+    const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
+    todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    document.getElementById('tar-loading').style.display='none';renderTarefas(todasTarefas);
+  }catch(e){document.getElementById('tar-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
+}
+
+function filtrarTarefas(filtro,el){
+  document.querySelectorAll('#screen-tarefas .filter-chip').forEach(c=>c.classList.remove('active'));if(el)el.classList.add('active');
+  if(!filtro){renderTarefas(todasTarefas);return;}
+  if(filtro==='Urgente'){renderTarefas(todasTarefas.filter(i=>i[T.prioridade]==='Urgente'));return;}
+  renderTarefas(todasTarefas.filter(i=>i[T.estado]===filtro));
+}
+
+function renderTarefas(lista){
+  const el=document.getElementById('tar-list');
+  if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma tarefa encontrada.</div>';el.style.display='block';return;}
+  el.innerHTML=lista.map(i=>`
+    <div class="tarefa-card ${i[T.prioridade]==='Urgente'?'urgente':''}" id="tcard-${i.id}">
+      <div style="flex:1">
+        <div class="tarefa-card-title">${escHtml(i[T.titulo]||'—')}</div>
+        <div class="tarefa-card-meta">${escHtml(i[T.responsavel]||'—')}${i[T.prazo]?' · '+fmtPrazo(i[T.prazo]):''}${i[T.observacoes]?' · <em>'+escHtml(i[T.observacoes])+'</em>':''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${prioridadeBadge(i[T.prioridade])}
+        <select class="td-select" style="width:100px" onchange="mudarEstadoTarefa('${i.id}',this.value)">
+          <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
+          <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
+          <option ${i[T.estado]==='Concluída'?'selected':''}>Concluída</option>
+        </select>
+        <button class="btn btn-sm" onclick="editarTarefa('${i.id}')" title="Editar">✏️</button>
+        <button class="btn btn-sm" onclick="apagarTarefa('${i.id}')" style="color:var(--red)" title="Apagar">🗑</button>
+        <button class="btn btn-sm" onclick="criarProcessoDeTarefa('${escHtml(i[T.titulo]||'')}')" title="Criar processo" style="color:var(--accent)">📁</button>
+      </div>
+    </div>`).join('');
+  el.style.display='block';
+}
+
+function toggleFormTarefa(){const f=document.getElementById('tarefa-form');f.style.display=f.style.display==='none'?'block':'none';}
+
+function editarTarefa(itemId){
+  const i=todasTarefas.find(t=>t.id===itemId);if(!i)return;
+  // Preenche o formulário com os dados da tarefa
+  document.getElementById('tar-titulo').value=i[T.titulo]||'';
+  document.getElementById('tar-responsavel').value=i[T.responsavel]||'';
+  document.getElementById('tar-prazo').value=i[T.prazo]?i[T.prazo].substring(0,10):'';
+  document.getElementById('tar-prioridade').value=i[T.prioridade]||'Normal';
+  document.getElementById('tar-obs').value=i[T.observacoes]||'';
+  // Muda o botão para guardar edição
+  const btn=document.querySelector('#tarefa-form .btn-primary');
+  btn.textContent='Guardar alterações';
+  btn.onclick=()=>guardarEdicaoTarefa(itemId);
+  document.getElementById('tarefa-form').style.display='block';
+  document.getElementById('tarefa-form').scrollIntoView({behavior:'smooth'});
+}
+
+async function guardarEdicaoTarefa(itemId){
+  const titulo=document.getElementById('tar-titulo').value.trim();
+  if(!titulo){showToast('Preenche a descrição.','error');return;}
+  const body={[T.titulo]:titulo,[T.responsavel]:document.getElementById('tar-responsavel').value,[T.prazo]:document.getElementById('tar-prazo').value||null,[T.prioridade]:document.getElementById('tar-prioridade').value,[T.observacoes]:document.getElementById('tar-obs').value};
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${itemId}/fields`,body);
+    showToast('Tarefa actualizada!','success');
+    // Repor botão original
+    const btn=document.querySelector('#tarefa-form .btn-primary');
+    btn.textContent='Criar tarefa';btn.onclick=criarTarefa;
+    toggleFormTarefa();
+    ['tar-titulo','tar-prazo','tar-obs'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('tar-responsavel').selectedIndex=0;document.getElementById('tar-prioridade').selectedIndex=0;
+    carregarTarefas();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function apagarTarefa(itemId){
+  if(!confirm('Tens a certeza que queres apagar esta tarefa?'))return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${itemId}`,{method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
+    if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
+    showToast('Tarefa apagada!','success');
+    todasTarefas=todasTarefas.filter(t=>t.id!==itemId);
+    renderTarefas(todasTarefas);
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function criarTarefa(){
+  const titulo=document.getElementById('tar-titulo').value.trim();
+  if(!titulo){showToast('Preenche a descrição.','error');return;}
+  const body={[T.titulo]:titulo,[T.responsavel]:document.getElementById('tar-responsavel').value,[T.prazo]:document.getElementById('tar-prazo').value||null,[T.prioridade]:document.getElementById('tar-prioridade').value,[T.estado]:'Por fazer',[T.observacoes]:document.getElementById('tar-obs').value};
+  try{
+    await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items`,{fields:body});
+    showToast('Tarefa criada!','success');toggleFormTarefa();
+    ['tar-titulo','tar-prazo','tar-obs'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('tar-responsavel').selectedIndex=0;document.getElementById('tar-prioridade').selectedIndex=0;
+    carregarTarefas();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function mudarEstadoTarefa(itemId,estado){
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${itemId}/fields`,{[T.estado]:estado});
+    showToast('Estado atualizado!','success');
+    const idx=todasTarefas.findIndex(i=>i.id===itemId);if(idx>-1)todasTarefas[idx][T.estado]=estado;
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+function updatePreview(){
+  const n=document.getElementById('ag-nome').value.toUpperCase().trim();
+  const d=document.getElementById('ag-data').value;
+  document.getElementById('pasta-preview').textContent=nomePasta(n,d)||'— preenche o nome e data —';
+}
+
+async function agendar(){
+  const nome=document.getElementById('ag-nome').value.toUpperCase().trim();
+  const data=document.getElementById('ag-data').value;
+  if(!nome||!data){showToast('Preenche o nome e a data.','error');return;}
+  const pasta=nomePasta(nome,data);
+  const btn=document.getElementById('btn-agendar');btn.disabled=true;btn.textContent='A criar...';
+  try{
+    await graphPost(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children`,{name:pasta,folder:{},'@microsoft.graph.conflictBehavior':'rename'});
+    showToast('✓ Pasta criada: '+pasta,'success');limparForm();pastasCarregadas=false;
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Agendar e criar pasta';}
+}
+
+function limparForm(){
+  ['ag-nome','ag-data'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ag-produto').selectedIndex=0;updatePreview();
+}
+
+// ─── CALENDÁRIO ───────────────────────────────────────────────────────────────
+let calData=new Date(),calView='mes',todosEventos=[],todasTarefasCal=[];
+
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DIAS_SEMANA=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const COR_EVENTO={Escritura:'cal-event-escritura',Reunião:'cal-event-reuniao','Ausência':'cal-event-ausencia',Outro:'cal-event-outro',tarefa:'cal-event-tarefa'};
+
+async function carregarCalendario(){
+  renderCalendario();
+  try{
+    if(listaIdAgenda){
+      const sel=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel}`;
+      const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${sel})&$top=500`);
+      todosEventos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    }
+    if(listaIdTarefas){
+      const sel=`${T.titulo},${T.prazo},${T.prioridade},${T.estado},${T.responsavel}`;
+      const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
+      todasTarefasCal=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>i[T.prazo]&&i[T.estado]!=='Concluída');
+    }
+    renderCalendario();
+  }catch(e){console.error('Erro calendário:',e);}
+}
+
+function calNav(dir){
+  if(calView==='mes'){calData.setMonth(calData.getMonth()+dir);}
+  else{calData.setDate(calData.getDate()+dir*7);}
+  calData=new Date(calData);
+  renderCalendario();
+}
+function calHoje(){calData=new Date();renderCalendario();}
+function calSetView(v,el){
+  calView=v;
+  document.querySelectorAll('.cal-view-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderCalendario();
+}
+
+function renderCalendario(){
+  const wrap=document.getElementById('cal-grid-wrap');
+  if(!wrap)return;
+  if(calView==='mes')renderMes(wrap);
+  else renderSemana(wrap);
+}
+
+function eventosNoDia(dateStr){
+  const evts=todosEventos.filter(e=>{
+    const d=e[A.data]?e[A.data].substring(0,10):'';
+    return d===dateStr;
+  }).map(e=>({...e,_tipo:e[A.tipo]||'Outro',_label:(e[A.hora]?e[A.hora]+' ':'')+escHtml(e[A.titulo]||'—')}));
+  const tasks=todasTarefasCal.filter(t=>{
+    const d=t[T.prazo]?t[T.prazo].substring(0,10):'';
+    return d===dateStr;
+  }).map(t=>({...t,_tipo:'tarefa',_label:'⏰ '+escHtml(t[T.titulo]||'—')}));
+  return [...evts,...tasks];
+}
+
+function renderMes(wrap){
+  const ano=calData.getFullYear(),mes=calData.getMonth();
+  document.getElementById('cal-title').textContent=`${MESES[mes]} ${ano}`;
+  const primeiro=new Date(ano,mes,1);const ultimo=new Date(ano,mes+1,0);
+  const inicioSem=primeiro.getDay();
+  const hoje=new Date();const hojeStr=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+
+  let html='<div class="cal-grid">';
+  DIAS_SEMANA.forEach(d=>html+=`<div class="cal-day-header">${d}</div>`);
+
+  // dias mês anterior
+  for(let i=0;i<inicioSem;i++){
+    const d=new Date(ano,mes,i-inicioSem+1);
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${d.getDate()}</div></div>`;
+  }
+  // dias do mês
+  for(let d=1;d<=ultimo.getDate();d++){
+    const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isHoje=dateStr===hojeStr;
+    const evts=eventosNoDia(dateStr);
+    const evtsHtml=evts.slice(0,3).map(e=>`<div class="cal-event ${COR_EVENTO[e._tipo]||'cal-event-outro'}" title="${e._label}">${e._label}</div>`).join('');
+    const mais=evts.length>3?`<div class="cal-more">+${evts.length-3} mais</div>`:'';
+    html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')">
+      <div class="cal-day-num">${d}</div>
+      ${evtsHtml}${mais}
+    </div>`;
+  }
+  // dias mês seguinte
+  const restantes=(7-((inicioSem+ultimo.getDate())%7))%7;
+  for(let i=1;i<=restantes;i++){
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  }
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+
+function renderSemana(wrap){
+  const dow=calData.getDay();
+  const seg=new Date(calData);seg.setDate(calData.getDate()-dow);
+  const hoje=new Date();const hojeStr=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+
+  // Título
+  const fim=new Date(seg);fim.setDate(seg.getDate()+6);
+  document.getElementById('cal-title').textContent=`${seg.getDate()} ${MESES[seg.getMonth()]} – ${fim.getDate()} ${MESES[fim.getMonth()]} ${fim.getFullYear()}`;
+
+  let html='<div class="cal-grid">';
+  for(let i=0;i<7;i++){
+    const d=new Date(seg);d.setDate(seg.getDate()+i);
+    const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const isHoje=dateStr===hojeStr;
+    html+=`<div class="cal-day-header${isHoje?' today':''}">${DIAS_SEMANA[i]} ${d.getDate()}</div>`;
+  }
+  for(let i=0;i<7;i++){
+    const d=new Date(seg);d.setDate(seg.getDate()+i);
+    const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const isHoje=dateStr===hojeStr;
+    const evts=eventosNoDia(dateStr);
+    const evtsHtml=evts.map(e=>`<div class="cal-event ${COR_EVENTO[e._tipo]||'cal-event-outro'}" title="${e._label}">${e._label}</div>`).join('');
+    html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')" style="min-height:120px">${evtsHtml}</div>`;
+  }
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+
+// ─── MODAL EVENTO ─────────────────────────────────────────────────────────────
+function abrirModalEvento(dateStr){
+  document.getElementById('ev-data').value=dateStr;
+  document.getElementById('ev-titulo').value='';
+  document.getElementById('ev-hora').value='10:00';
+  document.getElementById('ev-tipo').value='Escritura';
+  document.getElementById('ev-responsavel').value='';
+  document.getElementById('modal-evento-titulo').textContent=`Novo evento — ${fmtData(dateStr+'T00:00:00')}`;
+  document.getElementById('modal-evento').classList.add('show');
+}
+function fecharModalEvento(){document.getElementById('modal-evento').classList.remove('show');}
+
+async function guardarEvento(){
+  const titulo=document.getElementById('ev-titulo').value.trim();
+  if(!titulo){showToast('Preenche a descrição.','error');return;}
+  const body={
+    [A.titulo]:titulo,
+    [A.data]:document.getElementById('ev-data').value+'T'+document.getElementById('ev-hora').value+':00',
+    [A.hora]:document.getElementById('ev-hora').value,
+    [A.tipo]:document.getElementById('ev-tipo').value,
+    [A.responsavel]:document.getElementById('ev-responsavel').value,
+  };
+  try{
+    await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items`,{fields:body});
+    showToast('Evento criado!','success');
+    fecharModalEvento();
+    carregarCalendario();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+// ─── PROCESSOS ────────────────────────────────────────────────────────────────
+let todasPastasClientes=[],pastaClienteSeleccionada=null;
+
+function procSetTab(tab,el){
+  ['pastas','novo','subpasta'].forEach(t=>{
+    document.getElementById(`proc-tab-content-${t}`).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('#screen-processos .filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+async function carregarProcessos(){
+  if(!bibliotecaProcessosId){showToast('Biblioteca PROCESSOS não encontrada','error');return;}
+  document.getElementById('proc-loading').style.display='flex';
+  document.getElementById('proc-list').style.display='none';
+  try{
+    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
+    todasPastasClientes=(data.value||[]).filter(p=>p.folder);
+    renderProcessos(todasPastasClientes);
+    // Carregar para o selector de subpasta
+    const inp=document.getElementById('proc-sub-cliente-search');
+    if(inp&&!inp.disabled){inp.placeholder=`Pesquisar entre ${todasPastasClientes.length} clientes...`;}
+  }catch(e){document.getElementById('proc-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function renderProcessos(lista){
+  document.getElementById('proc-loading').style.display='none';
+  const el=document.getElementById('proc-list');
+  if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada. Cria a primeira pasta de cliente!</div>';el.style.display='block';return;}
+  el.innerHTML=lista.map(p=>`
+    <div class="pasta-card">
+      <div style="flex:1;min-width:0">
+        <div class="pasta-ref">${escHtml(p.name||'—')}</div>
+        <div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div>
+      </div>
+      <div class="pasta-actions">
+        <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.name||'')}','${escHtml(p.id||'')}')">+ Processo</button>
+      </div>
+    </div>`).join('');
+  el.style.display='block';
+}
+
+function filtrarProcessos(){
+  const q=document.getElementById('proc-search').value.toLowerCase();
+  renderProcessos(todasPastasClientes.filter(p=>(p.name||'').toLowerCase().includes(q)));
+}
+
+// Preview nome pasta
+document.addEventListener('input',e=>{
+  if(e.target.id==='proc-novo-nome'){
+    const nome=e.target.value.toUpperCase().trim();
+    document.getElementById('proc-novo-preview').textContent=nome?`Pasta: ${nome}`:'';
+  }
+  if(['proc-sub-data','proc-sub-tipo','proc-sub-desc'].includes(e.target.id)){
+    atualizarPreviewSubpasta();
+  }
+});
+
+function atualizarPreviewSubpasta(){
+  const data=(document.getElementById('proc-sub-data').value||'').replace(/-/g,'');
+  const tipo=document.getElementById('proc-sub-tipo').value;
+  const desc=document.getElementById('proc-sub-desc').value.trim();
+  const preview=data&&tipo&&desc?`${data} ${tipo} ${desc}`:'';
+  document.getElementById('proc-sub-preview').textContent=preview?`Subpasta: ${preview}`:'';
+}
+
+async function criarPastaCliente(){
+  const nome=document.getElementById('proc-novo-nome').value.toUpperCase().trim();
+  if(!nome){showToast('Preenche o nome do cliente.','error');return;}
+  try{
+    await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children`,{name:nome,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
+    showToast(`Pasta "${nome}" criada!`,'success');
+    document.getElementById('proc-novo-nome').value='';
+    document.getElementById('proc-novo-preview').textContent='';
+    carregarProcessos();
+    procSetTab('pastas',document.getElementById('proc-tab-pastas'));
+  }catch(e){
+    if(e.message.includes('409')||e.message.includes('nameAlreadyExists'))showToast('Já existe uma pasta com este nome.','error');
+    else showToast('Erro: '+e.message,'error');
+  }
+}
+
+// Selector de cliente para subpasta
+function filtrarPastasCliente(){
+  const q=(document.getElementById('proc-sub-cliente-search').value||'').toLowerCase().trim();
+  const dd=document.getElementById('proc-sub-cliente-dropdown');
+  if(!q){dd.style.display='none';return;}
+  const res=todasPastasClientes.filter(p=>p.name.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarClienteSubpasta(${JSON.stringify({id:p.id,nome:p.name}).replace(/"/g,'&quot;')})">${escHtml(p.name)}</div>`).join('')
+    ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhum cliente encontrado</div>';
+  dd.style.display='block';
+}
+
+function selecionarClienteSubpasta(pasta){
+  pastaClienteSeleccionada=pasta;
+  document.getElementById('proc-sub-cliente-search').value=pasta.nome;
+  document.getElementById('proc-sub-cliente-dropdown').style.display='none';
+  document.getElementById('proc-sub-cliente-ok-nome').textContent=pasta.nome;
+  document.getElementById('proc-sub-cliente-ok').style.display='block';
+}
+
+function iniciarSubpasta(nome,id){
+  pastaClienteSeleccionada={nome,id};
+  procSetTab('subpasta',document.getElementById('proc-tab-subpasta'));
+  document.getElementById('proc-sub-cliente-search').value=nome;
+  document.getElementById('proc-sub-cliente-ok-nome').textContent=nome;
+  document.getElementById('proc-sub-cliente-ok').style.display='block';
+  // Data de hoje por defeito
+  document.getElementById('proc-sub-data').value=new Date().toISOString().substring(0,10);
+  atualizarPreviewSubpasta();
+}
+
+async function criarSubpastaProcesso(){
+  if(!pastaClienteSeleccionada){showToast('Seleciona o cliente.','error');return;}
+  const data=(document.getElementById('proc-sub-data').value||'').replace(/-/g,'');
+  const tipo=document.getElementById('proc-sub-tipo').value;
+  const desc=document.getElementById('proc-sub-desc').value.trim();
+  if(!data||!tipo||!desc){showToast('Preenche todos os campos.','error');return;}
+  const nomePasta=`${data} ${tipo} ${desc}`;
+  try{
+    await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaClienteSeleccionada.id}/children`,{name:nomePasta,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
+    showToast(`Processo "${nomePasta}" criado!`,'success');
+    document.getElementById('proc-sub-tipo').value='';
+    document.getElementById('proc-sub-desc').value='';
+    document.getElementById('proc-sub-preview').textContent='';
+    procSetTab('pastas',document.getElementById('proc-tab-pastas'));
+    carregarProcessos();
+  }catch(e){
+    if(e.message.includes('409')||e.message.includes('nameAlreadyExists'))showToast('Já existe um processo com este nome.','error');
+    else showToast('Erro: '+e.message,'error');
+  }
+}
+
+function criarProcessoDeTarefa(tituloTarefa){
+  // Navega para Processos e abre tab de subpasta com pesquisa pré-preenchida
+  nav('processos',document.querySelector('[onclick*="processos"]'));
+  setTimeout(()=>{
+    procSetTab('subpasta',document.getElementById('proc-tab-subpasta'));
+    // Tenta extrair nome do cliente do título da tarefa
+    document.getElementById('proc-sub-cliente-search').value='';
+    document.getElementById('proc-sub-desc').value=tituloTarefa;
+    document.getElementById('proc-sub-data').value=new Date().toISOString().substring(0,10);
+    atualizarPreviewSubpasta();
+    showToast('Pesquisa o cliente ou cria pasta nova se não existir','');
+  },300);
+}
+
+async function descobrirCampos(){
+  if(!listaId){showToast('Aguarda o carregamento completo da página','error');return;}
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/fields?$select=internalName,displayName&$top=50`,{headers:{'Authorization':'Bearer '+graphToken}});
+    const d=await r.json();
+    const txt=(d.value||[]).filter(f=>!f.internalName.startsWith('_')&&!f.internalName.startsWith('OData')).map(f=>`${f.displayName} → ${f.internalName}`).join('\n');
+    alert(txt||'Sem resultados — verifica permissões');
+  }catch(e){alert('Erro: '+e.message);}
+}
+
+async function init(){
+  const s=document.createElement('script');
+  s.src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
+  document.head.appendChild(s);
+  s.onload=async()=>{
+    msalApp=new msal.PublicClientApplication({
+      auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT},
+      cache:{cacheLocation:'sessionStorage'}
+    });
+    await msalApp.initialize();
+    const resp=await msalApp.handleRedirectPromise().catch(()=>null);
+    if(resp){contaAtual=resp.account;graphToken=resp.accessToken;await mostrarApp();return;}
+    const contas=msalApp.getAllAccounts();
+    if(contas.length>0){contaAtual=contas[0];await renovarToken();await mostrarApp();}
+  };
+}
+init();
+</script>
+</body>
+</html>
