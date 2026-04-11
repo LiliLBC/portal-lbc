@@ -540,7 +540,14 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Procurador</div>
-              <input class="form-input" id="p-procurador" placeholder="—">
+              <select class="form-select" id="p-procurador">
+                <option value="">—</option>
+                <option>Liliana Burrica Cardoso</option>
+                <option>Andreia Cabanas</option>
+                <option>Luis Vieira</option>
+                <option>Filipa Perdigão</option>
+                <option>Catarina Parreira</option>
+              </select>
             </div>
             <div class="field-group">
               <div class="field-label">Estado</div>
@@ -1605,27 +1612,35 @@ async function guardarPainel(){
   const btn=document.getElementById('painel-btn-guardar');
   btn.disabled=true;btn.textContent='A guardar...';
   const sv=id=>document.getElementById(id)?.value||'';
-  const body={
-    [F.nome]:sv('p-nome'),
-    [F.data]:sv('p-data')?new Date(sv('p-data')).toISOString():null,
-    [F.produto]:sv('p-produto'),
-    [F.entidade]:sv('p-entidade'),[F.procurador]:sv('p-procurador'),[F.estado]:sv('p-estado'),
-    [F.predio]:sv('p-predio'),[F.freguesia]:sv('p-freguesia'),[F.concelho]:sv('p-concelho'),
-    [F.apRegisto]:sv('p-apRegisto'),
-    [F.apData]:sv('p-apData')?new Date(sv('p-apData')).toISOString():null,
-    [F.apConserv]:sv('p-apConserv'),
-    [F.numProcesso]:sv('p-numProcesso'),
-    [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
-    [F.montCredito]:sv('p-montCredito')?parseFloat(sv('p-montCredito'))||null:null,
-    [F.valorProc]:sv('p-valorProc')?parseFloat(sv('p-valorProc'))||0:null,
-    [F.valorServico]:sv('p-valorServico')?parseFloat(sv('p-valorServico'))||0:null,
-    [F.margemLiq]:sv('p-margemLiq')?parseFloat(sv('p-margemLiq'))||0:null,
-    [F.custoSup]:sv('p-custoSup')?parseFloat(sv('p-custoSup'))||0:null,
-    [F.dataResolSup]:sv('p-dataResolSup')?new Date(sv('p-dataResolSup')).toISOString():null,
-    [F.observacoes]:sv('p-observacoes'),[F.ligacaoPasta]:painelPastaUrl||'',
-  };
-  const pagoVal=sv('p-pago');
-  if(pagoVal) body[F.pago]=pagoVal;
+  const svChoice=id=>{const v=document.getElementById(id)?.value;return v||undefined;};
+  const svNum=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v)||0:undefined;};
+  const svDate=id=>{const v=document.getElementById(id)?.value;return v?new Date(v).toISOString():undefined;};
+  const svText=id=>{const v=document.getElementById(id)?.value;return v||undefined;};
+  const body={};
+  const nome=sv('p-nome'); if(nome) body[F.nome]=nome;
+  const data=svDate('p-data'); if(data) body[F.data]=data;
+  const produto=svChoice('p-produto'); if(produto) body[F.produto]=produto;
+  const entidade=svChoice('p-entidade'); if(entidade) body[F.entidade]=entidade;
+  const procurador=svChoice('p-procurador'); if(procurador) body[F.procurador]=procurador;
+  const estado=svChoice('p-estado'); if(estado) body[F.estado]=estado;
+  const pago=svChoice('p-pago'); if(pago) body[F.pago]=pago;
+  const predio=svText('p-predio'); if(predio) body[F.predio]=predio;
+  const freguesia=svText('p-freguesia'); if(freguesia) body[F.freguesia]=freguesia;
+  const concelho=svText('p-concelho'); if(concelho) body[F.concelho]=concelho;
+  const apRegisto=svText('p-apRegisto'); if(apRegisto) body[F.apRegisto]=apRegisto;
+  const apData=svDate('p-apData'); if(apData) body[F.apData]=apData;
+  const apConserv=svText('p-apConserv'); if(apConserv) body[F.apConserv]=apConserv;
+  const numProcesso=svText('p-numProcesso'); if(numProcesso) body[F.numProcesso]=numProcesso;
+  const numPedido=svText('p-numPedido'); if(numPedido) body[F.numPedido]=numPedido;
+  const codDeposito=svText('p-codDeposito'); if(codDeposito) body[F.codDeposito]=codDeposito;
+  const montCredito=svNum('p-montCredito'); if(montCredito!==undefined) body[F.montCredito]=montCredito;
+  const valorProc=svNum('p-valorProc'); if(valorProc!==undefined) body[F.valorProc]=valorProc;
+  const valorServico=svNum('p-valorServico'); if(valorServico!==undefined) body[F.valorServico]=valorServico;
+  const margemLiq=svNum('p-margemLiq'); if(margemLiq!==undefined) body[F.margemLiq]=margemLiq;
+  const custoSup=svNum('p-custoSup'); if(custoSup!==undefined) body[F.custoSup]=custoSup;
+  const dataResolSup=svDate('p-dataResolSup'); if(dataResolSup) body[F.dataResolSup]=dataResolSup;
+  const observacoes=svText('p-observacoes'); if(observacoes) body[F.observacoes]=observacoes;
+  if(painelPastaUrl) body[F.ligacaoPasta]=painelPastaUrl;
   try{
     console.log('Body a enviar:', JSON.stringify(body));
     if(painelItemId){
