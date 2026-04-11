@@ -838,11 +838,21 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="section-divider">Identificação</div>
             <div class="field-group field-full">
               <div class="field-label">Cliente *</div>
-              <input class="form-input" id="cc-cliente" placeholder="Nome do cliente">
+              <div class="pasta-sp-wrap">
+                <input class="form-input" id="cc-cliente-search" placeholder="Pesquisar pasta do cliente..." oninput="filtrarCCCliente()" autocomplete="off" style="font-family:'DM Mono',monospace;font-size:12px">
+                <div class="pasta-sp-dropdown" id="cc-cliente-dropdown"></div>
+              </div>
+              <div id="cc-cliente-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="cc-cliente-ok-nome"></span></div>
+              <input type="hidden" id="cc-cliente">
             </div>
             <div class="field-group field-full">
               <div class="field-label">Processo *</div>
-              <input class="form-input" id="cc-titulo" placeholder="Ex: Harmonização de áreas">
+              <div class="pasta-sp-wrap">
+                <input class="form-input" id="cc-processo-search" placeholder="Selecciona primeiro o cliente..." disabled oninput="filtrarCCProcesso()" autocomplete="off" style="font-family:'DM Mono',monospace;font-size:12px">
+                <div class="pasta-sp-dropdown" id="cc-processo-dropdown"></div>
+              </div>
+              <div id="cc-processo-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="cc-processo-ok-nome"></span></div>
+              <input type="hidden" id="cc-titulo">
             </div>
             <div class="field-group">
               <div class="field-label">Data</div>
@@ -1987,27 +1997,95 @@ function calcularCC(){
   sEl.style.color=saldo>0?'var(--red)':'var(--green)';
 }
 
+let ccClienteSeleccionado=null,ccSubpastas=[];
+
+function filtrarCCCliente(){
+  const q=(document.getElementById('cc-cliente-search').value||'').toLowerCase().trim();
+  const dd=document.getElementById('cc-cliente-dropdown');
+  if(!q||!todasPastasClientes.length){dd.style.display='none';return;}
+  const res=todasPastasClientes.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarCCCliente(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
+    ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  dd.style.display='block';
+}
+
+async function selecionarCCCliente(pasta){
+  ccClienteSeleccionado=pasta;
+  document.getElementById('cc-cliente-search').value=pasta.nome;
+  document.getElementById('cc-cliente-dropdown').style.display='none';
+  document.getElementById('cc-cliente-ok-nome').textContent=pasta.nome;
+  document.getElementById('cc-cliente-ok').style.display='block';
+  document.getElementById('cc-cliente').value=pasta.nome;
+  // Carregar subpastas
+  document.getElementById('cc-processo-search').placeholder='A carregar processos...';
+  document.getElementById('cc-processo-search').disabled=true;
+  document.getElementById('cc-titulo').value='';
+  document.getElementById('cc-processo-ok').style.display='none';
+  try{
+    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pasta.id}/children?$top=100`);
+    ccSubpastas=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name}));
+    document.getElementById('cc-processo-search').placeholder=ccSubpastas.length?`Pesquisar entre ${ccSubpastas.length} processos...`:'Sem processos — cria primeiro em Processos';
+    document.getElementById('cc-processo-search').disabled=false;
+  }catch(e){
+    document.getElementById('cc-processo-search').placeholder='Erro ao carregar processos';
+  }
+}
+
+function filtrarCCProcesso(){
+  const q=(document.getElementById('cc-processo-search').value||'').toLowerCase().trim();
+  const dd=document.getElementById('cc-processo-dropdown');
+  if(!q||!ccSubpastas.length){dd.style.display='none';return;}
+  const res=ccSubpastas.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarCCProcesso(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
+    ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhum processo encontrado</div>';
+  dd.style.display='block';
+}
+
+function selecionarCCProcesso(pasta){
+  document.getElementById('cc-processo-search').value=pasta.nome;
+  document.getElementById('cc-processo-dropdown').style.display='none';
+  document.getElementById('cc-processo-ok-nome').textContent=pasta.nome;
+  document.getElementById('cc-processo-ok').style.display='block';
+  document.getElementById('cc-titulo').value=pasta.nome;
+}
+
 function abrirCCNovo(){
-  ccItemId=null;
+  ccItemId=null;ccClienteSeleccionado=null;ccSubpastas=[];
   document.getElementById('cc-painel-titulo').textContent='Novo registo';
   document.getElementById('cc-painel-sub').textContent='';
+  document.getElementById('cc-cliente-search').value='';
+  document.getElementById('cc-cliente-ok').style.display='none';
+  document.getElementById('cc-processo-search').value='';
+  document.getElementById('cc-processo-search').placeholder='Selecciona primeiro o cliente...';
+  document.getElementById('cc-processo-search').disabled=true;
+  document.getElementById('cc-processo-ok').style.display='none';
   ['cc-cliente','cc-titulo','cc-honorarios','cc-gastos','cc-recebido','cc-total','cc-saldo','cc-observacoes'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('cc-data').value=new Date().toISOString().substring(0,10);
   document.getElementById('cc-estado').value='A pagamento';
   document.getElementById('cc-saldo').style.color='var(--text)';
+  // Garantir pastas carregadas
+  if(!todasPastasClientes.length)carregarProcessos();
   document.getElementById('cc-painel').classList.add('open');
   document.getElementById('cc-overlay').classList.add('show');
 }
 
 function abrirCCEditar(itemId){
   const i=todosCC.find(r=>r.id===itemId);if(!i)return;
-  ccItemId=itemId;
+  ccItemId=itemId;ccClienteSeleccionado=null;ccSubpastas=[];
   document.getElementById('cc-painel-titulo').textContent=i[CC.cliente]||'Registo';
   document.getElementById('cc-painel-sub').textContent=i[CC.titulo]||'';
+  // Preencher campos de texto (modo edição — mostra valores actuais)
+  document.getElementById('cc-cliente-search').value=i[CC.cliente]||'';
   document.getElementById('cc-cliente').value=i[CC.cliente]||'';
+  document.getElementById('cc-cliente-ok-nome').textContent=i[CC.cliente]||'';
+  document.getElementById('cc-cliente-ok').style.display=i[CC.cliente]?'block':'none';
+  document.getElementById('cc-processo-search').value=i[CC.titulo]||'';
+  document.getElementById('cc-processo-search').disabled=false;
   document.getElementById('cc-titulo').value=i[CC.titulo]||'';
+  document.getElementById('cc-processo-ok-nome').textContent=i[CC.titulo]||'';
+  document.getElementById('cc-processo-ok').style.display=i[CC.titulo]?'block':'none';
   document.getElementById('cc-data').value=i[CC.data]?i[CC.data].substring(0,10):'';
   document.getElementById('cc-estado').value=i[CC.estado]||'A pagamento';
   document.getElementById('cc-honorarios').value=i[CC.honorarios]||'';
@@ -2027,7 +2105,7 @@ function fecharCCPainel(){
 async function guardarCC(){
   const cliente=document.getElementById('cc-cliente').value.trim();
   const titulo=document.getElementById('cc-titulo').value.trim();
-  if(!cliente||!titulo){showToast('Preenche o cliente e o processo.','error');return;}
+  if(!cliente||!titulo){showToast('Selecciona o cliente e o processo.','error');return;}
   const body={
     [CC.titulo]:titulo,
     [CC.cliente]:cliente,
