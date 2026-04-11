@@ -1606,15 +1606,19 @@ async function guardarPainel(){
   btn.disabled=true;btn.textContent='A guardar...';
   const sv=id=>document.getElementById(id)?.value||'';
   const body={
-    [F.nome]:sv('p-nome'),[F.data]:sv('p-data')||null,[F.produto]:sv('p-produto'),
+    [F.nome]:sv('p-nome'),
+    [F.data]:sv('p-data')?new Date(sv('p-data')).toISOString():null,
+    [F.produto]:sv('p-produto'),
     [F.entidade]:sv('p-entidade'),[F.procurador]:sv('p-procurador'),[F.estado]:sv('p-estado'),
     [F.predio]:sv('p-predio'),[F.freguesia]:sv('p-freguesia'),[F.concelho]:sv('p-concelho'),
-    [F.apRegisto]:sv('p-apRegisto'),[F.apData]:sv('p-apData')||null,[F.apConserv]:sv('p-apConserv'),
+    [F.apRegisto]:sv('p-apRegisto'),
+    [F.apData]:sv('p-apData')?new Date(sv('p-apData')).toISOString():null,
+    [F.apConserv]:sv('p-apConserv'),
     [F.numProcesso]:sv('p-numProcesso'),
     [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
     [F.montCredito]:sv('p-montCredito'),[F.valorProc]:sv('p-valorProc'),
     [F.valorServico]:sv('p-valorServico'),[F.margemLiq]:sv('p-margemLiq'),
-    [F.custoSup]:sv('p-custoSup'),[F.dataResolSup]:sv('p-dataResolSup')||null,
+    [F.custoSup]:sv('p-custoSup'),[F.dataResolSup]:sv('p-dataResolSup')?new Date(sv('p-dataResolSup')).toISOString():null,
     [F.observacoes]:sv('p-observacoes'),[F.ligacaoPasta]:painelPastaUrl||'',
   };
   const pagoVal=sv('p-pago');
