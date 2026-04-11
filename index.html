@@ -507,6 +507,14 @@ tbody tr:hover td{background:#FAFAF8}
           </div>
 
           <div class="field-grid">
+            <div class="field-group field-full" style="margin-bottom:.5rem">
+              <div class="field-label">Estado pagamento</div>
+              <select class="form-select" id="p-pago" style="font-weight:600">
+                <option value="">—</option>
+                <option value="Pago">✓ Pago</option>
+                <option value="Não pago">✗ Não pago</option>
+              </select>
+            </div>
             <div class="section-divider">Identificação</div>
             <div class="field-group">
               <div class="field-label">Nome do cliente</div>
@@ -1098,6 +1106,7 @@ const F={
   numPedido:'Num_Pedido',ligacaoPasta:'Ligacao_Pasta',margemLiq:'Margem_Liquida',
   custoSup:'Custo_Suprimento',dataResolSup:'Data_Resolucao_Suprimento',
   numProcesso:'N_x00fa_mero_Processo',
+  pago:'Pago',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
 const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Responsavel'};
@@ -1352,7 +1361,7 @@ async function carregarRegistos(){
   document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
   const rc=document.getElementById('reg-result-count');if(rc)rc.style.display='none';
   try{
-    const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta].join(',');
+    const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
     todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     registosFiltradosAtual=[...todosRegistosReg];
@@ -1391,18 +1400,22 @@ function renderRegistos(lista,q=''){
   document.getElementById('reg-loading').style.display='none';
   const el=document.getElementById('reg-list');
   if(!lista.length){el.innerHTML='<div class="notice notice-info" style="margin:.5rem">Nenhum registo encontrado.</div>';el.style.display='block';return;}
-  el.innerHTML=lista.map(i=>`
-    <div class="reg-list-item" onclick="abrirPainelRegisto('${i.id}')">
+  el.innerHTML=lista.map(i=>{
+    const meta2=[(i[F.numPedido]||''),(i[F.apRegisto]||''),(i[F.apConserv]||'')].filter(Boolean).join(' · ');
+    const pago=i[F.pago];
+    const corPago=pago==='Pago'?'var(--green)':pago==='Não pago'?'var(--red)':'var(--text-faint)';
+    return`<div class="reg-list-item" onclick="abrirPainelRegisto('${i.id}')">
       <div class="reg-list-main">
         <div class="reg-list-nome">${highlight(i[F.nome]||'—',q)}</div>
-        <div class="reg-list-meta">${fmtData(i[F.data])} · ${escHtml(i[F.produto]||'—')} · ${escHtml(i[F.apConserv]||'—')}</div>
-        ${i[F.numProcesso]?`<div style="font-size:10px;color:var(--text-faint);font-family:'DM Mono',monospace;margin-top:1px">${escHtml(i[F.numProcesso])}</div>`:''}
+        ${meta2?`<div class="reg-list-meta">${escHtml(meta2)}</div>`:'<div class="reg-list-meta">—</div>'}
+        ${pago?`<div style="font-size:10px;font-weight:600;color:${corPago};margin-top:1px">${escHtml(pago)}</div>`:'<div style="font-size:10px;color:var(--text-faint);margin-top:1px">—</div>'}
       </div>
       <div class="reg-list-right">
         ${estadoBadge(i[F.estado])}
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.style.display='block';
   atualizarMetricas(todosRegistosReg);
 }
@@ -1524,6 +1537,7 @@ function abrirPainelNovo(){
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('p-estado').value='Agendado';
+  document.getElementById('p-pago').value='';
   abrirPainel();
   // Carregar pastas sempre que abre
   carregarPastasPainel();
@@ -1550,6 +1564,7 @@ function abrirPainelRegisto(itemId){
   sv('p-apRegisto').value=i[F.apRegisto]||'';
   sv('p-apData').value=i[F.apData]?i[F.apData].substring(0,10):'';
   sv('p-apConserv').value=i[F.apConserv]||'';
+  sv('p-pago').value=i[F.pago]||'';
   sv('p-numProcesso').value=i[F.numProcesso]||'';
   sv('p-numPedido').value=i[F.numPedido]||'';
   sv('p-codDeposito').value=i[F.codDeposito]||'';
@@ -1585,6 +1600,7 @@ async function guardarPainel(){
     [F.entidade]:sv('p-entidade'),[F.procurador]:sv('p-procurador'),[F.estado]:sv('p-estado'),
     [F.predio]:sv('p-predio'),[F.freguesia]:sv('p-freguesia'),[F.concelho]:sv('p-concelho'),
     [F.apRegisto]:sv('p-apRegisto'),[F.apData]:sv('p-apData')||null,[F.apConserv]:sv('p-apConserv'),
+    [F.pago]:sv('p-pago'),
     [F.numProcesso]:sv('p-numProcesso'),
     [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
     [F.montCredito]:sv('p-montCredito'),[F.valorProc]:sv('p-valorProc'),
