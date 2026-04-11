@@ -1620,6 +1620,7 @@ async function guardarPainel(){
   const pagoVal=sv('p-pago');
   if(pagoVal) body[F.pago]=pagoVal;
   try{
+    console.log('Body a enviar:', JSON.stringify(body));
     if(painelItemId){
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${painelItemId}/fields`,body);
       const idx=todosRegistosReg.findIndex(i=>i.id===painelItemId);
