@@ -1454,10 +1454,11 @@ function atualizarMetricas(lista){
   });
 
   // Cards CGD / REMAX / Particulares
-  const cgd=anuais.filter(i=>(i[F.produto]||'').toUpperCase().includes('CGD'));
-  const remax=anuais.filter(i=>(i[F.entidade]||i[F.produto]||'').toUpperCase().includes('REMAX'));
-  const part=anuais.filter(i=>!((i[F.produto]||'').toUpperCase().includes('CGD')||(i[F.entidade]||i[F.produto]||'').toUpperCase().includes('REMAX')));
-  const grupos={CGD:cgd,REMAX:remax,Particulares:part};
+  const cgd=anuais.filter(i=>(i[F.entidade]||'').toUpperCase()==='CGD');
+  const remax=anuais.filter(i=>(i[F.entidade]||'').toUpperCase()==='REMAX');
+  const century=anuais.filter(i=>(i[F.entidade]||'').toUpperCase()==='CENTURY');
+  const part=anuais.filter(i=>(i[F.entidade]||'').toUpperCase()==='PARTICULARES');
+  const grupos={CGD:cgd,REMAX:remax,Particulares:[...century,...part]};
   const media=arr=>{
     const vals=arr.map(i=>{const v=i[F.valorServico];return typeof v==='number'?v:parseFloat(String(v||'0').replace(',','.'));}).filter(v=>v>0);
     return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
@@ -1474,7 +1475,7 @@ function atualizarMetricas(lista){
     if(!i[F.data])return;
     const d=new Date(i[F.data]);
     const ano=d.getFullYear(), mes=MESES[d.getMonth()];
-    const ent=(i[F.entidade]||i[F.produto]||'Sem entidade').trim()||'Sem entidade';
+    const ent=(i[F.entidade]||'Sem entidade').trim()||'Sem entidade';
     const key=`${ano}|${String(d.getMonth()).padStart(2,'0')}|${mes}|${ent}`;
     if(!tabMap[key])tabMap[key]={ano,mes,mesN:d.getMonth(),ent,n:0,total:0};
     tabMap[key].n++;
