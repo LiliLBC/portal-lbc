@@ -1934,7 +1934,7 @@ async function carregarContaCorrente(){
   document.getElementById('cc-list').style.display='none';
   try{
     const sf=[CC.titulo,CC.cliente,CC.honorarios,CC.gastos,CC.recebido,CC.estado,CC.observacoes,CC.data].join(',');
-    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${sf})&$top=500&$orderby=fields/Cliente asc`);
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${sf})&$top=500`);
     todosCC=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     document.getElementById('cc-count').textContent=`${todosCC.length} registos`;
     renderCC(todosCC);
