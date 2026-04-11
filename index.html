@@ -1616,9 +1616,12 @@ async function guardarPainel(){
     [F.apConserv]:sv('p-apConserv'),
     [F.numProcesso]:sv('p-numProcesso'),
     [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
-    [F.montCredito]:sv('p-montCredito'),[F.valorProc]:sv('p-valorProc'),
-    [F.valorServico]:sv('p-valorServico'),[F.margemLiq]:sv('p-margemLiq'),
-    [F.custoSup]:sv('p-custoSup'),[F.dataResolSup]:sv('p-dataResolSup')?new Date(sv('p-dataResolSup')).toISOString():null,
+    [F.montCredito]:sv('p-montCredito')?parseFloat(sv('p-montCredito'))||null:null,
+    [F.valorProc]:sv('p-valorProc')?parseFloat(sv('p-valorProc'))||0:null,
+    [F.valorServico]:sv('p-valorServico')?parseFloat(sv('p-valorServico'))||0:null,
+    [F.margemLiq]:sv('p-margemLiq')?parseFloat(sv('p-margemLiq'))||0:null,
+    [F.custoSup]:sv('p-custoSup')?parseFloat(sv('p-custoSup'))||0:null,
+    [F.dataResolSup]:sv('p-dataResolSup')?new Date(sv('p-dataResolSup')).toISOString():null,
     [F.observacoes]:sv('p-observacoes'),[F.ligacaoPasta]:painelPastaUrl||'',
   };
   const pagoVal=sv('p-pago');
