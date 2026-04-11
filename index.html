@@ -563,6 +563,10 @@ tbody tr:hover td{background:#FAFAF8}
               <input class="form-input" id="p-apConserv" placeholder="—">
             </div>
             <div class="field-group">
+              <div class="field-label">Nº Processo</div>
+              <input class="form-input" id="p-numProcesso" placeholder="—">
+            </div>
+            <div class="field-group">
               <div class="field-label">Nº Pedido</div>
               <input class="form-input" id="p-numPedido" placeholder="—">
             </div>
@@ -827,14 +831,15 @@ const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
 
 const F={
-  titulo:'Title',nome:'Nome_Cliente',data:'Data_Escritura',produto:'Produto',
-  entidade:'Entidade',procurador:'Procurador',valorProc:'Valor_Procurador',
+  titulo:'Title',nome:'Nome_Cliente',data:'DataEscritura',produto:'Produto',
+  entidade:'Entidade',entAutenticadora:'Ent_x002e_Autenticadora',procurador:'Procurador',valorProc:'Valor_Procurador',
   montCredito:'Montante_Credito',predio:'Pr_x00e9_dio',freguesia:'Freguesia',
-  concelho:'Concelho',apRegisto:'AP_x002e__Registo',apData:'AP_Data',
+  concelho:'Concelho',apRegisto:'AP_x002e_Registo',apData:'AP_Data',
   apConserv:'AP_Conservat_x00f3_ria',valorServico:'Valor_Servico',estado:'Estado',
   codDeposito:'Cod_Dep_x00f3_sito',observacoes:'Observa_x00e7__x00f5_es',
-  numPedido:'Num_Pedido',ligacaoPasta:'Ligacao_Pasta',margemLiq:'Margem_L_x00ed_quida',
+  numPedido:'Num_Pedido',ligacaoPasta:'Ligacao_Pasta',margemLiq:'Margem_Liquida',
   custoSup:'Custo_Suprimento',dataResolSup:'Data_Resolucao_Suprimento',
+  numProcesso:'N_x00fa_mero_Processo',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
 const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Responsavel'};
@@ -1082,7 +1087,7 @@ async function carregarRegistos(){
   document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
   document.getElementById('reg-result-count').style.display='none';
   try{
-    const sf=[F.titulo,F.nome,F.data,F.produto,F.procurador,F.estado,F.predio,F.apRegisto,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorProc,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup].join(',');
+    const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
     todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     registosFiltradosAtual=[...todosRegistosReg];
@@ -1126,7 +1131,7 @@ function renderRegistos(lista,q=''){
       <div class="reg-list-main">
         <div class="reg-list-nome">${highlight(i[F.nome]||'—',q)}</div>
         <div class="reg-list-meta">${fmtData(i[F.data])} · ${escHtml(i[F.produto]||'—')} · ${escHtml(i[F.apConserv]||'—')}</div>
-        ${i[F.numPedido]?`<div style="font-size:10px;color:var(--text-faint);font-family:'DM Mono',monospace;margin-top:1px">${escHtml(i[F.numPedido])}</div>`:''}
+        ${i[F.numProcesso]?`<div style="font-size:10px;color:var(--text-faint);font-family:'DM Mono',monospace;margin-top:1px">${escHtml(i[F.numProcesso])}</div>`:''}
       </div>
       <div class="reg-list-right">
         ${estadoBadge(i[F.estado])}
@@ -1146,13 +1151,10 @@ function atualizarMetricas(lista){
   });
 
   // Cards CGD / REMAX / Particulares
-  const grupos={CGD:[],REMAX:[],Particulares:[]};
-  anuais.forEach(i=>{
-    const ent=(i[F.entidade]||'').toUpperCase();
-    if(ent.includes('CGD')||ent.includes('CAIXA'))grupos.CGD.push(i);
-    else if(ent.includes('REMAX')||ent.includes('RE/MAX'))grupos.REMAX.push(i);
-    else if(!ent||ent.includes('PARTICULAR'))grupos.Particulares.push(i);
-  });
+  const cgd=anuais.filter(i=>(i[F.produto]||'').toUpperCase().includes('CGD'));
+  const remax=anuais.filter(i=>(i[F.entidade]||i[F.produto]||'').toUpperCase().includes('REMAX'));
+  const part=anuais.filter(i=>!((i[F.produto]||'').toUpperCase().includes('CGD')||(i[F.entidade]||i[F.produto]||'').toUpperCase().includes('REMAX')));
+  const grupos={CGD:cgd,REMAX:remax,Particulares:part};
   const media=arr=>{
     const vals=arr.map(i=>parseFloat((i[F.valorServico]||'0').replace(',','.'))).filter(v=>v>0);
     return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
@@ -1169,7 +1171,7 @@ function atualizarMetricas(lista){
     if(!i[F.data])return;
     const d=new Date(i[F.data]);
     const ano=d.getFullYear(), mes=MESES[d.getMonth()];
-    const ent=(i[F.entidade]||'Sem entidade').trim()||'Sem entidade';
+    const ent=(i[F.entidade]||i[F.produto]||'Sem entidade').trim()||'Sem entidade';
     const key=`${ano}|${String(d.getMonth()).padStart(2,'0')}|${mes}|${ent}`;
     if(!tabMap[key])tabMap[key]={ano,mes,mesN:d.getMonth(),ent,n:0,total:0};
     tabMap[key].n++;
@@ -1274,6 +1276,7 @@ function abrirPainelRegisto(itemId){
   sv('p-apRegisto').value=i[F.apRegisto]||'';
   sv('p-apData').value=i[F.apData]?i[F.apData].substring(0,10):'';
   sv('p-apConserv').value=i[F.apConserv]||'';
+  sv('p-numProcesso').value=i[F.numProcesso]||'';
   sv('p-numPedido').value=i[F.numPedido]||'';
   sv('p-codDeposito').value=i[F.codDeposito]||'';
   sv('p-montCredito').value=i[F.montCredito]||'';
@@ -1308,6 +1311,7 @@ async function guardarPainel(){
     [F.entidade]:sv('p-entidade'),[F.procurador]:sv('p-procurador'),[F.estado]:sv('p-estado'),
     [F.predio]:sv('p-predio'),[F.freguesia]:sv('p-freguesia'),[F.concelho]:sv('p-concelho'),
     [F.apRegisto]:sv('p-apRegisto'),[F.apData]:sv('p-apData')||null,[F.apConserv]:sv('p-apConserv'),
+    [F.numProcesso]:sv('p-numProcesso'),
     [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
     [F.montCredito]:sv('p-montCredito'),[F.valorProc]:sv('p-valorProc'),
     [F.valorServico]:sv('p-valorServico'),[F.margemLiq]:sv('p-margemLiq'),
