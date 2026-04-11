@@ -2005,12 +2005,15 @@ async function filtrarCCCliente(){
     try{
       const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
       todasPastasClientes=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
-    }catch(e){console.warn(e);}
+      console.log('Pastas carregadas CC:',todasPastasClientes.length);
+    }catch(e){console.error('Erro pastas CC:',e);}
+  } else {
+    console.log('Estado pastas:',todasPastasClientes.length,'procId:',bibliotecaProcessosId);
   }
   const q=(document.getElementById('cc-cliente-search').value||'').toLowerCase().trim();
   const dd=document.getElementById('cc-cliente-dropdown');
   if(!q||!todasPastasClientes.length){dd.style.display='none';return;}
-  const res=todasPastasClientes.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  const res=todasPastasClientes.filter(p=>p&&p.nome&&p.nome.toLowerCase().includes(q)).slice(0,8);
   dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarCCCliente(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
     ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
   dd.style.display='block';
