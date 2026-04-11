@@ -2323,7 +2323,7 @@ async function carregarContabilidade(){
   document.getElementById('cb-loading').style.display='flex';
   document.getElementById('cb-list').style.display='none';
   try{
-    const sf=Object.values(CB).join(',');
+    const sf='Data,TipoDespesa,Categoria,Descricao,Valor,IVA,Meio_Pagamento,Cliente_Associado,Fatura_Interna,Estado_Fatura_Externa,Ligacao_Fatura,Observacoes';
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
     todosMovimentos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     // Seleccionar mês actual por defeito
@@ -2451,36 +2451,40 @@ async function guardarContab(){
   const file=document.getElementById('cb-fatura-file').files[0];
   if(file&&bibliotecaFaturasId){
     try{
+      await renovarToken();
       const ano=new Date().getFullYear();
-      const mes=String(new Date().getMonth()+1).padStart(2,'0')+' '+MESES_PT[new Date().getMonth()];
-      // Criar pasta ano/mes se não existir
-      await graphPost(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root/children`,{name:String(ano),folder:{},'@microsoft.graph.conflictBehavior':'replace'});
-      const anoFolder=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root:/${ano}:`);
-      await graphPost(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${anoFolder.id}/children`,{name:mes,folder:{},'@microsoft.graph.conflictBehavior':'replace'});
-      const mesFolder=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root:/${ano}/${mes}:`);
-      const ab=await file.arrayBuffer();
-      const uploaded=await (async()=>{
-        await renovarToken();
-        const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesFolder.id}:/${file.name}:/content`,{
-          method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type},body:ab
+      const mesIdx=new Date().getMonth();
+      const mesNome=MESES_PT[mesIdx];
+      const mesPasta=String(mesIdx+1).padStart(2,'0')+' '+mesNome;
+      const criarPasta=async(parentId,nome)=>{
+        const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${parentId}/children`,{
+          method:'POST',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+          body:JSON.stringify({name:nome,folder:{},'@microsoft.graph.conflictBehavior':'replace'})
         });
-        return r.json();
-      })();
+        return (await r.json()).id;
+      };
+      const rootData=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root`);
+      const anoId=await criarPasta(rootData.id,String(ano));
+      const mesId=await criarPasta(anoId,mesPasta);
+      const ab=await file.arrayBuffer();
+      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesId}:/${file.name}:/content`,{
+        method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type},body:ab
+      });
+      const uploaded=await r.json();
       ligacaoFatura=uploaded.webUrl||'';
-      const mesNome=MESES_PT[new Date().getMonth()];
-      const anoNome=new Date().getFullYear();
-      showToast(`Upload com sucesso na pasta "${mesNome} ${anoNome}"!`,'success');
+      showToast(`Upload com sucesso na pasta "${mesNome} ${ano}"!`,'success');
       document.getElementById('cb-fatura-ok').style.display='block';
       document.getElementById('cb-fatura-ok-nome').textContent=file.name;
     }catch(e){showToast('Aviso: fatura não carregada — '+e.message,'');}
   }
 
+  const dataVal=document.getElementById('cb-data').value;
   const body={
-    [CB.data]:document.getElementById('cb-data').value||null,
+    [CB.data]:dataVal?new Date(dataVal).toISOString():null,
     [CB.tipo]:tipo,
     [CB.categoria]:document.getElementById('cb-categoria').value||'',
     [CB.descricao]:descricao,
-    [CB.valor]:parseFloat(valor),
+    [CB.valor]:parseFloat(valor)||0,
     [CB.iva]:parseFloat(document.getElementById('cb-iva').value||0),
     [CB.meio]:document.getElementById('cb-meio').value||'',
     [CB.cliente]:document.getElementById('cb-cliente').value||'',
@@ -2488,7 +2492,7 @@ async function guardarContab(){
     [CB.estadoFatura]:document.getElementById('cb-estado-fatura').value||'',
     [CB.observacoes]:document.getElementById('cb-observacoes').value||'',
   };
-  if(ligacaoFatura) body[CB.ligacaoFatura]={Url:ligacaoFatura,Description:descricao.substring(0,50)};
+  if(ligacaoFatura) body[CB.ligacaoFatura]=ligacaoFatura;
 
   try{
     if(cbItemId){
@@ -2546,7 +2550,7 @@ async function processarUploadExtrato(){
     // Mostrar link
     document.getElementById('cb-extrato-url').href=extratoUrlAtual;
     document.getElementById('cb-extrato-link').style.display='flex';
-    showToast(`Extrato de ${mes} carregado!`,'success');
+    showToast(`Upload com sucesso na pasta "${mes} ${ano}"!`,'success');
   }catch(e){showToast('Erro ao carregar extrato: '+e.message,'error');}
 }
 
