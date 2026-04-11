@@ -336,7 +336,6 @@ tbody tr:hover td{background:#FAFAF8}
           <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
           <div class="metric-card"><div class="metric-label">Suprimentos</div><div class="metric-value" style="color:var(--red)" id="m-suprimentos">—</div><div class="metric-sub" id="m-suprimentos-sub">requer atenção</div></div>
         </div>
-        <div style="margin-bottom:1rem"><button class="btn btn-sm" onclick="descobrirCampos()">🔍 Ver nomes internos campos</button></div>
         <div class="dash-section">
           <div class="dash-section-header">
             <div><div class="dash-section-title">Suprimentos pendentes</div><div class="dash-section-sub">Requerem atenção urgente</div></div>
@@ -1808,12 +1807,12 @@ function renderProcessos(lista){
   el.innerHTML=lista.map(p=>`
     <div class="pasta-card">
       <div style="flex:1;min-width:0">
-        <div class="pasta-ref">${escHtml(p.name||'—')}</div>
+        <div class="pasta-ref">${escHtml(p.nome||'—')}</div>
         <div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div>
       </div>
       <div class="pasta-actions">
         <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir pasta</a>
-        <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.name||'')}','${escHtml(p.id||'')}')">+ Processo</button>
+        <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.nome||'')}','${escHtml(p.id||'')}')">+ Processo</button>
       </div>
     </div>`).join('');
   el.style.display='block';
