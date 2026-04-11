@@ -1208,12 +1208,17 @@ function filtrarTabelaMetricas(){
 let painelItemId=null,painelPastaUrl=null,pastasPainel=[];
 
 async function carregarPastasPainel(){
+  if(!bibliotecaId){console.warn('bibliotecaId não disponível ainda');return;}
   try{
-    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=name asc`);
     pastasPainel=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
     const inp=document.getElementById('painel-pasta-search');
     if(inp){inp.placeholder=`Pesquisar entre ${pastasPainel.length} pastas...`;inp.disabled=false;}
-  }catch(e){console.warn('Pastas não carregadas:',e);}
+  }catch(e){
+    const inp=document.getElementById('painel-pasta-search');
+    if(inp){inp.placeholder='Erro ao carregar pastas — tenta de novo';inp.disabled=false;}
+    console.warn('Pastas não carregadas:',e);
+  }
 }
 
 function filtrarPastasPainel(){
@@ -1246,13 +1251,17 @@ function abrirPainelNovo(){
   document.getElementById('painel-btn-pasta').style.display='none';
   document.getElementById('painel-pasta-ok').style.display='none';
   document.getElementById('painel-pasta-search').value='';
+  document.getElementById('painel-pasta-search').placeholder='A carregar pastas...';
+  document.getElementById('painel-pasta-search').disabled=true;
   ['p-nome','p-data','p-produto','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
-   'p-apRegisto','p-apData','p-apConserv','p-numPedido','p-codDeposito','p-montCredito',
+   'p-apRegisto','p-apData','p-apConserv','p-numProcesso','p-numPedido','p-codDeposito','p-montCredito',
    'p-valorProc','p-valorServico','p-margemLiq','p-custoSup','p-dataResolSup','p-observacoes'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('p-estado').value='Agendado';
   abrirPainel();
+  // Carregar pastas sempre que abre
+  carregarPastasPainel();
 }
 
 function abrirPainelRegisto(itemId){
