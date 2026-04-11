@@ -1085,7 +1085,7 @@ async function carregarRegistos(){
   registosCarregados=true;
   document.getElementById('reg-loading').style.display='flex';
   document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
-  document.getElementById('reg-result-count').style.display='none';
+  const rc=document.getElementById('reg-result-count');if(rc)rc.style.display='none';
   try{
     const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
@@ -1100,15 +1100,15 @@ async function carregarRegistos(){
 function pesquisarRegistos(){
   const q=document.getElementById('reg-search').value.toLowerCase().trim();
   const base=filtroEstadoAtual?todosRegistosReg.filter(i=>i[F.estado]===filtroEstadoAtual):todosRegistosReg;
-  if(!q){registosFiltradosAtual=base;document.getElementById('reg-result-count').style.display='none';renderRegistos(base,'');return;}
+  if(!q){registosFiltradosAtual=base;const _rc=document.getElementById('reg-result-count');if(_rc)_rc.style.display='none';renderRegistos(base,'');return;}
   const resultado=base.filter(i=>(i[F.nome]||'').toLowerCase().includes(q)||(i[F.predio]||'').toLowerCase().includes(q)||(i[F.apConserv]||'').toLowerCase().includes(q)||(i[F.titulo]||'').toLowerCase().includes(q));
   registosFiltradosAtual=resultado;
-  const c=document.getElementById('reg-result-count');c.textContent=`${resultado.length} resultado(s) para "${document.getElementById('reg-search').value}"`;c.style.display='block';
+  const c=document.getElementById('reg-result-count');if(c){c.textContent=`${resultado.length} resultado(s) para "${document.getElementById('reg-search').value}"`;c.style.display='block';}
   renderRegistos(resultado,document.getElementById('reg-search').value);
 }
 
 function limparPesquisa(){
-  document.getElementById('reg-search').value='';document.getElementById('reg-result-count').style.display='none';
+  document.getElementById('reg-search').value='';const _rcc=document.getElementById('reg-result-count');if(_rcc)_rcc.style.display='none';
   const base=filtroEstadoAtual?todosRegistosReg.filter(i=>i[F.estado]===filtroEstadoAtual):todosRegistosReg;
   registosFiltradosAtual=base;renderRegistos(base,'');
 }
