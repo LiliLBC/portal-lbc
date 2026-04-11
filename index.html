@@ -2029,14 +2029,6 @@ async function filtrarCCCliente(){
     : '<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
   dd.style.display='block';
 }
-  const q=(document.getElementById('cc-cliente-search').value||'').toLowerCase().trim();
-  const dd=document.getElementById('cc-cliente-dropdown');
-  if(!q||!todasPastasClientes.length){dd.style.display='none';return;}
-  const res=todasPastasClientes.filter(p=>p&&p.nome&&p.nome.toLowerCase().includes(q)).slice(0,8);
-  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarCCCliente(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
-    ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
-  dd.style.display='block';
-}
 
 async function selecionarCCCliente(pasta){
   ccClienteSeleccionado=pasta;
