@@ -272,6 +272,9 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('processos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
     </div>
+    <div class="nav-item" onclick="nav('contacorrente',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9H2z"/><path d="M5 4V2h6v2"/><path d="M5 8h6M5 11h4"/></svg></span>Conta corrente
+    </div>
     <div class="nav-item em-construcao">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14s1-4 5-4 5 4 5 4"/><path d="M13 7v4M11 9h4"/></svg></span>Clientes
     </div>
@@ -801,6 +804,93 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <!-- CONTA CORRENTE -->
+      <div class="screen" id="screen-contacorrente">
+        <div class="section-header">
+          <div><div class="section-title">Conta corrente</div><div class="section-sub" id="cc-count">A carregar...</div></div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm" onclick="carregarContaCorrente()">↺ Atualizar</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirCCNovo()">+ Novo registo</button>
+          </div>
+        </div>
+        <div class="reg-search-bar">
+          <div class="reg-search-wrap">
+            <svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+            <input class="reg-search-input" id="cc-search" placeholder="Pesquisar por cliente ou processo..." oninput="filtrarCC()">
+          </div>
+        </div>
+        <div id="cc-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
+        <div id="cc-list" style="display:none"></div>
+      </div>
+
+      <!-- PAINEL CONTA CORRENTE -->
+      <div class="side-panel-overlay" id="cc-overlay" onclick="fecharCCPainel()"></div>
+      <div class="side-panel" id="cc-painel">
+        <div class="side-panel-header">
+          <div>
+            <div class="side-panel-title" id="cc-painel-titulo">Novo registo</div>
+            <div style="font-size:10px;color:var(--text-faint);margin-top:2px" id="cc-painel-sub"></div>
+          </div>
+          <button class="side-panel-close" onclick="fecharCCPainel()">✕</button>
+        </div>
+        <div class="side-panel-body">
+          <div class="field-grid">
+            <div class="section-divider">Identificação</div>
+            <div class="field-group field-full">
+              <div class="field-label">Cliente *</div>
+              <input class="form-input" id="cc-cliente" placeholder="Nome do cliente">
+            </div>
+            <div class="field-group field-full">
+              <div class="field-label">Processo *</div>
+              <input class="form-input" id="cc-titulo" placeholder="Ex: Harmonização de áreas">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Data</div>
+              <input class="form-input" id="cc-data" type="date">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Estado</div>
+              <select class="form-select" id="cc-estado">
+                <option>A pagamento</option>
+                <option>Pago parcial</option>
+                <option>Concluído</option>
+              </select>
+            </div>
+
+            <div class="section-divider">Valores</div>
+            <div class="field-group">
+              <div class="field-label">Honorários (c/ IVA) €</div>
+              <input class="form-input" id="cc-honorarios" type="number" step="0.01" placeholder="0.00" oninput="calcularCC()">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Gastos p/ conta cliente €</div>
+              <input class="form-input" id="cc-gastos" type="number" step="0.01" placeholder="0.00" oninput="calcularCC()">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Total do serviço €</div>
+              <input class="form-input" id="cc-total" readonly style="background:var(--surface2);color:var(--text);font-weight:500">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Valor recebido €</div>
+              <input class="form-input" id="cc-recebido" type="number" step="0.01" placeholder="0.00" oninput="calcularCC()">
+            </div>
+            <div class="field-group field-full">
+              <div class="field-label">Saldo em dívida €</div>
+              <input class="form-input" id="cc-saldo" readonly style="background:var(--surface2);font-weight:600" id="cc-saldo">
+            </div>
+
+            <div class="section-divider">Observações</div>
+            <div class="field-group field-full">
+              <textarea class="form-textarea" id="cc-observacoes" rows="3" placeholder="Notas, referências, etc."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="side-panel-footer">
+          <button class="btn" onclick="fecharCCPainel()" style="flex:1">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarCC()" style="flex:2">Guardar</button>
+        </div>
+      </div>
+
       <!-- EM CONSTRUÇÃO -->
       <div class="screen" id="screen-contratos">
         <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
@@ -827,6 +917,8 @@ const SITE_DADOS_PATH='sites/lbcsolicitadora2';
 const SITE_PASTAS_PATH='sites/Escritrio';
 const LISTA='Escritura_Listagem';
 const LISTA_TAREFAS='Tarefas_Escritorio';
+const LISTA_CONTA='Processos_ContaCorrente';
+const CC={titulo:'Title',cliente:'Cliente',honorarios:'Honor_x00e1_rios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
 
@@ -846,7 +938,7 @@ const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Respons
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
-let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null;
+let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null;
 let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
 let todasTarefas=[],tarefasCarregadas=false;
@@ -918,6 +1010,8 @@ async function resolverSiteIds(){
     listaIdTarefas=tr.value[0]?.id;
     const ag=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_AGENDA}'`);
     listaIdAgenda=ag.value[0]?.id;
+    const cc=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_CONTA}'`);
+    listaIdConta=cc.value[0]?.id;
   }catch(e){console.error('Erro IDs:',e);}
 }
 
@@ -941,7 +1035,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos'};
+const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente'};
 
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
@@ -955,6 +1049,7 @@ function nav(id,el){
   if(id==='suprimentos')carregarSuprimentos();
   if(id==='tarefas')carregarTarefas();
   if(id==='processos')carregarProcessos();
+  if(id==='contacorrente')carregarContaCorrente();
 }
 
 // ─── DROPDOWN CONTRATOS ────────────────────────────────────────────────────────
@@ -1828,6 +1923,135 @@ async function descobrirCampos(){
     const txt=(d.value||[]).filter(f=>!f.internalName.startsWith('_')&&!f.internalName.startsWith('OData')).map(f=>`${f.displayName} → ${f.internalName}`).join('\n');
     alert(txt||'Sem resultados — verifica permissões');
   }catch(e){alert('Erro: '+e.message);}
+}
+
+// ─── CONTA CORRENTE ───────────────────────────────────────────────────────────
+let todosCC=[],ccItemId=null;
+
+async function carregarContaCorrente(){
+  if(!listaIdConta){showToast('Lista Processos_ContaCorrente não encontrada','error');return;}
+  document.getElementById('cc-loading').style.display='flex';
+  document.getElementById('cc-list').style.display='none';
+  try{
+    const sf=[CC.titulo,CC.cliente,CC.honorarios,CC.gastos,CC.recebido,CC.estado,CC.observacoes,CC.data].join(',');
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${sf})&$top=500&$orderby=fields/Cliente asc`);
+    todosCC=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    document.getElementById('cc-count').textContent=`${todosCC.length} registos`;
+    renderCC(todosCC);
+  }catch(e){document.getElementById('cc-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function renderCC(lista){
+  document.getElementById('cc-loading').style.display='none';
+  const el=document.getElementById('cc-list');
+  if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhum registo encontrado.</div>';el.style.display='block';return;}
+  el.innerHTML=lista.map(i=>{
+    const hon=parseFloat(i[CC.honorarios]||0);
+    const gas=parseFloat(i[CC.gastos]||0);
+    const rec=parseFloat(i[CC.recebido]||0);
+    const total=hon+gas;
+    const saldo=total-rec;
+    const estadoCor={'A pagamento':'badge-amber','Pago parcial':'badge-blue','Concluído':'badge-green'};
+    return`<div class="reg-list-item" onclick="abrirCCEditar('${i.id}')">
+      <div class="reg-list-main">
+        <div class="reg-list-nome">${escHtml(i[CC.cliente]||'—')}</div>
+        <div class="reg-list-meta">${escHtml(i[CC.titulo]||'—')} · ${fmtData(i[CC.data])}</div>
+      </div>
+      <div class="reg-list-right" style="gap:.75rem">
+        <div style="text-align:right;font-size:11px">
+          <div style="font-family:'DM Mono',monospace;font-weight:500">${total.toFixed(2)}€</div>
+          <div style="color:${saldo>0?'var(--red)':'var(--green)'};font-family:'DM Mono',monospace">${saldo>0?'-':''}${Math.abs(saldo).toFixed(2)}€</div>
+        </div>
+        <span class="badge ${estadoCor[i[CC.estado]]||'badge-gray'}">${escHtml(i[CC.estado]||'—')}</span>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+  el.style.display='block';
+}
+
+function filtrarCC(){
+  const q=(document.getElementById('cc-search').value||'').toLowerCase();
+  renderCC(q?todosCC.filter(i=>(i[CC.cliente]||'').toLowerCase().includes(q)||(i[CC.titulo]||'').toLowerCase().includes(q)):todosCC);
+}
+
+function calcularCC(){
+  const hon=parseFloat(document.getElementById('cc-honorarios').value||0);
+  const gas=parseFloat(document.getElementById('cc-gastos').value||0);
+  const rec=parseFloat(document.getElementById('cc-recebido').value||0);
+  const total=hon+gas;
+  const saldo=total-rec;
+  document.getElementById('cc-total').value=total.toFixed(2);
+  const sEl=document.getElementById('cc-saldo');
+  sEl.value=saldo.toFixed(2);
+  sEl.style.color=saldo>0?'var(--red)':'var(--green)';
+}
+
+function abrirCCNovo(){
+  ccItemId=null;
+  document.getElementById('cc-painel-titulo').textContent='Novo registo';
+  document.getElementById('cc-painel-sub').textContent='';
+  ['cc-cliente','cc-titulo','cc-honorarios','cc-gastos','cc-recebido','cc-total','cc-saldo','cc-observacoes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('cc-data').value=new Date().toISOString().substring(0,10);
+  document.getElementById('cc-estado').value='A pagamento';
+  document.getElementById('cc-saldo').style.color='var(--text)';
+  document.getElementById('cc-painel').classList.add('open');
+  document.getElementById('cc-overlay').classList.add('show');
+}
+
+function abrirCCEditar(itemId){
+  const i=todosCC.find(r=>r.id===itemId);if(!i)return;
+  ccItemId=itemId;
+  document.getElementById('cc-painel-titulo').textContent=i[CC.cliente]||'Registo';
+  document.getElementById('cc-painel-sub').textContent=i[CC.titulo]||'';
+  document.getElementById('cc-cliente').value=i[CC.cliente]||'';
+  document.getElementById('cc-titulo').value=i[CC.titulo]||'';
+  document.getElementById('cc-data').value=i[CC.data]?i[CC.data].substring(0,10):'';
+  document.getElementById('cc-estado').value=i[CC.estado]||'A pagamento';
+  document.getElementById('cc-honorarios').value=i[CC.honorarios]||'';
+  document.getElementById('cc-gastos').value=i[CC.gastos]||'';
+  document.getElementById('cc-recebido').value=i[CC.recebido]||'';
+  document.getElementById('cc-observacoes').value=i[CC.observacoes]||'';
+  calcularCC();
+  document.getElementById('cc-painel').classList.add('open');
+  document.getElementById('cc-overlay').classList.add('show');
+}
+
+function fecharCCPainel(){
+  document.getElementById('cc-painel').classList.remove('open');
+  document.getElementById('cc-overlay').classList.remove('show');
+}
+
+async function guardarCC(){
+  const cliente=document.getElementById('cc-cliente').value.trim();
+  const titulo=document.getElementById('cc-titulo').value.trim();
+  if(!cliente||!titulo){showToast('Preenche o cliente e o processo.','error');return;}
+  const body={
+    [CC.titulo]:titulo,
+    [CC.cliente]:cliente,
+    [CC.data]:document.getElementById('cc-data').value||null,
+    [CC.estado]:document.getElementById('cc-estado').value,
+    [CC.honorarios]:parseFloat(document.getElementById('cc-honorarios').value||0),
+    [CC.gastos]:parseFloat(document.getElementById('cc-gastos').value||0),
+    [CC.recebido]:parseFloat(document.getElementById('cc-recebido').value||0),
+    [CC.observacoes]:document.getElementById('cc-observacoes').value,
+  };
+  try{
+    if(ccItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${ccItemId}/fields`,body);
+      const idx=todosCC.findIndex(i=>i.id===ccItemId);
+      if(idx>-1)Object.assign(todosCC[idx],body);
+      showToast('Guardado!','success');
+    }else{
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items`,{fields:body});
+      showToast('Registo criado!','success');
+      await carregarContaCorrente();
+    }
+    fecharCCPainel();
+    renderCC(todosCC);
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 async function init(){
