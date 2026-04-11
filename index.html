@@ -1793,7 +1793,7 @@ async function carregarProcessos(){
   document.getElementById('proc-list').style.display='none';
   try{
     const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
-    todasPastasClientes=(data.value||[]).filter(p=>p.folder);
+    todasPastasClientes=(data.value||[]).filter(p=>p.folder&&p.name).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
     renderProcessos(todasPastasClientes);
     // Carregar para o selector de subpasta
     const inp=document.getElementById('proc-sub-cliente-search');
@@ -2000,16 +2000,35 @@ function calcularCC(){
 let ccClienteSeleccionado=null,ccSubpastas=[];
 
 async function filtrarCCCliente(){
-  // Carregar pastas se ainda não estiverem disponíveis
-  if(!todasPastasClientes.length && bibliotecaProcessosId){
+  const inp=document.getElementById('cc-cliente-search');
+  const dd=document.getElementById('cc-cliente-dropdown');
+  const q=(inp.value||'').toLowerCase().trim();
+  if(!q){dd.style.display='none';return;}
+
+  // Carregar pastas se necessário
+  if(!todasPastasClientes.length){
+    if(!bibliotecaProcessosId){
+      dd.innerHTML='<div class="pasta-sp-item" style="color:var(--text-faint)">A aguardar ligação ao SharePoint...</div>';
+      dd.style.display='block';return;
+    }
     try{
-      const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
-      todasPastasClientes=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
-      console.log('Pastas carregadas CC:',todasPastasClientes.length);
-    }catch(e){console.error('Erro pastas CC:',e);}
-  } else {
-    console.log('Estado pastas:',todasPastasClientes.length,'procId:',bibliotecaProcessosId);
+      dd.innerHTML='<div class="pasta-sp-item" style="color:var(--text-faint)">A carregar...</div>';
+      dd.style.display='block';
+      const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500`);
+      todasPastasClientes=(data.value||[]).filter(p=>p.folder&&p.name).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
+      console.log('Pastas PROCESSOS carregadas:',todasPastasClientes.length, todasPastasClientes.slice(0,3).map(p=>p.nome));
+    }catch(e){
+      dd.innerHTML=`<div class="pasta-sp-item" style="color:var(--red)">Erro: ${e.message}</div>`;
+      dd.style.display='block';return;
+    }
   }
+
+  const res=todasPastasClientes.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.length
+    ? res.map(p=>`<div class="pasta-sp-item" onclick="selecionarCCCliente(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
+    : '<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  dd.style.display='block';
+}
   const q=(document.getElementById('cc-cliente-search').value||'').toLowerCase().trim();
   const dd=document.getElementById('cc-cliente-dropdown');
   if(!q||!todasPastasClientes.length){dd.style.display='none';return;}
