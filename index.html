@@ -928,7 +928,7 @@ const SITE_PASTAS_PATH='sites/Escritrio';
 const LISTA='Escritura_Listagem';
 const LISTA_TAREFAS='Tarefas_Escritorio';
 const LISTA_CONTA='Processos_ContaCorrente';
-const CC={titulo:'Title',cliente:'Cliente',honorarios:'Honor_x00e1_rios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
+const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
 
@@ -2128,6 +2128,7 @@ async function guardarCC(){
   const titulo=document.getElementById('cc-titulo').value.trim();
   if(!cliente||!titulo){showToast('Selecciona o cliente e o processo.','error');return;}
   const body={
+    'Title':cliente+' — '+titulo,
     [CC.titulo]:titulo,
     [CC.cliente]:cliente,
     [CC.data]:document.getElementById('cc-data').value||null,
