@@ -2467,26 +2467,28 @@ async function guardarContab(){
         return r.json();
       })();
       ligacaoFatura=uploaded.webUrl||'';
+      const mesNome=MESES_PT[new Date().getMonth()];
+      const anoNome=new Date().getFullYear();
+      showToast(`Upload com sucesso na pasta "${mesNome} ${anoNome}"!`,'success');
       document.getElementById('cb-fatura-ok').style.display='block';
       document.getElementById('cb-fatura-ok-nome').textContent=file.name;
     }catch(e){showToast('Aviso: fatura não carregada — '+e.message,'');}
   }
 
   const body={
-    [CB.titulo]:descricao.substring(0,50),
     [CB.data]:document.getElementById('cb-data').value||null,
     [CB.tipo]:tipo,
-    [CB.categoria]:document.getElementById('cb-categoria').value,
+    [CB.categoria]:document.getElementById('cb-categoria').value||'',
     [CB.descricao]:descricao,
     [CB.valor]:parseFloat(valor),
     [CB.iva]:parseFloat(document.getElementById('cb-iva').value||0),
-    [CB.meio]:document.getElementById('cb-meio').value,
-    [CB.cliente]:document.getElementById('cb-cliente').value,
-    [CB.faturaInterna]:document.getElementById('cb-fatura-interna').value,
-    [CB.estadoFatura]:document.getElementById('cb-estado-fatura').value,
-    [CB.ligacaoFatura]:ligacaoFatura,
-    [CB.observacoes]:document.getElementById('cb-observacoes').value,
+    [CB.meio]:document.getElementById('cb-meio').value||'',
+    [CB.cliente]:document.getElementById('cb-cliente').value||'',
+    [CB.faturaInterna]:document.getElementById('cb-fatura-interna').value||'',
+    [CB.estadoFatura]:document.getElementById('cb-estado-fatura').value||'',
+    [CB.observacoes]:document.getElementById('cb-observacoes').value||'',
   };
+  if(ligacaoFatura) body[CB.ligacaoFatura]={Url:ligacaoFatura,Description:descricao.substring(0,50)};
 
   try{
     if(cbItemId){
