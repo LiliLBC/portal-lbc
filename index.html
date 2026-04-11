@@ -275,6 +275,9 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('contacorrente',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9H2z"/><path d="M5 4V2h6v2"/><path d="M5 8h6M5 11h4"/></svg></span>Conta corrente
     </div>
+    <div class="nav-item" onclick="nav('contabilidade',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
+    </div>
     <div class="nav-item em-construcao">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14s1-4 5-4 5 4 5 4"/><path d="M13 7v4M11 9h4"/></svg></span>Clientes
     </div>
@@ -900,6 +903,143 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <!-- CONTABILIDADE -->
+      <div class="screen" id="screen-contabilidade">
+        <!-- RESUMO MENSAL -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:1rem">
+          <div class="metric-card">
+            <div class="metric-label">Despesas empresa</div>
+            <div class="metric-value" id="cb-total-despesa" style="color:var(--red)">—</div>
+            <div class="metric-sub" id="cb-mes-label">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Pagamentos por conta cliente</div>
+            <div class="metric-value" id="cb-total-cliente" style="color:var(--amber)">—</div>
+            <div class="metric-sub">não são despesas</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Total saídas</div>
+            <div class="metric-value" id="cb-total-geral" style="color:var(--text)">—</div>
+            <div class="metric-sub">despesa + clientes</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <select class="form-select" id="cb-filtro-mes" onchange="filtrarContabilidade()" style="width:130px;font-size:12px">
+              <option value="">Todos os meses</option>
+              <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
+              <option>Abril</option><option>Maio</option><option>Junho</option>
+              <option>Julho</option><option>Agosto</option><option>Setembro</option>
+              <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+            </select>
+            <select class="form-select" id="cb-filtro-tipo" onchange="filtrarContabilidade()" style="width:180px;font-size:12px">
+              <option value="">Todos os tipos</option>
+              <option>Despesa empresa</option>
+              <option>Pagamento por conta cliente</option>
+            </select>
+            <select class="form-select" id="cb-filtro-fatura" onchange="filtrarContabilidade()" style="width:130px;font-size:12px">
+              <option value="">Com/sem fatura</option>
+              <option>Com fatura</option>
+              <option>Sem fatura</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm" onclick="carregarContabilidade()">↺ Atualizar</button>
+            <button class="btn btn-sm" onclick="exportarMapaMensal()">⬇ Exportar mês</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirContabNovo()">+ Novo</button>
+          </div>
+        </div>
+
+        <div id="cb-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
+        <div id="cb-list" style="display:none"></div>
+      </div>
+
+      <!-- PAINEL CONTABILIDADE -->
+      <div class="side-panel-overlay" id="cb-overlay" onclick="fecharContabPainel()"></div>
+      <div class="side-panel" id="cb-painel">
+        <div class="side-panel-header">
+          <div>
+            <div class="side-panel-title" id="cb-painel-titulo">Novo movimento</div>
+          </div>
+          <button class="side-panel-close" onclick="fecharContabPainel()">✕</button>
+        </div>
+        <div class="side-panel-body">
+          <div class="field-grid">
+            <div class="section-divider">Identificação</div>
+            <div class="field-group">
+              <div class="field-label">Data *</div>
+              <input class="form-input" id="cb-data" type="date">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Tipo *</div>
+              <select class="form-select" id="cb-tipo" onchange="onCbTipoChange()">
+                <option value="">Selecionar...</option>
+                <option>Despesa empresa</option>
+                <option>Pagamento por conta cliente</option>
+              </select>
+            </div>
+            <div class="field-group" id="cb-categoria-wrap">
+              <div class="field-label">Categoria</div>
+              <select class="form-select" id="cb-categoria">
+                <option value="">—</option>
+                <option>Renda</option><option>Comunicações</option><option>Consumíveis</option>
+                <option>Impostos</option><option>Avencas</option><option>Restauração</option>
+                <option>Contabilidade</option><option>Outras</option>
+              </select>
+            </div>
+            <div class="field-group field-full">
+              <div class="field-label">Descrição *</div>
+              <input class="form-input" id="cb-descricao" placeholder="Ex: NOS fatura março 2026">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Valor € *</div>
+              <input class="form-input" id="cb-valor" type="number" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Meio de pagamento</div>
+              <select class="form-select" id="cb-meio">
+                <option value="">—</option>
+                <option>Transferência</option><option>Débito directo</option>
+                <option>Dinheiro</option><option>Cheque</option>
+              </select>
+            </div>
+            <div class="field-group field-full" id="cb-cliente-wrap" style="display:none">
+              <div class="field-label">Cliente associado</div>
+              <input class="form-input" id="cb-cliente" placeholder="Nome do cliente">
+            </div>
+
+            <div class="section-divider">Fatura</div>
+            <div class="field-group">
+              <div class="field-label">Nº fatura interna</div>
+              <input class="form-input" id="cb-fatura-interna" placeholder="Ex: FT2026/045">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Estado fatura</div>
+              <select class="form-select" id="cb-estado-fatura">
+                <option value="">—</option>
+                <option>Com fatura</option>
+                <option>Sem fatura</option>
+              </select>
+            </div>
+            <div class="field-group field-full">
+              <div class="field-label">Upload fatura (PDF)</div>
+              <input type="file" id="cb-fatura-file" accept=".pdf,.jpg,.png" style="font-size:12px;padding:4px">
+              <div id="cb-fatura-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="cb-fatura-ok-nome"></span></div>
+            </div>
+
+            <div class="section-divider">Observações</div>
+            <div class="field-group field-full">
+              <textarea class="form-textarea" id="cb-observacoes" rows="3" placeholder="Notas..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="side-panel-footer">
+          <button class="btn" onclick="fecharContabPainel()" style="flex:1">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarContab()" style="flex:2">Guardar</button>
+        </div>
+      </div>
+
       <!-- EM CONSTRUÇÃO -->
       <div class="screen" id="screen-contratos">
         <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
@@ -927,6 +1067,9 @@ const SITE_PASTAS_PATH='sites/Escritrio';
 const LISTA='Escritura_Listagem';
 const LISTA_TAREFAS='Tarefas_Escritorio';
 const LISTA_CONTA='Processos_ContaCorrente';
+const LISTA_CONTAB='Contabilidade';
+const BIBLIOTECA_FATURAS='FATURAS';
+const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',meio:'Meio_Pagamento',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes'};
 const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
@@ -947,7 +1090,7 @@ const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Respons
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
-let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null;
+let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null;
 let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
 let todasTarefas=[],tarefasCarregadas=false;
@@ -1021,6 +1164,9 @@ async function resolverSiteIds(){
     listaIdAgenda=ag.value[0]?.id;
     const cc=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_CONTA}'`);
     listaIdConta=cc.value[0]?.id;
+    const cb=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_CONTAB}'`);
+    listaIdContab=cb.value[0]?.id;
+    bibliotecaFaturasId=drivesDados.value.find(d=>d.name===BIBLIOTECA_FATURAS)?.id;
   }catch(e){console.error('Erro IDs:',e);}
 }
 
@@ -1044,7 +1190,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente'};
+const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade'};
 
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
@@ -1059,6 +1205,7 @@ function nav(id,el){
   if(id==='tarefas')carregarTarefas();
   if(id==='processos')carregarProcessos();
   if(id==='contacorrente')carregarContaCorrente();
+  if(id==='contabilidade')carregarContabilidade();
 }
 
 // ─── DROPDOWN CONTRATOS ────────────────────────────────────────────────────────
@@ -2151,6 +2298,212 @@ async function guardarCC(){
     fecharCCPainel();
     renderCC(todosCC);
   }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+// ─── CONTABILIDADE ────────────────────────────────────────────────────────────
+let todosMovimentos=[],cbItemId=null;
+const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+async function carregarContabilidade(){
+  if(!listaIdContab){showToast('Lista Contabilidade não encontrada','error');return;}
+  document.getElementById('cb-loading').style.display='flex';
+  document.getElementById('cb-list').style.display='none';
+  try{
+    const sf=Object.values(CB).join(',');
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
+    todosMovimentos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    // Seleccionar mês actual por defeito
+    const mesActual=MESES_PT[new Date().getMonth()];
+    const sel=document.getElementById('cb-filtro-mes');
+    if(!sel.value)sel.value=mesActual;
+    filtrarContabilidade();
+  }catch(e){document.getElementById('cb-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function filtrarContabilidade(){
+  const mes=document.getElementById('cb-filtro-mes').value;
+  const tipo=document.getElementById('cb-filtro-tipo').value;
+  const fatura=document.getElementById('cb-filtro-fatura').value;
+  let lista=todosMovimentos;
+  if(mes) lista=lista.filter(i=>{
+    if(!i[CB.data])return false;
+    return MESES_PT[new Date(i[CB.data]).getMonth()]===mes;
+  });
+  if(tipo) lista=lista.filter(i=>i[CB.tipo]===tipo);
+  if(fatura) lista=lista.filter(i=>i[CB.estadoFatura]===fatura);
+  // Actualizar métricas
+  const despesa=lista.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  const cliente=lista.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  document.getElementById('cb-total-despesa').textContent=despesa.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
+  document.getElementById('cb-total-cliente').textContent=cliente.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
+  document.getElementById('cb-total-geral').textContent=(despesa+cliente).toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
+  document.getElementById('cb-mes-label').textContent=mes||'todos os meses';
+  renderContabilidade(lista);
+}
+
+function renderContabilidade(lista){
+  document.getElementById('cb-loading').style.display='none';
+  const el=document.getElementById('cb-list');
+  if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhum movimento encontrado.</div>';el.style.display='block';return;}
+  // Ordenar por data desc
+  lista=[...lista].sort((a,b)=>new Date(b[CB.data]||0)-new Date(a[CB.data]||0));
+  el.innerHTML=lista.map(i=>{
+    const isDespesa=i[CB.tipo]==='Despesa empresa';
+    const val=parseFloat(i[CB.valor]||0);
+    return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')">
+      <div class="reg-list-main">
+        <div class="reg-list-nome">${escHtml(i[CB.descricao]||'—')}</div>
+        <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
+        ${i[CB.estadoFatura]==='Sem fatura'?'<div style="font-size:10px;color:var(--amber)">⚠ Sem fatura</div>':''}
+      </div>
+      <div class="reg-list-right">
+        <span style="font-family:\'DM Mono\',monospace;font-size:12px;font-weight:500;color:${isDespesa?'var(--red)':'var(--amber)'}">${val.toLocaleString('pt-PT',{minimumFractionDigits:2})}€</span>
+        ${i[CB.ligacaoFatura]?`<a href="${escHtml(i[CB.ligacaoFatura])}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" title="Ver fatura">📄</a>`:''}
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+  el.style.display='block';
+}
+
+function onCbTipoChange(){
+  const tipo=document.getElementById('cb-tipo').value;
+  document.getElementById('cb-categoria-wrap').style.display=tipo==='Despesa empresa'?'block':'none';
+  document.getElementById('cb-cliente-wrap').style.display=tipo==='Pagamento por conta cliente'?'block':'none';
+}
+
+function abrirContabNovo(){
+  cbItemId=null;
+  document.getElementById('cb-painel-titulo').textContent='Novo movimento';
+  document.getElementById('cb-data').value=new Date().toISOString().substring(0,10);
+  document.getElementById('cb-tipo').value='';
+  document.getElementById('cb-categoria').value='';
+  document.getElementById('cb-descricao').value='';
+  document.getElementById('cb-valor').value='';
+  document.getElementById('cb-meio').value='';
+  document.getElementById('cb-cliente').value='';
+  document.getElementById('cb-fatura-interna').value='';
+  document.getElementById('cb-estado-fatura').value='';
+  document.getElementById('cb-observacoes').value='';
+  document.getElementById('cb-fatura-file').value='';
+  document.getElementById('cb-fatura-ok').style.display='none';
+  document.getElementById('cb-categoria-wrap').style.display='none';
+  document.getElementById('cb-cliente-wrap').style.display='none';
+  document.getElementById('cb-painel').classList.add('open');
+  document.getElementById('cb-overlay').classList.add('show');
+}
+
+function abrirContabEditar(itemId){
+  const i=todosMovimentos.find(r=>r.id===itemId);if(!i)return;
+  cbItemId=itemId;
+  document.getElementById('cb-painel-titulo').textContent=i[CB.descricao]||'Movimento';
+  document.getElementById('cb-data').value=i[CB.data]?i[CB.data].substring(0,10):'';
+  document.getElementById('cb-tipo').value=i[CB.tipo]||'';
+  document.getElementById('cb-categoria').value=i[CB.categoria]||'';
+  document.getElementById('cb-descricao').value=i[CB.descricao]||'';
+  document.getElementById('cb-valor').value=i[CB.valor]||'';
+  document.getElementById('cb-meio').value=i[CB.meio]||'';
+  document.getElementById('cb-cliente').value=i[CB.cliente]||'';
+  document.getElementById('cb-fatura-interna').value=i[CB.faturaInterna]||'';
+  document.getElementById('cb-estado-fatura').value=i[CB.estadoFatura]||'';
+  document.getElementById('cb-observacoes').value=i[CB.observacoes]||'';
+  document.getElementById('cb-fatura-file').value='';
+  document.getElementById('cb-fatura-ok').style.display=i[CB.ligacaoFatura]?'block':'none';
+  if(i[CB.ligacaoFatura])document.getElementById('cb-fatura-ok-nome').textContent='Fatura já carregada';
+  onCbTipoChange();
+  document.getElementById('cb-painel').classList.add('open');
+  document.getElementById('cb-overlay').classList.add('show');
+}
+
+function fecharContabPainel(){
+  document.getElementById('cb-painel').classList.remove('open');
+  document.getElementById('cb-overlay').classList.remove('show');
+}
+
+async function guardarContab(){
+  const descricao=document.getElementById('cb-descricao').value.trim();
+  const tipo=document.getElementById('cb-tipo').value;
+  const valor=document.getElementById('cb-valor').value;
+  if(!descricao||!tipo||!valor){showToast('Preenche descrição, tipo e valor.','error');return;}
+
+  // Upload fatura se existir
+  let ligacaoFatura=cbItemId?((todosMovimentos.find(i=>i.id===cbItemId)||{})[CB.ligacaoFatura]||''):'';
+  const file=document.getElementById('cb-fatura-file').files[0];
+  if(file&&bibliotecaFaturasId){
+    try{
+      const ano=new Date().getFullYear();
+      const mes=String(new Date().getMonth()+1).padStart(2,'0')+' '+MESES_PT[new Date().getMonth()];
+      // Criar pasta ano/mes se não existir
+      await graphPost(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root/children`,{name:String(ano),folder:{},'@microsoft.graph.conflictBehavior':'replace'});
+      const anoFolder=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root:/${ano}:`);
+      await graphPost(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${anoFolder.id}/children`,{name:mes,folder:{},'@microsoft.graph.conflictBehavior':'replace'});
+      const mesFolder=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root:/${ano}/${mes}:`);
+      const ab=await file.arrayBuffer();
+      const uploaded=await (async()=>{
+        await renovarToken();
+        const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesFolder.id}:/${file.name}:/content`,{
+          method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type},body:ab
+        });
+        return r.json();
+      })();
+      ligacaoFatura=uploaded.webUrl||'';
+      document.getElementById('cb-fatura-ok').style.display='block';
+      document.getElementById('cb-fatura-ok-nome').textContent=file.name;
+    }catch(e){showToast('Aviso: fatura não carregada — '+e.message,'');}
+  }
+
+  const body={
+    [CB.titulo]:descricao.substring(0,50),
+    [CB.data]:document.getElementById('cb-data').value||null,
+    [CB.tipo]:tipo,
+    [CB.categoria]:document.getElementById('cb-categoria').value,
+    [CB.descricao]:descricao,
+    [CB.valor]:parseFloat(valor),
+    [CB.meio]:document.getElementById('cb-meio').value,
+    [CB.cliente]:document.getElementById('cb-cliente').value,
+    [CB.faturaInterna]:document.getElementById('cb-fatura-interna').value,
+    [CB.estadoFatura]:document.getElementById('cb-estado-fatura').value,
+    [CB.ligacaoFatura]:ligacaoFatura,
+    [CB.observacoes]:document.getElementById('cb-observacoes').value,
+  };
+
+  try{
+    if(cbItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${cbItemId}/fields`,body);
+      const idx=todosMovimentos.findIndex(i=>i.id===cbItemId);
+      if(idx>-1)Object.assign(todosMovimentos[idx],body);
+      showToast('Guardado!','success');
+    }else{
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items`,{fields:body});
+      showToast('Movimento criado!','success');
+      await carregarContabilidade();
+    }
+    fecharContabPainel();
+    filtrarContabilidade();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+function exportarMapaMensal(){
+  const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
+  const lista=todosMovimentos.filter(i=>i[CB.data]&&MESES_PT[new Date(i[CB.data]).getMonth()]===mes);
+  if(!lista.length){showToast('Sem movimentos para exportar','');return;}
+  // Gerar CSV
+  const header='Data,Tipo,Categoria,Descrição,Valor,Meio Pagamento,Cliente,Nº Fatura Interna,Estado Fatura';
+  const rows=lista.map(i=>[
+    fmtData(i[CB.data]),
+    i[CB.tipo]||'',i[CB.categoria]||'',
+    `"${(i[CB.descricao]||'').replace(/"/g,'""')}"`,
+    i[CB.valor]||0,
+    i[CB.meio]||'',i[CB.cliente]||'',
+    i[CB.faturaInterna]||'',i[CB.estadoFatura]||''
+  ].join(','));
+  const csv='\uFEFF'+[header,...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Contabilidade_${mes}_${new Date().getFullYear()}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  showToast(`Mapa de ${mes} exportado!`,'success');
 }
 
 async function init(){
