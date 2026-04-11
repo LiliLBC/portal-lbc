@@ -1999,7 +1999,14 @@ function calcularCC(){
 
 let ccClienteSeleccionado=null,ccSubpastas=[];
 
-function filtrarCCCliente(){
+async function filtrarCCCliente(){
+  // Carregar pastas se ainda não estiverem disponíveis
+  if(!todasPastasClientes.length && bibliotecaProcessosId){
+    try{
+      const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
+      todasPastasClientes=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
+    }catch(e){console.warn(e);}
+  }
   const q=(document.getElementById('cc-cliente-search').value||'').toLowerCase().trim();
   const dd=document.getElementById('cc-cliente-dropdown');
   if(!q||!todasPastasClientes.length){dd.style.display='none';return;}
