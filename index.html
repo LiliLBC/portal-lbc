@@ -2678,10 +2678,15 @@ ${extratoUrl?`<div class="extrato">📄 Extrato bancário: <a href="${extratoUrl
 </table>
 </body></html>`;
 
-  const w=window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
-  setTimeout(()=>w.print(),800);
+  // Download HTML como ficheiro
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`Contabilidade_${mes}_${ano}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Mapa de ${mes} ${ano} exportado!`,'success');
 }
 
 async function corrigirLinksAbrilParaMarco(){
