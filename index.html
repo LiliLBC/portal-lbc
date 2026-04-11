@@ -339,9 +339,6 @@ tbody tr:hover td{background:#FAFAF8}
           <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
           <div class="metric-card"><div class="metric-label">Suprimentos</div><div class="metric-value" style="color:var(--red)" id="m-suprimentos">—</div><div class="metric-sub" id="m-suprimentos-sub">requer atenção</div></div>
         </div>
-        <div style="margin-bottom:.75rem">
-          <button class="btn btn-sm" onclick="corrigirLinksAbrilParaMarco()" style="color:var(--amber);border-color:var(--amber)">🔧 Corrigir links Abril→Março</button>
-        </div>
         <div class="dash-section">
           <div class="dash-section-header">
             <div><div class="dash-section-title">Suprimentos pendentes</div><div class="dash-section-sub">Requerem atenção urgente</div></div>
@@ -2582,84 +2579,109 @@ async function exportarMapaMensal(){
   const ano=new Date().getFullYear();
   const lista=todosMovimentos.filter(i=>i[CB.data]&&MESES_PT[new Date(i[CB.data]).getMonth()]===mes);
   if(!lista.length){showToast('Sem movimentos para exportar','');return;}
-  showToast('A gerar Excel...','');
-
-  // Carregar SheetJS se necessário
-  if(!window.XLSX){
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res; s.onerror=rej;
-      document.head.appendChild(s);
-    });
-  }
-
-  const extratoUrl=localStorage.getItem(`lbc_extrato_${ano}_${mes}`)||'';
   const lista_ord=[...lista].sort((a,b)=>new Date(a[CB.data]||0)-new Date(b[CB.data]||0));
-
-  // Calcular totais
+  const extratoUrl=localStorage.getItem(`lbc_extrato_${ano}_${mes}`)||'';
   const totalDespesa=lista_ord.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalCliente=lista_ord.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalIva=lista_ord.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
   const totalSemFat=lista_ord.filter(i=>i[CB.estadoFatura]==='Sem fatura').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  const fmt=v=>parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
 
-  const wb=XLSX.utils.book_new();
+  const linhasTabela=lista_ord.map((i,idx)=>{
+    const isDespesa=i[CB.tipo]==='Despesa empresa';
+    const corV=isDespesa?'#C0392B':'#B7800A';
+    const corE=i[CB.estadoFatura]==='Sem fatura'?'#C0392B':i[CB.estadoFatura]==='Com fatura'?'#2D7D4F':'#888';
+    const link=i[CB.ligacaoFatura]?`<a href="${escHtml(i[CB.ligacaoFatura])}" style="color:#2471A3;font-size:9px">📄 Ver</a>`:'—';
+    return`<tr style="background:${idx%2===0?'#F2ECE6':'#fff'}">
+      <td style="padding:4px 6px;font-size:9px;color:#7A6355;text-align:center">${fmtData(i[CB.data])}</td>
+      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.tipo]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.categoria]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.descricao]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px;text-align:right;color:${corV};font-weight:600">${fmt(i[CB.valor])}</td>
+      <td style="padding:4px 6px;font-size:9px;text-align:right;color:#2471A3">${parseFloat(i[CB.iva]||0)>0?fmt(i[CB.iva]):'—'}</td>
+      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.meio]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.cliente]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.faturaInterna]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px;text-align:center;color:${corE};font-weight:600">${escHtml(i[CB.estadoFatura]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px;text-align:center">${link}</td>
+    </tr>`;
+  }).join('');
 
-  // ── Folha principal ──
-  const wsData=[];
-  // Linha título
-  wsData.push(['LBC Solicitadora SP RL','','','','','','','','','','']);
-  wsData.push([`Mapa de Contabilidade — ${mes} ${ano}`,'','','','','','','','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  // Resumo
-  wsData.push(['Despesas empresa',totalDespesa.toFixed(2)+'€','','Pag. conta cliente',totalCliente.toFixed(2)+'€','','Total IVA',totalIva.toFixed(2)+'€','','⚠ Sem fatura',totalSemFat.toFixed(2)+'€']);
-  if(extratoUrl) wsData.push([`Extrato bancário: ${extratoUrl}`,'','','','','','','','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  // Cabeçalho tabela
-  wsData.push(['Data','Tipo','Categoria','Descrição','Valor €','IVA €','Meio Pagamento','Cliente','Nº Fatura Interna','Estado Fatura','Ver Fatura']);
-  // Dados
-  lista_ord.forEach(i=>{
-    wsData.push([
-      fmtData(i[CB.data]),
-      i[CB.tipo]||'',
-      i[CB.categoria]||'',
-      i[CB.descricao]||'',
-      parseFloat(i[CB.valor]||0),
-      parseFloat(i[CB.iva]||0),
-      i[CB.meio]||'',
-      i[CB.cliente]||'',
-      i[CB.faturaInterna]||'',
-      i[CB.estadoFatura]||'',
-      i[CB.ligacaoFatura]||'',
-    ]);
-  });
-  // Linha total
-  wsData.push(['','','','TOTAL',lista_ord.reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0).toFixed(2)+'€',totalIva.toFixed(2)+'€','','','','','']);
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page{size:A4 portrait;margin:15mm}
+  body{font-family:Calibri,Arial,sans-serif;color:#4A3728;margin:0;padding:0}
+  .header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #C8956C;padding-bottom:12px;margin-bottom:12px}
+  .header-text h1{margin:0;font-size:18px;color:#A67550;font-weight:700}
+  .header-text h2{margin:2px 0 0;font-size:12px;color:#7A6355;font-weight:400;font-style:italic}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .card{border:1.5px solid;border-radius:6px;padding:8px 10px}
+  .card-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .card-value{font-size:16px;font-weight:700}
+  .extrato{font-size:9px;color:#2471A3;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;font-size:9px}
+  thead tr{background:#E8DDD0}
+  thead th{padding:5px 6px;font-size:8px;font-weight:700;color:#4A3728;text-align:left;border-bottom:2px solid #C8956C}
+  thead th.num{text-align:right}
+  tbody tr td{border-bottom:0.5px solid #DDD5CC}
+  .total-row td{background:#E8DDD0;font-weight:700;font-size:9px;padding:5px 6px;border-top:2px solid #C8956C}
+  @media print{a{color:#2471A3!important;text-decoration:underline!important}}
+</style>
+</head><body>
+<div class="header">
+  <div class="header-text">
+    <h1>LBC Solicitadora SP RL</h1>
+    <h2>Mapa de Contabilidade — ${mes} ${ano}</h2>
+  </div>
+</div>
+<div class="cards">
+  <div class="card" style="border-color:#C0392B;color:#C0392B">
+    <div class="card-label">Despesas empresa</div>
+    <div class="card-value">${fmt(totalDespesa)}</div>
+  </div>
+  <div class="card" style="border-color:#B7800A;color:#B7800A">
+    <div class="card-label">Pag. conta cliente</div>
+    <div class="card-value">${fmt(totalCliente)}</div>
+  </div>
+  <div class="card" style="border-color:#2471A3;color:#2471A3">
+    <div class="card-label">Total IVA</div>
+    <div class="card-value">${fmt(totalIva)}</div>
+  </div>
+  <div class="card" style="border-color:#C0392B;color:#C0392B">
+    <div class="card-label">⚠ Sem fatura</div>
+    <div class="card-value">${fmt(totalSemFat)}</div>
+  </div>
+</div>
+${extratoUrl?`<div class="extrato">📄 Extrato bancário: <a href="${extratoUrl}">${extratoUrl}</a></div>`:''}
+<table>
+  <thead><tr>
+    <th style="width:8%">Data</th>
+    <th style="width:13%">Tipo</th>
+    <th style="width:9%">Categoria</th>
+    <th style="width:18%">Descrição</th>
+    <th class="num" style="width:7%">Valor €</th>
+    <th class="num" style="width:6%">IVA €</th>
+    <th style="width:8%">Meio Pag.</th>
+    <th style="width:11%">Cliente</th>
+    <th style="width:8%">Nº Fatura</th>
+    <th style="width:7%">Estado</th>
+    <th style="width:5%">Fatura</th>
+  </tr></thead>
+  <tbody>${linhasTabela}</tbody>
+  <tfoot><tr class="total-row">
+    <td colspan="4" style="text-align:right">TOTAL</td>
+    <td style="text-align:right;color:#C0392B">${fmt(totalDespesa+totalCliente)}</td>
+    <td style="text-align:right;color:#2471A3">${fmt(totalIva)}</td>
+    <td colspan="5"></td>
+  </tr></tfoot>
+</table>
+</body></html>`;
 
-  const ws=XLSX.utils.aoa_to_sheet(wsData);
-
-  // Larguras colunas
-  ws['!cols']=[{wch:12},{wch:26},{wch:16},{wch:38},{wch:12},{wch:10},{wch:16},{wch:20},{wch:16},{wch:14},{wch:40}];
-
-  XLSX.utils.book_append_sheet(wb,ws,`${mes} ${ano}`);
-
-  // ── Folha resumo por categoria ──
-  const cats=['Renda','Comunicações','Consumíveis','Impostos','Avencas','Restauração','Contabilidade','Outras'];
-  const wsRes=[['Resumo por Categoria — '+mes+' '+ano,'',''],['','',''],['Categoria','Total €','% do Total']];
-  const totalGeral=totalDespesa+totalCliente;
-  cats.forEach(cat=>{
-    const total=lista_ord.filter(i=>i[CB.categoria]===cat).reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
-    wsRes.push([cat,total.toFixed(2)+'€',totalGeral?((total/totalGeral)*100).toFixed(1)+'%':'0%']);
-  });
-  wsRes.push(['Pagamento por conta cliente',totalCliente.toFixed(2)+'€',totalGeral?((totalCliente/totalGeral)*100).toFixed(1)+'%':'0%']);
-  wsRes.push(['TOTAL',(totalDespesa+totalCliente).toFixed(2)+'€','100%']);
-  const ws2=XLSX.utils.aoa_to_sheet(wsRes);
-  ws2['!cols']=[{wch:30},{wch:16},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws2,'Resumo por Categoria');
-
-  // Download
-  XLSX.writeFile(wb,`Contabilidade_${mes}_${ano}.xlsx`);
-  showToast(`Mapa de ${mes} ${ano} exportado!`,'success');
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),800);
 }
 
 async function corrigirLinksAbrilParaMarco(){
