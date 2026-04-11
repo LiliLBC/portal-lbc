@@ -429,7 +429,7 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="filter-row" style="padding:.2rem .5rem .4rem;flex-shrink:0">
               <button class="filter-chip active" onclick="filtrarRegistos('',this)">Todas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Em curso',this)">Em curso</button>
-              <button class="filter-chip" onclick="filtrarRegistos('Concluído',this)">Concluídas</button>
+              <button class="filter-chip" onclick="filtrarRegistos('Concluido',this)">Concluídas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
             </div>
             <div id="reg-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
@@ -552,7 +552,9 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group">
               <div class="field-label">Estado</div>
               <select class="form-select" id="p-estado">
-                <option>Agendado</option><option>Em curso</option><option>Concluído</option><option>Suprimento</option><option>Desistência</option>
+                <option value="">—</option>
+                <option>Concluido</option><option>Suprimento</option><option>Desistência</option>
+                <option>Em curso</option><option>Apresentado</option><option>Depositado</option>
               </select>
             </div>
 
@@ -881,7 +883,7 @@ tbody tr:hover td{background:#FAFAF8}
               <select class="form-select" id="cc-estado">
                 <option>A pagamento</option>
                 <option>Pago parcial</option>
-                <option>Concluído</option>
+                <option>Concluido</option>
               </select>
             </div>
 
@@ -1203,7 +1205,7 @@ async function resolverSiteIds(){
 
 function fmtData(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('pt-PT')}
 function nomePasta(n,d){if(!n||!d)return'';return d.replace(/-/g,'')+' '+n.toUpperCase().trim()}
-function estadoBadge(e){const m={'Concluído':'badge-green','Em curso':'badge-amber','Suprimento':'badge-red','Agendado':'badge-blue'};return`<span class="badge ${m[e]||'badge-gray'}">${e||'—'}</span>`}
+function estadoBadge(e){const m={'Concluido':'badge-green','Em curso':'badge-amber','Suprimento':'badge-red','Agendado':'badge-blue'};return`<span class="badge ${m[e]||'badge-gray'}">${e||'—'}</span>`}
 function produtoBadge(p){return p?`<span class="badge badge-purple">${p}</span>`:'—'}
 function prioridadeBadge(p){const m={'Urgente':'badge-red','Normal':'badge-blue','Baixa':'badge-gray'};return`<span class="badge ${m[p]||'badge-gray'}">${p||'—'}</span>`}
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500)}
@@ -1272,7 +1274,7 @@ async function carregarDashboard(){
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
     todosRegistos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     const total=todosRegistos.length,
-          concl=todosRegistos.filter(i=>i[F.estado]==='Concluído').length,
+          concl=todosRegistos.filter(i=>i[F.estado]==='Concluido').length,
           emcurso=todosRegistos.filter(i=>i[F.estado]==='Em curso').length,
           sups=todosRegistos.filter(i=>i[F.estado]==='Suprimento').length;
 
@@ -2171,7 +2173,7 @@ function renderCC(lista){
     const rec=parseFloat(i[CC.recebido]||0);
     const total=hon+gas;
     const saldo=total-rec;
-    const estadoCor={'A pagamento':'badge-amber','Pago parcial':'badge-blue','Concluído':'badge-green'};
+    const estadoCor={'A pagamento':'badge-amber','Pago parcial':'badge-blue','Concluido':'badge-green'};
     return`<div class="reg-list-item" onclick="abrirCCEditar('${i.id}')">
       <div class="reg-list-main">
         <div class="reg-list-nome">${escHtml(i[CC.cliente]||'—')}</div>
