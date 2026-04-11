@@ -906,21 +906,26 @@ tbody tr:hover td{background:#FAFAF8}
       <!-- CONTABILIDADE -->
       <div class="screen" id="screen-contabilidade">
         <!-- RESUMO MENSAL -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:1rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.6rem;margin-bottom:1rem">
           <div class="metric-card">
             <div class="metric-label">Despesas empresa</div>
             <div class="metric-value" id="cb-total-despesa" style="color:var(--red)">—</div>
             <div class="metric-sub" id="cb-mes-label">—</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Pagamentos por conta cliente</div>
+            <div class="metric-label">Pag. por conta cliente</div>
             <div class="metric-value" id="cb-total-cliente" style="color:var(--amber)">—</div>
             <div class="metric-sub">não são despesas</div>
           </div>
           <div class="metric-card">
-            <div class="metric-label">Total saídas</div>
-            <div class="metric-value" id="cb-total-geral" style="color:var(--text)">—</div>
-            <div class="metric-sub">despesa + clientes</div>
+            <div class="metric-label">Total IVA</div>
+            <div class="metric-value" id="cb-total-geral" style="color:var(--accent)">—</div>
+            <div class="metric-sub">IVA suportado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">⚠ Sem fatura</div>
+            <div class="metric-value" id="cb-sem-fatura" style="color:var(--red)">—</div>
+            <div class="metric-sub">risco de multa</div>
           </div>
         </div>
 
@@ -947,10 +952,15 @@ tbody tr:hover td{background:#FAFAF8}
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" onclick="carregarContabilidade()">↺ Atualizar</button>
             <button class="btn btn-sm" onclick="exportarMapaMensal()">⬇ Exportar mês</button>
+            <button class="btn btn-sm" id="cb-btn-extrato" onclick="uploadExtrato()" title="Carregar extrato bancário do mês">📎 Extrato</button>
+            <span id="cb-extrato-link" style="display:none;font-size:11px;align-self:center">
+              <a id="cb-extrato-url" href="#" target="_blank" style="color:var(--accent)">📄 Ver extrato</a>
+            </span>
             <button class="btn btn-primary btn-sm" onclick="abrirContabNovo()">+ Novo</button>
           </div>
         </div>
 
+        <input type="file" id="cb-extrato-file" accept=".pdf,.xlsx,.csv" style="display:none" onchange="processarUploadExtrato()">
         <div id="cb-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
         <div id="cb-list" style="display:none"></div>
       </div>
@@ -995,6 +1005,10 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group">
               <div class="field-label">Valor € *</div>
               <input class="form-input" id="cb-valor" type="number" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">IVA €</div>
+              <input class="form-input" id="cb-iva" type="number" step="0.01" placeholder="0.00">
             </div>
             <div class="field-group">
               <div class="field-label">Meio de pagamento</div>
@@ -1069,7 +1083,7 @@ const LISTA_TAREFAS='Tarefas_Escritorio';
 const LISTA_CONTA='Processos_ContaCorrente';
 const LISTA_CONTAB='Contabilidade';
 const BIBLIOTECA_FATURAS='FATURAS';
-const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',meio:'Meio_Pagamento',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes'};
+const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',iva:'IVA',meio:'Meio_Pagamento',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes'};
 const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
@@ -2334,10 +2348,14 @@ function filtrarContabilidade(){
   // Actualizar métricas
   const despesa=lista.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const cliente=lista.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  const totalIva=lista.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
+  const semFatura=lista.filter(i=>i[CB.estadoFatura]==='Sem fatura').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   document.getElementById('cb-total-despesa').textContent=despesa.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-total-cliente').textContent=cliente.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
-  document.getElementById('cb-total-geral').textContent=(despesa+cliente).toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
+  document.getElementById('cb-total-geral').textContent=totalIva.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
+  document.getElementById('cb-sem-fatura').textContent=semFatura.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-mes-label').textContent=mes||'todos os meses';
+  verificarExtratoMes();
   renderContabilidade(lista);
 }
 
@@ -2385,6 +2403,7 @@ function abrirContabNovo(){
   document.getElementById('cb-fatura-interna').value='';
   document.getElementById('cb-estado-fatura').value='';
   document.getElementById('cb-observacoes').value='';
+  document.getElementById('cb-iva').value='';
   document.getElementById('cb-fatura-file').value='';
   document.getElementById('cb-fatura-ok').style.display='none';
   document.getElementById('cb-categoria-wrap').style.display='none';
@@ -2402,6 +2421,7 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-categoria').value=i[CB.categoria]||'';
   document.getElementById('cb-descricao').value=i[CB.descricao]||'';
   document.getElementById('cb-valor').value=i[CB.valor]||'';
+  document.getElementById('cb-iva').value=i[CB.iva]||'';
   document.getElementById('cb-meio').value=i[CB.meio]||'';
   document.getElementById('cb-cliente').value=i[CB.cliente]||'';
   document.getElementById('cb-fatura-interna').value=i[CB.faturaInterna]||'';
@@ -2459,6 +2479,7 @@ async function guardarContab(){
     [CB.categoria]:document.getElementById('cb-categoria').value,
     [CB.descricao]:descricao,
     [CB.valor]:parseFloat(valor),
+    [CB.iva]:parseFloat(document.getElementById('cb-iva').value||0),
     [CB.meio]:document.getElementById('cb-meio').value,
     [CB.cliente]:document.getElementById('cb-cliente').value,
     [CB.faturaInterna]:document.getElementById('cb-fatura-interna').value,
@@ -2483,25 +2504,86 @@ async function guardarContab(){
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
+let extratoUrlAtual='';
+
+function uploadExtrato(){
+  document.getElementById('cb-extrato-file').click();
+}
+
+async function processarUploadExtrato(){
+  const file=document.getElementById('cb-extrato-file').files[0];
+  if(!file||!bibliotecaFaturasId)return;
+  const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
+  const ano=new Date().getFullYear();
+  const nomePastaMes=String(ano).slice(-2)+' '+mes.substring(0,3);
+  const nomePastaMesFull=String(ano)+'/'+String(MESES_PT.indexOf(mes)+1).padStart(2,'0')+' '+mes;
+  showToast('A carregar extrato...','');
+  try{
+    // Criar estrutura de pastas
+    await renovarToken();
+    const criarPasta=async(parentId,nome)=>{
+      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${parentId}/children`,{
+        method:'POST',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+        body:JSON.stringify({name:nome,folder:{},'@microsoft.graph.conflictBehavior':'replace'})
+      });
+      return (await r.json()).id;
+    };
+    const rootData=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root`);
+    const anoId=await criarPasta(rootData.id,String(ano));
+    const mesId=await criarPasta(anoId,String(MESES_PT.indexOf(mes)+1).padStart(2,'0')+' '+mes);
+    // Upload ficheiro
+    const ab=await file.arrayBuffer();
+    const nomeExtrato=`Extrato_${mes}_${ano}.${file.name.split('.').pop()}`;
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesId}:/${nomeExtrato}:/content`,{
+      method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type},body:ab
+    });
+    const uploaded=await r.json();
+    extratoUrlAtual=uploaded.webUrl||'';
+    // Guardar em localStorage para este mês
+    localStorage.setItem(`lbc_extrato_${ano}_${mes}`,extratoUrlAtual);
+    // Mostrar link
+    document.getElementById('cb-extrato-url').href=extratoUrlAtual;
+    document.getElementById('cb-extrato-link').style.display='flex';
+    showToast(`Extrato de ${mes} carregado!`,'success');
+  }catch(e){showToast('Erro ao carregar extrato: '+e.message,'error');}
+}
+
+function verificarExtratoMes(){
+  const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
+  const ano=new Date().getFullYear();
+  const url=localStorage.getItem(`lbc_extrato_${ano}_${mes}`)||'';
+  extratoUrlAtual=url;
+  const linkEl=document.getElementById('cb-extrato-link');
+  if(url){
+    document.getElementById('cb-extrato-url').href=url;
+    linkEl.style.display='flex';
+  }else{
+    linkEl.style.display='none';
+  }
+}
+
 function exportarMapaMensal(){
   const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
+  const ano=new Date().getFullYear();
   const lista=todosMovimentos.filter(i=>i[CB.data]&&MESES_PT[new Date(i[CB.data]).getMonth()]===mes);
   if(!lista.length){showToast('Sem movimentos para exportar','');return;}
-  // Gerar CSV
-  const header='Data,Tipo,Categoria,Descrição,Valor,Meio Pagamento,Cliente,Nº Fatura Interna,Estado Fatura';
-  const rows=lista.map(i=>[
+  const extratoUrl=localStorage.getItem(`lbc_extrato_${ano}_${mes}`)||'';
+  const linhaExtrato=extratoUrl?`"Extrato bancário: ${extratoUrl}"\n`:'';
+  const cols='Data,Tipo,Categoria,Descrição,Valor €,IVA €,Meio Pagamento,Cliente,Nº Fatura Interna,Estado Fatura,Link Fatura';
+  const rows=[...lista].sort((a,b)=>new Date(a[CB.data]||0)-new Date(b[CB.data]||0)).map(i=>[
     fmtData(i[CB.data]),
     i[CB.tipo]||'',i[CB.categoria]||'',
     `"${(i[CB.descricao]||'').replace(/"/g,'""')}"`,
-    i[CB.valor]||0,
+    i[CB.valor]||0,i[CB.iva]||0,
     i[CB.meio]||'',i[CB.cliente]||'',
-    i[CB.faturaInterna]||'',i[CB.estadoFatura]||''
+    i[CB.faturaInterna]||'',i[CB.estadoFatura]||'',
+    i[CB.ligacaoFatura]||''
   ].join(','));
-  const csv='\uFEFF'+[header,...rows].join('\n');
+  const csv='\uFEFF'+linhaExtrato+[cols,...rows].join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download=`Contabilidade_${mes}_${new Date().getFullYear()}.csv`;
+  a.href=url;a.download=`Contabilidade_${mes}_${ano}.csv`;
   a.click();URL.revokeObjectURL(url);
   showToast(`Mapa de ${mes} exportado!`,'success');
 }
