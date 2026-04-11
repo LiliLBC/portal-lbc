@@ -2483,7 +2483,6 @@ async function guardarContab(){
     }catch(e){showToast('Aviso: fatura não carregada — '+e.message,'');}
   }
 
-  const dataVal=document.getElementById('cb-data').value;
   const body={
     [CB.titulo]:descricao.substring(0,255),
     [CB.data]:dataVal?new Date(dataVal).toISOString():null,
