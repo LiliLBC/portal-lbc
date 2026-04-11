@@ -596,19 +596,19 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Val. Procurador €</div>
-              <input class="form-input" id="p-valorProc" placeholder="0,00">
+              <input class="form-input" id="p-valorProc" placeholder="0,00" oninput="calcMargemLiq()">
             </div>
             <div class="field-group">
               <div class="field-label">Val. Serviço €</div>
-              <input class="form-input" id="p-valorServico" placeholder="0,00">
+              <input class="form-input" id="p-valorServico" placeholder="0,00" oninput="calcMargemLiq()">
             </div>
             <div class="field-group">
               <div class="field-label">Margem Líquida €</div>
-              <input class="form-input" id="p-margemLiq" placeholder="0,00">
+              <input class="form-input" id="p-margemLiq" placeholder="0,00" readonly style="background:var(--surface2);font-weight:500">
             </div>
             <div class="field-group">
               <div class="field-label">Custo Suprimento €</div>
-              <input class="form-input" id="p-custoSup" placeholder="0,00">
+              <input class="form-input" id="p-custoSup" placeholder="0,00" oninput="calcMargemLiq()">
             </div>
             <div class="field-group">
               <div class="field-label">Data Resolução Sup.</div>
@@ -1421,6 +1421,14 @@ function renderRegistos(lista,q=''){
   atualizarMetricas(todosRegistosReg);
 }
 
+function calcMargemLiq(){
+  const serv=parseFloat(document.getElementById('p-valorServico').value||0);
+  const proc=parseFloat(document.getElementById('p-valorProc').value||0);
+  const sup=parseFloat(document.getElementById('p-custoSup').value||0);
+  const margem=serv-proc-sup;
+  document.getElementById('p-margemLiq').value=margem%1===0?margem:margem.toFixed(2);
+}
+
 function atualizarMetricas(lista){
   const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const anoAtual=new Date().getFullYear();
@@ -1435,7 +1443,7 @@ function atualizarMetricas(lista){
   const part=anuais.filter(i=>!((i[F.produto]||'').toUpperCase().includes('CGD')||(i[F.entidade]||i[F.produto]||'').toUpperCase().includes('REMAX')));
   const grupos={CGD:cgd,REMAX:remax,Particulares:part};
   const media=arr=>{
-    const vals=arr.map(i=>parseFloat((i[F.valorServico]||'0').replace(',','.'))).filter(v=>v>0);
+    const vals=arr.map(i=>{const v=i[F.valorServico];return typeof v==='number'?v:parseFloat(String(v||'0').replace(',','.'));}).filter(v=>v>0);
     return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
   };
   [['cgd','CGD'],['remax','REMAX'],['part','Particulares']].forEach(([k,g])=>{
@@ -1454,7 +1462,7 @@ function atualizarMetricas(lista){
     const key=`${ano}|${String(d.getMonth()).padStart(2,'0')}|${mes}|${ent}`;
     if(!tabMap[key])tabMap[key]={ano,mes,mesN:d.getMonth(),ent,n:0,total:0};
     tabMap[key].n++;
-    tabMap[key].total+=parseFloat((i[F.valorServico]||'0').replace(',','.'));
+    tabMap[key].total+=(typeof i[F.valorServico]==='number'?i[F.valorServico]:parseFloat(String(i[F.valorServico]||'0').replace(',','.')));
   });
   window._tabelaMetricasDados=Object.values(tabMap).sort((a,b)=>b.ano-a.ano||b.mesN-a.mesN||a.ent.localeCompare(b.ent));
   renderTabelaMetricas(window._tabelaMetricasDados);
@@ -1575,6 +1583,7 @@ function abrirPainelRegisto(itemId){
   sv('p-margemLiq').value=i[F.margemLiq]||'';
   sv('p-custoSup').value=i[F.custoSup]||'';
   sv('p-dataResolSup').value=i[F.dataResolSup]?i[F.dataResolSup].substring(0,10):'';
+  calcMargemLiq();
   sv('p-observacoes').value=i[F.observacoes]||'';
   abrirPainel();
 }
@@ -1601,7 +1610,6 @@ async function guardarPainel(){
     [F.entidade]:sv('p-entidade'),[F.procurador]:sv('p-procurador'),[F.estado]:sv('p-estado'),
     [F.predio]:sv('p-predio'),[F.freguesia]:sv('p-freguesia'),[F.concelho]:sv('p-concelho'),
     [F.apRegisto]:sv('p-apRegisto'),[F.apData]:sv('p-apData')||null,[F.apConserv]:sv('p-apConserv'),
-    [F.pago]:sv('p-pago'),
     [F.numProcesso]:sv('p-numProcesso'),
     [F.numPedido]:sv('p-numPedido'),[F.codDeposito]:sv('p-codDeposito'),
     [F.montCredito]:sv('p-montCredito'),[F.valorProc]:sv('p-valorProc'),
@@ -1609,6 +1617,8 @@ async function guardarPainel(){
     [F.custoSup]:sv('p-custoSup'),[F.dataResolSup]:sv('p-dataResolSup')||null,
     [F.observacoes]:sv('p-observacoes'),[F.ligacaoPasta]:painelPastaUrl||'',
   };
+  const pagoVal=sv('p-pago');
+  if(pagoVal) body[F.pago]=pagoVal;
   try{
     if(painelItemId){
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${painelItemId}/fields`,body);
