@@ -176,6 +176,14 @@ tbody tr:hover td{background:#FAFAF8}
 .construcao-icon{font-size:36px;margin-bottom:.5rem}
 .construcao-title{font-size:15px;font-weight:600;color:var(--text-muted)}
 .construcao-sub{font-size:12px;line-height:1.6;max-width:300px}
+/* ANEXOS SUPRIMENTOS */
+.anexo-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.anexo-item:last-child{border-bottom:none}
+.anexo-nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--blue)}
+.anexo-nome:hover{text-decoration:underline}
+.anexo-data{font-size:10px;color:var(--text-faint);white-space:nowrap}
+.upload-zone{border:1.5px dashed var(--border-strong);border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;font-size:12px;color:var(--text-muted);transition:all .15s;margin-top:.4rem}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-light);color:var(--accent-dark)}
 .tarefa-form-inline{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow)}
 
 /* DROPDOWN CONTRATOS */
@@ -632,13 +640,30 @@ tbody tr:hover td{background:#FAFAF8}
               <input class="form-input" id="p-dataResolSup" type="date">
             </div>
 
-            <div class="section-divider">Outros</div>
-            <div class="field-group field-full">
-              <div class="field-label">Observações</div>
-              <textarea class="form-textarea" id="p-observacoes" rows="3" placeholder="—"></textarea>
-            </div>
+          </div><!-- fim field-grid -->
+
+          <!-- OBSERVAÇÕES fora do grid para largura total do painel -->
+          <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.25rem">Outros</div>
+          <div class="field-group">
+            <div class="field-label">Observações</div>
+            <textarea class="form-textarea" id="p-observacoes" rows="3" placeholder="—" style="width:100%"></textarea>
           </div>
-        </div>
+
+          <!-- ANEXOS SUPRIMENTOS -->
+          <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem">Anexos (Suprimentos)</div>
+          <div class="field-group">
+            <div class="field-label">Ficheiros em SUPRIMENTOS_ANEXOS</div>
+            <div id="painel-anexos-lista" style="min-height:18px;margin-bottom:.5rem">
+              <span style="font-size:11px;color:var(--text-faint)">—</span>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('painel-file-input').click()">
+              📎 Clica para adicionar ficheiro
+            </div>
+            <input type="file" id="painel-file-input" style="display:none" onchange="uploadAnexoEscritura(this)">
+            <div id="painel-upload-status" style="font-size:11px;margin-top:.4rem;display:none;color:var(--text-muted)"></div>
+          </div>
+
+        </div><!-- fim side-panel-body -->
         <div class="side-panel-footer">
           <button class="btn" onclick="fecharPainel()" style="flex:1">Cancelar</button>
           <button class="btn btn-primary" id="painel-btn-guardar" onclick="guardarPainel()" style="flex:2">
@@ -1113,6 +1138,7 @@ const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',de
 const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
+const BIBLIOTECA_SUPRIMENTOS='SUPRIMENTOS_ANEXOS';
 
 const F={
   titulo:'Title',nome:'Nome_Cliente',data:'DataEscritura',produto:'Produto',
@@ -1131,7 +1157,7 @@ const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Respons
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
-let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null;
+let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null;
 let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
 let todasTarefas=[],tarefasCarregadas=false;
@@ -1208,6 +1234,7 @@ async function resolverSiteIds(){
     const cb=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_CONTAB}'`);
     listaIdContab=cb.value[0]?.id;
     bibliotecaFaturasId=drivesDados.value.find(d=>d.name===BIBLIOTECA_FATURAS)?.id;
+    driveIdSuprimentos=drivesDados.value.find(d=>d.name===BIBLIOTECA_SUPRIMENTOS)?.id;
   }catch(e){console.error('Erro IDs:',e);}
 }
 
@@ -1567,6 +1594,10 @@ function abrirPainelNovo(){
   });
   document.getElementById('p-estado').value='Agendado';
   document.getElementById('p-pago').value='';
+  const laEl=document.getElementById('painel-anexos-lista');
+  if(laEl)laEl.innerHTML='<span style="font-size:11px;color:var(--text-faint)">Preenche os campos do imóvel para activar os anexos.</span>';
+  const stEl=document.getElementById('painel-upload-status');
+  if(stEl){stEl.style.display='none';stEl.textContent='';}
   abrirPainel();
   // Carregar pastas sempre que abre
   carregarPastasPainel();
@@ -1606,7 +1637,7 @@ function abrirPainelRegisto(itemId){
   calcMargemLiq();
   sv('p-observacoes').value=i[F.observacoes]||'';
   abrirPainel();
-}
+  setTimeout(carregarAnexosEscritura,300);
 
 function abrirPainel(){
   document.getElementById('reg-painel').classList.add('open');
@@ -2769,6 +2800,97 @@ async function corrigirLinksAbrilParaMarco(){
     }
     showToast(`${count} links corrigidos com sucesso!`,'success');
   }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+// ─── ANEXOS ESCRITURAS (SUPRIMENTOS_ANEXOS) ───────────────────────────────────
+
+function nomePastaAnexo(){
+  // Formato: AAAAMMDD Prédio Freguesia Concelho  — usa data da escritura
+  const dataEscritura = document.getElementById('p-data')?.value || '';
+  const predio    = (document.getElementById('p-predio')?.value    || '').trim();
+  const freguesia = (document.getElementById('p-freguesia')?.value || '').trim();
+  const concelho  = (document.getElementById('p-concelho')?.value  || '').trim();
+  const partes = [predio, freguesia, concelho].filter(Boolean);
+  if(!partes.length && !dataEscritura) return null;
+  const dataStr = dataEscritura ? dataEscritura.replace(/-/g,'') : 'SEM_DATA';
+  return `${dataStr} ${partes.join(' ')}`.trim().toUpperCase();
+}
+
+async function garantirPastaAnexo(nomePasta){
+  if(!driveIdSuprimentos) throw new Error('Biblioteca SUPRIMENTOS_ANEXOS não encontrada. Verifica se a biblioteca existe no SharePoint.');
+  await renovarToken();
+  const r = await fetch(`${GRAPH_BASE}/drives/${driveIdSuprimentos}/root/children`,{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+    body:JSON.stringify({name:nomePasta,folder:{},['@microsoft.graph.conflictBehavior']:'fail'})
+  });
+  if(!r.ok && r.status!==409) throw new Error(`Erro a criar pasta: ${r.status}`);
+}
+
+async function carregarAnexosEscritura(){
+  const el = document.getElementById('painel-anexos-lista');
+  if(!el) return;
+  const nomePasta = nomePastaAnexo();
+  if(!nomePasta || !driveIdSuprimentos){
+    el.innerHTML='<span style="font-size:11px;color:var(--text-faint)">Preenche Prédio, Freguesia e Data da escritura para ver anexos.</span>';
+    return;
+  }
+  el.innerHTML='<span style="font-size:11px;color:var(--text-faint)">A carregar...</span>';
+  try{
+    await renovarToken();
+    const r = await fetch(`${GRAPH_BASE}/drives/${driveIdSuprimentos}/root:/${encodeURIComponent(nomePasta)}:/children`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(r.status===404){el.innerHTML='<span style="font-size:11px;color:var(--text-faint)">Sem anexos ainda.</span>';return;}
+    if(!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    const ficheiros = (data.value||[]).filter(f=>!f.folder);
+    if(!ficheiros.length){el.innerHTML='<span style="font-size:11px;color:var(--text-faint)">Sem anexos ainda.</span>';return;}
+    el.innerHTML = ficheiros.map(f=>`
+      <div class="anexo-item">
+        <span>📄</span>
+        <a class="anexo-nome" href="${f.webUrl}" target="_blank" title="${escHtml(f.name)}">${escHtml(f.name)}</a>
+        <span class="anexo-data">${fmtData(f.lastModifiedDateTime)}</span>
+      </div>`).join('');
+  }catch(e){
+    el.innerHTML=`<span style="font-size:11px;color:var(--red)">Erro: ${e.message}</span>`;
+  }
+}
+
+async function uploadAnexoEscritura(input){
+  const file = input.files[0]; if(!file) return;
+  input.value='';
+  const status = document.getElementById('painel-upload-status');
+  const nomePasta = nomePastaAnexo();
+  if(!nomePasta){
+    showToast('Preenche Prédio, Freguesia e Data da escritura antes de anexar.','error');
+    return;
+  }
+  if(!driveIdSuprimentos){
+    showToast('Biblioteca SUPRIMENTOS_ANEXOS não encontrada no SharePoint.','error');
+    return;
+  }
+  status.style.display='block';
+  status.textContent=`A preparar pasta "${nomePasta}"...`;
+  try{
+    await garantirPastaAnexo(nomePasta);
+    status.textContent=`A fazer upload de "${file.name}"...`;
+    await renovarToken();
+    const urlUpload = `${GRAPH_BASE}/drives/${driveIdSuprimentos}/root:/${encodeURIComponent(nomePasta)}/${encodeURIComponent(file.name)}:/content`;
+    const r = await fetch(urlUpload,{
+      method:'PUT',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type||'application/octet-stream'},
+      body:file
+    });
+    if(!r.ok) throw new Error(`Erro upload: ${r.status}`);
+    status.textContent='';
+    status.style.display='none';
+    showToast(`"${file.name}" anexado com sucesso!`,'success');
+    carregarAnexosEscritura();
+  }catch(e){
+    status.textContent='Erro: '+e.message;
+    showToast('Erro no upload: '+e.message,'error');
+  }
 }
 
 // ─── CALENDÁRIO DO DASHBOARD ─────────────────────────────────────────────────
