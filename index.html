@@ -345,7 +345,11 @@ tbody tr:hover td{background:#FAFAF8}
           <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
           <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
           <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
-          <div class="metric-card"><div class="metric-label">Suprimentos</div><div class="metric-value" style="color:var(--red)" id="m-suprimentos">—</div><div class="metric-sub" id="m-suprimentos-sub">requer atenção</div></div>
+          <div class="metric-card" style="cursor:pointer" onclick="nav('suprimentos',document.querySelector('[onclick*=suprimentos]'))" title="Ver suprimentos pendentes">
+            <div class="metric-label">Suprimentos — Custo acumulado</div>
+            <div class="metric-value" style="color:var(--red);font-size:20px;letter-spacing:-0.5px" id="m-suprimentos">—</div>
+            <div class="metric-sub" id="m-suprimentos-sub" style="line-height:1.7">A carregar...</div>
+          </div>
         </div>
 
         <!-- LAYOUT: CALENDÁRIO (esquerda) + TAREFAS (direita) -->
@@ -1101,6 +1105,7 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
         <div class="side-panel-footer">
           <button class="btn" onclick="fecharContabPainel()" style="flex:1">Cancelar</button>
+          <button class="btn" id="cb-btn-eliminar" onclick="eliminarContab()" style="display:none;color:var(--red);border-color:var(--red);flex:1" title="Eliminar este movimento">🗑 Eliminar</button>
           <button class="btn btn-primary" onclick="guardarContab()" style="flex:2">Guardar</button>
         </div>
       </div>
@@ -1321,21 +1326,30 @@ async function carregarDashboard(){
     const supsLista=anuais.filter(i=>i[F.estado]==='Suprimento'||i[F.estado]==='Desistência');
     const sups=supsLista.length;
 
-    const totalCustoSup=supsLista.reduce((acc,i)=>{
+    // Somar custoSup de TODOS os registos (todos os anos) com valor > 0
+    const todosComSup=todosRegistos.filter(i=>{
       const v=parseFloat(String(i[F.custoSup]||'0').replace(',','.'));
-      return acc+(isNaN(v)?0:v);
-    },0);
+      return v>0;
+    });
+    // Agrupar por ano
+    const porAno={};
+    todosComSup.forEach(i=>{
+      const ano=i[F.data]?new Date(i[F.data]).getFullYear():'?';
+      const v=parseFloat(String(i[F.custoSup]||'0').replace(',','.'));
+      porAno[ano]=(porAno[ano]||0)+(isNaN(v)?0:v);
+    });
+    const totalGeral=Object.values(porAno).reduce((a,b)=>a+b,0);
+    const fmtEur=v=>v.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+    const linhasAno=Object.keys(porAno).sort().map(a=>`${a}: ${fmtEur(porAno[a])}`).join(' · ');
 
     document.getElementById('m-total').textContent=total;
     document.getElementById('m-concluidos').textContent=concl;
     document.getElementById('m-emcurso').textContent=emcurso;
-    document.getElementById('m-suprimentos').textContent=sups;
+    document.getElementById('m-suprimentos').textContent=totalGeral>0?fmtEur(totalGeral):'0,00€';
     document.getElementById('m-total-sub').textContent=`escrituras em ${anoAtual}`;
     document.getElementById('m-concluidos-sub').textContent=`${Math.round(concl/(total||1)*100)}% do total`;
     document.getElementById('m-emcurso-sub').textContent=`apresentados + depositados`;
-    document.getElementById('m-suprimentos-sub').textContent=totalCustoSup>0
-      ?`${totalCustoSup.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})}€ em suprimentos`
-      :'sem valores registados';
+    document.getElementById('m-suprimentos-sub').textContent=linhasAno||'sem valores registados';
 
     if(sups>0){const b=document.getElementById('sup-badge');b.textContent=sups;b.style.display='inline-block';}
     document.getElementById('dash-sup-loading').style.display='none';
@@ -2503,6 +2517,7 @@ function abrirContabNovo(){
   document.getElementById('cb-fatura-ok').style.display='none';
   document.getElementById('cb-categoria-wrap').style.display='none';
   document.getElementById('cb-cliente-wrap').style.display='none';
+  document.getElementById('cb-btn-eliminar').style.display='none';
   document.getElementById('cb-painel').classList.add('open');
   document.getElementById('cb-overlay').classList.add('show');
 }
@@ -2526,6 +2541,7 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-fatura-ok').style.display=i[CB.ligacaoFatura]?'block':'none';
   if(i[CB.ligacaoFatura])document.getElementById('cb-fatura-ok-nome').textContent='Fatura já carregada';
   onCbTipoChange();
+  document.getElementById('cb-btn-eliminar').style.display='inline-flex';
   document.getElementById('cb-painel').classList.add('open');
   document.getElementById('cb-overlay').classList.add('show');
 }
@@ -2533,6 +2549,65 @@ function abrirContabEditar(itemId){
 function fecharContabPainel(){
   document.getElementById('cb-painel').classList.remove('open');
   document.getElementById('cb-overlay').classList.remove('show');
+}
+
+async function eliminarContab(){
+  if(!cbItemId){return;}
+  const i=todosMovimentos.find(r=>r.id===cbItemId);
+  const descricao=i?i[CB.descricao]||'este movimento':'este movimento';
+  if(!confirm(`Tens a certeza que queres eliminar "${descricao}"?\n\nSe tiver fatura associada, será também eliminada da biblioteca FATURAS.`))return;
+
+  const btn=document.getElementById('cb-btn-eliminar');
+  btn.disabled=true;btn.textContent='A eliminar...';
+
+  try{
+    // 1. Tentar eliminar o ficheiro da biblioteca FATURAS se existir link
+    const ligacao=(i&&i[CB.ligacaoFatura])||'';
+    if(ligacao&&bibliotecaFaturasId){
+      try{
+        await renovarToken();
+        // Extrair path relativo do URL do SP para encontrar o item via Graph
+        // Usar search pelo webUrl
+        const encoded=encodeURIComponent(ligacao);
+        const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root?$expand=children`,{
+          headers:{'Authorization':'Bearer '+graphToken}
+        });
+        // Abordagem mais directa: tentar GET pelo URL do ficheiro
+        const r2=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/root://${ligacao.split('/sites/')[1]?.split('/').slice(2).join('/')||''}`,{
+          headers:{'Authorization':'Bearer '+graphToken}
+        });
+        if(r2.ok){
+          const fileData=await r2.json();
+          if(fileData.id){
+            await renovarToken();
+            await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${fileData.id}`,{
+              method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+            });
+          }
+        }
+      }catch(e){
+        console.warn('Não foi possível eliminar ficheiro FATURAS:',e.message);
+        // Continua mesmo que não consiga apagar o ficheiro
+      }
+    }
+
+    // 2. Eliminar o item da lista Contabilidade
+    await renovarToken();
+    const rd=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${cbItemId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!rd.ok&&rd.status!==204)throw new Error('Erro '+rd.status);
+
+    // 3. Actualizar lista local e fechar painel
+    todosMovimentos=todosMovimentos.filter(m=>m.id!==cbItemId);
+    showToast('Movimento eliminado!','success');
+    fecharContabPainel();
+    filtrarContabilidade();
+  }catch(e){
+    showToast('Erro ao eliminar: '+e.message,'error');
+  }finally{
+    btn.disabled=false;btn.innerHTML='🗑 Eliminar';
+  }
 }
 
 async function guardarContab(){
