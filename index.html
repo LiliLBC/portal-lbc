@@ -1503,44 +1503,10 @@ function atualizarMetricas(lista){
     document.getElementById(`ms-${k}`).textContent=`escrituras · média ${m?m+'€':'—'}`;
   });
 
-  // Tabela por período/entidade
-  const tabMap={};
-  lista.forEach(i=>{
-    if(!i[F.data])return;
-    const d=new Date(i[F.data]);
-    const ano=d.getFullYear(), mes=MESES[d.getMonth()];
-    const ent=(i[F.entidade]||'Sem entidade').trim()||'Sem entidade';
-    const key=`${ano}|${String(d.getMonth()).padStart(2,'0')}|${mes}|${ent}`;
-    if(!tabMap[key])tabMap[key]={ano,mes,mesN:d.getMonth(),ent,n:0,total:0};
-    tabMap[key].n++;
-    tabMap[key].total+=(typeof i[F.valorServico]==='number'?i[F.valorServico]:parseFloat(String(i[F.valorServico]||'0').replace(',','.')));
-  });
-  window._tabelaMetricasDados=Object.values(tabMap).sort((a,b)=>b.ano-a.ano||b.mesN-a.mesN||a.ent.localeCompare(b.ent));
-  renderTabelaMetricas(window._tabelaMetricasDados);
 }
 
-function renderTabelaMetricas(dados){
-  const tbody=document.getElementById('reg-tabela-tbody');
-  if(!dados.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-faint)">Sem dados</td></tr>';return;}
-  tbody.innerHTML=dados.map(d=>`
-    <tr style="border-bottom:0.5px solid var(--border)">
-      <td style="padding:.35rem .75rem">${d.ano}</td>
-      <td style="padding:.35rem .75rem">${d.mes}</td>
-      <td style="padding:.35rem .75rem">${escHtml(d.ent)}</td>
-      <td style="padding:.35rem .75rem;text-align:right;font-family:'DM Mono',monospace">${d.n}</td>
-      <td style="padding:.35rem .75rem;text-align:right;font-family:'DM Mono',monospace">${d.n?Math.round(d.total/d.n)+'€':'—'}</td>
-      <td style="padding:.35rem .75rem;text-align:right;font-family:'DM Mono',monospace">${Math.round(d.total).toLocaleString('pt-PT')}€</td>
-    </tr>`).join('');
-}
-
-function filtrarTabelaMetricas(){
-  const q=(document.getElementById('reg-tabela-search').value||'').toLowerCase();
-  if(!window._tabelaMetricasDados)return;
-  const filtrado=q?window._tabelaMetricasDados.filter(d=>
-    String(d.ano).includes(q)||d.mes.toLowerCase().includes(q)||d.ent.toLowerCase().includes(q)
-  ):window._tabelaMetricasDados;
-  renderTabelaMetricas(filtrado);
-}
+function renderTabelaMetricas(){}
+function filtrarTabelaMetricas(){}
 
 // ─── PAINEL LATERAL ───────────────────────────────────────────────────────────
 let painelItemId=null,painelPastaUrl=null,pastasPainel=[];
