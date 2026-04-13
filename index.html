@@ -442,7 +442,8 @@ tbody tr:hover td{background:#FAFAF8}
                 <input class="reg-search-input" id="reg-f-predio" placeholder="Prédio..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
                 <input class="reg-search-input" id="reg-f-conserv" placeholder="Conservatória..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
                 <input class="reg-search-input" id="reg-f-apregisto" placeholder="AP. Registo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
-                <select class="reg-search-input" id="reg-f-estado" onchange="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;cursor:pointer">
+                <input class="reg-search-input" id="reg-f-numpedido" placeholder="Nº Pedido..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
+                <select class="reg-search-input" id="reg-f-estado" onchange="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;cursor:pointer;grid-column:1/-1">
                   <option value="">Estado...</option>
                   <option>Em curso</option>
                   <option>Concluido</option>
@@ -1416,6 +1417,7 @@ function pesquisarRegistos(){
   const qPredio=(document.getElementById('reg-f-predio')?.value||'').toLowerCase().trim();
   const qConserv=(document.getElementById('reg-f-conserv')?.value||'').toLowerCase().trim();
   const qAp=(document.getElementById('reg-f-apregisto')?.value||'').toLowerCase().trim();
+  const qNumPedido=(document.getElementById('reg-f-numpedido')?.value||'').toLowerCase().trim();
   const qEstado=(document.getElementById('reg-f-estado')?.value||'');
   // Respeita chip activo E filtros de pesquisa
   const base=filtroEstadoAtual?todosRegistosReg.filter(i=>i[F.estado]===filtroEstadoAtual):todosRegistosReg;
@@ -1424,11 +1426,12 @@ function pesquisarRegistos(){
     (!qPredio||(i[F.predio]||'').toLowerCase().includes(qPredio))&&
     (!qConserv||(i[F.apConserv]||'').toLowerCase().includes(qConserv))&&
     (!qAp||(i[F.apRegisto]||'').toLowerCase().includes(qAp))&&
+    (!qNumPedido||(i[F.numPedido]||'').toLowerCase().includes(qNumPedido))&&
     (!qEstado||i[F.estado]===qEstado)
   );
   registosFiltradosAtual=resultado;
   const c=document.getElementById('reg-result-count');
-  const temFiltro=qNome||qPredio||qConserv||qAp||qEstado;
+  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qEstado;
   if(c){c.textContent=temFiltro?`${resultado.length} resultado(s)`:'';c.style.display=temFiltro?'block':'none';}
   renderRegistos(resultado,qNome);
 }
