@@ -336,6 +336,12 @@ tbody tr:hover td{background:#FAFAF8}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
               MH CGD
             </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item-label">Promessas</div>
+            <div class="dropdown-item" onclick="abrirContrato('cpcv')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
+              CPCV
+            </div>
           </div>
         </div>
       </div>
@@ -1468,7 +1474,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cvmh:'cvmh.html',mh:'mh.html'};
+  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
