@@ -286,6 +286,9 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('contabilidade',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
     </div>
+    <div class="nav-item" onclick="nav('relatorios',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12V6l4-4h6l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><path d="M5 9h6M5 11h4"/></svg></span>Relatórios
+    </div>
     <div class="nav-item em-construcao">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14s1-4 5-4 5 4 5 4"/><path d="M13 7v4M11 9h4"/></svg></span>Clientes
     </div>
@@ -1110,6 +1113,172 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <!-- RELATÓRIOS -->
+      <div class="screen" id="screen-relatorios">
+
+        <!-- FILTROS GLOBAIS -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+          <div style="font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap">Filtrar por:</div>
+          <select class="form-select" id="rel-ano" onchange="carregarRelatorios()" style="width:100px;font-size:12px">
+            <option value="">Todos os anos</option>
+          </select>
+          <select class="form-select" id="rel-mes" onchange="carregarRelatorios()" style="width:130px;font-size:12px">
+            <option value="">Todos os meses</option>
+            <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+            <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+            <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+            <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+          </select>
+          <select class="form-select" id="rel-procurador" onchange="carregarRelatorios()" style="width:200px;font-size:12px">
+            <option value="">Todos os procuradores</option>
+            <option value="Liliana Burrica Cardoso">Liliana Burrica Cardoso</option>
+            <option value="Andreia Cabanas">Andreia Cabanas</option>
+            <option value="Luis Vieira">Luis Vieira</option>
+            <option value="Filipa Perdigão">Filipa Perdigão</option>
+            <option value="Catarina Parreira">Catarina Parreira</option>
+          </select>
+          <select class="form-select" id="rel-entidade" onchange="carregarRelatorios()" style="width:150px;font-size:12px">
+            <option value="">Todas as entidades</option>
+            <option value="CGD">CGD</option>
+            <option value="REMAX">REMAX</option>
+            <option value="CENTURY">CENTURY</option>
+            <option value="CTT">CTT</option>
+            <option value="PARTICULARES">Particulares</option>
+          </select>
+          <button class="btn btn-sm" onclick="limparFiltrosRel()">✕ Limpar</button>
+          <button class="btn btn-sm" onclick="carregarRelatorios()" style="margin-left:auto">↺ Atualizar</button>
+        </div>
+
+        <div id="rel-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar dados...</div></div>
+
+        <div id="rel-content" style="display:none">
+
+          <!-- CARDS RESUMO -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem" id="rel-cards"></div>
+
+          <!-- TABS -->
+          <div style="display:flex;gap:.4rem;margin-bottom:.75rem;border-bottom:1px solid var(--border);padding-bottom:.5rem">
+            <button class="filter-chip active" onclick="relSetTab('escrituras',this)">📋 Escrituras</button>
+            <button class="filter-chip" onclick="relSetTab('procuradores',this)">👤 Por procurador</button>
+            <button class="filter-chip" onclick="relSetTab('entidades',this)">🏦 Por entidade</button>
+            <button class="filter-chip" onclick="relSetTab('processos',this)">📁 Conta corrente</button>
+            <button class="filter-chip" onclick="relSetTab('contabilidade',this)">💶 Contabilidade</button>
+          </div>
+
+          <!-- TAB: ESCRITURAS -->
+          <div id="rel-tab-escrituras">
+            <div class="table-container">
+              <div class="table-scroll">
+                <table>
+                  <thead><tr>
+                    <th>Data</th><th>Cliente</th><th>Produto</th><th>Entidade</th>
+                    <th>Procurador</th><th style="text-align:right">Val. Serviço</th>
+                    <th style="text-align:right">Val. Procurador</th><th style="text-align:right">Margem</th>
+                    <th>Estado</th><th>Pago</th>
+                  </tr></thead>
+                  <tbody id="rel-tbody-escrituras"></tbody>
+                  <tfoot><tr style="background:var(--surface2);font-weight:600">
+                    <td colspan="5" style="padding:8px 12px;font-size:11px">TOTAL</td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-servico"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-proc"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-margem"></td>
+                    <td colspan="2"></td>
+                  </tr></tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: POR PROCURADOR -->
+          <div id="rel-tab-procuradores" style="display:none">
+            <div class="table-container">
+              <div class="table-scroll">
+                <table>
+                  <thead><tr>
+                    <th>Procurador</th><th style="text-align:right">Nº Escrituras</th>
+                    <th style="text-align:right">Val. Serviço Total</th>
+                    <th style="text-align:right">Val. Procurador Total</th>
+                    <th style="text-align:right">Margem Total</th>
+                    <th style="text-align:right">Média por escritura</th>
+                  </tr></thead>
+                  <tbody id="rel-tbody-procuradores"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: POR ENTIDADE -->
+          <div id="rel-tab-entidades" style="display:none">
+            <div class="table-container">
+              <div class="table-scroll">
+                <table>
+                  <thead><tr>
+                    <th>Entidade</th><th style="text-align:right">Nº Escrituras</th>
+                    <th style="text-align:right">Val. Serviço Total</th>
+                    <th style="text-align:right">Val. Procurador Total</th>
+                    <th style="text-align:right">Margem Total</th>
+                    <th style="text-align:right">Média por escritura</th>
+                  </tr></thead>
+                  <tbody id="rel-tbody-entidades"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: CONTA CORRENTE -->
+          <div id="rel-tab-processos" style="display:none">
+            <div class="table-container">
+              <div class="table-scroll">
+                <table>
+                  <thead><tr>
+                    <th>Data</th><th>Cliente</th><th>Processo</th>
+                    <th style="text-align:right">Honorários</th>
+                    <th style="text-align:right">Gastos c/ cliente</th>
+                    <th style="text-align:right">Total</th>
+                    <th style="text-align:right">Recebido</th>
+                    <th style="text-align:right">Saldo</th>
+                    <th>Estado</th>
+                  </tr></thead>
+                  <tbody id="rel-tbody-processos"></tbody>
+                  <tfoot><tr style="background:var(--surface2);font-weight:600">
+                    <td colspan="3" style="padding:8px 12px;font-size:11px">TOTAL</td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-hon"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-gas"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-cc"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-rec"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-saldo"></td>
+                    <td></td>
+                  </tr></tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: CONTABILIDADE -->
+          <div id="rel-tab-contabilidade" style="display:none">
+            <div class="table-container">
+              <div class="table-scroll">
+                <table>
+                  <thead><tr>
+                    <th>Data</th><th>Descrição</th><th>Tipo</th><th>Categoria</th>
+                    <th>Cliente</th><th style="text-align:right">Valor</th>
+                    <th style="text-align:right">IVA</th><th>Meio Pag.</th><th>Estado Fatura</th>
+                  </tr></thead>
+                  <tbody id="rel-tbody-contabilidade"></tbody>
+                  <tfoot><tr style="background:var(--surface2);font-weight:600">
+                    <td colspan="5" style="padding:8px 12px;font-size:11px">TOTAL</td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-contab"></td>
+                    <td style="padding:8px 12px;text-align:right;font-size:11px;font-family:'DM Mono',monospace" id="rel-total-iva"></td>
+                    <td colspan="2"></td>
+                  </tr></tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- EM CONSTRUÇÃO -->
       <div class="screen" id="screen-contratos">
         <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
@@ -1263,7 +1432,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade'};
+const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',relatorios:'Relatórios'};
 
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
@@ -1279,6 +1448,7 @@ function nav(id,el){
   if(id==='processos')carregarProcessos();
   if(id==='contacorrente')carregarContaCorrente();
   if(id==='contabilidade')carregarContabilidade();
+  if(id==='relatorios')carregarRelatorios();
 }
 
 // ─── DROPDOWN CONTRATOS ────────────────────────────────────────────────────────
@@ -2986,7 +3156,253 @@ async function uploadAnexoEscritura(input){
   }
 }
 
-// ─── CALENDÁRIO DO DASHBOARD ─────────────────────────────────────────────────
+// ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
+let relDadosEscrituras=[],relDadosCC=[],relDadosContab=[];
+let relTabAtiva='escrituras';
+
+function relSetTab(tab,el){
+  relTabAtiva=tab;
+  ['escrituras','procuradores','entidades','processos','contabilidade'].forEach(t=>{
+    document.getElementById(`rel-tab-${t}`).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('#screen-relatorios .filter-chip').forEach(c=>c.classList.remove('active'));
+  if(el)el.classList.add('active');
+}
+
+function limparFiltrosRel(){
+  ['rel-ano','rel-mes','rel-procurador','rel-entidade'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  carregarRelatorios();
+}
+
+function fmtEur(v){
+  const n=parseFloat(v||0);
+  return n.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+}
+
+function relFiltrar(lista,campoData){
+  const ano=document.getElementById('rel-ano').value;
+  const mes=document.getElementById('rel-mes').value;
+  return lista.filter(i=>{
+    if(!i[campoData])return false;
+    const d=new Date(i[campoData]);
+    if(ano&&d.getFullYear()!==parseInt(ano))return false;
+    if(mes!==''&&d.getMonth()!==parseInt(mes))return false;
+    return true;
+  });
+}
+
+async function carregarRelatorios(){
+  document.getElementById('rel-loading').style.display='flex';
+  document.getElementById('rel-content').style.display='none';
+  try{
+    // Carregar as 3 listas em paralelo se ainda não estiverem em memória
+    const [esc,cc,contab]=await Promise.all([
+      graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${F.nome},${F.data},${F.produto},${F.entidade},${F.procurador},${F.valorServico},${F.valorProc},${F.margemLiq},${F.estado},${F.pago},${F.custoSup})&$top=500`),
+      graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${CC.titulo},${CC.cliente},${CC.honorarios},${CC.gastos},${CC.recebido},${CC.estado},${CC.data})&$top=500`),
+      graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${CB.titulo},${CB.data},${CB.tipo},${CB.categoria},${CB.descricao},${CB.valor},${CB.iva},${CB.meio},${CB.cliente},${CB.estadoFatura})&$top=500`),
+    ]);
+    relDadosEscrituras=(esc.value||[]).map(i=>({id:i.id,...i.fields}));
+    relDadosCC=(cc.value||[]).map(i=>({id:i.id,...i.fields}));
+    relDadosContab=(contab.value||[]).map(i=>({id:i.id,...i.fields}));
+
+    // Popular anos no selector
+    const anos=[...new Set(relDadosEscrituras
+      .filter(i=>i[F.data])
+      .map(i=>new Date(i[F.data]).getFullYear())
+    )].sort((a,b)=>b-a);
+    const selAno=document.getElementById('rel-ano');
+    const anoAtual=selAno.value;
+    selAno.innerHTML='<option value="">Todos os anos</option>'+anos.map(a=>`<option value="${a}">${a}</option>`).join('');
+    if(anoAtual)selAno.value=anoAtual;
+
+    renderRelatorios();
+  }catch(e){
+    document.getElementById('rel-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;
+    return;
+  }
+}
+
+function renderRelatorios(){
+  const procFiltro=document.getElementById('rel-procurador').value;
+  const entFiltro=document.getElementById('rel-entidade').value;
+
+  // Filtrar escrituras
+  let esc=relFiltrar(relDadosEscrituras,F.data);
+  if(procFiltro)esc=esc.filter(i=>(i[F.procurador]||'').includes(procFiltro));
+  if(entFiltro)esc=esc.filter(i=>(i[F.entidade]||'').toUpperCase()===entFiltro.toUpperCase());
+
+  // Filtrar CC e Contab (só por data)
+  const cc=relFiltrar(relDadosCC,CC.data);
+  const contab=relFiltrar(relDadosContab,CB.data);
+
+  // ── CARDS ────────────────────────────────────────────────────────────────────
+  const totalServico=esc.reduce((a,i)=>a+parseFloat(i[F.valorServico]||0),0);
+  const totalMargem=esc.reduce((a,i)=>a+parseFloat(i[F.margemLiq]||0),0);
+  const totalCustoSup=esc.reduce((a,i)=>a+parseFloat(i[F.custoSup]||0),0);
+
+  // Conta corrente — honorários de processos
+  const totalHonCC=cc.reduce((a,i)=>a+parseFloat(i[CC.honorarios]||0),0);
+  const totalGasCC=cc.reduce((a,i)=>a+parseFloat(i[CC.gastos]||0),0);
+  const totalRecCC=cc.reduce((a,i)=>a+parseFloat(i[CC.recebido]||0),0);
+
+  // Contabilidade — só despesas empresa (pagamentos conta cliente são pass-through)
+  const totalDespesas=contab.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  const totalPagContaCliente=contab.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+
+  document.getElementById('rel-cards').innerHTML=`
+    <div class="metric-card">
+      <div class="metric-label">Escrituras — Val. Serviço</div>
+      <div class="metric-value" style="color:var(--accent);font-size:22px">${fmtEur(totalServico)}</div>
+      <div class="metric-sub">${esc.length} escrituras · margem ${fmtEur(totalMargem)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Processos — Honorários</div>
+      <div class="metric-value" style="color:var(--blue);font-size:22px">${fmtEur(totalHonCC)}</div>
+      <div class="metric-sub">Gastos c/cliente: ${fmtEur(totalGasCC)} · Recebido: ${fmtEur(totalRecCC)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Despesas empresa</div>
+      <div class="metric-value" style="color:var(--red);font-size:22px">${fmtEur(totalDespesas)}</div>
+      <div class="metric-sub">Pag. conta cliente: ${fmtEur(totalPagContaCliente)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Suprimentos (escrituras)</div>
+      <div class="metric-value" style="color:var(--amber);font-size:22px">${fmtEur(totalCustoSup)}</div>
+      <div class="metric-sub">${esc.filter(i=>parseFloat(i[F.custoSup]||0)>0).length} registo(s) com suprimento</div>
+    </div>`;
+
+  // ── TAB ESCRITURAS ────────────────────────────────────────────────────────────
+  const escOrd=[...esc].sort((a,b)=>new Date(b[F.data]||0)-new Date(a[F.data]||0));
+  let totS=0,totP=0,totM=0;
+  document.getElementById('rel-tbody-escrituras').innerHTML=escOrd.map(i=>{
+    const s=parseFloat(i[F.valorServico]||0);
+    const p=parseFloat(i[F.valorProc]||0);
+    const m=parseFloat(i[F.margemLiq]||0);
+    totS+=s;totP+=p;totM+=m;
+    const pago=i[F.pago];
+    const corPago=pago==='Pago'?'var(--green)':pago==='Não pago'?'var(--red)':'var(--text-faint)';
+    return`<tr>
+      <td class="cell-muted">${fmtData(i[F.data])}</td>
+      <td style="font-weight:500">${escHtml(i[F.nome]||'—')}</td>
+      <td class="cell-muted">${escHtml(i[F.produto]||'—')}</td>
+      <td><span class="badge badge-purple">${escHtml(i[F.entidade]||'—')}</span></td>
+      <td class="cell-muted">${escHtml((i[F.procurador]||'—').split(' ').slice(-1)[0])}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${s>0?fmtEur(s):'—'}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--amber)">${p>0?fmtEur(p):'—'}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:${m>=0?'var(--green)':'var(--red)'}">${m!==0?fmtEur(m):'—'}</td>
+      <td>${estadoBadge(i[F.estado])}</td>
+      <td style="font-size:11px;font-weight:600;color:${corPago}">${escHtml(pago||'—')}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rel-total-servico').textContent=fmtEur(totS);
+  document.getElementById('rel-total-proc').textContent=fmtEur(totP);
+  document.getElementById('rel-total-margem').textContent=fmtEur(totM);
+
+  // ── TAB PROCURADORES ──────────────────────────────────────────────────────────
+  const porProc={};
+  esc.forEach(i=>{
+    const k=i[F.procurador]||'(sem procurador)';
+    if(!porProc[k])porProc[k]={n:0,s:0,p:0,m:0};
+    porProc[k].n++;
+    porProc[k].s+=parseFloat(i[F.valorServico]||0);
+    porProc[k].p+=parseFloat(i[F.valorProc]||0);
+    porProc[k].m+=parseFloat(i[F.margemLiq]||0);
+  });
+  document.getElementById('rel-tbody-procuradores').innerHTML=Object.entries(porProc)
+    .sort((a,b)=>b[1].s-a[1].s)
+    .map(([k,v])=>`<tr>
+      <td style="font-weight:500">${escHtml(k)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${v.n}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${fmtEur(v.s)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--amber)">${fmtEur(v.p)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--green)">${fmtEur(v.m)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--text-muted)">${fmtEur(v.n>0?v.s/v.n:0)}</td>
+    </tr>`).join('');
+
+  // ── TAB ENTIDADES ─────────────────────────────────────────────────────────────
+  const porEnt={};
+  esc.forEach(i=>{
+    const k=i[F.entidade]||'(sem entidade)';
+    if(!porEnt[k])porEnt[k]={n:0,s:0,p:0,m:0};
+    porEnt[k].n++;
+    porEnt[k].s+=parseFloat(i[F.valorServico]||0);
+    porEnt[k].p+=parseFloat(i[F.valorProc]||0);
+    porEnt[k].m+=parseFloat(i[F.margemLiq]||0);
+  });
+  document.getElementById('rel-tbody-entidades').innerHTML=Object.entries(porEnt)
+    .sort((a,b)=>b[1].s-a[1].s)
+    .map(([k,v])=>`<tr>
+      <td><span class="badge badge-purple">${escHtml(k)}</span></td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${v.n}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${fmtEur(v.s)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--amber)">${fmtEur(v.p)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--green)">${fmtEur(v.m)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--text-muted)">${fmtEur(v.n>0?v.s/v.n:0)}</td>
+    </tr>`).join('');
+
+  // ── TAB CONTA CORRENTE ────────────────────────────────────────────────────────
+  const ccOrd=[...cc].sort((a,b)=>new Date(b[CC.data]||0)-new Date(a[CC.data]||0));
+  let totHon=0,totGas=0,totCC=0,totRec=0,totSaldo=0;
+  document.getElementById('rel-tbody-processos').innerHTML=ccOrd.map(i=>{
+    const hon=parseFloat(i[CC.honorarios]||0);
+    const gas=parseFloat(i[CC.gastos]||0);
+    const rec=parseFloat(i[CC.recebido]||0);
+    const total=hon+gas;
+    const saldo=total-rec;
+    totHon+=hon;totGas+=gas;totCC+=total;totRec+=rec;totSaldo+=saldo;
+    const estadoCor={'A pagamento':'badge-amber','Pago parcial':'badge-blue','Concluido':'badge-green'};
+    return`<tr>
+      <td class="cell-muted">${fmtData(i[CC.data])}</td>
+      <td style="font-weight:500">${escHtml(i[CC.cliente]||'—')}</td>
+      <td class="cell-muted">${escHtml(i[CC.titulo]||'—')}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${fmtEur(hon)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${fmtEur(gas)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:500">${fmtEur(total)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--green)">${fmtEur(rec)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:${saldo>0?'var(--red)':'var(--green)'}">${fmtEur(saldo)}</td>
+      <td><span class="badge ${estadoCor[i[CC.estado]]||'badge-gray'}">${escHtml(i[CC.estado]||'—')}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rel-total-hon').textContent=fmtEur(totHon);
+  document.getElementById('rel-total-gas').textContent=fmtEur(totGas);
+  document.getElementById('rel-total-cc').textContent=fmtEur(totCC);
+  document.getElementById('rel-total-rec').textContent=fmtEur(totRec);
+  document.getElementById('rel-total-saldo').style.color=totSaldo>0?'var(--red)':'var(--green)';
+  document.getElementById('rel-total-saldo').textContent=fmtEur(totSaldo);
+
+  // ── TAB CONTABILIDADE ─────────────────────────────────────────────────────────
+  const contabOrd=[...contab].sort((a,b)=>new Date(b[CB.data]||0)-new Date(a[CB.data]||0));
+  let totContab=0,totIva=0;
+  document.getElementById('rel-tbody-contabilidade').innerHTML=contabOrd.map(i=>{
+    const val=parseFloat(i[CB.valor]||0);
+    const iva=parseFloat(i[CB.iva]||0);
+    totContab+=val;totIva+=iva;
+    const isDespesa=i[CB.tipo]==='Despesa empresa';
+    return`<tr>
+      <td class="cell-muted">${fmtData(i[CB.data])}</td>
+      <td style="font-weight:500">${escHtml(i[CB.descricao]||'—')}</td>
+      <td><span class="badge ${isDespesa?'badge-red':'badge-amber'}">${escHtml(i[CB.tipo]||'—')}</span></td>
+      <td class="cell-muted">${escHtml(i[CB.categoria]||'—')}</td>
+      <td class="cell-muted">${escHtml(i[CB.cliente]||'—')}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:${isDespesa?'var(--red)':'var(--amber)'}">${fmtEur(val)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--blue)">${iva>0?fmtEur(iva):'—'}</td>
+      <td class="cell-muted">${escHtml(i[CB.meio]||'—')}</td>
+      <td><span class="badge ${i[CB.estadoFatura]==='Com fatura'?'badge-green':i[CB.estadoFatura]==='Sem fatura'?'badge-amber':'badge-gray'}">${escHtml(i[CB.estadoFatura]||'—')}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rel-total-contab').textContent=fmtEur(totContab);
+  document.getElementById('rel-total-iva').textContent=fmtEur(totIva);
+
+  document.getElementById('rel-loading').style.display='none';
+  document.getElementById('rel-content').style.display='block';
+
+  // Manter tab activa
+  relSetTab(relTabAtiva,null);
+}
+
+
 let dashCalData=new Date();
 function dashCalNav(dir){dashCalData=new Date(dashCalData);dashCalData.setMonth(dashCalData.getMonth()+dir);renderDashCal();}
 function dashCalHoje(){dashCalData=new Date();renderDashCal();}
