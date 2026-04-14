@@ -1345,13 +1345,16 @@ let pastasSP = [], pastaSeleccionada = null;
 
 async function carregarPastasSP() {
   const btn = document.getElementById('btn-carregar-pastas');
+  const input = document.getElementById('pasta-search');
   btn.textContent = 'A carregar...'; btn.disabled = true;
+  input.placeholder = 'A carregar pastas...';
   try {
     const token = await getGraphToken();
     const drivesRes = await fetch(
       `https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/Escritrio:/drives`,
       {headers:{Authorization:'Bearer '+token}}
     );
+    if (!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
     const drives = await drivesRes.json();
     const escriturasDrive = drives.value.find(d => d.name === 'ESCRITURAS');
     if (!escriturasDrive) throw new Error('Biblioteca ESCRITURAS não encontrada');
@@ -1359,14 +1362,18 @@ async function carregarPastasSP() {
       `https://graph.microsoft.com/v1.0/drives/${escriturasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`,
       {headers:{Authorization:'Bearer '+token}}
     );
+    if (!pastasRes.ok) throw new Error(`Erro ${pastasRes.status} ao listar pastas`);
     const pastas = await pastasRes.json();
     pastasSP = (pastas.value || []).filter(p => p.folder).map(p => ({
       id: p.id, nome: p.name, driveId: escriturasDrive.id, webUrl: p.webUrl
     }));
-    document.getElementById('pasta-search').placeholder = `Pesquisar entre ${pastasSP.length} pastas...`;
-    document.getElementById('pasta-search').disabled = false;
+    input.placeholder = `Pesquisar entre ${pastasSP.length} pastas...`;
+    input.disabled = false;
+    showToast(`${pastasSP.length} pastas carregadas`, 'success');
   } catch(e) {
-    document.getElementById('pasta-search').placeholder = 'Erro ao carregar — clica em Atualizar';
+    input.placeholder = 'Erro ao carregar — clica em Atualizar';
+    input.disabled = true;
+    showToast('Erro: ' + e.message, 'error');
   }
   btn.textContent = '↺ Atualizar'; btn.disabled = false;
 }
@@ -1830,11 +1837,17 @@ function regimenTexto(regime) {
 
 // ─── TOKEN ────────────────────────────────────────────────────────────────────
 async function getGraphToken() {
+  // 1. Tentar via window.opener (portal ainda aberto)
+  if (window.opener && window.opener.graphToken) {
+    // Guardar em localStorage para uso futuro
+    try { localStorage.setItem('lbc_graph_token', window.opener.graphToken); } catch(e) {}
+    return window.opener.graphToken;
+  }
+  // 2. Tentar via localStorage
   const stored = localStorage.getItem('lbc_graph_token');
   if (stored) return stored;
-  if (window.opener && window.opener.graphToken) return window.opener.graphToken;
-  if (window.parent && window.parent.graphToken) return window.parent.graphToken;
-  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC.');
+  // 3. Sem token
+  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC e mantém o portal aberto.');
 }
 
 function carregarScript(src) {
