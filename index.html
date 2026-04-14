@@ -3257,6 +3257,13 @@ function renderRelatorios(){
   const totalDespesas=contab.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalPagContaCliente=contab.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
 
+  // IVA estimado — 23% sobre honorários (escrituras + processos, excluindo gastos cliente e suprimentos)
+  const IVA_TAXA=0.23;
+  const baseIvaEscrituras=totalServico;
+  const baseIvaProcessos=totalHonCC;
+  const baseIvaTotal=baseIvaEscrituras+baseIvaProcessos;
+  const ivaEstimado=baseIvaTotal*IVA_TAXA;
+
   document.getElementById('rel-cards').innerHTML=`
     <div class="metric-card">
       <div class="metric-label">Escrituras — Val. Serviço</div>
@@ -3277,6 +3284,26 @@ function renderRelatorios(){
       <div class="metric-label">Suprimentos (escrituras)</div>
       <div class="metric-value" style="color:var(--amber);font-size:22px">${fmtEur(totalCustoSup)}</div>
       <div class="metric-sub">${esc.filter(i=>parseFloat(i[F.custoSup]||0)>0).length} registo(s) com suprimento</div>
+    </div>
+    <div class="metric-card" style="grid-column:1/-1;border-color:var(--accent);background:var(--accent-light)">
+      <div class="metric-label" style="color:var(--accent-dark)">IVA estimado a entregar (23%) — escrituras + honorários processos</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:.5rem">
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--accent-dark);text-transform:uppercase;letter-spacing:.05em">Base escrituras</div>
+          <div style="font-size:18px;font-weight:300;font-family:'DM Mono',monospace;color:var(--accent-dark)">${fmtEur(baseIvaEscrituras)}</div>
+          <div style="font-size:10px;color:var(--accent-dark)">IVA: ${fmtEur(baseIvaEscrituras*IVA_TAXA)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--accent-dark);text-transform:uppercase;letter-spacing:.05em">Base processos</div>
+          <div style="font-size:18px;font-weight:300;font-family:'DM Mono',monospace;color:var(--accent-dark)">${fmtEur(baseIvaProcessos)}</div>
+          <div style="font-size:10px;color:var(--accent-dark)">IVA: ${fmtEur(baseIvaProcessos*IVA_TAXA)}</div>
+        </div>
+        <div style="border-left:2px solid var(--accent);padding-left:1rem">
+          <div style="font-size:10px;font-weight:600;color:var(--accent-dark);text-transform:uppercase;letter-spacing:.05em">Total IVA estimado</div>
+          <div style="font-size:26px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent-dark)">${fmtEur(ivaEstimado)}</div>
+          <div style="font-size:10px;color:var(--accent-dark)">Base total: ${fmtEur(baseIvaTotal)} × 23%</div>
+        </div>
+      </div>
     </div>`;
 
   // ── TAB ESCRITURAS ────────────────────────────────────────────────────────────
