@@ -1507,12 +1507,29 @@ function renderRegistos(lista,q=''){
       </div>
       <div class="reg-list-right">
         ${estadoBadge(i[F.estado])}
+        <button class="btn btn-sm" onclick="event.stopPropagation();apagarRegisto('${i.id}','${escHtml(i[F.nome]||'')}')" style="color:var(--red);border-color:var(--red);padding:3px 7px" title="Apagar registo">🗑</button>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
       </div>
     </div>`;
   }).join('');
   el.style.display='block';
   atualizarMetricas(todosRegistosReg);
+}
+
+async function apagarRegisto(itemId, nome){
+  if(!confirm(`Tens a certeza que queres apagar o registo de "${nome}"?\n\nEsta acção não pode ser desfeita.`))return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${itemId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
+    todosRegistosReg=todosRegistosReg.filter(i=>i.id!==itemId);
+    registosFiltradosAtual=registosFiltradosAtual.filter(i=>i.id!==itemId);
+    document.getElementById('reg-count').textContent=`${todosRegistosReg.length} registos totais`;
+    showToast(`Registo de "${nome}" apagado!`,'success');
+    renderRegistos(registosFiltradosAtual);
+  }catch(e){showToast('Erro ao apagar: '+e.message,'error');}
 }
 
 function calcMargemLiq(){
