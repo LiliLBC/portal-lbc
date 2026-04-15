@@ -415,6 +415,38 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
       <hr class="divider">
 
+      <!-- Ónus / Hipoteca -->
+      <div class="toggle-row">
+        <span class="toggle-label">Há ónus/hipoteca a cancelar sobre o imóvel</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-onus" onchange="onOnusChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cond-block" id="onus-fields" style="display:none">
+        <div class="cond-block-title">Cancelamento de hipoteca / ónus</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">AP do ónus <span>*</span></label>
+            <input type="text" class="form-input" id="onus-ap" placeholder="Ex: Ap. 12 de 2019/03/15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Credor (banco/entidade) <span>*</span></label>
+            <input type="text" class="form-input" id="onus-credor" placeholder="Ex: Caixa Geral de Depósitos">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIF do credor</label>
+            <input type="text" class="form-input" id="onus-nif" placeholder="Ex: 500.960.046">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo de cancelamento</label>
+            <select class="form-select" id="onus-tipo-cancel">
+              <option value="distrate">Distrate/cancelamento assegurado</option>
+              <option value="simultaneo">Cancelamento simultâneo com a escritura</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
       <div class="form-group">
         <label class="form-label">Destino do imóvel <span>*</span></label>
         <input type="text" class="form-input" id="destino-imovel" value="habitação própria e permanente">
@@ -422,17 +454,35 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
       <hr class="divider">
 
-      <!-- Licença e CE -->
-      <div class="form-grid form-grid-2">
+      <!-- Licença de utilização -->
+      <div class="toggle-row">
+        <span class="toggle-label">Imóvel isento de licença de utilização</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-isento-lu" onchange="onIsentoLUChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group" id="lu-fields">
+        <label class="form-label">Licença de utilização <span>*</span></label>
+        <input type="text" class="form-input" id="licenca-utilizacao" placeholder="Ex: Licença nº 123/2005 · emitida pela CM de Évora">
+      </div>
+      <div class="cond-block" id="lu-isento-fields" style="display:none">
         <div class="form-group">
-          <label class="form-label">Licença de utilização</label>
-          <input type="text" class="form-input" id="licenca-utilizacao" placeholder="Ex: Licença nº 123/2005">
-          <span class="form-hint">Deixa em branco se isento</span>
+          <label class="form-label">Fundamento da isenção</label>
+          <input type="text" class="form-input" id="lu-isencao-motivo" placeholder="Ex: Construção anterior a 07/08/1951">
         </div>
+      </div>
+
+      <!-- Certificado energético -->
+      <div class="toggle-row" style="margin-top:.5rem">
+        <span class="toggle-label">Imóvel isento de certificado energético</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-isento-ce" onchange="onIsentoCEChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group" id="ce-fields">
+        <label class="form-label">Certificado energético <span>*</span></label>
+        <input type="text" class="form-input" id="cert-energetico" placeholder="Ex: SCE265584838 · válido até 09/12/2031">
+      </div>
+      <div class="cond-block" id="ce-isento-fields" style="display:none">
         <div class="form-group">
-          <label class="form-label">Certificado energético</label>
-          <input type="text" class="form-input" id="cert-energetico" placeholder="Ex: SCE265584838 · válido até 09/12/2031">
-          <span class="form-hint">Deixa em branco se isento</span>
+          <label class="form-label">Fundamento da isenção</label>
+          <input type="text" class="form-input" id="ce-isencao-motivo" placeholder="Ex: Prédio rústico / Fracção isenta por lei">
         </div>
       </div>
 
@@ -718,6 +768,19 @@ function onECChange(id){
 }
 
 // ─── CONDICIONAIS ─────────────────────────────────────────────────────────────
+function onOnusChange(){
+  document.getElementById('onus-fields').style.display=document.getElementById('toggle-onus').checked?'block':'none';
+}
+function onIsentoLUChange(){
+  const on=document.getElementById('toggle-isento-lu').checked;
+  document.getElementById('lu-fields').style.display=on?'none':'block';
+  document.getElementById('lu-isento-fields').style.display=on?'block':'none';
+}
+function onIsentoCEChange(){
+  const on=document.getElementById('toggle-isento-ce').checked;
+  document.getElementById('ce-fields').style.display=on?'none':'block';
+  document.getElementById('ce-isento-fields').style.display=on?'block':'none';
+}
 function onTipoPredioChange(){
   const val=document.getElementById('tipo-predio').value;
   document.getElementById('fracao-fields').style.display=val==='fracao'?'block':'none';
@@ -823,7 +886,16 @@ document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search')&&!e.
 function recolherDados(){const d={};document.querySelectorAll('.form-input,.form-select').forEach(el=>{if(el.id)d[el.id]=el.value;});document.querySelectorAll('input[type=checkbox]').forEach(el=>{if(el.id)d[el.id]=el.checked;});return d;}
 function restaurarDados(d){
   Object.entries(d).forEach(([id,val])=>{const el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=val;else el.value=val;});
-  onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();onMediacaoChange();onRemaxChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
+  // Disparar condicionais
+  onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();
+  onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();
+  onMediacaoChange();onRemaxChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
+  onOnusChange();onIsentoLUChange();onIsentoCEChange();
+  // Restaurar estado civil de cada outorgante (mostra/esconde cônjuge)
+  document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{
+    const id=el.id.replace('-estado-civil','');
+    onECChange(id);
+  });
 }
 async function guardarRascunho(){
   if(!pastaSeleccionada){showToast('Seleciona a pasta do cliente','error');return;}
@@ -937,10 +1009,31 @@ function recolherDadosContrato(){
   const Verificacao_Empresa_V=chk('toggle-emp-v')?'--- Verifiquei os poderes de representação da parte vendedora através da certidão de registo comercial em vigor.':'';
   const Verificacao_Empresa_C=chk('toggle-emp-c')?'--- Verifiquei os poderes de representação da parte compradora através da certidão de registo comercial em vigor.':'';
 
-  // Licença e CE
-  const TXT_TA_LU=v('licenca-utilizacao')?`A licença de utilização com o número ${v('licenca-utilizacao')}.`:'O imóvel está isento de licença de utilização.';
+  // Ónus / Hipoteca
+  let TXT_Canc_Hipoteca='';
+  if(chk('toggle-onus')){
+    const tipoCancel=v('onus-tipo-cancel');
+    TXT_Canc_Hipoteca=`--- Sobre o referido imóvel encontra-se registada hipoteca a favor de ${v('onus-credor')}${v('onus-nif')?', NIF '+v('onus-nif'):''}, pela ${v('onus-ap')}, cujo cancelamento ${tipoCancel==='simultaneo'?'é efectuado em simultâneo com o presente ato':'fica assegurado pela parte vendedora até à data de registo da presente transmissão'}.`;
+  }
+
+  // Licença de utilização
+  const isentoLU=chk('toggle-isento-lu');
+  let TXT_TA_LU='';
+  if(isentoLU){
+    TXT_TA_LU=`O imóvel está isento de licença de utilização${v('lu-isencao-motivo')?': '+v('lu-isencao-motivo'):''}`;
+  }else{
+    TXT_TA_LU=v('licenca-utilizacao')?`A licença de utilização ${v('licenca-utilizacao')}`:'A licença de utilização — (não indicada)';
+  }
   const TXT_LU=TXT_TA_LU;
-  const TXT_Cert_Energetico=v('cert-energetico')?`O certificado de desempenho energético com o número/validade ${v('cert-energetico')}.`:'O imóvel está isento de certificação energética.';
+
+  // Certificado energético
+  const isentoCE=chk('toggle-isento-ce');
+  let TXT_Cert_Energetico='';
+  if(isentoCE){
+    TXT_Cert_Energetico=`O imóvel está isento de certificação energética${v('ce-isencao-motivo')?': '+v('ce-isencao-motivo'):''}`;
+  }else{
+    TXT_Cert_Energetico=v('cert-energetico')?`O certificado de desempenho energético ${v('cert-energetico')}`:'O certificado de desempenho energético — (não indicado)';
+  }
 
   // Preço
   const Preco_Compra=v('preco-compra');
@@ -996,6 +1089,7 @@ function recolherDadosContrato(){
     VPT_Valor:v('vpt-valor'),
     VPT_Ano:v('vpt-ano'),
     TXT_CasaPronta_Bloco:'',
+    TXT_Canc_Hipoteca,
     Destino_do_Imovel:v('destino-imovel'),
     TXT_LU,TXT_Cert_Energetico,
     Preco_Compra,Extenso_Preco_Compra,
