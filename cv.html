@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compra e Venda — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);transition:all .15s;text-decoration:none}
+.back-btn:hover{background:var(--surface2)}
+.page-title{font-size:14px;font-weight:600}
+.page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
+.topbar-actions{display:flex;gap:.5rem;align-items:center}
+.container{max-width:860px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.section-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600}
+.section-desc{font-size:11px;color:var(--text-faint);margin-top:1px}
+.form-grid{display:grid;gap:.9rem}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%236B6860' d='M8 10L3 5h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.form-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+.toggle-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.5rem}
+.toggle-label{font-size:12px;font-weight:500;flex:1}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border-strong);border-radius:20px;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+.outorgante-block{border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-bottom:.75rem;background:var(--surface2)}
+.outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.outorgante-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.outorgante-type{display:flex;gap:.4rem}
+.type-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.type-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.remove-btn{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.remove-btn:hover{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.add-outorgante-btn{width:100%;padding:.6rem;border:1px dashed var(--border-strong);border-radius:8px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.add-outorgante-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+.casado-fields{background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.casado-fields-title{font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.empresa-fields{background:var(--blue-light);border:1px solid #B5D4F4;border-radius:8px;padding:.9rem;margin-top:.75rem}
+.empresa-fields-title{font-size:11px;font-weight:600;color:var(--blue);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.cond-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.cond-block-amber{background:var(--amber-light);border-color:#FAC775}
+.cond-block-title{font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.preview-text{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 7px 7px 0;padding:.65rem .9rem;font-size:11px;color:var(--text-muted);line-height:1.7;margin-top:.5rem;font-family:'DM Mono',monospace}
+.divider{border:none;border-top:1px solid var(--border);margin:.5rem 0}
+.notice{display:flex;align-items:flex-start;gap:9px;padding:.65rem .9rem;border-radius:7px;font-size:12px;margin-bottom:.75rem;line-height:1.5}
+.notice-info{background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
+.notice-warning{background:var(--amber-light);color:var(--amber);border:1px solid #FAC775}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#236040}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-lg{padding:10px 20px;font-size:13px}
+.sticky-footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;z-index:99;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.footer-info{font-size:11px;color:var(--text-faint)}
+.footer-actions{display:flex;gap:.5rem}
+.rascunho-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:var(--amber-light);border:1px solid #FAC775;color:var(--amber);font-size:11px;font-weight:500}
+.toast{position:fixed;bottom:5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:14px;padding:1.75rem;max-width:480px;width:90%;box-shadow:var(--shadow-md);transform:translateY(8px);transition:transform .2s}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:.35rem}
+.modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.5}
+.checklist-item{display:flex;align-items:flex-start;gap:.75rem;padding:.65rem .75rem;border-radius:8px;border:1px solid var(--border);margin-bottom:.5rem;cursor:pointer;transition:all .15s;user-select:none}
+.checklist-item:hover{border-color:var(--accent);background:var(--accent-light)}
+.checklist-item.checked{background:var(--green-light);border-color:var(--green)}
+.checklist-box{width:18px;height:18px;border:2px solid var(--border-strong);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
+.checklist-item.checked .checklist-box{background:var(--green);border-color:var(--green)}
+.checklist-check{display:none;color:#fff}
+.checklist-item.checked .checklist-check{display:block}
+.checklist-text{font-size:12px;line-height:1.5}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid var(--border)}
+.modal-progress{font-size:11px;color:var(--text-faint);margin-top:.75rem;text-align:center}
+@media(max-width:640px){.form-grid-2,.form-grid-3,.form-grid-4{grid-template-columns:1fr}.container{padding:1rem 1rem 5rem}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- MODAL CHECKLIST -->
+<div class="modal-overlay" id="modal-checklist">
+  <div class="modal">
+    <div class="modal-title">⚠️ Verificação antes de gerar</div>
+    <div class="modal-sub">Confirma que verificaste todos os pontos antes de gerar o contrato.</div>
+    <div id="checklist-items">
+      <div class="checklist-item" onclick="toggleCheck(this)"><div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div><span class="checklist-text">Identidade de todos os outorgantes verificada</span></div>
+      <div class="checklist-item" onclick="toggleCheck(this)"><div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div><span class="checklist-text">Certidão permanente do imóvel consultada e sem ónus</span></div>
+      <div class="checklist-item" onclick="toggleCheck(this)"><div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div><span class="checklist-text">Caderneta predial consultada e VPT confirmado</span></div>
+      <div class="checklist-item" onclick="toggleCheck(this)"><div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div><span class="checklist-text">Preço e meios de pagamento confirmados pelas partes</span></div>
+      <div class="checklist-item" onclick="toggleCheck(this)"><div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div><span class="checklist-text">Licença de utilização / certificado energético verificados</span></div>
+      <div class="checklist-item" onclick="toggleCheck(this)"><div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div><span class="checklist-text">Mediação imobiliária declarada pelas partes</span></div>
+    </div>
+    <div class="modal-progress" id="checklist-progress">0 de 6 verificados</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="fecharModal()" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" id="btn-download-gerar" onclick="confirmarGerar('download')" disabled style="flex:2;opacity:.5;cursor:not-allowed">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Download
+      </button>
+      <button class="btn btn-success" id="btn-confirmar-gerar" onclick="confirmarGerar('sharepoint')" disabled style="flex:2;opacity:.5;cursor:not-allowed">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>Guardar na pasta
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:window.close()" class="back-btn">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Fechar
+    </a>
+    <div>
+      <span class="page-title">Compra e Venda de Imóvel</span>
+      <span class="page-sub">Novo contrato</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span class="rascunho-badge" id="rascunho-status" style="display:none">
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 5v3.5l2 1.5"/></svg>Rascunho guardado
+    </span>
+    <button class="btn" onclick="guardarRascunho()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>Guardar rascunho
+    </button>
+    <button class="btn btn-success btn-lg" onclick="gerarContrato()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Gerar contrato
+    </button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PASTA DO CLIENTE -->
+  <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div class="form-label" style="margin-bottom:4px">Pasta do cliente <span style="color:var(--red)">*</span></div>
+        <div style="position:relative">
+          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" disabled>
+          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+        </div>
+        <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="pasta-selecionada-nome"></span></div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;padding-top:1.1rem">
+        <button class="btn btn-sm" onclick="carregarPastasSP()" id="btn-carregar-pastas">↺ Atualizar</button>
+        <button class="btn btn-sm btn-primary" onclick="carregarRascunho(true)" id="btn-carregar-rascunho" disabled>📄 Carregar rascunho</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ① ENTIDADE AUTENTICADORA -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">1</div>
+      <div><div class="section-name">Entidade Autenticadora</div><div class="section-desc">Solicitadora que preside ao ato</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Entidade autenticadora <span>*</span></label>
+        <select class="form-select" id="ent-autenticadora" onchange="onEntAutenticadoraChange()">
+          <option value="">Selecionar...</option>
+          <option value="liliana">Liliana Burrica Cardoso</option>
+          <option value="andreia">Andreia Pessegueiro Cabanas</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data do ato <span>*</span></label>
+        <input type="date" class="form-input" id="data-escritura" oninput="updateDataExtenso()">
+        <span class="form-hint" id="data-extenso" style="font-family:'DM Mono',monospace;font-size:10px"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cédula profissional</label>
+        <input type="text" class="form-input" id="cedula" readonly style="background:var(--surface2)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NIF</label>
+        <input type="text" class="form-input" id="nif-ent" readonly style="background:var(--surface2)">
+      </div>
+    </div>
+  </div>
+
+  <!-- ② VENDEDORES -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">2</div>
+      <div><div class="section-name">Parte Vendedora — PRIMEIRO(S)</div><div class="section-desc">Pessoa singular ou empresa vendedora</div></div>
+    </div>
+    <div id="vendedores-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('vendedores','Vendedor')">+ Adicionar vendedor</button>
+  </div>
+
+  <!-- ③ COMPRADORES -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">3</div>
+      <div><div class="section-name">Parte Compradora — SEGUNDO(S)</div><div class="section-desc">Pessoa singular ou empresa compradora</div></div>
+    </div>
+    <div id="compradores-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('compradores','Comprador')">+ Adicionar comprador</button>
+  </div>
+
+  <!-- ④ VERIFIQUEI -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">4</div>
+      <div><div class="section-name">Verifiquei</div><div class="section-desc">Documentação verificada antes do ato</div></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Data emissão CPU <span>*</span></label>
+          <input type="date" class="form-input" id="data-cpu">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Código CRP <span>*</span></label>
+          <input type="text" class="form-input" id="cod-crp" placeholder="Ex: PA-3385-28253-070202">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CRP válida até <span>*</span></label>
+          <input type="date" class="form-input" id="data-crp">
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Distrate / cancelamento hipoteca -->
+      <div class="toggle-row">
+        <span class="toggle-label">Há cancelamento de hipoteca (distrate)</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-distrate" onchange="onDistrateToggle()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cond-block" id="distrate-section" style="display:none">
+        <div class="cond-block-title">Cancelamento de hipoteca</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Tipo de distrate <span>*</span></label>
+            <select class="form-select" id="distrate-tipo" onchange="onDistrateTipoChange()">
+              <option value="fisico">Físico — autorização em arquivo</option>
+              <option value="codigo">Por código de acesso</option>
+              <option value="renuncia">Renúncia</option>
+            </select>
+          </div>
+          <div class="form-group" id="distrate-data-group">
+            <label class="form-label">Data da autorização <span>*</span></label>
+            <input type="date" class="form-input" id="distrate-data">
+          </div>
+          <div class="form-group" id="distrate-codigo-group" style="display:none">
+            <label class="form-label">Código de acesso <span>*</span></label>
+            <input type="text" class="form-input" id="distrate-codigo" placeholder="Código de acesso">
+          </div>
+          <div class="form-group">
+            <label class="form-label">AP da hipoteca <span>*</span></label>
+            <input type="text" class="form-input" id="distrate-ap" placeholder="Ex: Ap. 12 de 2019/03/15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Banco hipotecante <span>*</span></label>
+            <input type="text" class="form-input" id="distrate-banco" placeholder="Ex: Millennium BCP">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIF do banco</label>
+            <input type="text" class="form-input" id="distrate-nif-banco" placeholder="Ex: 500.143.144">
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Impostos -->
+      <div class="form-group">
+        <label class="form-label">Impostos (IMT, IS) — texto livre</label>
+        <input type="text" class="form-input" id="txt-impostos" placeholder="Ex: IMT liquidado no valor de 3.450,00€ · IS liquidado no valor de 960,00€">
+        <span class="form-hint">Deixa em branco se isento. Aparece na secção INFORMEI.</span>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Cláusulas condicionais -->
+      <div class="toggle-row">
+        <span class="toggle-label">Advertência de condomínio</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-condominio"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Verificação de empresa vendedora (Verificacao_Empresa_V)</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-emp-v"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Verificação de empresa compradora (Verificacao_Empresa_C)</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-emp-c"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ IMÓVEL -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">5</div>
+      <div><div class="section-name">Imóvel</div><div class="section-desc">Identificação do imóvel transmitido</div></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Tipo de prédio <span>*</span></label>
+          <select class="form-select" id="tipo-predio" onchange="onTipoPredioChange()">
+            <option value="">Selecionar...</option>
+            <option value="fracao">Fração autónoma</option>
+            <option value="urbano-hab">Prédio urbano — habitação</option>
+            <option value="urbano-com">Prédio urbano — serviço/comércio</option>
+            <option value="rustico">Prédio rústico</option>
+            <option value="lote">Lote para construção</option>
+            <option value="misto">Prédio misto</option>
+            <option value="garagem">Garagem/Arrecadação</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Direito sobre o prédio</label>
+          <select class="form-select" id="direito-predio">
+            <option value="pleno">Propriedade plena</option>
+            <option value="usufruto">Usufruto</option>
+            <option value="superficie">Direito de superfície</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fração autónoma -->
+      <div class="cond-block" id="fracao-fields" style="display:none">
+        <div class="cond-block-title">Dados da fração autónoma</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Letra da fração <span>*</span></label>
+            <input type="text" class="form-input" id="fracao-letra" placeholder="Ex: G" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label class="form-label">AP constituição PH <span>*</span></label>
+            <input type="text" class="form-input" id="ap-ph" placeholder="Ex: AP. 3 de 1985/10/01">
+          </div>
+          <div class="form-group form-full">
+            <label class="form-label">Composição <span>*</span></label>
+            <input type="text" class="form-input" id="fracao-composicao" placeholder="Ex: segundo andar esquerdo destinado a habitação">
+          </div>
+        </div>
+      </div>
+
+      <!-- Descrição prédio (não fração) -->
+      <div class="form-group" id="predio-desc-group" style="display:none">
+        <label class="form-label">Descrição do prédio <span>*</span></label>
+        <input type="text" class="form-input" id="descricao-predio" placeholder="Ex: Lote de terreno destinado a construção urbana">
+      </div>
+
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Localização <span>*</span></label>
+          <input type="text" class="form-input" id="localizacao-predio" placeholder='Ex: "Rua Pablo Neruda, n.º 12, Beja"'>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Conservatória <span>*</span></label>
+          <input type="text" class="form-input" id="conservatoria" placeholder="Ex: Beja">
+        </div>
+      </div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Nº de descrição <span>*</span></label>
+          <input type="text" class="form-input" id="num-descricao" placeholder="Ex: 102">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Freguesia (conservatória) <span>*</span></label>
+          <input type="text" class="form-input" id="freguesia-conservatoria" placeholder="Ex: Beja (Santiago Maior)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">AP de aquisição (vendedor) <span>*</span></label>
+          <input type="text" class="form-input" id="ap-aquisicao" placeholder="Ex: AP. 2873 de 2021/12/22">
+        </div>
+      </div>
+      <div class="form-grid form-grid-4">
+        <div class="form-group">
+          <label class="form-label">Artigo matricial <span>*</span></label>
+          <input type="text" class="form-input" id="art-matricial" placeholder="Ex: 2800">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Freguesia (matriz) <span>*</span></label>
+          <input type="text" class="form-input" id="freguesia-matriz" placeholder="Ex: União de Freguesias de Beja">
+        </div>
+        <div class="form-group">
+          <label class="form-label">VPT (€) <span>*</span></label>
+          <input type="text" class="form-input" id="vpt-valor" placeholder="Ex: 33.786,48">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ano do VPT <span>*</span></label>
+          <input type="text" class="form-input" id="vpt-ano" placeholder="Ex: 2024">
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="form-group">
+        <label class="form-label">Destino do imóvel <span>*</span></label>
+        <input type="text" class="form-input" id="destino-imovel" value="habitação própria e permanente">
+      </div>
+
+      <hr class="divider">
+
+      <!-- Licença e CE -->
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Licença de utilização</label>
+          <input type="text" class="form-input" id="licenca-utilizacao" placeholder="Ex: Licença nº 123/2005">
+          <span class="form-hint">Deixa em branco se isento</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Certificado energético</label>
+          <input type="text" class="form-input" id="cert-energetico" placeholder="Ex: SCE265584838 · válido até 09/12/2031">
+          <span class="form-hint">Deixa em branco se isento</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ⑥ PREÇO E PAGAMENTO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">6</div>
+      <div><div class="section-name">Preço e Pagamento</div><div class="section-desc">Valor da compra e venda e forma de pagamento</div></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Preço de compra (€) <span>*</span></label>
+          <input type="text" class="form-input" id="preco-compra" placeholder="Ex: 137.500,00" oninput="onPrecoChange()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Por extenso (automático)</label>
+          <input type="text" class="form-input" id="preco-extenso" readonly style="background:var(--surface2);font-size:12px">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Forma de pagamento</div>
+
+      <!-- Toggle entrada inicial -->
+      <div class="toggle-row">
+        <span class="toggle-label">Houve entrada inicial / sinal antes do ato</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-entrada" onchange="onEntradaChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cond-block" id="entrada-fields" style="display:none">
+        <div class="cond-block-title">Entrada inicial</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Valor entrada (€) <span>*</span></label>
+            <input type="text" class="form-input" id="entrada-valor" placeholder="Ex: 13.750,00" oninput="onEntradaValorChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Por extenso</label>
+            <input type="text" class="form-input" id="entrada-extenso" readonly style="background:var(--surface2);font-size:12px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Meio de pagamento</label>
+            <select class="form-select" id="entrada-meio" onchange="onEntradaMeioChange()">
+              <option value="transferencia">Transferência bancária</option>
+              <option value="cheque">Cheque bancário</option>
+              <option value="numerario">Numerário</option>
+            </select>
+          </div>
+          <div class="form-group" id="entrada-iban-group">
+            <label class="form-label">IBAN de origem</label>
+            <input type="text" class="form-input" id="entrada-iban" placeholder="PT50 ...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Remanescente / pagamento total -->
+      <div class="form-group">
+        <label class="form-label">Forma de pagamento do remanescente <span>*</span></label>
+        <select class="form-select" id="pagamento-restante" onchange="onPagamentoRestanteChange()">
+          <option value="transferencia">Transferência bancária</option>
+          <option value="apb">APB — Protocolo Caixa</option>
+          <option value="cheque">Cheque bancário</option>
+          <option value="numerario">Numerário</option>
+        </select>
+      </div>
+
+      <!-- APB -->
+      <div class="cond-block cond-block-amber" id="apb-fields" style="display:none">
+        <div class="cond-block-title">APB — Protocolo Caixa</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Valor APB (€) <span>*</span></label>
+            <input type="text" class="form-input" id="apb-valor" placeholder="Ex: 123.750,00" oninput="onAPBChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Por extenso</label>
+            <input type="text" class="form-input" id="apb-extenso" readonly style="background:var(--surface2);font-size:12px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Conta origem (CAIXA)</label>
+            <input type="text" class="form-input" id="apb-conta-origem" placeholder="Nº conta Caixa">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Conta destino (vendedor)</label>
+            <input type="text" class="form-input" id="apb-conta-destino" placeholder="Nº conta vendedor">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ⑦ MEDIAÇÃO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">7</div>
+      <div><div class="section-name">Mediação Imobiliária</div><div class="section-desc">Declaração obrigatória nos termos do art.º 40º da Lei 15/2013</div></div>
+    </div>
+    <div class="form-grid">
+      <div class="toggle-row">
+        <span class="toggle-label">Houve intervenção de mediadora imobiliária</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-mediacao" onchange="onMediacaoChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cond-block" id="mediacao-fields" style="display:none">
+        <div class="cond-block-title">Dados da mediadora</div>
+        <div class="toggle-row" style="margin-bottom:.5rem">
+          <span class="toggle-label">REMAX Prime Team AMI 13123 (predefinida)</span>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-remax" onchange="onRemaxChange()" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div id="mediadora-remax" class="cond-block" style="background:var(--green-light);border-color:#9FE1CB">
+          <div style="font-size:13px;font-weight:500">PRIME TEAM — Sociedade de Mediação Imobiliária, Unipessoal, Lda</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Licença AMI <strong>13123</strong></div>
+        </div>
+        <div id="mediadora-outra-fields" style="display:none;margin-top:.5rem">
+          <div class="form-grid form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Nome da mediadora <span>*</span></label>
+              <input type="text" class="form-input" id="mediadora-nome">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Licença AMI <span>*</span></label>
+              <input type="text" class="form-input" id="mediadora-ami">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- STICKY FOOTER -->
+<div class="sticky-footer">
+  <div class="footer-info" id="footer-info">Preenche o formulário e guarda o rascunho</div>
+  <div class="footer-actions">
+    <button class="btn" onclick="limparFormulario()">Limpar</button>
+    <button class="btn" onclick="guardarRascunho()">Guardar rascunho</button>
+    <button class="btn btn-success" onclick="gerarContrato()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Gerar contrato
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTES ───────────────────────────────────────────────────────────────
+const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
+const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+const GRAPH_SCOPES=['https://graph.microsoft.com/Files.ReadWrite.All','https://graph.microsoft.com/Sites.ReadWrite.All'];
+const SOLICITADORAS={
+  liliana:{nome:'Liliana Burrica Cardoso',nomeAbrev:'Liliana Burrica Cardoso',cedula:'08733',nif:'219.126.658',codProcuracao:'55852-10851-05475'},
+  andreia:{nome:'Andreia Pessegueiro Cabanas',nomeAbrev:'Andreia Pessegueiro Cabanas',cedula:'10126',nif:'249.651.378',codProcuracao:'55852-10851-05475'}
+};
+
+// ─── EXTENSO ──────────────────────────────────────────────────────────────────
+const UN=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+const DZ=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const CT=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+function numExtenso(n){n=Math.round(n);if(n===0)return'zero';if(n<0)return'menos '+numExtenso(-n);if(n<20)return UN[n];if(n<100)return DZ[Math.floor(n/10)]+(n%10?' e '+UN[n%10]:'');if(n===100)return'cem';if(n<1000)return CT[Math.floor(n/100)]+(n%100?' e '+numExtenso(n%100):'');if(n<2000)return'mil'+(n%1000?' e '+numExtenso(n%1000):'');if(n<1000000)return numExtenso(Math.floor(n/1000))+' mil'+(n%1000?(n%1000<100?' e ':' ')+numExtenso(n%1000):'');return numExtenso(Math.floor(n/1000000))+' milhões'+(n%1000000?' e '+numExtenso(n%1000000):'');}
+function valorExtenso(str){if(!str)return'';const n=parseFloat(String(str).replace(/\s/g,'').replace(/\./g,'').replace(',','.'));if(isNaN(n))return'';const i=Math.floor(n),c=Math.round((n-i)*100);let t=numExtenso(i)+(i===1?' euro':' euros');if(c>0)t+=' e '+numExtenso(c)+(c===1?' cêntimo':' cêntimos');return t.charAt(0).toUpperCase()+t.slice(1);}
+function valorExtensoMaiusculas(str){return valorExtenso(str).toUpperCase();}
+
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS_EXT=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove','vinte','vinte e um','vinte e dois','vinte e três','vinte e quatro','vinte e cinco','vinte e seis','vinte e sete','vinte e oito','vinte e nove','trinta','trinta e um'];
+const ANOS_EXT={2024:'dois mil e vinte e quatro',2025:'dois mil e vinte e cinco',2026:'dois mil e vinte e seis',2027:'dois mil e vinte e sete',2028:'dois mil e vinte e oito',2029:'dois mil e vinte e nove',2030:'dois mil e trinta'};
+function dataExtenso(iso){if(!iso)return'';const[a,m,d]=iso.split('-').map(Number);return`${DIAS_EXT[d]} de ${MESES[m-1]} de ${ANOS_EXT[a]||a}`;}
+function fmtDataPT(iso){if(!iso)return'';const[a,m,d]=iso.split('-');return`${d}/${m}/${a}`;}
+function updateDataExtenso(){const d=document.getElementById('data-escritura').value;document.getElementById('data-extenso').textContent=d?dataExtenso(d):'';}
+
+// ─── SOLICITADORAS ────────────────────────────────────────────────────────────
+function onEntAutenticadoraChange(){
+  const v=document.getElementById('ent-autenticadora').value;
+  const S=SOLICITADORAS;
+  document.getElementById('cedula').value=v?S[v].cedula:'';
+  document.getElementById('nif-ent').value=v?S[v].nif:'';
+}
+
+// ─── OUTORGANTES ──────────────────────────────────────────────────────────────
+let contadores={vendedores:0,compradores:0};
+function addOutorgante(tipo,label){
+  const container=document.getElementById(`${tipo}-container`);
+  const idx=++contadores[tipo];
+  const id=`${tipo}-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">${label} ${idx}</span>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="outorgante-type">
+          <button class="type-btn active" onclick="setTipo('${id}','singular',this)">Singular</button>
+          <button class="type-btn" onclick="setTipo('${id}','empresa',this)">Empresa</button>
+        </div>
+        ${idx>1?`<button class="remove-btn" onclick="document.getElementById('${id}').remove()">×</button>`:''}
+      </div>
+    </div>
+    <div id="${id}-singular">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome completo <span>*</span></label><input type="text" class="form-input" id="${id}-nome" style="text-transform:uppercase" placeholder="Em maiúsculas"></div>
+        <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+        <div class="form-group"><label class="form-label">Natural de <span>*</span></label><input type="text" class="form-input" id="${id}-naturalidade"></div>
+        <div class="form-group"><label class="form-label">Tipo de documento</label>
+          <select class="form-select" id="${id}-tipo-doc">
+            <option value="cc">Cartão de Cidadão</option>
+            <option value="passaporte">Passaporte</option>
+            <option value="residencia">Cartão de Residência</option>
+            <option value="residencia-permanente">Cartão de Residência Permanente</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Nº do documento <span>*</span></label><input type="text" class="form-input" id="${id}-num-doc"></div>
+        <div class="form-group"><label class="form-label">Válido até <span>*</span></label><input type="date" class="form-input" id="${id}-val-doc"></div>
+        <div class="form-group"><label class="form-label">NIF <span>*</span></label><input type="text" class="form-input" id="${id}-nif"></div>
+        <div class="form-group"><label class="form-label">Estado civil <span>*</span></label>
+          <select class="form-select" id="${id}-estado-civil" onchange="onECChange('${id}')">
+            <option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option>
+            <option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option><option value="uniao-facto">União de facto</option>
+          </select>
+        </div>
+      </div>
+      <div class="casado-fields" id="${id}-casado" style="display:none">
+        <div class="casado-fields-title">Cônjuge / Unido de facto</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-full"><label class="form-label">Nome <span>*</span></label><input type="text" class="form-input" id="${id}-conj-nome" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-conj-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-conj-naturalidade"></div>
+          <div class="form-group"><label class="form-label">Tipo doc.</label><select class="form-select" id="${id}-conj-tipo-doc"><option value="cc">Cartão de Cidadão</option><option value="passaporte">Passaporte</option><option value="residencia">Cartão de Residência</option><option value="residencia-permanente">Residência Permanente</option></select></div>
+          <div class="form-group"><label class="form-label">Nº doc.</label><input type="text" class="form-input" id="${id}-conj-num-doc"></div>
+          <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-conj-val-doc"></div>
+          <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-conj-nif"></div>
+          <div class="form-group"><label class="form-label">Regime</label>
+            <select class="form-select" id="${id}-regime">
+              <option value="comunhao-adquiridos">Comunhão de adquiridos</option>
+              <option value="separacao-bens">Separação de bens</option>
+              <option value="comunhao-geral">Comunhão geral</option>
+            </select>
+          </div>
+          <div class="form-group form-full"><label class="form-label">Morada conjunta <span>*</span></label><input type="text" class="form-input" id="${id}-morada-conjunta"></div>
+        </div>
+      </div>
+      <div id="${id}-morada-wrap" style="margin-top:.75rem">
+        <div class="form-group"><label class="form-label">Morada <span>*</span></label><input type="text" class="form-input" id="${id}-morada"></div>
+      </div>
+    </div>
+    <div id="${id}-empresa" style="display:none">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome da empresa <span>*</span></label><input type="text" class="form-input" id="${id}-emp-nome" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">NIF/NIPC <span>*</span></label><input type="text" class="form-input" id="${id}-emp-nif"></div>
+        <div class="form-group form-full"><label class="form-label">Sede <span>*</span></label><input type="text" class="form-input" id="${id}-emp-sede"></div>
+        <div class="form-group"><label class="form-label">Capital social (€)</label><input type="text" class="form-input" id="${id}-emp-capital"></div>
+        <div class="form-group"><label class="form-label">Código CRC</label><input type="text" class="form-input" id="${id}-emp-crc"></div>
+      </div>
+      <div class="empresa-fields">
+        <div class="empresa-fields-title">Representante / Gerente</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-full"><label class="form-label">Nome <span>*</span></label><input type="text" class="form-input" id="${id}-ger-nome" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-ger-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-ger-naturalidade"></div>
+          <div class="form-group"><label class="form-label">Nº CC</label><input type="text" class="form-input" id="${id}-ger-cc"></div>
+          <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-ger-val"></div>
+          <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-ger-nif"></div>
+          <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-ger-ec"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+          <div class="form-group"><label class="form-label">Morada</label><input type="text" class="form-input" id="${id}-ger-morada"></div>
+        </div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+}
+
+function setTipo(id,tipo,btn){
+  btn.closest('.outorgante-type').querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`${id}-singular`).style.display=tipo==='singular'?'block':'none';
+  document.getElementById(`${id}-empresa`).style.display=tipo==='empresa'?'block':'none';
+}
+
+function onECChange(id){
+  const ec=document.getElementById(`${id}-estado-civil`)?.value;
+  const casado=ec==='casado'||ec==='uniao-facto';
+  document.getElementById(`${id}-casado`).style.display=casado?'block':'none';
+  document.getElementById(`${id}-morada-wrap`).style.display=casado?'none':'block';
+}
+
+// ─── CONDICIONAIS ─────────────────────────────────────────────────────────────
+function onTipoPredioChange(){
+  const val=document.getElementById('tipo-predio').value;
+  document.getElementById('fracao-fields').style.display=val==='fracao'?'block':'none';
+  document.getElementById('predio-desc-group').style.display=val&&val!=='fracao'?'block':'none';
+}
+function onDistrateToggle(){
+  document.getElementById('distrate-section').style.display=document.getElementById('toggle-distrate').checked?'block':'none';
+}
+function onDistrateTipoChange(){
+  const tipo=document.getElementById('distrate-tipo').value;
+  document.getElementById('distrate-data-group').style.display=tipo==='fisico'?'block':'none';
+  document.getElementById('distrate-codigo-group').style.display=tipo==='codigo'?'block':'none';
+}
+function onEntradaChange(){
+  document.getElementById('entrada-fields').style.display=document.getElementById('toggle-entrada').checked?'block':'none';
+}
+function onEntradaValorChange(){
+  document.getElementById('entrada-extenso').value=valorExtenso(document.getElementById('entrada-valor').value);
+}
+function onEntradaMeioChange(){
+  document.getElementById('entrada-iban-group').style.display=document.getElementById('entrada-meio').value==='transferencia'?'block':'none';
+}
+function onPrecoChange(){
+  document.getElementById('preco-extenso').value=valorExtenso(document.getElementById('preco-compra').value);
+}
+function onAPBChange(){
+  document.getElementById('apb-extenso').value=valorExtenso(document.getElementById('apb-valor').value);
+}
+function onPagamentoRestanteChange(){
+  document.getElementById('apb-fields').style.display=document.getElementById('pagamento-restante').value==='apb'?'block':'none';
+}
+function onMediacaoChange(){
+  document.getElementById('mediacao-fields').style.display=document.getElementById('toggle-mediacao').checked?'block':'none';
+}
+function onRemaxChange(){
+  const remax=document.getElementById('toggle-remax').checked;
+  document.getElementById('mediadora-remax').style.display=remax?'block':'none';
+  document.getElementById('mediadora-outra-fields').style.display=remax?'none':'block';
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500);}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function gerarContrato(){
+  document.querySelectorAll('.checklist-item').forEach(i=>i.classList.remove('checked'));
+  atualizarProgresso();
+  document.getElementById('modal-checklist').classList.add('show');
+}
+function toggleCheck(el){el.classList.toggle('checked');atualizarProgresso();}
+function atualizarProgresso(){
+  const total=document.querySelectorAll('.checklist-item').length;
+  const checked=document.querySelectorAll('.checklist-item.checked').length;
+  document.getElementById('checklist-progress').textContent=`${checked} de ${total} verificados`;
+  const ok=checked===total;
+  ['btn-confirmar-gerar','btn-download-gerar'].forEach(id=>{const b=document.getElementById(id);if(!b)return;b.disabled=!ok;b.style.opacity=ok?'1':'.5';b.style.cursor=ok?'pointer':'not-allowed';});
+}
+function fecharModal(){document.getElementById('modal-checklist').classList.remove('show');}
+
+// ─── PASTA / RASCUNHO ─────────────────────────────────────────────────────────
+let pastasSP=[],pastaSeleccionada=null;
+async function getGraphToken(){
+  if(window.opener&&window.opener.graphToken){try{localStorage.setItem('lbc_graph_token',window.opener.graphToken);}catch(e){}return window.opener.graphToken;}
+  const s=localStorage.getItem('lbc_graph_token');if(s)return s;
+  throw new Error('Sessão não encontrada. Abre a partir do portal LBC.');
+}
+async function carregarPastasSP(){
+  const btn=document.getElementById('btn-carregar-pastas');
+  const input=document.getElementById('pasta-search');
+  btn.textContent='A carregar...';btn.disabled=true;
+  try{
+    const token=await getGraphToken();
+    const dr=await fetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/Escritrio:/drives`,{headers:{Authorization:'Bearer '+token}});
+    const drives=await dr.json();
+    const escriturasDrive=drives.value.find(d=>d.name==='ESCRITURAS');
+    if(!escriturasDrive)throw new Error('Biblioteca ESCRITURAS não encontrada');
+    const pr=await fetch(`https://graph.microsoft.com/v1.0/drives/${escriturasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`,{headers:{Authorization:'Bearer '+token}});
+    const pastas=await pr.json();
+    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:escriturasDrive.id,webUrl:p.webUrl}));
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;input.disabled=false;
+    showToast(`${pastasSP.length} pastas carregadas`,'success');
+  }catch(e){input.placeholder='Erro ao carregar';showToast('Erro: '+e.message,'error');}
+  btn.textContent='↺ Atualizar';btn.disabled=false;
+}
+function pesquisarPastas(){
+  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
+  const dd=document.getElementById('pasta-dropdown');
+  if(!q||!pastasSP.length){dd.style.display='none';return;}
+  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.length?res.map(p=>`<div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">${p.nome}</div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Sem resultados</div>';
+  dd.style.display='block';
+}
+function selecionarPasta(p){
+  pastaSeleccionada=p;
+  document.getElementById('pasta-search').value=p.nome;
+  document.getElementById('pasta-dropdown').style.display='none';
+  document.getElementById('pasta-selecionada-nome').textContent=p.nome;
+  document.getElementById('pasta-selecionada').style.display='block';
+  document.getElementById('btn-carregar-rascunho').disabled=false;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown'))document.getElementById('pasta-dropdown').style.display='none';});
+
+function recolherDados(){const d={};document.querySelectorAll('.form-input,.form-select').forEach(el=>{if(el.id)d[el.id]=el.value;});document.querySelectorAll('input[type=checkbox]').forEach(el=>{if(el.id)d[el.id]=el.checked;});return d;}
+function restaurarDados(d){
+  Object.entries(d).forEach(([id,val])=>{const el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=val;else el.value=val;});
+  onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();onMediacaoChange();onRemaxChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
+}
+async function guardarRascunho(){
+  if(!pastaSeleccionada){showToast('Seleciona a pasta do cliente','error');return;}
+  const json=JSON.stringify(recolherDados(),null,2);
+  try{
+    const token=await getGraphToken();
+    const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CV.json:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:json});
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    document.getElementById('rascunho-status').style.display='inline-flex';
+    document.getElementById('footer-info').textContent='Rascunho guardado às '+new Date().toLocaleTimeString('pt-PT');
+    showToast('Rascunho guardado!','success');
+  }catch(e){localStorage.setItem('cv_rascunho',json);document.getElementById('rascunho-status').style.display='inline-flex';showToast('Guardado localmente','');}
+}
+async function carregarRascunho(daPasta=false){
+  if(daPasta&&pastaSeleccionada){
+    try{
+      const token=await getGraphToken();
+      const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CV.json:/content`,{headers:{'Authorization':'Bearer '+token}});
+      if(r.ok){restaurarDados(await r.json());showToast('Rascunho carregado!','success');return;}
+    }catch(e){}
+  }
+  const raw=localStorage.getItem('cv_rascunho');
+  if(raw){try{restaurarDados(JSON.parse(raw));document.getElementById('rascunho-status').style.display='inline-flex';}catch(e){}}
+}
+function limparFormulario(){if(!confirm('Limpar tudo?'))return;localStorage.removeItem('cv_rascunho');location.reload();}
+
+// ─── RECOLHER OUTORGANTES ─────────────────────────────────────────────────────
+function recolherOutorgantes(tipo){
+  const blocos=document.getElementById(`${tipo}-container`).querySelectorAll('.outorgante-block');
+  return Array.from(blocos).map(bloco=>{
+    const id=bloco.id;
+    const tipoBtn=bloco.querySelector('.type-btn.active');
+    const tipoOut=tipoBtn?.textContent.trim()==='Empresa'?'empresa':'singular';
+    const v=c=>document.getElementById(`${id}-${c}`)?.value||'';
+    const tipoDocTexto=t=>({cc:'cartão de cidadão',passaporte:'passaporte',residencia:'cartão de residência',['residencia-permanente']:'cartão de residência permanente'}[t]||t);
+    if(tipoOut==='singular'){
+      const ec=v('estado-civil');const casado=ec==='casado'||ec==='uniao-facto';
+      return{tipo:'singular',nome:v('nome').toUpperCase(),genero:v('genero'),naturalidade:v('naturalidade'),tipoDoc:tipoDocTexto(v('tipo-doc')),numDoc:v('num-doc'),valDoc:fmtDataPT(v('val-doc')),nif:v('nif'),estadoCivil:ec,regime:v('regime'),conjNome:v('conj-nome').toUpperCase(),conjGenero:v('conj-genero'),conjNaturalidade:v('conj-naturalidade'),conjTipoDoc:tipoDocTexto(v('conj-tipo-doc')),conjNumDoc:v('conj-num-doc'),conjValDoc:fmtDataPT(v('conj-val-doc')),conjNif:v('conj-nif'),morada:casado?v('morada-conjunta'):v('morada'),casado};
+    }
+    return{tipo:'empresa',empNome:v('emp-nome').toUpperCase(),empNif:v('emp-nif'),empSede:v('emp-sede'),empCapital:v('emp-capital'),empCrc:v('emp-crc'),gerNome:v('ger-nome').toUpperCase(),gerGenero:v('ger-genero'),gerNaturalidade:v('ger-naturalidade'),gerCC:v('ger-cc'),gerVal:fmtDataPT(v('ger-val')),gerNif:v('ger-nif'),gerEc:v('ger-ec'),gerMorada:v('ger-morada')};
+  });
+}
+
+function textoOutorgante(o){
+  const regimenMap={'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','comunhao-geral':'comunhão geral'};
+  const ecTexto=(ec,g)=>({solteiro:g==='F'?'solteira':'solteiro',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
+  if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.empNome}, NIF ${o.empNif}, com sede em ${o.empSede}${o.empCapital?', capital social de €'+o.empCapital:''}, neste ato representada por ${o.gerNome}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão com o número ${o.gerCC}, válido até ${o.gerVal}, NIF ${o.gerNif}, residente em ${o.gerMorada}`;}
+  const g=o.genero==='F';
+  let txt=`${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do ${o.tipoDoc} emitido pela República Portuguesa com o número ${o.numDoc}, válido até ${o.valDoc}, e número de identificação fiscal ${o.nif}`;
+  if(o.casado){const gc=o.conjGenero==='F';txt+=`, casado${g?'a':''} no regime de ${regimenMap[o.regime]||o.regime} com ${o.conjNome}, natural de ${o.conjNaturalidade}, portador${gc?'a':''} do ${o.conjTipoDoc} com o número ${o.conjNumDoc}, válido até ${o.conjValDoc}, NIF ${o.conjNif}, ambos residentes em ${o.morada}`;}
+  else txt+=`, ${ecTexto(o.estadoCivil,o.genero)}, residente em ${o.morada}`;
+  return txt;
+}
+
+// ─── GERAR CONTRATO ───────────────────────────────────────────────────────────
+async function confirmarGerar(modo){
+  fecharModal();showToast('A preparar contrato...','');
+  try{
+    const dados=recolherDadosContrato();
+    const blob=await gerarBlob(await fetchTemplate(),dados);
+    const nome=gerarNomeFicheiro();
+    if(modo==='sharepoint')await guardarNoSharePoint(blob,nome);
+    else{if(!window.saveAs)await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');saveAs(blob,nome);showToast('✓ Contrato descarregado!','success');}
+  }catch(e){showToast('Erro: '+e.message,'error');console.error(e);}
+}
+
+function gerarNomeFicheiro(){
+  const d=(document.getElementById('data-escritura')?.value||'').replace(/-/g,'')||'SEMDATA';
+  const v=recolherOutorgantes('vendedores')[0]||{};
+  const nome=v.tipo==='empresa'?(v.empNome||'EMPRESA'):(v.nome||'CLIENTE');
+  return`CV_${d}_${nome.substring(0,25).trim()}.docx`;
+}
+
+function recolherDadosContrato(){
+  const v=id=>document.getElementById(id)?.value||'';
+  const chk=id=>document.getElementById(id)?.checked||false;
+  const entAut=v('ent-autenticadora');
+  const S=SOLICITADORAS;
+  const vendedores=recolherOutorgantes('vendedores');
+  const compradores=recolherOutorgantes('compradores');
+  const nV=vendedores.length,nC=compradores.length;
+  const Bloco_Vendedores=vendedores.map(textoOutorgante).join(';\n\nE\n\n');
+  const Bloco_Compradores=compradores.map(textoOutorgante).join(';\n\nE\n\n');
+  const Plural_Primeiros=nV>1?'OS PRIMEIROS CONTRATANTES':'O PRIMEIRO CONTRATANTE';
+  const Plural_Segundos=nC>1?'OS SEGUNDOS CONTRATANTES':'O SEGUNDO CONTRATANTE';
+
+  // Imóvel
+  const tipoPredio=v('tipo-predio');
+  const isFracao=tipoPredio==='fracao';
+  const direito=v('direito-predio');
+  const DtoSobrePredio=direito==='usufruto'?'o usufruto sobre o':direito==='superficie'?'o direito de superfície sobre o':'o';
+  const TXT_Fracao=isFracao?` imóvel constituído em regime de propriedade horizontal pela ${v('ap-ph')}, fração autónoma designada pela letra "${v('fracao-letra')}", composta por ${v('fracao-composicao')},`:'';
+  const Descricao_Predio=isFracao?'':v('descricao-predio');
+
+  // Distrate
+  let TXTDistrate='';
+  if(chk('toggle-distrate')){
+    const dt=v('distrate-tipo');
+    if(dt==='fisico')TXTDistrate=`--- Para efeitos do artigo 56.º do Código do Registo Predial, ARQUIVO a autorização de cancelamento da hipoteca emitida em ${fmtDataPT(v('distrate-data'))}, registada a favor de ${v('distrate-banco')}, pela ${v('distrate-ap')}.`;
+    else if(dt==='codigo')TXTDistrate=`--- Para efeitos do artigo 56.º do Código do Registo Predial, consultei a autorização de cancelamento da hipoteca através do código "${v('distrate-codigo')}", registada a favor de ${v('distrate-banco')}, pela ${v('distrate-ap')}.`;
+    else if(dt==='renuncia')TXTDistrate=`--- Para efeitos do artigo 56.º do Código do Registo Predial, ARQUIVO a renúncia ao cancelamento da hipoteca registada a favor de ${v('distrate-banco')}, pela ${v('distrate-ap')}.`;
+  }
+
+  // Impostos
+  const TXTImpostos=v('txt-impostos')?`--- ${v('txt-impostos')}.`:'';
+
+  // Advertência condomínio
+  const TXTAdvert_Condominio=chk('toggle-condominio')?'--- Adverti os outorgantes para as obrigações inerentes ao regime de propriedade horizontal e condomínio, nomeadamente o pagamento das quotas de condomínio.':'';
+
+  // Empresa
+  const Verificacao_Empresa_V=chk('toggle-emp-v')?'--- Verifiquei os poderes de representação da parte vendedora através da certidão de registo comercial em vigor.':'';
+  const Verificacao_Empresa_C=chk('toggle-emp-c')?'--- Verifiquei os poderes de representação da parte compradora através da certidão de registo comercial em vigor.':'';
+
+  // Licença e CE
+  const TXT_TA_LU=v('licenca-utilizacao')?`A licença de utilização com o número ${v('licenca-utilizacao')}.`:'O imóvel está isento de licença de utilização.';
+  const TXT_LU=TXT_TA_LU;
+  const TXT_Cert_Energetico=v('cert-energetico')?`O certificado de desempenho energético com o número/validade ${v('cert-energetico')}.`:'O imóvel está isento de certificação energética.';
+
+  // Preço
+  const Preco_Compra=v('preco-compra');
+  const Extenso_Preco_Compra=valorExtensoMaiusculas(Preco_Compra);
+
+  // Pagamento
+  let TXT_Sem_Ent_Inicial='',TXT_Com_Ent_Inicial='',TXT_APB='';
+  const meioRest=v('pagamento-restante');
+  if(!chk('toggle-entrada')){
+    if(meioRest==='apb'){
+      TXT_APB=`--- Ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${v('apb-valor')} EUROS (${valorExtensoMaiusculas(v('apb-valor'))}) mediante transferência bancária da conta ${v('apb-conta-origem')} a creditar na conta ${v('apb-conta-destino')}.`;
+    }else{
+      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante ${meioRest==='transferencia'?'transferência bancária':meioRest==='cheque'?'cheque bancário':'numerário'}.`;
+    }
+  }else{
+    const entValor=v('entrada-valor');const entMeio=v('entrada-meio');
+    const entMeioTexto=entMeio==='transferencia'?`mediante transferência bancária${v('entrada-iban')?` da conta com o IBAN ${v('entrada-iban')}`:''}`:entMeio==='cheque'?'mediante cheque bancário':'em numerário';
+    TXT_Com_Ent_Inicial=`--- A título de entrada inicial e antes deste ato, a parte compradora já entregou a quantia de ${entValor} EUROS (${valorExtensoMaiusculas(entValor)}), ${entMeioTexto}, da qual a parte vendedora dá quitação.`;
+    if(meioRest==='apb'){
+      TXT_APB=`--- O remanescente do preço é pago ao abrigo do protocolo APB, mediante transferência bancária da conta ${v('apb-conta-origem')} a creditar na conta ${v('apb-conta-destino')}, no montante de ${v('apb-valor')} EUROS (${valorExtensoMaiusculas(v('apb-valor'))}).`;
+    }
+  }
+
+  // Mediação
+  const temMediacao=chk('toggle-mediacao');
+  const usaRemax=chk('toggle-remax');
+  const mediadoraNome=usaRemax?'PRIME TEAM — SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA':v('mediadora-nome');
+  const mediadoraAMI=usaRemax?'13123':v('mediadora-ami');
+  const TXT_Mediacao=temMediacao
+    ?`--- As partes declaram, nos termos do art.º 40.º da Lei n.º 15/2013, de 8 de fevereiro, que na presente transação houve intervenção da mediadora imobiliária ${mediadoraNome}, titular da licença AMI ${mediadoraAMI}.`
+    :'--- As partes declaram, nos termos do art.º 40.º da Lei n.º 15/2013, de 8 de fevereiro, que na presente transação não houve intervenção de mediadora imobiliária.';
+
+  return{
+    DATA_EXTENSO:dataExtenso(v('data-escritura')),
+    Entd_Tituladora:entAut?S[entAut].nomeAbrev:'',
+    CD_Profissional:entAut?S[entAut].cedula:'',
+    NIF_Ent_Tituladora:entAut?S[entAut].nif:'',
+    Bloco_Vendedores,Bloco_Compradores,
+    Plural_Primeiros,Plural_Segundos,
+    Data_CPU:fmtDataPT(v('data-cpu')),
+    Cod_CRP:v('cod-crp'),
+    Data_CRP:fmtDataPT(v('data-crp')),
+    TXTDistrate,Verificacao_Empresa_V,Verificacao_Empresa_C,
+    TXT_TA_LU,TXTImpostos,TXTAdvert_Condominio,
+    DtoSobrePredio,TXT_Fracao,Descricao_Predio,
+    Localizacao_Predio:v('localizacao-predio'),
+    Conservatoria:v('conservatoria'),
+    Num_Descricao:v('num-descricao'),
+    Freguesia_Conservatoria:v('freguesia-conservatoria'),
+    AP_Aquisicao:v('ap-aquisicao'),
+    Art_Matricial:v('art-matricial'),
+    Freguesia_Matriz:v('freguesia-matriz'),
+    VPT_Valor:v('vpt-valor'),
+    VPT_Ano:v('vpt-ano'),
+    TXT_CasaPronta_Bloco:'',
+    Destino_do_Imovel:v('destino-imovel'),
+    TXT_LU,TXT_Cert_Energetico,
+    Preco_Compra,Extenso_Preco_Compra,
+    TXT_Sem_Ent_Inicial,TXT_Com_Ent_Inicial,TXT_APB,
+    TXT_Mediacao,
+  };
+}
+
+async function fetchTemplate(){
+  try{
+    const token=await getGraphToken();
+    const dr=await fetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives`,{headers:{Authorization:'Bearer '+token}});
+    const drives=await dr.json();
+    const docsDrive=drives.value.find(d=>d.name==='Documentos Partilhados'||d.webUrl?.includes('Documentos'));
+    if(!docsDrive)throw new Error('Biblioteca não encontrada');
+    const fr=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_CV.docx:/content`,{headers:{Authorization:'Bearer '+token}});
+    if(!fr.ok)throw new Error(`Template TEMPL_CV.docx não encontrado (${fr.status})`);
+    showToast('Template carregado!','success');return fr.blob();
+  }catch(e){
+    showToast('A pedir ficheiro manualmente: '+e.message,'');
+    return new Promise((res,rej)=>{const i=document.createElement('input');i.type='file';i.accept='.docx';i.onchange=ev=>{const f=ev.target.files[0];f?res(f):rej(new Error('Nenhum ficheiro'));};i.click();});
+  }
+}
+
+async function gerarBlob(templateBlob,dados){
+  if(!window.PizZip){await carregarScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');await new Promise(r=>setTimeout(r,300));}
+  if(!window.Docxtemplater&&!window.docxtemplater){await carregarScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');await new Promise(r=>setTimeout(r,300));}
+  const DocxClass=window.Docxtemplater||window.docxtemplater;
+  const ab=await templateBlob.arrayBuffer();
+  const zip=new PizZip(ab);
+  const doc=new DocxClass(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
+  doc.render(dados);
+  return doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+}
+
+async function guardarNoSharePoint(blob,nomeFile){
+  try{
+    const token=await getGraphToken();
+    if(!pastaSeleccionada)throw new Error('Nenhuma pasta seleccionada');
+    const ab=await blob.arrayBuffer();
+    const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeFile}:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab});
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    showToast('✓ Contrato guardado na pasta do cliente!','success');
+  }catch(e){if(!window.saveAs)await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');saveAs(blob,nomeFile);showToast('Guardado localmente','');}
+}
+
+function carregarScript(src){return new Promise((r,j)=>{const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s);});}
+
+window.onload=()=>{
+  addOutorgante('vendedores','Vendedor');
+  addOutorgante('compradores','Comprador');
+  carregarRascunho();
+  carregarPastasSP();
+};
+</script>
+</body>
+</html>
