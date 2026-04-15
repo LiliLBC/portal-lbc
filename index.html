@@ -340,6 +340,12 @@ tbody tr:hover td{background:#FAFAF8}
               MH CGD
             </div>
             <div class="dropdown-divider"></div>
+            <div class="dropdown-item-label">Particulares</div>
+            <div class="dropdown-item" onclick="abrirContrato('cv')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
+              Compra e Venda
+            </div>
+            <div class="dropdown-divider"></div>
             <div class="dropdown-item-label">Promessas</div>
             <div class="dropdown-item" onclick="abrirContrato('cpcv')">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
@@ -1556,7 +1562,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html'};
+  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
@@ -1899,7 +1905,6 @@ function abrirPainelRegisto(itemId){
   document.getElementById('painel-titulo').textContent=i[F.nome]||'Escritura';
   document.getElementById('painel-ref').textContent=i[F.titulo]||'';
   document.getElementById('painel-pasta-wrap').style.display='none';
-  document.getElementById('painel-btn-pasta').style.display=painelPastaUrl?'inline-flex':'none';
   const sv=id=>document.getElementById(id);
   sv('p-nome').value=i[F.nome]||'';
   sv('p-data').value=i[F.data]?i[F.data].substring(0,10):'';
@@ -1926,7 +1931,55 @@ function abrirPainelRegisto(itemId){
   calcMargemLiq();
   sv('p-observacoes').value=i[F.observacoes]||'';
   abrirPainel();
+  // Procurar pasta — por link guardado ou pelo nome do cliente
+  procurarPastaRegisto(i);
   setTimeout(carregarAnexosEscritura,300);
+}
+
+function procurarPastaRegisto(i){
+  const btn=document.getElementById('painel-btn-pasta');
+  if(!btn)return;
+  // 1. Link directo guardado
+  if(i[F.ligacaoPasta]){
+    painelPastaUrl=i[F.ligacaoPasta];
+    btn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg> Abrir pasta`;
+    btn.style.display='inline-flex';
+    btn.onclick=()=>window.open(painelPastaUrl,'_blank');
+    return;
+  }
+  // 2. Procurar pelo nome do cliente nas pastas já carregadas
+  const nome=(i[F.nome]||'').toUpperCase().trim();
+  if(!nome){btn.style.display='none';return;}
+  // Procura pasta cujo nome contém palavras do nome do cliente
+  const palavras=nome.split(/\s+/).filter(p=>p.length>2);
+  const pasta=pastasPainel.find(p=>{
+    const nomePasta=p.nome.toUpperCase();
+    return palavras.some(palavra=>nomePasta.includes(palavra));
+  });
+  if(pasta){
+    painelPastaUrl=pasta.webUrl;
+    btn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg> Abrir pasta`;
+    btn.style.display='inline-flex';
+    btn.style.background='var(--green)';btn.style.borderColor='var(--green)';btn.style.color='#fff';
+    btn.onclick=()=>window.open(pasta.webUrl,'_blank');
+    // Guardar o link no SharePoint silenciosamente
+    guardarLinkPasta(pasta.webUrl);
+  }else{
+    // Não encontrou — mostrar botão para pesquisar/criar
+    btn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M8 8v3M6.5 10h3"/></svg> Criar/ligar pasta`;
+    btn.style.display='inline-flex';
+    btn.style.background='';btn.style.borderColor='';btn.style.color='';
+    btn.onclick=()=>document.getElementById('painel-pasta-wrap').style.display='block';
+    painelPastaUrl=null;
+  }
+}
+
+async function guardarLinkPasta(url){
+  // Guarda silenciosamente o link da pasta no registo SP
+  try{
+    await renovarToken();
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${painelItemId}/fields`,{[F.ligacaoPasta]:url});
+  }catch(e){/* silencioso */}
 }
 
 function abrirPainel(){
