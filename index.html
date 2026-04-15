@@ -286,6 +286,9 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('contabilidade',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
     </div>
+    <div class="nav-item" onclick="nav('avencas',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h3M5 11h5"/><path d="M11 8v5"/></svg></span>Avenças
+    </div>
     <div class="nav-item" onclick="nav('relatorios',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12V6l4-4h6l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><path d="M5 9h6M5 11h4"/></svg></span>Relatórios
     </div>
@@ -1285,6 +1288,83 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <!-- AVENÇAS -->
+      <div class="screen" id="screen-avencas">
+
+        <!-- TABS -->
+        <div class="filter-row" style="margin-bottom:1rem">
+          <button class="filter-chip active" id="av-tab-btn-novo" onclick="avSetTab('novo',this)">📁 Novo processo</button>
+          <button class="filter-chip" id="av-tab-btn-pastas" onclick="avSetTab('pastas',this)">🗂 Pastas existentes</button>
+        </div>
+
+        <!-- TAB: NOVO PROCESSO -->
+        <div id="av-tab-novo">
+          <div class="section-card" style="max-width:560px">
+            <div class="section-card-header">
+              <div class="section-num">1</div>
+              <div><div class="section-name">Novo processo em Avenças</div><div class="section-desc">Cria a pasta na biblioteca AVENCAS do SharePoint</div></div>
+            </div>
+            <div class="form-grid-2" style="display:grid;gap:.9rem">
+              <div class="form-group">
+                <label class="form-label">Fornecedor <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="av-fornecedor" onchange="avOnFornecedorChange()">
+                  <option value="">Selecionar...</option>
+                  <option value="REMAX">REMAX</option>
+                  <option value="CM MONFORTE">CM MONFORTE</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de serviço <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="av-tipo" disabled>
+                  <option value="">Selecionar fornecedor primeiro...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Data <span style="color:var(--red)">*</span></label>
+                <input type="date" class="form-input" id="av-data" oninput="avUpdatePreview()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nome / Descrição <span style="color:var(--red)">*</span></label>
+                <input type="text" class="form-input" id="av-nome" placeholder="Ex: JOÃO SILVA" oninput="avUpdatePreview()" style="text-transform:uppercase">
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Pré-visualização da pasta</label>
+                <div class="form-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.6rem .9rem">
+                  <div class="form-preview-label">Pasta a criar em AVENCAS / [Fornecedor]</div>
+                  <div class="form-preview-value" id="av-preview" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500">— preenche os campos —</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions" style="margin-top:1rem">
+              <button class="btn btn-primary" id="av-btn-criar" onclick="avCriarPasta()">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M8 8v4M6 10h4"/></svg>
+                Criar pasta
+              </button>
+              <button class="btn" onclick="avLimpar()">Limpar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: PASTAS EXISTENTES -->
+        <div id="av-tab-pastas" style="display:none">
+          <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+            <select class="form-select" id="av-filtro-fornecedor" onchange="avCarregarPastas()" style="width:200px;font-size:12px">
+              <option value="">Todos os fornecedores</option>
+              <option value="REMAX">REMAX</option>
+              <option value="CM MONFORTE">CM MONFORTE</option>
+            </select>
+            <div class="reg-search-wrap" style="flex:1;min-width:200px">
+              <svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+              <input class="reg-search-input" id="av-search" placeholder="Pesquisar pasta..." oninput="avFiltrarPastas()">
+            </div>
+            <button class="btn btn-sm" onclick="avCarregarPastas()">↺ Atualizar</button>
+          </div>
+          <div id="av-loading" class="loading-overlay" style="display:none"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>
+          <div id="av-list"></div>
+        </div>
+
+      </div>
+
       <!-- EM CONSTRUÇÃO -->
       <div class="screen" id="screen-contratos">
         <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
@@ -1337,7 +1417,7 @@ const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Respons
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
-let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null;
+let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null,driveIdAvencas=null;
 let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
 let todasTarefas=[],tarefasCarregadas=false;
@@ -1415,6 +1495,7 @@ async function resolverSiteIds(){
     listaIdContab=cb.value[0]?.id;
     bibliotecaFaturasId=drivesDados.value.find(d=>d.name===BIBLIOTECA_FATURAS)?.id;
     driveIdSuprimentos=drivesDados.value.find(d=>d.name===BIBLIOTECA_SUPRIMENTOS)?.id;
+    driveIdAvencas=drivesDados.value.find(d=>d.name==='AVENCAS')?.id;
   }catch(e){console.error('Erro IDs:',e);}
 }
 
@@ -1438,7 +1519,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',relatorios:'Relatórios'};
+const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
 
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
@@ -1454,6 +1535,7 @@ function nav(id,el){
   if(id==='processos')carregarProcessos();
   if(id==='contacorrente')carregarContaCorrente();
   if(id==='contabilidade')carregarContabilidade();
+  if(id==='avencas')carregarAvencas();
   if(id==='relatorios')carregarRelatorios();
 }
 
@@ -3160,6 +3242,153 @@ async function uploadAnexoEscritura(input){
     status.textContent='Erro: '+e.message;
     showToast('Erro no upload: '+e.message,'error');
   }
+}
+
+// ─── AVENÇAS ──────────────────────────────────────────────────────────────────
+const AVENCAS_FORNECEDORES={
+  'REMAX':['CPCV','ARRENDAMENTO','ANÁLISE','PARECER','CADASTRO','OUTRO'],
+  'CM MONFORTE':['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']
+};
+let avPastasCache=[];
+let avFornecedorAtivo='';
+
+function carregarAvencas(){
+  avSetTab('novo', document.getElementById('av-tab-btn-novo'));
+}
+
+function avSetTab(tab,el){
+  document.getElementById('av-tab-novo').style.display=tab==='novo'?'block':'none';
+  document.getElementById('av-tab-pastas').style.display=tab==='pastas'?'block':'none';
+  document.querySelectorAll('#screen-avencas .filter-chip').forEach(c=>c.classList.remove('active'));
+  if(el)el.classList.add('active');
+  if(tab==='pastas')avCarregarPastas();
+}
+
+function avOnFornecedorChange(){
+  const forn=document.getElementById('av-fornecedor').value;
+  const sel=document.getElementById('av-tipo');
+  sel.innerHTML='<option value="">Selecionar tipo...</option>';
+  if(forn&&AVENCAS_FORNECEDORES[forn]){
+    AVENCAS_FORNECEDORES[forn].forEach(t=>{
+      sel.innerHTML+=`<option value="${t}">${t}</option>`;
+    });
+    sel.disabled=false;
+  }else{
+    sel.innerHTML='<option value="">Selecionar fornecedor primeiro...</option>';
+    sel.disabled=true;
+  }
+  avUpdatePreview();
+}
+
+function avUpdatePreview(){
+  const forn=document.getElementById('av-fornecedor').value;
+  const tipo=document.getElementById('av-tipo').value;
+  const data=document.getElementById('av-data').value;
+  const nome=document.getElementById('av-nome').value.toUpperCase().trim();
+  const prev=document.getElementById('av-preview');
+  if(!forn||!tipo||!data||!nome){
+    prev.textContent='— preenche os campos —';
+    prev.style.color='var(--text-faint)';
+    return;
+  }
+  const dataFmt=data.replace(/-/g,'');
+  const nomePasta=`${dataFmt} ${tipo} ${nome}`;
+  prev.textContent=`AVENCAS / ${forn} / ${nomePasta}`;
+  prev.style.color='var(--text)';
+}
+
+async function avCriarPasta(){
+  const forn=document.getElementById('av-fornecedor').value;
+  const tipo=document.getElementById('av-tipo').value;
+  const data=document.getElementById('av-data').value;
+  const nome=document.getElementById('av-nome').value.toUpperCase().trim();
+  if(!forn||!tipo||!data||!nome){showToast('Preenche todos os campos','error');return;}
+  if(!driveIdAvencas){showToast('Biblioteca AVENCAS não encontrada no SharePoint','error');return;}
+  const dataFmt=data.replace(/-/g,'');
+  const nomePastaAv=`${dataFmt} ${tipo} ${nome}`;
+  const btn=document.getElementById('av-btn-criar');
+  btn.disabled=true;btn.textContent='A criar...';
+  try{
+    await renovarToken();
+    // Garantir que a pasta do fornecedor existe
+    const fornPath=encodeURIComponent(forn);
+    const pastaRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({name:nomePastaAv,folder:{},['@microsoft.graph.conflictBehavior']:'rename'})
+    });
+    if(!pastaRes.ok)throw new Error(`Erro ${pastaRes.status} ao criar pasta`);
+    const pasta=await pastaRes.json();
+    showToast(`Pasta "${nomePastaAv}" criada em ${forn}!`,'success');
+    // Abrir no SharePoint
+    if(pasta.webUrl)setTimeout(()=>{if(confirm('Pasta criada! Queres abrir no SharePoint?'))window.open(pasta.webUrl,'_blank');},500);
+    avLimpar();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  btn.disabled=false;btn.textContent='Criar pasta';
+}
+
+async function avCarregarPastas(){
+  if(!driveIdAvencas){showToast('Biblioteca AVENCAS não encontrada','error');return;}
+  const forn=document.getElementById('av-filtro-fornecedor').value;
+  const loading=document.getElementById('av-loading');
+  const list=document.getElementById('av-list');
+  loading.style.display='flex';list.innerHTML='';
+  try{
+    await renovarToken();
+    avPastasCache=[];
+    const fornecedores=forn?[forn]:Object.keys(AVENCAS_FORNECEDORES);
+    for(const f of fornecedores){
+      const res=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(f)}:/children?$top=200&$orderby=lastModifiedDateTime desc`,{
+        headers:{'Authorization':'Bearer '+graphToken}
+      });
+      if(!res.ok)continue;
+      const data=await res.json();
+      (data.value||[]).filter(i=>i.folder).forEach(i=>{
+        avPastasCache.push({nome:i.name,fornecedor:f,url:i.webUrl,modificado:i.lastModifiedDateTime});
+      });
+    }
+    avRenderPastas(avPastasCache);
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  loading.style.display='none';
+}
+
+function avFiltrarPastas(){
+  const q=document.getElementById('av-search').value.toLowerCase();
+  const filtrado=q?avPastasCache.filter(p=>p.nome.toLowerCase().includes(q)||p.fornecedor.toLowerCase().includes(q)):avPastasCache;
+  avRenderPastas(filtrado);
+}
+
+function avRenderPastas(lista){
+  const list=document.getElementById('av-list');
+  if(!lista.length){list.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';return;}
+  // Agrupar por fornecedor
+  const grupos={};
+  lista.forEach(p=>{if(!grupos[p.fornecedor])grupos[p.fornecedor]=[];grupos[p.fornecedor].push(p);});
+  list.innerHTML=Object.entries(grupos).map(([forn,pastas])=>`
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;padding:.3rem 0;border-bottom:1px solid var(--border);margin-bottom:.5rem">${forn} — ${pastas.length} pasta(s)</div>
+      ${pastas.map(p=>`
+        <div class="reg-list-item" onclick="window.open('${p.url}','_blank')" style="cursor:pointer">
+          <div class="reg-list-main">
+            <div class="reg-list-nome" style="font-family:'DM Mono',monospace;font-size:12px">${escHtml(p.nome)}</div>
+            <div class="reg-list-meta">${forn} · Modificado ${fmtData(p.modificado)}</div>
+          </div>
+          <div class="reg-list-right">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function avLimpar(){
+  document.getElementById('av-fornecedor').value='';
+  document.getElementById('av-tipo').innerHTML='<option value="">Selecionar fornecedor primeiro...</option>';
+  document.getElementById('av-tipo').disabled=true;
+  document.getElementById('av-data').value='';
+  document.getElementById('av-nome').value='';
+  document.getElementById('av-preview').textContent='— preenche os campos —';
+  document.getElementById('av-preview').style.color='var(--text-faint)';
 }
 
 // ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
