@@ -455,34 +455,58 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <hr class="divider">
 
       <!-- Licença de utilização -->
-      <div class="toggle-row">
-        <span class="toggle-label">Imóvel isento de licença de utilização</span>
-        <label class="toggle-switch"><input type="checkbox" id="toggle-isento-lu" onchange="onIsentoLUChange()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="form-group" id="lu-fields">
+      <div class="form-group">
         <label class="form-label">Licença de utilização <span>*</span></label>
-        <input type="text" class="form-input" id="licenca-utilizacao" placeholder="Ex: Licença nº 123/2005 · emitida pela CM de Évora">
+        <select class="form-select" id="lu-opcao" onchange="onLUChange()">
+          <option value="">Selecionar...</option>
+          <option value="numero">Com licença — indicar número</option>
+          <option value="comunicacao">Comunicação prévia / Autorização</option>
+          <option value="anterior">Construção anterior a 07/08/1951 — isento</option>
+          <option value="rustico">Prédio rústico — não aplicável</option>
+          <option value="isento-outro">Isento — outro fundamento</option>
+        </select>
       </div>
-      <div class="cond-block" id="lu-isento-fields" style="display:none">
+      <div id="lu-numero-fields" style="display:none">
         <div class="form-group">
-          <label class="form-label">Fundamento da isenção</label>
-          <input type="text" class="form-input" id="lu-isencao-motivo" placeholder="Ex: Construção anterior a 07/08/1951">
+          <label class="form-label">Número da licença <span>*</span></label>
+          <input type="text" class="form-input" id="lu-numero" placeholder="Ex: Licença nº 30/1999 · emitida pela CM de Évora">
+        </div>
+      </div>
+      <div id="lu-comunicacao-fields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Referência da comunicação / autorização <span>*</span></label>
+          <input type="text" class="form-input" id="lu-comunicacao" placeholder="Ex: Comunicação prévia nº 15/2020">
+        </div>
+      </div>
+      <div id="lu-isento-outro-fields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Fundamento da isenção <span>*</span></label>
+          <input type="text" class="form-input" id="lu-isencao-motivo" placeholder="Indicar fundamento legal">
         </div>
       </div>
 
       <!-- Certificado energético -->
-      <div class="toggle-row" style="margin-top:.5rem">
-        <span class="toggle-label">Imóvel isento de certificado energético</span>
-        <label class="toggle-switch"><input type="checkbox" id="toggle-isento-ce" onchange="onIsentoCEChange()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="form-group" id="ce-fields">
+      <div class="form-group" style="margin-top:.5rem">
         <label class="form-label">Certificado energético <span>*</span></label>
-        <input type="text" class="form-input" id="cert-energetico" placeholder="Ex: SCE265584838 · válido até 09/12/2031">
+        <select class="form-select" id="ce-opcao" onchange="onCEChange()">
+          <option value="">Selecionar...</option>
+          <option value="numero">Com certificado — indicar número</option>
+          <option value="anterior">Construção anterior a 07/08/1951 — isento</option>
+          <option value="rustico">Prédio rústico — não aplicável</option>
+          <option value="fracao-autonoma">Fração isenta por lei</option>
+          <option value="isento-outro">Isento — outro fundamento</option>
+        </select>
       </div>
-      <div class="cond-block" id="ce-isento-fields" style="display:none">
+      <div id="ce-numero-fields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Número do certificado <span>*</span></label>
+          <input type="text" class="form-input" id="cert-energetico" placeholder="Ex: SCE265584838 · válido até 09/12/2031">
+        </div>
+      </div>
+      <div id="ce-isento-outro-fields" style="display:none">
         <div class="form-group">
           <label class="form-label">Fundamento da isenção</label>
-          <input type="text" class="form-input" id="ce-isencao-motivo" placeholder="Ex: Prédio rústico / Fracção isenta por lei">
+          <input type="text" class="form-input" id="ce-isencao-motivo" placeholder="Indicar fundamento legal">
         </div>
       </div>
 
@@ -535,8 +559,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
             </select>
           </div>
           <div class="form-group" id="entrada-iban-group">
-            <label class="form-label">IBAN de origem</label>
+            <label class="form-label">IBAN origem (comprador)</label>
             <input type="text" class="form-input" id="entrada-iban" placeholder="PT50 ...">
+          </div>
+          <div class="form-group" id="entrada-iban-destino-group" style="display:none">
+            <label class="form-label">IBAN destino (vendedor)</label>
+            <input type="text" class="form-input" id="entrada-iban-destino" placeholder="PT50 ...">
           </div>
         </div>
       </div>
@@ -550,6 +578,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
           <option value="cheque">Cheque bancário</option>
           <option value="numerario">Numerário</option>
         </select>
+      </div>
+
+      <!-- Cheque remanescente -->
+      <div class="cond-block" id="cheque-rest-fields" style="display:none">
+        <div class="cond-block-title">Dados do cheque</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Banco sacado</label>
+            <input type="text" class="form-input" id="cheque-rest-banco" placeholder="Ex: CGD">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nº do cheque</label>
+            <input type="text" class="form-input" id="cheque-rest-num" placeholder="Ex: 1234567">
+          </div>
+        </div>
       </div>
 
       <!-- APB -->
@@ -771,16 +814,19 @@ function onECChange(id){
 function onOnusChange(){
   document.getElementById('onus-fields').style.display=document.getElementById('toggle-onus').checked?'block':'none';
 }
-function onIsentoLUChange(){
-  const on=document.getElementById('toggle-isento-lu').checked;
-  document.getElementById('lu-fields').style.display=on?'none':'block';
-  document.getElementById('lu-isento-fields').style.display=on?'block':'none';
+function onLUChange(){
+  const op=document.getElementById('lu-opcao').value;
+  document.getElementById('lu-numero-fields').style.display=op==='numero'?'block':'none';
+  document.getElementById('lu-comunicacao-fields').style.display=op==='comunicacao'?'block':'none';
+  document.getElementById('lu-isento-outro-fields').style.display=op==='isento-outro'?'block':'none';
 }
-function onIsentoCEChange(){
-  const on=document.getElementById('toggle-isento-ce').checked;
-  document.getElementById('ce-fields').style.display=on?'none':'block';
-  document.getElementById('ce-isento-fields').style.display=on?'block':'none';
+function onCEChange(){
+  const op=document.getElementById('ce-opcao').value;
+  document.getElementById('ce-numero-fields').style.display=op==='numero'?'block':'none';
+  document.getElementById('ce-isento-outro-fields').style.display=op==='isento-outro'?'block':'none';
 }
+function onIsentoLUChange(){}
+function onIsentoCEChange(){}
 function onTipoPredioChange(){
   const val=document.getElementById('tipo-predio').value;
   document.getElementById('fracao-fields').style.display=val==='fracao'?'block':'none';
@@ -801,7 +847,10 @@ function onEntradaValorChange(){
   document.getElementById('entrada-extenso').value=valorExtenso(document.getElementById('entrada-valor').value);
 }
 function onEntradaMeioChange(){
-  document.getElementById('entrada-iban-group').style.display=document.getElementById('entrada-meio').value==='transferencia'?'block':'none';
+  const meio=document.getElementById('entrada-meio').value;
+  const isTrans=meio==='transferencia';
+  document.getElementById('entrada-iban-group').style.display=isTrans?'block':'none';
+  document.getElementById('entrada-iban-destino-group').style.display=isTrans?'block':'none';
 }
 function onPrecoChange(){
   document.getElementById('preco-extenso').value=valorExtenso(document.getElementById('preco-compra').value);
@@ -810,7 +859,9 @@ function onAPBChange(){
   document.getElementById('apb-extenso').value=valorExtenso(document.getElementById('apb-valor').value);
 }
 function onPagamentoRestanteChange(){
-  document.getElementById('apb-fields').style.display=document.getElementById('pagamento-restante').value==='apb'?'block':'none';
+  const val=document.getElementById('pagamento-restante').value;
+  document.getElementById('apb-fields').style.display=val==='apb'?'block':'none';
+  document.getElementById('cheque-rest-fields').style.display=val==='cheque'?'block':'none';
 }
 function onMediacaoChange(){
   document.getElementById('mediacao-fields').style.display=document.getElementById('toggle-mediacao').checked?'block':'none';
@@ -890,7 +941,7 @@ function restaurarDados(d){
   onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();
   onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();
   onMediacaoChange();onRemaxChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
-  onOnusChange();onIsentoLUChange();onIsentoCEChange();
+  onOnusChange();onLUChange();onCEChange();
   // Restaurar estado civil de cada outorgante (mostra/esconde cônjuge)
   document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{
     const id=el.id.replace('-estado-civil','');
@@ -1009,30 +1060,40 @@ function recolherDadosContrato(){
   const Verificacao_Empresa_V=chk('toggle-emp-v')?'--- Verifiquei os poderes de representação da parte vendedora através da certidão de registo comercial em vigor.':'';
   const Verificacao_Empresa_C=chk('toggle-emp-c')?'--- Verifiquei os poderes de representação da parte compradora através da certidão de registo comercial em vigor.':'';
 
-  // Ónus / Hipoteca
+  // Licença de utilização
+  const luOpcao=v('lu-opcao');
+  let TXT_TA_LU='';
+  const luTextos={
+    numero:`--- A licença de utilização ${v('lu-numero')};`,
+    comunicacao:`--- A comunicação prévia/autorização ${v('lu-comunicacao')};`,
+    anterior:'--- O imóvel está isento de licença de utilização por ter sido construído antes de 07/08/1951, nos termos do artigo 6.º do Decreto-Lei n.º 555/99, de 16 de dezembro;',
+    rustico:'--- O imóvel não está sujeito a licença de utilização por se tratar de prédio rústico;',
+    'isento-outro':`--- O imóvel está isento de licença de utilização${v('lu-isencao-motivo')?': '+v('lu-isencao-motivo'):''};`,
+  };
+  TXT_TA_LU=luTextos[luOpcao]||'';
+  const luCorpoTextos={
+    numero:`A licença de utilização ${v('lu-numero')}`,
+    comunicacao:`A comunicação prévia/autorização ${v('lu-comunicacao')}`,
+    anterior:'O imóvel está isento de licença de utilização por ter sido construído antes de 07/08/1951',
+    rustico:'O imóvel não está sujeito a licença de utilização por se tratar de prédio rústico',
+    'isento-outro':`O imóvel está isento de licença de utilização${v('lu-isencao-motivo')?': '+v('lu-isencao-motivo'):''}`,
+  };
+  const TXT_LU=luCorpoTextos[luOpcao]||'A licença de utilização — (não indicada)';
+
+  // Certificado energético
+  const ceOpcao=v('ce-opcao');
+  const ceTextos={
+    numero:`O certificado de desempenho energético ${v('cert-energetico')}`,
+    anterior:'O imóvel está isento de certificação energética por ter sido construído antes de 07/08/1951',
+    rustico:'O imóvel não está sujeito a certificação energética por se tratar de prédio rústico',
+    'fracao-autonoma':'O imóvel está isento de certificação energética por força da lei aplicável às frações autónomas',
+    'isento-outro':`O imóvel está isento de certificação energética${v('ce-isencao-motivo')?': '+v('ce-isencao-motivo'):''}`,
+  };
+  const TXT_Cert_Energetico=ceTextos[ceOpcao]||'O certificado de desempenho energético — (não indicado)';
   let TXT_Canc_Hipoteca='';
   if(chk('toggle-onus')){
     const tipoCancel=v('onus-tipo-cancel');
-    TXT_Canc_Hipoteca=`--- Sobre o referido imóvel encontra-se registada hipoteca a favor de ${v('onus-credor')}${v('onus-nif')?', NIF '+v('onus-nif'):''}, pela ${v('onus-ap')}, cujo cancelamento ${tipoCancel==='simultaneo'?'é efectuado em simultâneo com o presente ato':'fica assegurado pela parte vendedora até à data de registo da presente transmissão'}.`;
-  }
-
-  // Licença de utilização
-  const isentoLU=chk('toggle-isento-lu');
-  let TXT_TA_LU='';
-  if(isentoLU){
-    TXT_TA_LU=`O imóvel está isento de licença de utilização${v('lu-isencao-motivo')?': '+v('lu-isencao-motivo'):''}`;
-  }else{
-    TXT_TA_LU=v('licenca-utilizacao')?`A licença de utilização ${v('licenca-utilizacao')}`:'A licença de utilização — (não indicada)';
-  }
-  const TXT_LU=TXT_TA_LU;
-
-  // Certificado energético
-  const isentoCE=chk('toggle-isento-ce');
-  let TXT_Cert_Energetico='';
-  if(isentoCE){
-    TXT_Cert_Energetico=`O imóvel está isento de certificação energética${v('ce-isencao-motivo')?': '+v('ce-isencao-motivo'):''}`;
-  }else{
-    TXT_Cert_Energetico=v('cert-energetico')?`O certificado de desempenho energético ${v('cert-energetico')}`:'O certificado de desempenho energético — (não indicado)';
+    TXT_Canc_Hipoteca=`--- Sobre o referido imóvel incide hipoteca voluntária registada a favor de ${v('onus-credor')}${v('onus-nif')?', NIF '+v('onus-nif'):''}, pela ${v('onus-ap')}, cujo cancelamento ${tipoCancel==='simultaneo'?'é efectuado em simultâneo com o presente ato':'fica assegurado pela parte vendedora até à data de registo da presente transmissão'}.`;
   }
 
   // Preço
@@ -1043,17 +1104,38 @@ function recolherDadosContrato(){
   let TXT_Sem_Ent_Inicial='',TXT_Com_Ent_Inicial='',TXT_APB='';
   const meioRest=v('pagamento-restante');
   if(!chk('toggle-entrada')){
+    // Sem entrada — pagamento total no acto
     if(meioRest==='apb'){
       TXT_APB=`--- Ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${v('apb-valor')} EUROS (${valorExtensoMaiusculas(v('apb-valor'))}) mediante transferência bancária da conta ${v('apb-conta-origem')} a creditar na conta ${v('apb-conta-destino')}.`;
+    }else if(meioRest==='transferencia'){
+      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante transferência bancária${v('entrada-iban')?` da conta com o IBAN ${v('entrada-iban')}`:''}${v('entrada-iban-destino')?' para a conta com o IBAN '+v('entrada-iban-destino'):''}.`;
+    }else if(meioRest==='cheque'){
+      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante cheque bancário${v('cheque-rest-banco')?' sacado sobre o '+v('cheque-rest-banco'):''}${v('cheque-rest-num')?', com o número '+v('cheque-rest-num'):''}.`;
     }else{
-      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante ${meioRest==='transferencia'?'transferência bancária':meioRest==='cheque'?'cheque bancário':'numerário'}.`;
+      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato em numerário.`;
     }
   }else{
-    const entValor=v('entrada-valor');const entMeio=v('entrada-meio');
-    const entMeioTexto=entMeio==='transferencia'?`mediante transferência bancária${v('entrada-iban')?` da conta com o IBAN ${v('entrada-iban')}`:''}`:entMeio==='cheque'?'mediante cheque bancário':'em numerário';
+    // Com entrada inicial
+    const entValor=v('entrada-valor');
+    const entMeio=v('entrada-meio');
+    let entMeioTexto='';
+    if(entMeio==='transferencia'){
+      entMeioTexto=`mediante transferência bancária${v('entrada-iban')?' da conta com o IBAN '+v('entrada-iban'):''}${v('entrada-iban-destino')?' para a conta com o IBAN '+v('entrada-iban-destino'):''}`;
+    }else if(entMeio==='cheque'){
+      entMeioTexto='mediante cheque bancário';
+    }else{
+      entMeioTexto='em numerário';
+    }
     TXT_Com_Ent_Inicial=`--- A título de entrada inicial e antes deste ato, a parte compradora já entregou a quantia de ${entValor} EUROS (${valorExtensoMaiusculas(entValor)}), ${entMeioTexto}, da qual a parte vendedora dá quitação.`;
+    // Remanescente
     if(meioRest==='apb'){
       TXT_APB=`--- O remanescente do preço é pago ao abrigo do protocolo APB, mediante transferência bancária da conta ${v('apb-conta-origem')} a creditar na conta ${v('apb-conta-destino')}, no montante de ${v('apb-valor')} EUROS (${valorExtensoMaiusculas(v('apb-valor'))}).`;
+    }else if(meioRest==='cheque'){
+      TXT_APB=`--- O remanescente do preço, no valor de ${v('preco-compra')} EUROS (${valorExtensoMaiusculas(v('preco-compra'))}), é pago na data da outorga da Escritura Pública/DPA mediante cheque bancário${v('cheque-rest-banco')?' sacado sobre o '+v('cheque-rest-banco'):''}${v('cheque-rest-num')?', com o número '+v('cheque-rest-num'):''}.`;
+    }else if(meioRest==='transferencia'){
+      TXT_APB=`--- O remanescente do preço é liquidado na data da outorga da Escritura Pública/DPA mediante transferência bancária.`;
+    }else{
+      TXT_APB=`--- O remanescente do preço é liquidado na data da outorga da Escritura Pública/DPA em numerário.`;
     }
   }
 
