@@ -150,14 +150,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div id="checklist-items">
       <div class="checklist-item" onclick="toggleCheck(this)">
         <div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div>
-        <span class="checklist-text">Trato sucessivo e legitimidade verificados</span>
-      </div>
-      <div class="checklist-item" onclick="toggleCheck(this)">
-        <div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div>
-        <span class="checklist-text">Procurações arquivadas</span>
-      </div>
-      <div class="checklist-item" onclick="toggleCheck(this)">
-        <div class="checklist-box"><svg class="checklist-check" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 8l4 4 8-8"/></svg></div>
         <span class="checklist-text">Estado civil de todos os intervenientes confirmado</span>
       </div>
       <div class="checklist-item" onclick="toggleCheck(this)">
@@ -169,7 +161,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <span class="checklist-text">Período de reflexão de 7 dias decorrido</span>
       </div>
     </div>
-    <div class="modal-progress" id="checklist-progress">0 de 5 verificados</div>
+    <div class="modal-progress" id="checklist-progress">0 de 3 verificados</div>
     <div class="modal-actions">
       <button class="btn" onclick="fecharModal()" style="flex:1">Cancelar</button>
       <button class="btn btn-primary" id="btn-download-gerar" onclick="confirmarGerar('download')" disabled style="flex:2;opacity:.5;cursor:not-allowed">
@@ -1648,12 +1640,18 @@ function recolherDadosContrato() {
   const Mut_1_Morada = m1.tipo === 'singular' && m1.estadoCivil === 'casado' && m1.conjugeOutorgante === 'sim' ? m1.moradaConjunta : (m1.tipo === 'empresa' ? m1.gerMorada : m1.morada);
   const Mut_1_Localidade = '';
 
-  // Clausula casamento (m1) — inclui sempre cônjuge quando casado
+  // Clausula casamento (m1) — identificação completa da cônjuge no Termo de Autenticação
   let Clausula_Casamento = '';
   if (m1.tipo === 'singular' && m1.estadoCivil === 'casado') {
+    const gc = m1.conjugeGenero === 'F';
     Clausula_Casamento = `sob o regime da ${regimenTexto(m1.regime)}`;
-    if (m1.conjugeNome) Clausula_Casamento += ` com ${m1.conjugeNome}`;
-    if (m1.conjugeNIF) Clausula_Casamento += `, NIF ${m1.conjugeNIF}`;
+    if (m1.conjugeNome) {
+      Clausula_Casamento += ` com ${m1.conjugeNome}`;
+      if (m1.conjugeNaturalidade) Clausula_Casamento += `, natural de ${m1.conjugeNaturalidade}`;
+      if (m1.conjugeCC) Clausula_Casamento += `, portador${gc?'a':''} do cartão de cidadão com o número ${m1.conjugeCC}`;
+      if (m1.conjugeCCVal) Clausula_Casamento += `, válido até ${fmtDataPT(m1.conjugeCCVal)}`;
+      if (m1.conjugeNIF) Clausula_Casamento += `, NIF ${m1.conjugeNIF}`;
+    }
   }
 
   // Clausula mutuario 2 (segundo mutuário se existir)
