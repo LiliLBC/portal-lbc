@@ -489,6 +489,7 @@ tbody tr:hover td{background:#FAFAF8}
               <button class="filter-chip" onclick="filtrarRegistos('Em curso',this)">Em curso</button>
               <button class="filter-chip" onclick="filtrarRegistos('Concluido',this)">Concluídas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
+              <button class="filter-chip" style="color:var(--red);border-color:var(--red)" onclick="filtrarRegistosPagamento('Não pago',this)">Não pago</button>
             </div>
             <div id="reg-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
             <div id="reg-list" style="display:none;overflow-y:auto;flex:1"></div>
@@ -1467,6 +1468,7 @@ let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
 let todasTarefas=[],tarefasCarregadas=false;
 let filtroEstadoAtual='';
+let filtroPagamentoAtual='';
 
 function tentarLogin(){
   if(!msalApp){const el=document.getElementById('login-error');el.textContent='A carregar... aguarda 2 segundos.';el.style.display='block';setTimeout(()=>el.style.display='none',2000);return;}
@@ -1763,8 +1765,10 @@ function pesquisarRegistos(){
   const qAp=(document.getElementById('reg-f-apregisto')?.value||'').toLowerCase().trim();
   const qNumPedido=(document.getElementById('reg-f-numpedido')?.value||'').toLowerCase().trim();
   const qEstado=(document.getElementById('reg-f-estado')?.value||'');
-  // Respeita chip activo E filtros de pesquisa
-  const base=filtroEstadoAtual?todosRegistosReg.filter(i=>i[F.estado]===filtroEstadoAtual):todosRegistosReg;
+  // Aplicar chip activo (estado ou pagamento)
+  let base=todosRegistosReg;
+  if(filtroEstadoAtual) base=base.filter(i=>i[F.estado]===filtroEstadoAtual);
+  if(filtroPagamentoAtual) base=base.filter(i=>i[F.pago]===filtroPagamentoAtual);
   const resultado=base.filter(i=>
     (!qNome||(i[F.nome]||'').toLowerCase().includes(qNome)||(i[F.titulo]||'').toLowerCase().includes(qNome))&&
     (!qPredio||(i[F.predio]||'').toLowerCase().includes(qPredio))&&
@@ -1775,7 +1779,7 @@ function pesquisarRegistos(){
   );
   registosFiltradosAtual=resultado;
   const c=document.getElementById('reg-result-count');
-  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qEstado;
+  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qEstado||filtroPagamentoAtual;
   if(c){c.textContent=temFiltro?`${resultado.length} resultado(s)`:'';c.style.display=temFiltro?'block':'none';}
   renderRegistos(resultado,qNome);
 }
@@ -1788,8 +1792,16 @@ function limparPesquisa(){
 
 function filtrarRegistos(estado,el){
   filtroEstadoAtual=estado;
+  filtroPagamentoAtual='';
   document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));if(el)el.classList.add('active');
-  // Limpa o select de estado para não conflituar com o chip
+  const sel=document.getElementById('reg-f-estado');if(sel)sel.value='';
+  pesquisarRegistos();
+}
+
+function filtrarRegistosPagamento(pago,el){
+  filtroEstadoAtual='';
+  filtroPagamentoAtual=pago;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));if(el)el.classList.add('active');
   const sel=document.getElementById('reg-f-estado');if(sel)sel.value='';
   pesquisarRegistos();
 }
