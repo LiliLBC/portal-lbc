@@ -3295,15 +3295,12 @@ async function corrigirLinksAbrilParaMarco(){
 // ─── ANEXOS ESCRITURAS (SUPRIMENTOS_ANEXOS) ───────────────────────────────────
 
 function nomePastaAnexo(){
-  // Formato: AAAAMMDD Prédio Freguesia Concelho  — usa data da escritura
+  // Formato real das pastas: AAAAMMDD NOME_CLIENTE
   const dataEscritura = document.getElementById('p-data')?.value || '';
-  const predio    = (document.getElementById('p-predio')?.value    || '').trim();
-  const freguesia = (document.getElementById('p-freguesia')?.value || '').trim();
-  const concelho  = (document.getElementById('p-concelho')?.value  || '').trim();
-  const partes = [predio, freguesia, concelho].filter(Boolean);
-  if(!partes.length && !dataEscritura) return null;
-  const dataStr = dataEscritura ? dataEscritura.replace(/-/g,'') : 'SEM_DATA';
-  return `${dataStr} ${partes.join(' ')}`.trim().toUpperCase();
+  const nome = (document.getElementById('p-nome')?.value || '').trim();
+  if(!dataEscritura || !nome) return null;
+  const dataStr = dataEscritura.replace(/-/g,'');
+  return `${dataStr} ${nome.toUpperCase()}`;
 }
 
 async function garantirPastaAnexo(nomePasta){
