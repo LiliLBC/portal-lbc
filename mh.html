@@ -731,13 +731,18 @@ const DEZENAS = ['','','vinte','trinta','quarenta','cinquenta','sessenta','seten
 const CENTENAS = ['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
 
 function numExtenso(n) {
-  // Não arredondar — preservar decimais
+  // Para percentagens — preserva até 2 casas decimais
   const inteiro = Math.floor(Math.abs(n));
   const decimal = Math.round((Math.abs(n) - inteiro) * 100);
   let resultado = '';
   if (inteiro === 0 && decimal === 0) return 'zero';
   if (inteiro > 0) resultado = numExtensoInt(inteiro);
-  if (decimal > 0) resultado += (resultado ? ' vírgula ' : '') + numExtensoInt(decimal) + (decimal === 1 ? ' décimo' : ' décimos');
+  if (decimal > 0) {
+    // Ex: 4,55 → "quatro vírgula cinquenta e cinco centésimos"
+    // Ex: 4,50 → "quatro vírgula cinquenta centésimos"
+    // Ex: 3,00 → "três" (sem decimal)
+    resultado += (resultado ? ' vírgula ' : '') + numExtensoInt(decimal) + (decimal === 1 ? ' centésimo' : ' centésimos');
+  }
   return (n < 0 ? 'menos ' : '') + resultado;
 }
 function numExtensoInt(n) {
@@ -753,10 +758,19 @@ function numExtensoInt(n) {
   return numExtensoInt(Math.floor(n/1000000)) + ' milhões' + (n%1000000 ? ' e ' + numExtensoInt(n%1000000) : '');
 }
 
+// valorExtenso aceita tanto "101.950,57" (PT) como "101950.57" (JS)
 function valorExtenso(str) {
   if (!str) return '';
-  const limpo = String(str).replace(/\s/g,'').replace(/\./g,'').replace(',','.');
-  const num = parseFloat(limpo);
+  const s = String(str).trim();
+  let num;
+  // Formato PT: tem vírgula como decimal (ex: "101.950,57" ou "101950,57")
+  if (s.includes(',')) {
+    const limpo = s.replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+    num = parseFloat(limpo);
+  } else {
+    // Formato JS: ponto como decimal (ex: "101950.57") ou inteiro (ex: "101950")
+    num = parseFloat(s.replace(/\s/g,''));
+  }
   if (isNaN(num)) return '';
   const inteiro = Math.floor(num);
   const cents = Math.round((num - inteiro) * 100);
@@ -1634,11 +1648,12 @@ function recolherDadosContrato() {
   const Mut_1_Morada = m1.tipo === 'singular' && m1.estadoCivil === 'casado' && m1.conjugeOutorgante === 'sim' ? m1.moradaConjunta : (m1.tipo === 'empresa' ? m1.gerMorada : m1.morada);
   const Mut_1_Localidade = '';
 
-  // Clausula casamento (m1)
+  // Clausula casamento (m1) — inclui sempre cônjuge quando casado
   let Clausula_Casamento = '';
   if (m1.tipo === 'singular' && m1.estadoCivil === 'casado') {
-    Clausula_Casamento = `casado${m1.genero==='F'?'a':''} sob o regime da ${regimenTexto(m1.regime)}`;
-    if (m1.conjugeOutorgante === 'sim') Clausula_Casamento += ` com ${m1.conjugeNome}`;
+    Clausula_Casamento = `sob o regime da ${regimenTexto(m1.regime)}`;
+    if (m1.conjugeNome) Clausula_Casamento += ` com ${m1.conjugeNome}`;
+    if (m1.conjugeNIF) Clausula_Casamento += `, NIF ${m1.conjugeNIF}`;
   }
 
   // Clausula mutuario 2 (segundo mutuário se existir)
@@ -1726,7 +1741,7 @@ function recolherDadosContrato() {
   const mutuoRaw = (v('mutuo-valor')||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
   const mutuoNum = parseFloat(mutuoRaw) || 0;
   const Valor_Mutuo = mutuoNum.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const Clausula_Valor_Mutuo_Extenso = valorExtenso(mutuoRaw);
+  const Clausula_Valor_Mutuo_Extenso = valorExtenso(v('mutuo-valor'));
   const Prazo_Contratado = v('mutuo-prazo');
   const Clausula_Prazo_Extenso = numExtensoInt(parseInt(v('mutuo-prazo')) || 0) + ' meses';
   const Juros = v('mutuo-juros');
@@ -1740,11 +1755,32 @@ function recolherDadosContrato() {
   const hipotecaRaw = (v('hipoteca-valor')||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
   const hipotecaNum = parseFloat(hipotecaRaw) || 0;
   const Hipoteca_Valor = hipotecaNum.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const Clausula_Hipopteca_Valor = valorExtenso(hipotecaRaw);
+  const Clausula_Hipopteca_Valor = valorExtenso(v('hipoteca-valor'));
 
   // ── Procurador CGD ────────────────────────────────────────────────────────────
   const P_Codigo = procCGD ? S[procCGD].codProcuracao : '';
   const P_Validade = '';
+
+  // ── Corpo do contrato — formato simplificado (nome, naturalidade, EC, NIF) ──
+  function textoCorpo(o) {
+    if (!o) return '';
+    if (o.tipo === 'empresa') {
+      return `${o.empNome}, NIF ${o.empNIF}, com sede em ${o.empSede}, representada por ${o.gerNome}, NIF ${o.gerNIF};`;
+    }
+    const g = o.genero === 'F';
+    const ec = estadoCivilTexto(o.estadoCivil, o.genero);
+    if (o.estadoCivil === 'casado') {
+      let txt = `${o.nome}, natural de ${o.naturalidade}, NIF ${o.nif}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)}`;
+      if (o.conjugeNome) txt += ` com ${o.conjugeNome}`;
+      if (o.conjugeNIF) txt += `, NIF ${o.conjugeNIF}`;
+      return txt + ';';
+    }
+    return `${o.nome}, natural de ${o.naturalidade}, NIF ${o.nif}, ${ec};`;
+  }
+  const Mut_1_Corpo = textoCorpo(m1);
+  const Clausula_Mutuario2_Corpo = mutuarios.length > 1
+    ? mutuarios.slice(1).map(o => textoCorpo(o)).join('\n')
+    : '';
 
   return {
     Data_por_Extenso: dataExtenso(v('data-escritura')),
@@ -1759,6 +1795,9 @@ function recolherDadosContrato() {
     Mut_1_NumDocID, Mut_1_ValidDocID, Mut_1_NIF, Mut_1_EstCivil,
     Clausula_Casamento, Mut_1_Morada, Mut_1_Localidade,
     Clausula_Mutuario2,
+    Mut_1_Corpo, Clausula_Mutuario2_Corpo,
+    // Procuradora simplificada para o corpo do contrato
+    Cl_Procurador_Corpo: procCGD ? `${S[procCGD].nomeAbrev.toUpperCase()}, ${S[procCGD].estadoCivil}, natural de ${S[procCGD].naturalidade}, NIF ${S[procCGD].nif}` : '',
     // Procurador
     P_Codigo, P_Validade,
     CRP_Codigo, CRP_Validade, Imovel_DataCPU,
@@ -1844,15 +1883,18 @@ function gerarTextoMutuario(o) {
   if (o.tipo === 'empresa') {
     const g = o.gerGenero === 'F';
     const ec = estadoCivilTexto(o.gerEstadoCivil, o.gerGenero);
-    return `${o.gerNome}, ${ec}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${fmtDataPT(o.gerCCVal)}, e número de identificação fiscal ${o.gerNIF}, residente em ${o.gerMorada}, em representação da sociedade ${o.empNome}, NIF ${o.empNIF}, com sede em ${o.empSede};`;
+    return `${o.gerNome}, ${ec}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${fmtDataPT(o.gerCCVal)}, e número de identificação fiscal ${o.gerNIF}, em representação da sociedade ${o.empNome}, NIF ${o.empNIF}, com sede em ${o.empSede};`;
   }
   const g = o.genero === 'F';
   const ec = estadoCivilTexto(o.estadoCivil, o.genero);
-  if (o.estadoCivil === 'casado' && o.conjugeOutorgante === 'sim') {
-    const gc = o.conjugeGenero === 'F';
-    return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, NIF ${o.conjugeNIF}, ambos residentes em ${o.moradaConjunta};`;
+  if (o.estadoCivil === 'casado') {
+    let txt = `${o.nome}, natural de ${o.naturalidade}, NIF ${o.nif}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)}`;
+    if (o.conjugeNome) txt += ` com ${o.conjugeNome}`;
+    if (o.conjugeNIF) txt += `, NIF ${o.conjugeNIF}`;
+    txt += ';';
+    return txt;
   }
-  return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, ${ec}, residente em ${o.morada};`;
+  return `${o.nome}, natural de ${o.naturalidade}, NIF ${o.nif}, ${ec};`;
 }
 
 function estadoCivilTexto(ec, genero) {
