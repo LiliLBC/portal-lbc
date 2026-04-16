@@ -611,6 +611,17 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
 
             <div class="section-divider">Registo</div>
+            <div class="field-group field-full">
+              <div class="field-label">Código Certidão Permanente (CRP)</div>
+              <div style="display:flex;gap:.4rem;align-items:center">
+                <input class="form-input" id="p-codCRP" placeholder="Ex: PA-3385-28253-070202" style="flex:1;font-family:'DM Mono',monospace;font-size:12px">
+                <button class="btn btn-sm" onclick="abrirCRP()" title="Consultar no Predial Online" style="flex-shrink:0;white-space:nowrap">
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+                  Consultar CRP
+                </button>
+              </div>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:2px">Copia o código e abre o Predial Online</div>
+            </div>
             <div class="field-group">
               <div class="field-label">AP Registo</div>
               <input class="form-input" id="p-apRegisto" placeholder="—">
@@ -1417,6 +1428,7 @@ const F={
   custoSup:'Custo_Suprimento',dataResolSup:'Data_Resolucao_Suprimento',
   numProcesso:'N_x00fa_mero_Processo',
   pago:'Pago',
+  codCRP:'Cod_CRP',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
 const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Responsavel'};
@@ -1883,7 +1895,7 @@ function abrirPainelNovo(){
   document.getElementById('painel-pasta-search').placeholder='A carregar pastas...';
   document.getElementById('painel-pasta-search').disabled=true;
   ['p-nome','p-data','p-produto','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
-   'p-apRegisto','p-apData','p-apConserv','p-numProcesso','p-numPedido','p-codDeposito','p-montCredito',
+   'p-apRegisto','p-apData','p-apConserv','p-numProcesso','p-numPedido','p-codDeposito','p-codCRP','p-montCredito',
    'p-valorProc','p-valorServico','p-margemLiq','p-custoSup','p-dataResolSup','p-observacoes'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
@@ -1918,6 +1930,7 @@ function abrirPainelRegisto(itemId){
   sv('p-apRegisto').value=i[F.apRegisto]||'';
   sv('p-apData').value=i[F.apData]?i[F.apData].substring(0,10):'';
   sv('p-apConserv').value=i[F.apConserv]||'';
+  sv('p-codCRP').value=i[F.codCRP]||'';
   sv('p-pago').value=i[F.pago]||'';
   sv('p-numProcesso').value=i[F.numProcesso]||'';
   sv('p-numPedido').value=i[F.numPedido]||'';
@@ -1993,6 +2006,17 @@ function fecharPainel(){
   document.getElementById('painel-pasta-dropdown').style.display='none';
 }
 
+function abrirCRP(){
+  const cod=document.getElementById('p-codCRP')?.value?.trim();
+  if(cod){
+    navigator.clipboard.writeText(cod).then(()=>{
+      showToast('Código copiado! Cola no campo do Predial Online.','success');
+    }).catch(()=>{});
+  }else{
+    showToast('Preenche primeiro o código da certidão permanente','');
+  }
+  setTimeout(()=>window.open('https://www.predialonline.pt/PredialOnline/FRM005RPOLCP_input.action','_blank'),300);
+}
 function abrirPastaSP(){if(painelPastaUrl)window.open(painelPastaUrl,'_blank');}
 
 async function guardarPainel(){
@@ -2017,6 +2041,7 @@ async function guardarPainel(){
   const apRegisto=svText('p-apRegisto'); if(apRegisto) body[F.apRegisto]=apRegisto;
   const apData=svDate('p-apData'); if(apData) body[F.apData]=apData;
   const apConserv=svText('p-apConserv'); if(apConserv) body[F.apConserv]=apConserv;
+  const codCRP=svText('p-codCRP'); if(codCRP) body[F.codCRP]=codCRP;
   const numProcesso=svText('p-numProcesso'); if(numProcesso) body[F.numProcesso]=numProcesso;
   const numPedido=svText('p-numPedido'); if(numPedido) body[F.numPedido]=numPedido;
   const codDeposito=svText('p-codDeposito'); if(codDeposito) body[F.codDeposito]=codDeposito;
