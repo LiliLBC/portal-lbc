@@ -1428,6 +1428,11 @@ document.addEventListener('click', e => {
 });
 
 // ─── GUARDAR / CARREGAR RASCUNHO ──────────────────────────────────────────────
+function nomeRascunho() {
+  const isToic = document.getElementById('toggle-toic')?.checked;
+  return isToic ? 'RASCUNHO_MH_TOIC.json' : 'RASCUNHO_MH.json';
+}
+
 async function guardarRascunho() {
   if (!pastaSeleccionada) {
     showToast('Seleciona primeiro a pasta do cliente', 'error'); return;
@@ -1435,9 +1440,10 @@ async function guardarRascunho() {
   const dados = recolherDados();
   const json = JSON.stringify(dados, null, 2);
   const blob = new Blob([json], {type: 'application/json'});
+  const nome = nomeRascunho();
   try {
     const token = await getGraphToken();
-    const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_MH.json:/content`;
+    const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nome}:/content`;
     const res = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
@@ -1446,9 +1452,9 @@ async function guardarRascunho() {
     if (!res.ok) throw new Error(`Erro ${res.status}`);
     document.getElementById('rascunho-status').style.display = 'inline-flex';
     document.getElementById('footer-info').textContent = 'Rascunho guardado em ' + pastaSeleccionada.nome + ' às ' + new Date().toLocaleTimeString('pt-PT');
-    showToast('Rascunho guardado na pasta do cliente!', 'success');
+    showToast(`Rascunho guardado (${nome})!`, 'success');
   } catch(e) {
-    localStorage.setItem('mh_rascunho', json);
+    localStorage.setItem('mh_rascunho_' + (document.getElementById('toggle-toic')?.checked ? 'toic' : 'mh'), json);
     document.getElementById('rascunho-status').style.display = 'inline-flex';
     showToast('Guardado localmente (sem acesso ao SharePoint)', '');
   }
@@ -1458,16 +1464,62 @@ async function carregarRascunhoPasta() {
   if (!pastaSeleccionada) return;
   try {
     const token = await getGraphToken();
-    const url = `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_MH.json:/content`;
-    const res = await fetch(url, {headers: {'Authorization': 'Bearer ' + token}});
-    if (!res.ok) { showToast('Nenhum rascunho encontrado nesta pasta', ''); return; }
-    const dados = await res.json();
-    restaurarDados(dados);
-    document.getElementById('rascunho-status').style.display = 'inline-flex';
-    showToast('Rascunho carregado!', 'success');
+    // Listar ficheiros na pasta para ver quais rascunhos existem
+    const listUrl = `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}/children`;
+    const listRes = await fetch(listUrl, {headers: {'Authorization': 'Bearer ' + token}});
+    const listData = listRes.ok ? await listRes.json() : {value:[]};
+    const rascunhos = (listData.value||[]).filter(f => f.name && f.name.startsWith('RASCUNHO_MH') && f.name.endsWith('.json'));
+
+    if (rascunhos.length === 0) {
+      showToast('Nenhum rascunho encontrado nesta pasta', ''); return;
+    }
+    if (rascunhos.length === 1) {
+      // Só um — carregar directamente
+      await carregarRascunhoFicheiro(rascunhos[0].name, token);
+    } else {
+      // Vários — mostrar picker
+      mostrarPickerRascunho(rascunhos, token);
+    }
   } catch(e) {
     showToast('Erro ao carregar rascunho: ' + e.message, 'error');
   }
+}
+
+async function carregarRascunhoFicheiro(nome, token) {
+  if (!token) token = await getGraphToken();
+  const url = `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nome}:/content`;
+  const res = await fetch(url, {headers: {'Authorization': 'Bearer ' + token}});
+  if (!res.ok) { showToast('Erro ao carregar rascunho', 'error'); return; }
+  const dados = await res.json();
+  restaurarDados(dados);
+  document.getElementById('rascunho-status').style.display = 'inline-flex';
+  showToast(`Rascunho "${nome}" carregado!`, 'success');
+  // Fechar picker se estiver aberto
+  document.getElementById('modal-picker-rascunho')?.remove();
+}
+
+function mostrarPickerRascunho(rascunhos, token) {
+  // Remover picker anterior se existir
+  document.getElementById('modal-picker-rascunho')?.remove();
+  const labelMap = {
+    'RASCUNHO_MH_TOIC.json': 'TOIC / HPP — Transferência de crédito habitação',
+    'RASCUNHO_MH.json': 'Mútuo com Hipoteca (simples)',
+  };
+  const modal = document.createElement('div');
+  modal.id = 'modal-picker-rascunho';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:14px;padding:1.5rem;min-width:320px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:.4rem">Escolher rascunho</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:1.1rem">Encontrei ${rascunhos.length} rascunhos nesta pasta. Qual queres carregar?</div>
+      ${rascunhos.map(r => `
+        <button onclick="carregarRascunhoFicheiro('${r.name}','${token}')" style="display:block;width:100%;text-align:left;padding:.75rem 1rem;margin-bottom:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:13px;font-family:inherit">
+          <div style="font-weight:600">${labelMap[r.name]||r.name}</div>
+          <div style="font-size:11px;color:var(--text-faint);margin-top:2px">${r.name}</div>
+        </button>`).join('')}
+      <button onclick="document.getElementById('modal-picker-rascunho').remove()" style="margin-top:.25rem;width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:13px;font-family:inherit;color:var(--text-muted)">Cancelar</button>
+    </div>`;
+  document.body.appendChild(modal);
 }
 
 function carregarRascunho() {
