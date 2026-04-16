@@ -2181,14 +2181,15 @@ async function carregarTarefas(){
     const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
     todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields}));
-    document.getElementById('tar-loading').style.display='none';renderTarefas(todasTarefas);
+    document.getElementById('tar-loading').style.display='none';renderTarefas(todasTarefas.filter(i=>i[T.estado]!=='Concluída'));
   }catch(e){document.getElementById('tar-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
 }
 
 function filtrarTarefas(filtro,el){
   document.querySelectorAll('#screen-tarefas .filter-chip').forEach(c=>c.classList.remove('active'));if(el)el.classList.add('active');
-  if(!filtro){renderTarefas(todasTarefas);return;}
-  if(filtro==='Urgente'){renderTarefas(todasTarefas.filter(i=>i[T.prioridade]==='Urgente'));return;}
+  if(!filtro){renderTarefas(todasTarefas.filter(i=>i[T.estado]!=='Concluída'));return;}
+  if(filtro==='Urgente'){renderTarefas(todasTarefas.filter(i=>i[T.prioridade]==='Urgente'&&i[T.estado]!=='Concluída'));return;}
+  if(filtro==='Concluída'){renderTarefas(todasTarefas.filter(i=>i[T.estado]==='Concluída'));return;}
   renderTarefas(todasTarefas.filter(i=>i[T.estado]===filtro));
 }
 
@@ -2279,8 +2280,24 @@ async function criarTarefa(){
 async function mudarEstadoTarefa(itemId,estado){
   try{
     await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${itemId}/fields`,{[T.estado]:estado});
-    showToast('Estado atualizado!','success');
-    const idx=todasTarefas.findIndex(i=>i.id===itemId);if(idx>-1)todasTarefas[idx][T.estado]=estado;
+    const idx=todasTarefas.findIndex(i=>i.id===itemId);
+    if(idx>-1) todasTarefas[idx][T.estado]=estado;
+    if(estado==='Concluída'){
+      showToast('Tarefa concluída ✓','success');
+      const card=document.getElementById('tcard-'+itemId);
+      if(card){
+        card.style.transition='opacity .4s, transform .4s';
+        card.style.opacity='0';
+        card.style.transform='translateX(40px)';
+        setTimeout(()=>{
+          // só remove se o filtro activo não for "Concluídas"
+          const chipActivo=document.querySelector('#screen-tarefas .filter-chip.active');
+          if(!chipActivo||chipActivo.textContent.trim()!=='Concluídas') card.remove();
+        },420);
+      }
+    }else{
+      showToast('Estado atualizado!','success');
+    }
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
