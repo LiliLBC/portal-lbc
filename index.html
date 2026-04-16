@@ -2480,7 +2480,7 @@ async function carregarProcessos(){
     renderProcessos(todasPastasClientes);
     // Carregar para o selector de subpasta
     const inp=document.getElementById('proc-sub-cliente-search');
-    if(inp&&!inp.disabled){inp.placeholder=`Pesquisar entre ${todasPastasClientes.length} clientes...`;}
+    if(inp){inp.placeholder=`Pesquisar entre ${todasPastasClientes.length} clientes...`;inp.disabled=false;}
   }catch(e){document.getElementById('proc-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
@@ -2504,7 +2504,7 @@ function renderProcessos(lista){
 
 function filtrarProcessos(){
   const q=document.getElementById('proc-search').value.toLowerCase();
-  renderProcessos(todasPastasClientes.filter(p=>(p.name||'').toLowerCase().includes(q)));
+  renderProcessos(todasPastasClientes.filter(p=>(p.nome||'').toLowerCase().includes(q)));
 }
 
 // Preview nome pasta
@@ -2547,8 +2547,8 @@ function filtrarPastasCliente(){
   const q=(document.getElementById('proc-sub-cliente-search').value||'').toLowerCase().trim();
   const dd=document.getElementById('proc-sub-cliente-dropdown');
   if(!q){dd.style.display='none';return;}
-  const res=todasPastasClientes.filter(p=>p.name.toLowerCase().includes(q)).slice(0,8);
-  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarClienteSubpasta(${JSON.stringify({id:p.id,nome:p.name}).replace(/"/g,'&quot;')})">${escHtml(p.name)}</div>`).join('')
+  const res=todasPastasClientes.filter(p=>(p.nome||'').toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.map(p=>`<div class="pasta-sp-item" onclick="selecionarClienteSubpasta(${JSON.stringify({id:p.id,nome:p.nome}).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
     ||'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhum cliente encontrado</div>';
   dd.style.display='block';
 }
