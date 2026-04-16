@@ -537,6 +537,33 @@ tbody tr:hover td{background:#FAFAF8}
             <div id="painel-pasta-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="painel-pasta-ok-nome"></span></div>
           </div>
 
+          <!-- PASTA LIGADA (registos existentes) -->
+          <div id="painel-pasta-existente" style="display:none;margin-bottom:.75rem;padding:.6rem .75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Pasta do cliente</div>
+                <div id="painel-pasta-existente-nome" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+              </div>
+              <div style="display:flex;gap:.35rem;flex-shrink:0">
+                <button class="btn btn-sm" id="painel-btn-pasta" onclick="abrirPastaSP()" style="display:none">
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
+                  Abrir
+                </button>
+                <button class="btn btn-sm" onclick="trocarPastaPainel()" title="Associar outra pasta">
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8h14M8 1l7 7-7 7"/></svg>
+                  Alterar
+                </button>
+              </div>
+            </div>
+            <!-- Selector para trocar pasta (oculto por defeito) -->
+            <div id="painel-trocar-pasta-wrap" style="display:none;margin-top:.5rem">
+              <div class="pasta-sp-wrap">
+                <input class="form-input" id="painel-trocar-search" placeholder="Pesquisar pasta..." oninput="filtrarPastasTrocar()" autocomplete="off" style="font-family:'DM Mono',monospace;font-size:12px">
+                <div class="pasta-sp-dropdown" id="painel-trocar-dropdown"></div>
+              </div>
+            </div>
+          </div>
+
           <div class="field-grid">
             <div class="field-group field-full" style="margin-bottom:.5rem">
               <div class="field-label">Estado pagamento</div>
@@ -1889,6 +1916,7 @@ function abrirPainelNovo(){
   document.getElementById('painel-titulo').textContent='Nova escritura';
   document.getElementById('painel-ref').textContent='';
   document.getElementById('painel-pasta-wrap').style.display='block';
+  document.getElementById('painel-pasta-existente').style.display='none';
   document.getElementById('painel-btn-pasta').style.display='none';
   document.getElementById('painel-pasta-ok').style.display='none';
   document.getElementById('painel-pasta-search').value='';
@@ -1950,41 +1978,74 @@ function abrirPainelRegisto(itemId){
 }
 
 function procurarPastaRegisto(i){
-  const btn=document.getElementById('painel-btn-pasta');
-  if(!btn)return;
-  // 1. Link directo guardado
+  const el=document.getElementById('painel-pasta-existente');
+  const nomeEl=document.getElementById('painel-pasta-existente-nome');
+  const btnAbrir=document.getElementById('painel-btn-pasta');
+  if(!el)return;
+  el.style.display='block';
+  document.getElementById('painel-trocar-pasta-wrap').style.display='none';
+  document.getElementById('painel-trocar-search').value='';
+
   if(i[F.ligacaoPasta]){
+    // Tem link guardado — mostrar nome da pasta extraído do URL
     painelPastaUrl=i[F.ligacaoPasta];
-    btn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg> Abrir pasta`;
-    btn.style.display='inline-flex';
-    btn.onclick=()=>window.open(painelPastaUrl,'_blank');
-    return;
-  }
-  // 2. Procurar pelo nome do cliente nas pastas já carregadas
-  const nome=(i[F.nome]||'').toUpperCase().trim();
-  if(!nome){btn.style.display='none';return;}
-  // Procura pasta cujo nome contém palavras do nome do cliente
-  const palavras=nome.split(/\s+/).filter(p=>p.length>2);
-  const pasta=pastasPainel.find(p=>{
-    const nomePasta=p.nome.toUpperCase();
-    return palavras.some(palavra=>nomePasta.includes(palavra));
-  });
-  if(pasta){
-    painelPastaUrl=pasta.webUrl;
-    btn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg> Abrir pasta`;
-    btn.style.display='inline-flex';
-    btn.style.background='var(--green)';btn.style.borderColor='var(--green)';btn.style.color='#fff';
-    btn.onclick=()=>window.open(pasta.webUrl,'_blank');
-    // Guardar o link no SharePoint silenciosamente
-    guardarLinkPasta(pasta.webUrl);
+    const nomePasta=decodeURIComponent(i[F.ligacaoPasta].split('/').pop()||'').replace(/%20/g,' ')||'Pasta ligada';
+    nomeEl.textContent=nomePasta;
+    btnAbrir.style.display='inline-flex';
   }else{
-    // Não encontrou — mostrar botão para pesquisar/criar
-    btn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M8 8v3M6.5 10h3"/></svg> Criar/ligar pasta`;
-    btn.style.display='inline-flex';
-    btn.style.background='';btn.style.borderColor='';btn.style.color='';
-    btn.onclick=()=>document.getElementById('painel-pasta-wrap').style.display='block';
-    painelPastaUrl=null;
+    // Sem link — tentar encontrar por nome automaticamente
+    const nome=(i[F.nome]||'').toUpperCase().trim();
+    const palavras=nome.split(/\s+/).filter(p=>p.length>2);
+    const pasta=pastasPainel.find(p=>{
+      const np=p.nome.toUpperCase();
+      return palavras.some(w=>np.includes(w));
+    });
+    if(pasta){
+      painelPastaUrl=pasta.webUrl;
+      nomeEl.textContent=pasta.nome+' (auto)';
+      btnAbrir.style.display='inline-flex';
+      guardarLinkPasta(pasta.webUrl);
+    }else{
+      painelPastaUrl=null;
+      nomeEl.textContent='Sem pasta associada';
+      btnAbrir.style.display='none';
+    }
   }
+}
+
+function trocarPastaPainel(){
+  const wrap=document.getElementById('painel-trocar-pasta-wrap');
+  const inp=document.getElementById('painel-trocar-search');
+  const isOpen=wrap.style.display==='block';
+  wrap.style.display=isOpen?'none':'block';
+  if(!isOpen){
+    inp.value='';
+    inp.focus();
+    document.getElementById('painel-trocar-dropdown').innerHTML='';
+  }
+}
+
+function filtrarPastasTrocar(){
+  const q=(document.getElementById('painel-trocar-search').value||'').toLowerCase().trim();
+  const dd=document.getElementById('painel-trocar-dropdown');
+  if(!q){dd.style.display='none';return;}
+  const res=pastasPainel.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.length
+    ?res.map(p=>`<div class="pasta-sp-item" onclick="selecionarPastaExistente(${JSON.stringify(p).replace(/"/g,'&quot;')})">${escHtml(p.nome)}</div>`).join('')
+    :'<div class="pasta-sp-item" style="color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  dd.style.display='block';
+}
+
+async function selecionarPastaExistente(pasta){
+  painelPastaUrl=pasta.webUrl;
+  document.getElementById('painel-pasta-existente-nome').textContent=pasta.nome;
+  document.getElementById('painel-btn-pasta').style.display='inline-flex';
+  document.getElementById('painel-trocar-pasta-wrap').style.display='none';
+  document.getElementById('painel-trocar-search').value='';
+  document.getElementById('painel-trocar-dropdown').style.display='none';
+  // Guardar imediatamente no SP
+  await guardarLinkPasta(pasta.webUrl);
+  showToast('Pasta associada: '+pasta.nome,'success');
 }
 
 async function guardarLinkPasta(url){
