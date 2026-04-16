@@ -1455,7 +1455,7 @@ const F={
   custoSup:'Custo_Suprimento',dataResolSup:'Data_Resolucao_Suprimento',
   numProcesso:'N_x00fa_mero_Processo',
   pago:'Pago',
-  codCRP:'Cod_CRP',
+  codCRP:'CERT_PERMANENTE',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
 const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Responsavel'};
@@ -1746,7 +1746,7 @@ async function carregarRegistos(){
   document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
   const rc=document.getElementById('reg-result-count');if(rc)rc.style.display='none';
   try{
-    const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago].join(',');
+    const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago,F.codCRP].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
     todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     registosFiltradosAtual=[...todosRegistosReg];
