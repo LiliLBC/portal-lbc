@@ -233,6 +233,11 @@ tbody tr:hover td{background:#FAFAF8}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.success{background:var(--green)}
 .toast.error{background:var(--red)}
+.lembrete-card{display:flex;align-items:flex-start;gap:.5rem;background:var(--amber-light,#fffbeb);border:1px solid var(--amber,#f59e0b);border-radius:8px;padding:.5rem .65rem;font-size:12px;max-width:280px;position:relative}
+.lembrete-card .lembrete-texto{font-weight:600;line-height:1.4;flex:1}
+.lembrete-card .lembrete-nota{font-size:11px;color:var(--text-muted);margin-top:2px}
+.lembrete-card .btn-concluido{flex-shrink:0;background:var(--green);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap}
+.lembrete-card .btn-concluido:hover{opacity:.85}
 </style>
 </head>
 <body>
@@ -272,10 +277,6 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('registo',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span>Registo de escrituras
     </div>
-    <div class="nav-section">Contratos</div>
-    <div class="nav-item em-construcao">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1z"/><path d="M5 6h6M5 9h4"/></svg></span>CVMH · MH · Procurações
-    </div>
     <div class="nav-section">Clientes &amp; Serviços</div>
     <div class="nav-item" onclick="nav('processos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
@@ -283,14 +284,8 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('contacorrente',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9H2z"/><path d="M5 4V2h6v2"/><path d="M5 8h6M5 11h4"/></svg></span>Conta corrente
     </div>
-    <div class="nav-item" onclick="nav('contabilidade',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
-    </div>
     <div class="nav-item" onclick="nav('avencas',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h3M5 11h5"/><path d="M11 8v5"/></svg></span>Avenças
-    </div>
-    <div class="nav-item" onclick="nav('relatorios',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12V6l4-4h6l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><path d="M5 9h6M5 11h4"/></svg></span>Relatórios
     </div>
     <div class="nav-item em-construcao">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14s1-4 5-4 5 4 5 4"/><path d="M13 7v4M11 9h4"/></svg></span>Clientes
@@ -298,16 +293,20 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item em-construcao">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 7h6M5 10h4"/></svg></span>Serviços em curso
     </div>
-    <div class="nav-section">Escritório</div>
-    <div class="nav-item" id="nav-tarefas" onclick="nav('tarefas',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 6l2 2 4-4"/></svg></span>Tarefas
-      <span class="nav-badge nav-badge-amber" id="tarefas-badge"></span>
-    </div>
-    <div class="nav-item" onclick="nav('calendario',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Calendário
-    </div>
-    <div class="nav-item em-construcao">
+    <div class="nav-section">Financeiro</div>
+    <div class="nav-item" onclick="nav('financeiro',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 11V5l7-4 7 4v6l-7 4-7-4z"/></svg></span>Dashboard financeiro
+    </div>
+    <div class="nav-item" onclick="nav('relatorios',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12V6l4-4h6l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><path d="M5 9h6M5 11h4"/></svg></span>Relatórios
+    </div>
+    <div class="nav-item" onclick="nav('contabilidade',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
+    </div>
+    <div class="nav-section">Escritório</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Calendário
+      <span class="nav-badge nav-badge-amber" id="tarefas-badge"></span>
     </div>
     <div class="sidebar-footer">
       <div class="user-info">
@@ -357,18 +356,8 @@ tbody tr:hover td{background:#FAFAF8}
     </div>
     <div class="content">
 
-      <!-- DASHBOARD -->
+      <!-- DASHBOARD / CALENDÁRIO -->
       <div class="screen active" id="screen-dashboard">
-        <div class="metrics-row">
-          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
-          <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
-          <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
-          <div class="metric-card" style="cursor:pointer" onclick="nav('suprimentos',document.querySelector('[onclick*=suprimentos]'))" title="Ver suprimentos pendentes">
-            <div class="metric-label">Suprimentos — Custo acumulado</div>
-            <div class="metric-value" style="color:var(--red);font-size:20px;letter-spacing:-0.5px" id="m-suprimentos">—</div>
-            <div class="metric-sub" id="m-suprimentos-sub" style="line-height:1.7">A carregar...</div>
-          </div>
-        </div>
 
         <!-- LAYOUT: CALENDÁRIO (esquerda) + TAREFAS (direita) -->
         <div style="display:flex;gap:1rem;align-items:flex-start">
@@ -386,23 +375,59 @@ tbody tr:hover td{background:#FAFAF8}
             <div id="dash-cal-wrap"></div>
           </div>
 
-          <!-- TAREFAS URGENTES -->
-          <div style="width:300px;flex-shrink:0">
-            <div class="dash-section-header" style="margin-bottom:.75rem">
-              <div><div class="dash-section-title">Tarefas urgentes</div><div class="dash-section-sub">Por fazer e em curso</div></div>
-              <button class="btn btn-sm" onclick="nav('tarefas',document.getElementById('nav-tarefas'))">Ver todas</button>
+          <!-- TAREFAS COMPLETAS -->
+          <div style="width:340px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+              <div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--text-muted)">Escritório</div></div>
+              <button class="btn btn-primary btn-sm" onclick="toggleFormTarefaDash()">+ Nova</button>
+            </div>
+            <!-- Form inline nova tarefa -->
+            <div id="dash-tarefa-form" style="display:none;margin-bottom:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+              <div class="form-group" style="margin-bottom:.4rem"><input class="form-input" id="dash-tar-titulo" placeholder="Descrição *" style="font-size:12px"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.4rem">
+                <select class="form-select" id="dash-tar-responsavel" style="font-size:12px"><option value="">Responsável</option><option>Liliana Cardoso</option><option>Andreia Cabanas</option></select>
+                <input class="form-input" id="dash-tar-prazo" type="date" style="font-size:12px">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
+                <select class="form-select" id="dash-tar-prioridade" style="font-size:12px"><option>Normal</option><option>Urgente</option><option>Baixa</option></select>
+                <input class="form-input" id="dash-tar-obs" placeholder="Observações" style="font-size:12px">
+              </div>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-primary btn-sm" style="flex:1" onclick="criarTarefaDash()">Criar</button>
+                <button class="btn btn-sm" onclick="toggleFormTarefaDash()">Cancelar</button>
+              </div>
+            </div>
+            <!-- Filtros -->
+            <div class="filter-row" style="margin-bottom:.6rem;gap:.3rem">
+              <button class="filter-chip active" onclick="filtrarTarefasDash('',this)" style="font-size:10px;padding:2px 8px">Todas</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Urgente',this)" style="font-size:10px;padding:2px 8px">Urgentes</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Por fazer',this)" style="font-size:10px;padding:2px 8px">Por fazer</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Em curso',this)" style="font-size:10px;padding:2px 8px">Em curso</button>
             </div>
             <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
-            <div id="dash-tar-lista"></div>
-            <div id="dash-tar-vazio" class="notice notice-success" style="display:none">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
-              Sem tarefas urgentes pendentes!
+            <div id="dash-tar-lista" style="max-height:420px;overflow-y:auto"></div>
+            <div id="dash-tar-vazio" class="notice notice-success" style="display:none;font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
+              Sem tarefas pendentes!
             </div>
           </div>
 
         </div>
 
-        <!-- ids necessários para o JS (ocultos) -->
+        <!-- LEMBRETES RÁPIDOS -->
+        <div style="margin-top:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+            <div style="font-weight:600;font-size:13px">⚡ Lembretes rápidos</div>
+            <div style="display:flex;gap:.5rem;flex:1">
+              <input class="form-input" id="lembrete-texto" placeholder="Ex: Devolver chamada à Maria..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
+              <input class="form-input" id="lembrete-obs" placeholder="Nota (opcional)" style="width:180px;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
+              <button class="btn btn-primary btn-sm" onclick="adicionarLembrete()">+ Adicionar</button>
+            </div>
+          </div>
+          <div id="lembretes-lista" style="display:flex;flex-wrap:wrap;gap:.5rem">
+            <div style="font-size:12px;color:var(--text-faint);padding:.4rem 0">Sem lembretes. Adiciona o primeiro acima.</div>
+          </div>
+        </div>
         <div id="dash-sup-loading" style="display:none"></div>
         <div id="dash-sup-lista" style="display:none"></div>
         <div id="dash-sup-vazio" style="display:none"></div>
@@ -473,6 +498,7 @@ tbody tr:hover td{background:#FAFAF8}
                 <input class="reg-search-input" id="reg-f-conserv" placeholder="Conservatória..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
                 <input class="reg-search-input" id="reg-f-apregisto" placeholder="AP. Registo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
                 <input class="reg-search-input" id="reg-f-numpedido" placeholder="Nº Pedido..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
+                <input class="reg-search-input" id="reg-f-numprocesso" placeholder="Nº Processo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;grid-column:1/-1">
                 <select class="reg-search-input" id="reg-f-estado" onchange="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;cursor:pointer;grid-column:1/-1">
                   <option value="">Estado...</option>
                   <option>Em curso</option>
@@ -1418,7 +1444,19 @@ tbody tr:hover td{background:#FAFAF8}
         <div class="construcao-screen"><div class="construcao-icon">👤</div><div class="construcao-title">Clientes &amp; Serviços</div><div class="construcao-sub">Registo de clientes, histórico de serviços, adiantamentos e saldos. Em desenvolvimento — Fase 3.</div></div>
       </div>
       <div class="screen" id="screen-financeiro">
-        <div class="construcao-screen"><div class="construcao-icon">📊</div><div class="construcao-title">Dashboard Financeiro</div><div class="construcao-sub">Somatórios de margem, valor de serviço e suprimentos por mês e ano. Em desenvolvimento — Fase 3.</div></div>
+        <div class="metrics-row">
+          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
+          <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
+          <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
+          <div class="metric-card" style="cursor:pointer" onclick="nav('suprimentos',document.querySelector('[onclick*=suprimentos]'))" title="Ver suprimentos pendentes">
+            <div class="metric-label">Suprimentos — Custo acumulado</div>
+            <div class="metric-value" style="color:var(--red);font-size:20px;letter-spacing:-0.5px" id="m-suprimentos">—</div>
+            <div class="metric-sub" id="m-suprimentos-sub" style="line-height:1.7">A carregar...</div>
+          </div>
+        </div>
+        <div style="margin-top:1rem" id="financeiro-detalhe">
+          <div class="construcao-screen" style="padding:2rem"><div class="construcao-icon">📊</div><div class="construcao-title">Dashboard Financeiro</div><div class="construcao-sub">Vais completar esta secção em breve com mais informação relevante.</div></div>
+        </div>
       </div>
 
     </div>
@@ -1495,7 +1533,7 @@ async function mostrarApp(){
   const nome=contaAtual.name||contaAtual.username;
   document.getElementById('user-name').textContent=nome.split(' ')[0];
   document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
-  setDates();await resolverSiteIds();carregarDashboard();
+  setDates();await resolverSiteIds();carregarDashboard();carregarLembretes();
 }
 
 async function graphGet(url){
@@ -1566,7 +1604,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Dashboard',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
+const pageTitles={dashboard:'Calendário',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
 
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
@@ -1582,6 +1620,7 @@ function nav(id,el){
   if(id==='processos')carregarProcessos();
   if(id==='contacorrente')carregarContaCorrente();
   if(id==='contabilidade')carregarContabilidade();
+  if(id==='financeiro')carregarDashboard();
   if(id==='avencas')carregarAvencas();
   if(id==='relatorios')carregarRelatorios();
 }
@@ -1676,23 +1715,14 @@ async function carregarDashboard(){
   }
   try{
     if(!listaIdTarefas){document.getElementById('dash-tar-loading').style.display='none';document.getElementById('dash-tar-vazio').style.display='flex';return;}
-    const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado}`;
+    const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
-    const urgentes=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>i[T.prioridade]==='Urgente'&&i[T.estado]!=='Concluída');
+    todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    const pendentes=todasTarefas.filter(i=>i[T.estado]!=='Concluída');
+    const urgentes=pendentes.filter(i=>i[T.prioridade]==='Urgente');
     if(urgentes.length>0){const b=document.getElementById('tarefas-badge');b.textContent=urgentes.length;b.style.display='inline-block';}
     document.getElementById('dash-tar-loading').style.display='none';
-    if(!urgentes.length){
-      document.getElementById('dash-tar-vazio').style.display='flex';
-    } else {
-      document.getElementById('dash-tar-lista').innerHTML=urgentes.slice(0,5).map(i=>`
-        <div class="tarefa-card urgente">
-          <div style="flex:1">
-            <div class="tarefa-card-title">${escHtml(i[T.titulo]||'—')}</div>
-            <div class="tarefa-card-meta">${escHtml(i[T.responsavel]||'—')}${i[T.prazo]?' · '+fmtPrazo(i[T.prazo]):''}</div>
-          </div>
-          ${prioridadeBadge(i[T.prioridade])}
-        </div>`).join('');
-    }
+    renderTarefasDash(pendentes);
   }catch(e){
     document.getElementById('dash-tar-loading').style.display='none';
     document.getElementById('dash-tar-vazio').style.display='flex';
@@ -1751,6 +1781,11 @@ async function carregarRegistos(){
     const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago,F.codCRP].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
     todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    // Ordenar do mais recente para o mais antigo
+    todosRegistosReg.sort((a,b)=>{
+      const da=a[F.data]||'';const db=b[F.data]||'';
+      return db.localeCompare(da);
+    });
     registosFiltradosAtual=[...todosRegistosReg];
     document.getElementById('reg-count').textContent=`${todosRegistosReg.length} registos totais`;
     renderRegistos(todosRegistosReg);
@@ -1764,6 +1799,7 @@ function pesquisarRegistos(){
   const qConserv=(document.getElementById('reg-f-conserv')?.value||'').toLowerCase().trim();
   const qAp=(document.getElementById('reg-f-apregisto')?.value||'').toLowerCase().trim();
   const qNumPedido=(document.getElementById('reg-f-numpedido')?.value||'').toLowerCase().trim();
+  const qNumProcesso=(document.getElementById('reg-f-numprocesso')?.value||'').toLowerCase().trim();
   const qEstado=(document.getElementById('reg-f-estado')?.value||'');
   // Aplicar chip activo (estado ou pagamento)
   let base=todosRegistosReg;
@@ -1775,11 +1811,12 @@ function pesquisarRegistos(){
     (!qConserv||(i[F.apConserv]||'').toLowerCase().includes(qConserv))&&
     (!qAp||(i[F.apRegisto]||'').toLowerCase().includes(qAp))&&
     (!qNumPedido||(i[F.numPedido]||'').toLowerCase().includes(qNumPedido))&&
+    (!qNumProcesso||(i[F.numProcesso]||'').toLowerCase().includes(qNumProcesso))&&
     (!qEstado||i[F.estado]===qEstado)
   );
   registosFiltradosAtual=resultado;
   const c=document.getElementById('reg-result-count');
-  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qEstado||filtroPagamentoAtual;
+  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qNumProcesso||qEstado||filtroPagamentoAtual;
   if(c){c.textContent=temFiltro?`${resultado.length} resultado(s)`:'';c.style.display=temFiltro?'block':'none';}
   renderRegistos(resultado,qNome);
 }
@@ -2227,6 +2264,81 @@ function renderTarefas(lista){
       </div>
     </div>`).join('');
   el.style.display='block';
+}
+
+function toggleFormTarefaDash(){
+  const f=document.getElementById('dash-tarefa-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block') document.getElementById('dash-tar-titulo').focus();
+}
+
+function filtrarTarefasDash(filtro,el){
+  document.querySelectorAll('#screen-dashboard .filter-chip').forEach(c=>c.classList.remove('active'));
+  if(el) el.classList.add('active');
+  if(!filtro) renderTarefasDash(todasTarefas.filter(i=>i[T.estado]!=='Concluída'));
+  else if(filtro==='Urgente') renderTarefasDash(todasTarefas.filter(i=>i[T.prioridade]==='Urgente'&&i[T.estado]!=='Concluída'));
+  else renderTarefasDash(todasTarefas.filter(i=>i[T.estado]===filtro));
+}
+
+function renderTarefasDash(lista){
+  const el=document.getElementById('dash-tar-lista');
+  const vazio=document.getElementById('dash-tar-vazio');
+  if(!lista||!lista.length){
+    el.innerHTML='';
+    if(vazio) vazio.style.display='flex';
+    return;
+  }
+  if(vazio) vazio.style.display='none';
+  el.innerHTML=lista.map(i=>`
+    <div class="tarefa-card ${i[T.prioridade]==='Urgente'?'urgente':''}" id="tdash-${i.id}" style="margin-bottom:.4rem;padding:.6rem .75rem">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(i[T.titulo]||'—')}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${i[T.prazo]?' · '+fmtPrazo(i[T.prazo]):''}${i[T.observacoes]?' · <em>'+escHtml(i[T.observacoes])+'</em>':''}</div>
+      </div>
+      <select class="td-select" style="width:90px;font-size:10px" onchange="mudarEstadoTarefaDash('${i.id}',this.value)">
+        <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
+        <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
+        <option ${i[T.estado]==='Concluída'?'selected':''}>Concluída</option>
+      </select>
+    </div>`).join('');
+}
+
+async function mudarEstadoTarefaDash(itemId,estado){
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${itemId}/fields`,{[T.estado]:estado});
+    const idx=todasTarefas.findIndex(i=>i.id===itemId);
+    if(idx>-1) todasTarefas[idx][T.estado]=estado;
+    if(estado==='Concluída'){
+      showToast('Tarefa concluída ✓','success');
+      const card=document.getElementById('tdash-'+itemId);
+      if(card){card.style.transition='opacity .4s';card.style.opacity='0';setTimeout(()=>card.remove(),420);}
+    }
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function criarTarefaDash(){
+  const titulo=document.getElementById('dash-tar-titulo').value.trim();
+  if(!titulo){showToast('Preenche a descrição','error');return;}
+  const body={[T.titulo]:titulo};
+  const resp=document.getElementById('dash-tar-responsavel').value;
+  const prazo=document.getElementById('dash-tar-prazo').value;
+  const prio=document.getElementById('dash-tar-prioridade').value;
+  const obs=document.getElementById('dash-tar-obs').value;
+  if(resp) body[T.responsavel]=resp;
+  if(prazo) body[T.prazo]=new Date(prazo).toISOString();
+  if(prio) body[T.prioridade]=prio;
+  if(obs) body[T.observacoes]=obs;
+  body[T.estado]='Por fazer';
+  try{
+    await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items`,{fields:body});
+    showToast('Tarefa criada!','success');
+    ['dash-tar-titulo','dash-tar-prazo','dash-tar-obs'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('dash-tar-responsavel').selectedIndex=0;
+    document.getElementById('dash-tar-prioridade').selectedIndex=0;
+    toggleFormTarefaDash();
+    await carregarTarefas();
+    filtrarTarefasDash('',document.querySelector('#screen-dashboard .filter-chip.active'));
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 function toggleFormTarefa(){const f=document.getElementById('tarefa-form');f.style.display=f.style.display==='none'?'block':'none';}
@@ -3831,6 +3943,57 @@ function renderRelatorios(){
 
 
 let dashCalData=new Date();
+// ─── LEMBRETES RÁPIDOS ────────────────────────────────────────────────────────
+function carregarLembretes(){
+  const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
+  renderLembretes(lista);
+}
+
+function renderLembretes(lista){
+  const el=document.getElementById('lembretes-lista');
+  if(!el)return;
+  if(!lista.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--text-faint);padding:.4rem 0">Sem lembretes. Adiciona o primeiro acima.</div>';
+    return;
+  }
+  el.innerHTML=lista.map((l,i)=>`
+    <div class="lembrete-card" id="lem-${i}">
+      <div style="flex:1;min-width:0">
+        <div class="lembrete-texto">${escHtml(l.texto)}</div>
+        ${l.obs?`<div class="lembrete-nota">${escHtml(l.obs)}</div>`:''}
+        <div style="font-size:10px;color:var(--text-faint);margin-top:3px">${l.data||''}</div>
+      </div>
+      <button class="btn-concluido" onclick="concluirLembrete(${i})">✓ Feito</button>
+    </div>`).join('');
+}
+
+function adicionarLembrete(){
+  const texto=document.getElementById('lembrete-texto').value.trim();
+  if(!texto){document.getElementById('lembrete-texto').focus();return;}
+  const obs=document.getElementById('lembrete-obs').value.trim();
+  const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
+  lista.unshift({texto,obs,data:new Date().toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  localStorage.setItem('lbc_lembretes',JSON.stringify(lista));
+  document.getElementById('lembrete-texto').value='';
+  document.getElementById('lembrete-obs').value='';
+  renderLembretes(lista);
+  document.getElementById('lembrete-texto').focus();
+}
+
+function concluirLembrete(idx){
+  const card=document.getElementById('lem-'+idx);
+  if(card){
+    card.style.transition='opacity .35s,transform .35s';
+    card.style.opacity='0';card.style.transform='scale(.9)';
+    setTimeout(()=>{
+      const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
+      lista.splice(idx,1);
+      localStorage.setItem('lbc_lembretes',JSON.stringify(lista));
+      renderLembretes(lista);
+    },360);
+  }
+}
+
 function dashCalNav(dir){dashCalData=new Date(dashCalData);dashCalData.setMonth(dashCalData.getMonth()+dir);renderDashCal();}
 function dashCalHoje(){dashCalData=new Date();renderDashCal();}
 function renderDashCal(){
