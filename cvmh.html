@@ -142,6 +142,54 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
 <div class="toast" id="toast"></div>
 
+<!-- MODAL COMUNICAÇÃO -->
+<div class="modal-overlay" id="modal-comunicacao">
+  <div class="modal" style="max-width:520px;width:95%">
+    <div class="modal-title">Contactar cliente</div>
+    <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:.75rem">
+      <button id="com-tab-email" onclick="comSetTab('email')" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer">✉ Email (Outlook)</button>
+      <button id="com-tab-whatsapp" onclick="comSetTab('whatsapp')" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer">💬 WhatsApp</button>
+    </div>
+    <div id="com-panel-email">
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Para (email do cliente)</label>
+        <input type="email" class="form-input" id="com-email-para" placeholder="cliente@email.com">
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Assunto</label>
+        <input type="text" class="form-input" id="com-email-assunto">
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Mensagem</label>
+        <textarea class="form-input" id="com-email-corpo" rows="7" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.5"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="fecharModalComunicacao()" style="flex:1">Cancelar</button>
+        <button class="btn btn-primary" onclick="enviarEmail()" style="flex:2">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 3l7 6 7-6"/></svg>
+          Abrir no Outlook
+        </button>
+      </div>
+    </div>
+    <div id="com-panel-whatsapp" style="display:none">
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Nº de telemóvel (com indicativo)</label>
+        <input type="tel" class="form-input" id="com-wa-telefone" placeholder="Ex: 351912345678">
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Mensagem</label>
+        <textarea class="form-input" id="com-wa-mensagem" rows="7" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.5"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="fecharModalComunicacao()" style="flex:1">Cancelar</button>
+        <button class="btn" onclick="abrirWhatsApp()" style="flex:2;background:#25D366;color:#fff;border-color:#25D366">
+          💬 Abrir WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CHECKLIST -->
 <div class="modal-overlay" id="modal-checklist">
   <div class="modal">
@@ -208,6 +256,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="btn" onclick="guardarRascunho()">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>
       Guardar rascunho
+    </button>
+    <button class="btn" onclick="abrirModalComunicacao()" title="Enviar email ou WhatsApp ao cliente">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 3l7 6 7-6"/></svg>
+      Contactar cliente
     </button>
     <button class="btn btn-success btn-lg" onclick="gerarContrato()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
@@ -2096,6 +2148,48 @@ function carregarScript(src) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+// ─── COMUNICAÇÃO ──────────────────────────────────────────────────────────────
+function nomeClienteCVMH(){
+  const compradores=recolherOutorgantes('compradores');
+  const c=compradores[0]||{};
+  const nome=c.tipo==='empresa'?c.empNome:c.nome||'';
+  return nome.split(' ')[0]||'';
+}
+function dataEscrituraFormatada(){return fmtDataPT(document.getElementById('data-escritura')?.value||'');}
+function abrirModalComunicacao(){
+  const nome=nomeClienteCVMH();const data=dataEscrituraFormatada();
+  document.getElementById('com-email-para').value='';
+  document.getElementById('com-email-assunto').value=`Compra e Venda com Mútuo e Hipoteca — ${nome||'cliente'}${data?' — '+data:''}`;
+  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a.) ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de Compra e Venda com Mútuo e Hipoteca referente à escritura agendada para o dia ${data||'___'} se encontra em preparação.\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
+  document.getElementById('com-wa-telefone').value='351';
+  document.getElementById('com-wa-mensagem').value=`Bom dia${nome?' '+nome:''},\n\nInformamos que o seu processo de Compra e Venda com Mútuo e Hipoteca está em preparação para a escritura de ${data||'___'}.\n\nQualquer dúvida, não hesite em contactar-nos.\n\nLBC Solicitadora`;
+  comSetTab('email');
+  document.getElementById('modal-comunicacao').classList.add('show');
+}
+function fecharModalComunicacao(){document.getElementById('modal-comunicacao').classList.remove('show');}
+function comSetTab(tab){
+  const isEmail=tab==='email';
+  document.getElementById('com-panel-email').style.display=isEmail?'block':'none';
+  document.getElementById('com-panel-whatsapp').style.display=isEmail?'none':'block';
+  document.getElementById('com-tab-email').style.cssText=isEmail?'flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer':'flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer';
+  document.getElementById('com-tab-whatsapp').style.cssText=isEmail?'flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer':'flex:1;padding:.5rem;border-radius:8px;border:1px solid #25D366;background:#25D366;color:#fff;font-size:13px;cursor:pointer';
+}
+function enviarEmail(){
+  const para=document.getElementById('com-email-para').value.trim();
+  const assunto=document.getElementById('com-email-assunto').value.trim();
+  const corpo=document.getElementById('com-email-corpo').value.trim();
+  if(!para){showToast('Preenche o email do destinatário','error');return;}
+  window.open(`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
+  fecharModalComunicacao();
+}
+function abrirWhatsApp(){
+  const tel=(document.getElementById('com-wa-telefone').value||'').replace(/\D/g,'');
+  const msg=document.getElementById('com-wa-mensagem').value.trim();
+  if(!tel){showToast('Preenche o número de telemóvel','error');return;}
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+  fecharModalComunicacao();
+}
+
 window.onload = () => {
   addOutorgante('vendedores');
   addOutorgante('compradores');
