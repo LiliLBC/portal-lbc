@@ -2099,8 +2099,8 @@ async function enviarEmail(){
   const assunto=document.getElementById('com-email-assunto').value.trim();
   const corpo=document.getElementById('com-email-corpo').value.trim();
   if(!para){showToast('Preenche o email do destinatário','error');return;}
-  const mailto=`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  window.open(mailto,'_blank');
+  const outlookUrl=`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  window.open(outlookUrl,'_blank');
   fecharModalComunicacao();
 }
 
