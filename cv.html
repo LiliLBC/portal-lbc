@@ -1003,7 +1003,7 @@ function restaurarDados(d){
 // ─── COMUNICAÇÃO ──────────────────────────────────────────────────────────────
 function nomeCliente(){
   const v=id=>document.getElementById(id)?.value||'';
-  return (v('vendedor-1-nome')||v('comprador-1-nome')||'').split(' ')[0]||'';
+  return v('vendedor-1-nome')||v('comprador-1-nome')||'';
 }
 function dataEscrituraFormatada(){return fmtDataPT(document.getElementById('data-escritura')?.value||'');}
 function textoEmailPadrao(nome,data){
@@ -1088,7 +1088,7 @@ function recolherOutorgantes(tipo){
 
 function textoOutorgante(o){
   const regimenMap={'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','comunhao-geral':'comunhão geral'};
-  const ecTexto=(ec,g)=>({solteiro:g==='F'?'solteira':'solteiro',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
+  const ecTexto=(ec,g)=>({solteiro:g==='F'?'solteira, maior':'solteiro, maior',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
   if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.empNome}, NIF ${o.empNif}, com sede em ${o.empSede}${o.empCapital?', capital social de €'+o.empCapital:''}, neste ato representada por ${o.gerNome}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão com o número ${o.gerCC}, válido até ${o.gerVal}, NIF ${o.gerNif}, residente em ${o.gerMorada}`;}
   const g=o.genero==='F';
   let txt=`${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do ${o.tipoDoc} emitido pela República Portuguesa com o número ${o.numDoc}, válido até ${o.valDoc}, e número de identificação fiscal ${o.nif}`;
