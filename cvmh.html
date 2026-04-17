@@ -2160,7 +2160,7 @@ function abrirModalComunicacao(){
   const nome=nomeClienteCVMH();const data=dataEscrituraFormatada();
   document.getElementById('com-email-para').value='';
   document.getElementById('com-email-assunto').value=`Compra e Venda com Mútuo e Hipoteca — ${nome||'cliente'}${data?' — '+data:''}`;
-  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a.) ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de Compra e Venda com Mútuo e Hipoteca referente à escritura agendada para o dia ${data||'___'} se encontra em preparação.\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
+  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de Compra e Venda com Mútuo e Hipoteca se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n📍 LBC Solicitadora — Rua Domingos Franco de Oliveira, n.º 16, Évora\nhttps://maps.app.goo.gl/YourLinkHere\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
   document.getElementById('com-wa-telefone').value='351';
   document.getElementById('com-wa-mensagem').value=`Bom dia${nome?' '+nome:''},\n\nInformamos que o seu processo de Compra e Venda com Mútuo e Hipoteca está em preparação para a escritura de ${data||'___'}.\n\nQualquer dúvida, não hesite em contactar-nos.\n\nLBC Solicitadora`;
   comSetTab('email');
