@@ -2179,7 +2179,7 @@ function enviarEmail(){
   const assunto=document.getElementById('com-email-assunto').value.trim();
   const corpo=document.getElementById('com-email-corpo').value.trim();
   if(!para){showToast('Preenche o email do destinatário','error');return;}
-  window.open(`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
+  window.open(`https://outlook.cloud.microsoft/mail/deeplink/compose?to=${encodeURIComponent(para)}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
   fecharModalComunicacao();
 }
 function abrirWhatsApp(){
