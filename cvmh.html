@@ -2152,7 +2152,7 @@ function gerarTextoOutorgante(o) {
 
 function estadoCivilTexto(ec, genero) {
   const f = genero === 'F';
-  const map = {solteiro:`solteiro${f?'a':''}`,casado:`casado${f?'a':''}`,divorciado:`divorciad${f?'a':'o'}`,viuvo:`viúvo${f?'a':''}`};
+  const map = {solteiro:`solteiro${f?'a':''}, maior`,casado:`casado${f?'a':''}`,divorciado:`divorciad${f?'a':'o'}`,viuvo:`viúvo${f?'a':''}`};
   return map[ec] || ec;
 }
 
@@ -2174,8 +2174,7 @@ function carregarScript(src) {
 function nomeClienteCVMH(){
   const compradores=recolherOutorgantes('compradores');
   const c=compradores[0]||{};
-  const nome=c.tipo==='empresa'?c.empNome:c.nome||'';
-  return nome.split(' ')[0]||'';
+  return c.tipo==='empresa'?c.empNome:c.nome||'';
 }
 function dataEscrituraFormatada(){return fmtDataPT(document.getElementById('data-escritura')?.value||'');}
 function abrirModalComunicacao(){
