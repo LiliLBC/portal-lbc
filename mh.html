@@ -719,11 +719,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
       <hr class="divider">
 
-      <!-- Cláusulas condicionais -->
+      <!-- Liquidação -->
       <div class="toggle-row">
-        <span class="toggle-label">Forma de liquidação especial (Clausula_Liquida_Forma)</span>
-        <label class="toggle-switch"><input type="checkbox" id="toggle-liquida-forma"><span class="toggle-slider"></span></label>
+        <span class="toggle-label">Liquidação ao banco hipotecante</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-liquida-forma" onchange="onLiquidaFormaChange()"><span class="toggle-slider"></span></label>
       </div>
+      <div class="cond-block" id="liquida-forma-fields" style="display:none">
+        <div class="cond-block-title">Forma de liquidação</div>
+        <div class="form-group form-full" style="margin-bottom:.75rem">
+          <label class="form-label">Tipo <span>*</span></label>
+          <select class="form-select" id="forma-pagamento-oic" onchange="onFormaPagamentoOICChange()">
+            <option value="">Selecionar...</option>
+            <option value="apb">APB — Protocolo Caixa</option>
+            <option value="cheque">Cheque bancário</option>
+          </select>
+        </div>
+      </div>
+
       <div class="toggle-row">
         <span class="toggle-label">Renúncia (Clausula_Renuncia)</span>
         <label class="toggle-switch"><input type="checkbox" id="toggle-renuncia"><span class="toggle-slider"></span></label>
@@ -1251,6 +1263,17 @@ function onDistrateChange() {
 function onToggleOICChange() {
   // Só activo quando não HPP
   const on = document.getElementById('toggle-oic').checked;
+  document.getElementById('pagamento-oic-section').style.display = on ? 'block' : 'none';
+  if (!on) {
+    document.getElementById('forma-pagamento-oic').value = '';
+    document.getElementById('oic-apb-fields').style.display = 'none';
+    document.getElementById('oic-cheque-fields').style.display = 'none';
+  }
+}
+
+function onLiquidaFormaChange() {
+  const on = document.getElementById('toggle-liquida-forma').checked;
+  document.getElementById('liquida-forma-fields').style.display = on ? 'block' : 'none';
   document.getElementById('pagamento-oic-section').style.display = on ? 'block' : 'none';
   if (!on) {
     document.getElementById('forma-pagamento-oic').value = '';
