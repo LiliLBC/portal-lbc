@@ -1848,7 +1848,7 @@ function recolherDadosContrato() {
 
   // ── Banco hipotecante ─────────────────────────────────────────────────────────
   const Clausula_Banco_Hipotecante = (distrate !== 'nao' && v('banco-hipotecante'))
-    ? `--- O imóvel ora hipotecado encontra-se onerado com hipoteca voluntária registada a favor de ${v('banco-hipotecante')}, NIF ${v('nif-banco')}, cujo cancelamento é assegurado com o presente ato.`
+    ? `--- O imóvel ora hipotecado encontra-se onerado com hipoteca voluntária registada pela ${v('ap-hipoteca')}, a favor de ${v('banco-hipotecante')}, NIF ${v('nif-banco')}, cujo cancelamento é assegurado com o presente ato.`
     : '';
 
   // ── OIC / HPP ────────────────────────────────────────────────────────────────
