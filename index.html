@@ -758,7 +758,12 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Cód. Depósito</div>
-              <input class="form-input" id="p-codDeposito" placeholder="—">
+              <div style="display:flex;gap:.4rem;align-items:center">
+                <input class="form-input" id="p-codDeposito" placeholder="—" style="flex:1">
+                <button class="btn btn-sm" onclick="abrirModalCodDeposito()" id="btn-partilhar-deposito" title="Partilhar código de depósito" style="flex-shrink:0;padding:6px 10px">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 3l7 6 7-6"/></svg>
+                </button>
+              </div>
             </div>
 
             <div class="section-divider">Valores</div>
@@ -884,6 +889,54 @@ tbody tr:hover td{background:#FAFAF8}
           </div>
         </div>
         <div id="cal-grid-wrap"></div>
+      </div>
+
+      <!-- MODAL CÓDIGO DEPÓSITO -->
+      <div class="modal-overlay" id="modal-cod-deposito">
+        <div class="modal-box" style="max-width:520px;width:95%">
+          <div class="modal-box-title">Partilhar Código de Depósito</div>
+          <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:.75rem">
+            <button id="dep-tab-email" onclick="depSetTab('email')" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer">✉ Email (Outlook)</button>
+            <button id="dep-tab-whatsapp" onclick="depSetTab('whatsapp')" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer">💬 WhatsApp</button>
+          </div>
+          <div id="dep-panel-email">
+            <div class="field-group" style="margin-bottom:.75rem">
+              <div class="field-label">Para (email do cliente)</div>
+              <input type="email" class="form-input" id="dep-email-para" placeholder="cliente@email.com">
+            </div>
+            <div class="field-group" style="margin-bottom:.75rem">
+              <div class="field-label">Assunto</div>
+              <input type="text" class="form-input" id="dep-email-assunto">
+            </div>
+            <div class="field-group" style="margin-bottom:.75rem">
+              <div class="field-label">Mensagem</div>
+              <textarea class="form-input" id="dep-email-corpo" rows="9" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.6"></textarea>
+            </div>
+            <div class="modal-actions">
+              <button class="btn" onclick="fecharModalCodDeposito()" style="flex:1">Cancelar</button>
+              <button class="btn btn-primary" onclick="enviarEmailDeposito()" style="flex:2">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 3l7 6 7-6"/></svg>
+                Abrir no Outlook
+              </button>
+            </div>
+          </div>
+          <div id="dep-panel-whatsapp" style="display:none">
+            <div class="field-group" style="margin-bottom:.75rem">
+              <div class="field-label">Nº de telemóvel (com indicativo)</div>
+              <input type="tel" class="form-input" id="dep-wa-telefone" placeholder="Ex: 351912345678">
+            </div>
+            <div class="field-group" style="margin-bottom:.75rem">
+              <div class="field-label">Mensagem</div>
+              <textarea class="form-input" id="dep-wa-mensagem" rows="9" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.6"></textarea>
+            </div>
+            <div class="modal-actions">
+              <button class="btn" onclick="fecharModalCodDeposito()" style="flex:1">Cancelar</button>
+              <button class="btn" onclick="enviarWhatsAppDeposito()" style="flex:2;background:#25D366;color:#fff;border-color:#25D366">
+                💬 Abrir WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- MODAL NOVO EVENTO -->
@@ -1712,6 +1765,57 @@ function toggleSidebar(){
   hamburger.classList.toggle('open');
   overlay.classList.toggle('show');
 }
+// ─── MODAL CÓDIGO DEPÓSITO ────────────────────────────────────────────────────
+function textoDeposito(cod){
+  return `Para consultar o DPA: Aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action, insira o código ${cod}, valide e continue.
+
+Para alterar a matriz na AT: Abra E-Balcão no Portal das Finanças, junte o código ${cod} e peça a atualização.
+
+Pode dar este código a qualquer entidade credenciada para consulta do contrato.`;
+}
+
+function abrirModalCodDeposito(){
+  const cod=document.getElementById('p-codDeposito')?.value?.trim();
+  if(!cod){showToast('Preenche primeiro o código de depósito','error');return;}
+  const nome=document.getElementById('p-nome')?.value||'';
+  document.getElementById('dep-email-para').value='';
+  document.getElementById('dep-email-assunto').value=`Código de Depósito DPA${nome?' — '+nome:''}`;
+  document.getElementById('dep-email-corpo').value=textoDeposito(cod);
+  document.getElementById('dep-wa-telefone').value='351';
+  document.getElementById('dep-wa-mensagem').value=textoDeposito(cod);
+  depSetTab('email');
+  document.getElementById('modal-cod-deposito').classList.add('show');
+}
+
+function fecharModalCodDeposito(){
+  document.getElementById('modal-cod-deposito').classList.remove('show');
+}
+
+function depSetTab(tab){
+  const isEmail=tab==='email';
+  document.getElementById('dep-panel-email').style.display=isEmail?'block':'none';
+  document.getElementById('dep-panel-whatsapp').style.display=isEmail?'none':'block';
+  document.getElementById('dep-tab-email').style.cssText=isEmail?'flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer':'flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer';
+  document.getElementById('dep-tab-whatsapp').style.cssText=isEmail?'flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer':'flex:1;padding:.5rem;border-radius:8px;border:1px solid #25D366;background:#25D366;color:#fff;font-size:13px;cursor:pointer';
+}
+
+function enviarEmailDeposito(){
+  const para=document.getElementById('dep-email-para').value.trim();
+  const assunto=document.getElementById('dep-email-assunto').value.trim();
+  const corpo=document.getElementById('dep-email-corpo').value.trim();
+  if(!para){showToast('Preenche o email do destinatário','error');return;}
+  window.open(`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
+  fecharModalCodDeposito();
+}
+
+function enviarWhatsAppDeposito(){
+  const tel=(document.getElementById('dep-wa-telefone').value||'').replace(/\D/g,'');
+  const msg=document.getElementById('dep-wa-mensagem').value.trim();
+  if(!tel){showToast('Preenche o número de telemóvel','error');return;}
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+  fecharModalCodDeposito();
+}
+
 function fecharSidebar(){
   document.querySelector('.sidebar')?.classList.remove('open');
   document.getElementById('hamburger')?.classList.remove('open');
