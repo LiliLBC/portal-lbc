@@ -1804,7 +1804,7 @@ function enviarEmailDeposito(){
   const assunto=document.getElementById('dep-email-assunto').value.trim();
   const corpo=document.getElementById('dep-email-corpo').value.trim();
   if(!para){showToast('Preenche o email do destinatário','error');return;}
-  window.open(`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
+  window.open(`https://outlook.cloud.microsoft/mail/deeplink/compose?to=${encodeURIComponent(para)}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
   fecharModalCodDeposito();
 }
 
