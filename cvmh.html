@@ -721,22 +721,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Forma de pagamento <span>*</span></label>
-        <select class="form-select" id="forma-pagamento" onchange="onFormaPagamentoChange()">
-          <option value="">Selecionar...</option>
-          <option value="sem-entrada">Pagamento total — sem entrada inicial</option>
-          <option value="com-entrada">Com entrada inicial (sinal)</option>
-        </select>
+      <!-- RESUMO PAGAMENTOS -->
+      <div id="resumo-pagamentos" style="display:none;background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.75rem 1rem;font-size:12px">
+        <div style="font-weight:600;color:var(--accent-dark);margin-bottom:.4rem">Resumo do pagamento</div>
+        <div id="resumo-linhas" style="color:var(--text-muted);line-height:1.8"></div>
+        <div id="resumo-diferenca" style="margin-top:.4rem;font-weight:600"></div>
       </div>
 
-      <!-- COM ENTRADA -->
+      <!-- a) SINAL -->
+      <div class="toggle-row">
+        <span class="toggle-label">a) Sinal / entrada inicial</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-sinal" onchange="onToggleSinal()"><span class="toggle-slider"></span></label>
+      </div>
       <div class="cond-block" id="sinal-fields" style="display:none">
         <div class="cond-block-title">Sinal — entrada inicial</div>
         <div class="form-grid form-grid-2">
           <div class="form-group">
             <label class="form-label">Data do sinal <span>*</span></label>
-            <input type="date" class="form-input" id="sinal-data">
+            <input type="date" class="form-input" id="sinal-data" oninput="calcularRemanescente()">
           </div>
           <div class="form-group">
             <label class="form-label">Valor do sinal (€) <span>*</span></label>
@@ -753,15 +755,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
-      <!-- APB (só aparece quando há distrate) -->
-      <div class="cond-block" id="apb-toggle-row" style="display:none">
-        <div class="toggle-row" style="background:transparent;border:none;padding:0">
-          <span class="toggle-label" style="font-size:12px;font-weight:500">Pagamento APB (Protocolo Caixa)</span>
-          <label class="toggle-switch"><input type="checkbox" id="toggle-apb" onchange="onAPBChange()"><span class="toggle-slider"></span></label>
-        </div>
+      <!-- b) APB -->
+      <div class="toggle-row" id="apb-toggle-row">
+        <span class="toggle-label">b) Pagamento APB (Protocolo Caixa)</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-apb" onchange="onAPBChange()"><span class="toggle-slider"></span></label>
       </div>
       <div class="cond-block cond-block-amber" id="apb-fields" style="display:none">
-        <div class="cond-block-title">Pagamento APB — Protocolo Caixa</div>
+        <div class="cond-block-title">APB — Protocolo Caixa</div>
         <div class="form-grid form-grid-2">
           <div class="form-group">
             <label class="form-label">Valor APB (€) <span>*</span></label>
@@ -777,33 +777,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
           </div>
           <div class="form-group">
             <label class="form-label">Conta destino — banco hipotecante <span>*</span></label>
-            <input type="text" class="form-input" id="apb-conta-destino" placeholder="Nº de conta do banco hipotecante">
+            <input type="text" class="form-input" id="apb-conta-destino" placeholder="Nº de conta via target">
           </div>
           <div class="form-group form-full">
-            <label class="form-label">Banco hipotecante (preenchido do distrate)</label>
+            <label class="form-label">Banco hipotecante (do distrate)</label>
             <input type="text" class="form-input" id="apb-banco" readonly style="background:var(--surface2);color:var(--text);font-weight:500">
           </div>
         </div>
       </div>
 
-      <!-- CHEQUE (sem entrada ou remanescente) -->
+      <!-- c) CHEQUE -->
+      <div class="toggle-row">
+        <span class="toggle-label">c) Pagamento por cheque</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-cheque" onchange="onToggleCheque()"><span class="toggle-slider"></span></label>
+      </div>
       <div class="cond-block" id="cheque-fields" style="display:none">
-        <div class="cond-block-title" id="cheque-fields-title">Pagamento por cheque</div>
+        <div class="cond-block-title">Cheque bancário</div>
         <div class="form-grid form-grid-2">
           <div class="form-group">
-            <label class="form-label">Data de pagamento <span>*</span></label>
-            <input type="date" class="form-input" id="cheque-data-pag">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Valor (€) <span>*</span></label>
-            <input type="text" class="form-input" id="cheque-valor" readonly style="background:var(--surface2)">
+            <label class="form-label">Valor (€)</label>
+            <input type="text" class="form-input" id="cheque-valor" placeholder="Calculado automaticamente" oninput="calcularRemanescente()">
           </div>
           <div class="form-group">
             <label class="form-label">Data do cheque <span>*</span></label>
             <input type="date" class="form-input" id="cheque-data">
           </div>
           <div class="form-group">
-            <label class="form-label">Banco <span>*</span></label>
+            <label class="form-label">Banco sacado <span>*</span></label>
             <input type="text" class="form-input" id="cheque-banco" placeholder="Ex: Caixa Geral de Depósitos">
           </div>
           <div class="form-group">
@@ -955,29 +955,42 @@ const UNIDADES = ['','um','dois','três','quatro','cinco','seis','sete','oito','
 const DEZENAS = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
 const CENTENAS = ['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
 
-function numExtenso(n) {
-  n = Math.round(n);
+function numExtensoInt(n) {
   if (n === 0) return 'zero';
-  if (n < 0) return 'menos ' + numExtenso(-n);
+  if (n < 0) return 'menos ' + numExtensoInt(-n);
   if (n < 20) return UNIDADES[n];
   if (n < 100) return DEZENAS[Math.floor(n/10)] + (n%10 ? ' e ' + UNIDADES[n%10] : '');
   if (n === 100) return 'cem';
-  if (n < 1000) return CENTENAS[Math.floor(n/100)] + (n%100 ? (Math.floor(n/100)===1 ? ' e ' : ' e ') + numExtenso(n%100) : '');
-  if (n < 2000) return 'mil' + (n%1000 ? ' e ' + numExtenso(n%1000) : '');
-  if (n < 1000000) return numExtenso(Math.floor(n/1000)) + ' mil' + (n%1000 ? (n%1000 < 100 ? ' e ' : ' ') + numExtenso(n%1000) : '');
-  if (n < 2000000) return 'um milhão' + (n%1000000 ? ' e ' + numExtenso(n%1000000) : '');
-  return numExtenso(Math.floor(n/1000000)) + ' milhões' + (n%1000000 ? ' e ' + numExtenso(n%1000000) : '');
+  if (n < 1000) return CENTENAS[Math.floor(n/100)] + (n%100 ? ' e ' + numExtensoInt(n%100) : '');
+  if (n < 2000) return 'mil' + (n%1000 ? ' e ' + numExtensoInt(n%1000) : '');
+  if (n < 1000000) return numExtensoInt(Math.floor(n/1000)) + ' mil' + (n%1000 ? ' e ' + numExtensoInt(n%1000) : '');
+  if (n < 2000000) return 'um milhão' + (n%1000000 ? ' e ' + numExtensoInt(n%1000000) : '');
+  return numExtensoInt(Math.floor(n/1000000)) + ' milhões' + (n%1000000 ? ' e ' + numExtensoInt(n%1000000) : '');
 }
 
+// numExtenso — para percentagens, preserva decimais como centésimos
+function numExtenso(n) {
+  const inteiro = Math.floor(Math.abs(n));
+  const decimal = Math.round((Math.abs(n) - inteiro) * 100);
+  let resultado = '';
+  if (inteiro === 0 && decimal === 0) return 'zero';
+  if (inteiro > 0) resultado = numExtensoInt(inteiro);
+  if (decimal > 0) resultado += (resultado ? ' vírgula ' : '') + numExtensoInt(decimal) + (decimal === 1 ? ' centésimo' : ' centésimos');
+  return (n < 0 ? 'menos ' : '') + resultado;
+}
+
+// valorExtenso — aceita formato PT "101.950,57" ou JS "101950.57"
 function valorExtenso(str) {
   if (!str) return '';
-  const limpo = String(str).replace(/\s/g,'').replace(/\./g,'').replace(',','.');
-  const num = parseFloat(limpo);
+  const s = String(str).trim();
+  let num;
+  if (s.includes(',')) num = parseFloat(s.replace(/\s/g,'').replace(/\./g,'').replace(',','.'));
+  else num = parseFloat(s.replace(/\s/g,''));
   if (isNaN(num)) return '';
   const inteiro = Math.floor(num);
   const cents = Math.round((num - inteiro) * 100);
-  let txt = numExtenso(inteiro) + (inteiro === 1 ? ' euro' : ' euros');
-  if (cents > 0) txt += ' e ' + numExtenso(cents) + (cents === 1 ? ' cêntimo' : ' cêntimos');
+  let txt = numExtensoInt(inteiro) + (inteiro === 1 ? ' euro' : ' euros');
+  if (cents > 0) txt += ' e ' + numExtensoInt(cents) + (cents === 1 ? ' cêntimo' : ' cêntimos');
   return txt.charAt(0).toUpperCase() + txt.slice(1);
 }
 
@@ -1426,11 +1439,17 @@ function updatePrecoExtenso() {
 function onAPBChange() {
   const on = document.getElementById('toggle-apb').checked;
   document.getElementById('apb-fields').style.display = on ? 'block' : 'none';
-  // Sync banco hipotecante
-  if (on) {
-    const banco = document.getElementById('banco-hipotecante')?.value || '';
-    document.getElementById('apb-banco').value = banco;
-  }
+  if (on) { const banco = document.getElementById('banco-hipotecante')?.value || ''; document.getElementById('apb-banco').value = banco; }
+  calcularRemanescente();
+}
+
+function onToggleSinal() {
+  document.getElementById('sinal-fields').style.display = document.getElementById('toggle-sinal').checked ? 'block' : 'none';
+  calcularRemanescente();
+}
+
+function onToggleCheque() {
+  document.getElementById('cheque-fields').style.display = document.getElementById('toggle-cheque').checked ? 'block' : 'none';
   calcularRemanescente();
 }
 
@@ -1441,45 +1460,42 @@ function calcularIS() {
 }
 
 function calcularRemanescente() {
-  const forma = document.getElementById('forma-pagamento').value;
-  if (!forma) return;
-  const total = parseFloat((document.getElementById('preco-compra').value || '0').replace(/\./g,'').replace(',','.')) || 0;
-  const sinal = parseFloat((document.getElementById('sinal-valor')?.value || '0').replace(/\./g,'').replace(',','.')) || 0;
-  const apbOn = document.getElementById('toggle-apb').checked;
-  const apbVal = apbOn ? (parseFloat((document.getElementById('apb-valor')?.value || '0').replace(/\./g,'').replace(',','.')) || 0) : 0;
-
-  // Actualizar extenso APB
+  const total = parseFloat((document.getElementById('preco-compra')?.value||'0').replace(/\./g,'').replace(',','.'))||0;
+  const sinalOn = document.getElementById('toggle-sinal')?.checked;
+  const apbOn = document.getElementById('toggle-apb')?.checked;
+  const chequeOn = document.getElementById('toggle-cheque')?.checked;
+  const sinal = sinalOn ? (parseFloat((document.getElementById('sinal-valor')?.value||'0').replace(/\./g,'').replace(',','.'))||0) : 0;
+  const apbVal = apbOn ? (parseFloat((document.getElementById('apb-valor')?.value||'0').replace(/\./g,'').replace(',','.'))||0) : 0;
+  // Extenso APB
   const apbExtenso = document.getElementById('apb-extenso');
   if (apbExtenso) apbExtenso.value = apbVal > 0 ? valorExtenso(document.getElementById('apb-valor').value) : '';
-
+  // Sugerir remanescente para cheque
   const rem = total - sinal - apbVal;
   const chequeValor = document.getElementById('cheque-valor');
-  if (chequeValor && forma === 'com-entrada') {
-    chequeValor.value = rem > 0 ? rem.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
+  if (chequeOn && chequeValor && !chequeValor.value && rem > 0) {
+    chequeValor.value = rem.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2});
   }
+  // Resumo
+  const resumo = document.getElementById('resumo-pagamentos');
+  const linhas = document.getElementById('resumo-linhas');
+  const diferenca = document.getElementById('resumo-diferenca');
+  if (!total) { if(resumo) resumo.style.display='none'; return; }
+  let html = ''; let soma = 0;
+  if (sinalOn && sinal > 0) { html += `a) Sinal: ${sinal.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`; soma += sinal; }
+  if (apbOn && apbVal > 0) { html += `b) APB: ${apbVal.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`; soma += apbVal; }
+  const chequeNum = chequeOn ? (parseFloat((chequeValor?.value||'0').replace(/\./g,'').replace(',','.'))||0) : 0;
+  if (chequeOn && chequeNum > 0) { html += `c) Cheque: ${chequeNum.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`; soma += chequeNum; }
+  if (linhas) linhas.innerHTML = html || 'Nenhum meio de pagamento seleccionado';
+  const diff = total - soma;
+  if (diferenca) {
+    if (Math.abs(diff) < 0.01) { diferenca.style.color='var(--green)'; diferenca.textContent='✓ Total confere: '+total.toLocaleString('pt-PT',{minimumFractionDigits:2})+' €'; }
+    else if (diff > 0) { diferenca.style.color='var(--amber)'; diferenca.textContent='⚠ Faltam '+diff.toLocaleString('pt-PT',{minimumFractionDigits:2})+' €'; }
+    else { diferenca.style.color='var(--red)'; diferenca.textContent='✗ Excede '+Math.abs(diff).toLocaleString('pt-PT',{minimumFractionDigits:2})+' €'; }
+  }
+  if (resumo) resumo.style.display = 'block';
 }
 
-function onFormaPagamentoChange() {
-  const val = document.getElementById('forma-pagamento').value;
-  const sinalFields = document.getElementById('sinal-fields');
-  const chequeFields = document.getElementById('cheque-fields');
-  const chequeTitle = document.getElementById('cheque-fields-title');
-  if (!val) { sinalFields.style.display='none'; chequeFields.style.display='none'; return; }
-  if (val === 'sem-entrada') {
-    sinalFields.style.display = 'none';
-    chequeFields.style.display = 'block';
-    chequeTitle.textContent = 'Pagamento total por cheque';
-    document.getElementById('cheque-valor').removeAttribute('readonly');
-    document.getElementById('cheque-valor').style.background = '';
-  } else {
-    sinalFields.style.display = 'block';
-    chequeFields.style.display = 'block';
-    chequeTitle.textContent = 'Remanescente por cheque';
-    document.getElementById('cheque-valor').setAttribute('readonly','');
-    document.getElementById('cheque-valor').style.background = 'var(--surface2)';
-    calcularRemanescente();
-  }
-}
+function onFormaPagamentoChange() { calcularRemanescente(); }
 
 function onMediacaoChange() {
   const on = document.getElementById('toggle-mediacao').checked;
@@ -1911,9 +1927,9 @@ function recolherDadosContrato() {
   const tipoCE = v('tipo-cert-energetico');
   let TXT_Cert_Energetico = '';
   if (tipoCE === 'certificado') {
-    TXT_Cert_Energetico = `FOI EXIBIDO Certificado Energético com o número ${v('cert-energetico-num')}, válido até ${fmtDataPT(v('cert-energetico-data'))}.`;
+    TXT_Cert_Energetico = `FOI EXIBIDO Certificado Energético com o número ${v('cert-energetico-num')}, válido até ${fmtDataPT(v('cert-energetico-data'))}, que foi entregue à parte compradora neste ato.`;
   } else if (tipoCE === 'isencao') {
-    TXT_Cert_Energetico = `FOI EXIBIDO Certificado de Isenção Energética com o número ${v('cert-energetico-num')}, emitido em ${fmtDataPT(v('cert-energetico-data'))}.`;
+    TXT_Cert_Energetico = `FOI EXIBIDO Certificado de Isenção Energética com o número ${v('cert-energetico-num')}, emitido em ${fmtDataPT(v('cert-energetico-data'))}, que foi entregue à parte compradora neste ato.`;
   }
 
   // ── LU no documento complementar (mesmo campo diferente posição) ──────────
@@ -1931,7 +1947,9 @@ function recolherDadosContrato() {
   // ── Tipo prédio / Fração ──────────────────────────────────────────────────
   const direito = v('direito-predio');
   const DtoSobrePredio = direito === 'usufruto' ? 'o usufruto sobre ' : direito === 'superficie' ? 'o direito de superfície sobre ' : '';
-  const TXT_Fracao = isFracao ? `a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')},` : '';
+  const TXT_Fracao = isFracao
+    ? `a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')},`
+    : 'o prédio urbano,';
 
   // ── Casa Pronta ───────────────────────────────────────────────────────────
   let TXT_CasaPronta_Bloco = '';
@@ -1945,28 +1963,32 @@ function recolherDadosContrato() {
   }
 
   // ── Preço e pagamento ─────────────────────────────────────────────────────
-  const formaPag = v('forma-pagamento');
-  const precoCompra = v('preco-compra');
-  let TXT_Sem_Ent_Inicial = '', TXT_Com_Ent_Inicial = '', TXT_APB = '';
-
-  // Fix: remove spaces used as thousand separators before parsing
   const parseValor = str => parseFloat((str || '0').replace(/\s/g,'').replace(/\./g,'').replace(',','.')) || 0;
+  const sinalOn = checked('toggle-sinal');
+  const apbAtivo = checked('toggle-apb');
+  const chequeOn = checked('toggle-cheque');
+
   const chequeValorNum = parseValor(v('cheque-valor'));
   const chequeValorFmt = chequeValorNum > 0 ? chequeValorNum.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}) : v('cheque-valor');
 
-  const chequeTexto = `no valor de ${chequeValorFmt} EUROS (${valorExtenso(chequeValorFmt)} EUROS), em moeda euro, mediante cheque bancário emitido ${fmtDataPT(v('cheque-data'))}, sacado sobre o banco ${v('cheque-banco')} à ordem d${nV > 1 ? 'os PRIMEIROS' : 'o PRIMEIRO'} com o número ${v('cheque-numero')}.`;
-
-  const apbAtivo = checked('toggle-apb') && (distrate === 'fisico' || distrate === 'codigo');
-  const apbTexto = apbAtivo ? `--- Na presente data ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${v('apb-valor')} EUROS (${valorExtenso(v('apb-valor'))} EUROS) mediante transferência bancária da conta ${v('apb-conta-origem')}, titulada pel${nC > 1 ? 'os SEGUNDOS' : 'o SEGUNDO'} junto da CAIXA, a creditar via target na conta ${v('apb-conta-destino')} cujo titular é o banco ${v('banco-hipotecante')}.` : '';
-
-  if (formaPag === 'sem-entrada') {
-    TXT_Sem_Ent_Inicial = `--- O preço é pago na data de hoje, ${chequeTexto}`;
-  } else if (formaPag === 'com-entrada') {
-    // APB entra entre o sinal e o remanescente
-    const apbLinha = apbAtivo ? `\n${apbTexto}` : '';
-    TXT_Com_Ent_Inicial = `a) Em ${fmtDataPT(v('sinal-data'))}, a título de sinal e princípio de pagamento e mediante transferência bancária, a Promitente Parte Compradora entregou a quantia de €${v('sinal-valor')} (${valorExtenso(v('sinal-valor'))} EUROS) da conta com o IBAN ${v('sinal-iban-comprador')} para a conta da Promitente Parte Vendedora com o IBAN ${v('sinal-iban-vendedor')};${apbLinha}\nb) o remanescente do preço é pago na data de hoje, ${chequeTexto}`;
-    TXT_APB = ''; // já está dentro do TXT_Com_Ent_Inicial
+  // Construir alíneas
+  let alineas = [];
+  let letra = 97; // 'a'
+  if (sinalOn) {
+    alineas.push(`${String.fromCharCode(letra++)}) Em ${fmtDataPT(v('sinal-data'))}, a título de sinal e princípio de pagamento, mediante transferência bancária, a Parte Compradora entregou a quantia de ${v('sinal-valor')} EUROS (${valorExtenso(v('sinal-valor'))}) da conta com o IBAN ${v('sinal-iban-comprador')} para a conta da Parte Vendedora com o IBAN ${v('sinal-iban-vendedor')};`);
   }
+  if (apbAtivo) {
+    alineas.push(`${String.fromCharCode(letra++)}) Ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${v('apb-valor')} EUROS (${valorExtenso(v('apb-valor'))}) mediante transferência bancária da conta ${v('apb-conta-origem')}, titulada pel${nC > 1 ? 'os SEGUNDOS' : 'o SEGUNDO'} junto da CAIXA, a creditar via target na conta ${v('apb-conta-destino')} cujo titular é o banco ${v('banco-hipotecante')};`);
+  }
+  if (chequeOn) {
+    alineas.push(`${String.fromCharCode(letra++)}) O valor de ${chequeValorFmt} EUROS (${valorExtenso(chequeValorFmt)}) é pago em moeda euro, mediante cheque bancário emitido em ${fmtDataPT(v('cheque-data'))}, sacado sobre o banco ${v('cheque-banco')} à ordem d${nV > 1 ? 'os PRIMEIROS' : 'o PRIMEIRO'} com o número ${v('cheque-numero')}.`);
+  }
+
+  const TXT_Com_Ent_Inicial = alineas.join('\n');
+  const TXT_Sem_Ent_Inicial = (!sinalOn && !apbAtivo && chequeOn)
+    ? `--- O preço é pago na data de hoje, no valor de ${chequeValorFmt} EUROS (${valorExtenso(chequeValorFmt)}), em moeda euro, mediante cheque bancário emitido em ${fmtDataPT(v('cheque-data'))}, sacado sobre o banco ${v('cheque-banco')} à ordem d${nV > 1 ? 'os PRIMEIROS' : 'o PRIMEIRO'} com o número ${v('cheque-numero')}.`
+    : '';
+  const TXT_APB = '';
 
   // ── Mediação ──────────────────────────────────────────────────────────────
   const TXT_Mediacao = checked('toggle-mediacao')
@@ -1983,7 +2005,7 @@ function recolherDadosContrato() {
   // ── Extensos juros/sobretaxa (são percentagens, não valores monetários) ───
   const jurosPct = v('mutuo-juros').replace(',','.');
   const sobretaxaPct = v('mutuo-sobretaxa').replace(',','.');
-  const Extenso_Juros = jurosPct ? numExtenso(parseFloat(jurosPct)) + (jurosPct.includes('.') ? ' e ' + numExtenso(Math.round((parseFloat(jurosPct) % 1) * 100)) + ' centésimas' : '') + ' por cento' : '';
+  const Extenso_Juros = jurosPct ? numExtenso(parseFloat(jurosPct)) + ' por cento' : '';
   const Extenso_Sobretaxa = sobretaxaPct ? numExtenso(parseFloat(sobretaxaPct)) + ' por cento' : '';
 
   // ── Destino ───────────────────────────────────────────────────────────────
@@ -2040,7 +2062,7 @@ function recolherDadosContrato() {
     Mutuo_valor: v('mutuo-valor'),
     Extenso_Mutuo_valor: valorExtenso(v('mutuo-valor')),
     Prazo: v('mutuo-prazo'),
-    Extenso_Prazo: numExtenso(parseInt(v('mutuo-prazo')) || 0) + ' meses',
+    Extenso_Prazo: numExtensoInt(parseInt(v('mutuo-prazo')) || 0) + ' meses',
     Juros: v('mutuo-juros'),
     Extenso_Juros,
     Sobretaxa: v('mutuo-sobretaxa'),
