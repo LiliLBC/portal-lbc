@@ -2097,7 +2097,7 @@ async function enviarEmail(){
   const assunto=document.getElementById('com-email-assunto').value.trim();
   const corpo=document.getElementById('com-email-corpo').value.trim();
   if(!para){showToast('Preenche o email do destinatário','error');return;}
-  const outlookUrl=`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  const outlookUrl=`https://outlook.cloud.microsoft/mail/deeplink/compose?to=${encodeURIComponent(para)}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
   window.open(outlookUrl,'_blank');
   fecharModalComunicacao();
 }
