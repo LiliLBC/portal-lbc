@@ -3913,15 +3913,23 @@ let avPastasCache=[];
 let avFornecedorAtivo='';
 
 function carregarAvencas(){
-  avSetTab('novo', document.getElementById('av-tab-btn-novo'));
-}
-
-function avSetTab(tab,el){
-  document.getElementById('av-tab-novo').style.display=tab==='novo'?'block':'none';
-  document.getElementById('av-tab-pastas').style.display=tab==='pastas'?'block':'none';
-  document.querySelectorAll('#screen-avencas .filter-chip').forEach(c=>c.classList.remove('active'));
-  if(el)el.classList.add('active');
-  if(tab==='pastas')avCarregarPastas();
+  document.getElementById('av-loading').style.display='flex';
+  document.getElementById('av-list').style.display='none';
+  getGraphToken().then(async token=>{
+    try{
+      if(!listaIdAvencasProc){
+        const listsRes=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name`);
+        listaIdAvencasProc=(listsRes.value||[]).find(l=>l.name==='Avencas_Processos')?.id||null;
+      }
+      if(!listaIdAvencasProc){showToast('Lista Avencas_Processos não encontrada','error');document.getElementById('av-loading').style.display='none';return;}
+      const sel=Object.values(AP).join(',');
+      const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items?$expand=fields($select=${sel})&$top=300`);
+      todosProcessosAv=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+      avRenderLista(todosProcessosAv);
+    }catch(e){
+      document.getElementById('av-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;
+    }
+  }).catch(e=>showToast('Erro de autenticação: '+e.message,'error'));
 }
 
 function avOnFornecedorChange(){
