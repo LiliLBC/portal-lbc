@@ -176,7 +176,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <button class="btn" onclick="fecharModalComunicacao()" style="flex:1">Cancelar</button>
         <button class="btn btn-primary" onclick="enviarEmail()" style="flex:2">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 3l7 6 7-6"/></svg>
-          Enviar pelo Outlook
+          Abrir no Outlook
         </button>
       </div>
     </div>
@@ -2043,11 +2043,15 @@ function dataEscrituraFormatada(){
 function textoEmailPadrao(nome,data){
   return `Exmo(a). Sr(a). ${nome||'___'},
 
-No seguimento do processo em curso, informamos que o contrato de Mútuo com Hipoteca referente à escritura agendada para o dia ${data||'___'} se encontra em preparação.
+No seguimento do processo em curso, informamos que o contrato de Mútuo com Hipoteca se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.
+
+📍 LBC Solicitadora — Rua Domingos Franco de Oliveira, n.º 16, Évora
+https://maps.app.goo.gl/YourLinkHere
 
 Para qualquer esclarecimento, estamos ao dispor.
 
 Com os melhores cumprimentos,
+LBC Solicitadora`;}
 LBC Solicitadora`;
 }
 
@@ -2095,31 +2099,9 @@ async function enviarEmail(){
   const assunto=document.getElementById('com-email-assunto').value.trim();
   const corpo=document.getElementById('com-email-corpo').value.trim();
   if(!para){showToast('Preenche o email do destinatário','error');return;}
-  const status=document.getElementById('com-email-status');
-  status.style.display='block';status.textContent='A enviar...';
-  try{
-    const token=await getGraphToken();
-    const payload={
-      message:{
-        subject:assunto,
-        body:{contentType:'Text',content:corpo},
-        toRecipients:[{emailAddress:{address:para}}]
-      },
-      saveToSentItems:true
-    };
-    const res=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.status);}
-    showToast('Email enviado com sucesso!','success');
-    status.style.display='none';
-    fecharModalComunicacao();
-  }catch(e){
-    status.textContent='Erro: '+e.message;
-    status.style.color='var(--red)';
-  }
+  const mailto=`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  window.open(mailto,'_blank');
+  fecharModalComunicacao();
 }
 
 function abrirWhatsApp(){
