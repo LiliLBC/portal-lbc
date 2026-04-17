@@ -238,6 +238,58 @@ tbody tr:hover td{background:#FAFAF8}
 .lembrete-card .lembrete-nota{font-size:11px;color:var(--text-muted);margin-top:2px}
 .lembrete-card .btn-concluido{flex-shrink:0;background:var(--green);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap}
 .lembrete-card .btn-concluido:hover{opacity:.85}
+
+/* ── RESPONSIVO MOBILE ───────────────────────────────────────────────────── */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:8px;border:none;background:transparent;z-index:200}
+.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .25s}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
+.sidebar-overlay.show{display:block}
+
+@media(max-width:768px){
+  .hamburger{display:flex}
+  .sidebar{transform:translateX(-100%);transition:transform .25s;z-index:100}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .topbar{padding:0 1rem}
+  .topbar-right .date-badge{display:none}
+  .topbar-right .topbar-dropdown{display:none}
+  .content{padding:1rem .75rem}
+
+  /* Registo — painel lateral em ecrã inteiro */
+  .side-panel{width:100%!important;max-width:100%!important}
+
+  /* Calendário — coluna única */
+  #screen-dashboard > div[style*="flex"]{flex-direction:column!important}
+  #screen-dashboard > div[style*="flex"] > div[style*="width:340px"]{width:100%!important}
+
+  /* Filtros em scroll horizontal */
+  .filter-row{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:.25rem;scrollbar-width:none}
+  .filter-row::-webkit-scrollbar{display:none}
+
+  /* Grids de 2 colunas → 1 coluna */
+  .metrics-row{grid-template-columns:1fr 1fr!important}
+
+  /* Lembretes — largura total */
+  .lembrete-card{max-width:100%!important}
+
+  /* Lista de registos */
+  .reg-list-item{flex-wrap:wrap;gap:.4rem}
+
+  /* Tabela contabilidade scroll */
+  .cb-table-wrap{overflow-x:auto}
+
+  /* Modal a ecrã inteiro em mobile */
+  .modal-box{width:95%!important;max-width:95%!important;margin:1rem}
+}
+
+@media(max-width:480px){
+  .metrics-row{grid-template-columns:1fr!important}
+  .topbar{height:48px}
+  .page-title{font-size:13px}
+}
 </style>
 </head>
 <body>
@@ -317,9 +369,17 @@ tbody tr:hover td{background:#FAFAF8}
     </div>
   </aside>
 
+  <!-- Overlay mobile para fechar sidebar -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+
   <div class="main">
     <div class="topbar">
-      <span class="page-title" id="page-title">Dashboard</span>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <span class="page-title" id="page-title">Dashboard</span>
+      </div>
       <div class="topbar-right">
         <div class="date-badge" id="topbar-date"></div>
         <div class="topbar-dropdown" id="contratos-dropdown">
@@ -1644,6 +1704,20 @@ function fmtPrazo(iso){
 
 const pageTitles={dashboard:'Calendário',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
 
+function toggleSidebar(){
+  const sidebar=document.querySelector('.sidebar');
+  const hamburger=document.getElementById('hamburger');
+  const overlay=document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('open');
+  hamburger.classList.toggle('open');
+  overlay.classList.toggle('show');
+}
+function fecharSidebar(){
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.getElementById('hamburger')?.classList.remove('open');
+  document.getElementById('sidebar-overlay')?.classList.remove('show');
+}
+
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1651,6 +1725,7 @@ function nav(id,el){
   document.getElementById('screen-'+id).classList.add('active');
   if(el)el.classList.add('active');
   document.getElementById('page-title').textContent=pageTitles[id]||id;
+  fecharSidebar(); // fechar menu em mobile ao navegar
   if(id==='pastas'&&!pastasCarregadas)carregarPastas();
   if(id==='registo'&&!registosCarregados)carregarRegistos();
   if(id==='suprimentos')carregarSuprimentos();
