@@ -114,7 +114,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
     <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
-        <div class="form-label" style="margin-bottom:4px">Pasta REMAX (avença)</div>
+        <div class="form-label" style="margin-bottom:4px">Pasta do cliente</div>
         <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">Se seleccionada, permite guardar rascunho e o contrato é guardado na pasta. Sem pasta, só é possível download.</div>
         <div style="position:relative">
           <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" style="padding-right:2rem" disabled>
@@ -837,18 +837,25 @@ async function carregarPastasSP(){
   const btn=document.getElementById('btn-carregar-pastas');
   const input=document.getElementById('pasta-search');
   btn.textContent='A carregar...';btn.disabled=true;
+  input.placeholder='A carregar pastas...';
   try{
     const token=await getGraphToken();
-    // Site lbcsolicitadora2 — biblioteca AVENCAS — pasta REMAX
-    const drivesRes=await fetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',{headers:{Authorization:'Bearer '+token}});
+    const drivesRes=await fetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
     const drives=await drivesRes.json();
     const avencasDrive=drives.value.find(d=>d.name==='AVENCAS');
-    if(!avencasDrive)throw new Error('Biblioteca AVENCAS não encontrada');
-    // Listar subpastas de AVENCAS/REMAX
-    const pastasRes=await fetch(`https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root:/REMAX:/children?$top=500&$orderby=lastModifiedDateTime desc`,{headers:{Authorization:'Bearer '+token}});
+    if(!avencasDrive) throw new Error('Biblioteca AVENCAS não encontrada');
+    const pastasRes=await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root:/REMAX:/children?$top=500&$orderby=lastModifiedDateTime desc`,
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!pastasRes.ok) throw new Error(`Erro ${pastasRes.status} ao listar pastas REMAX`);
     const pastas=await pastasRes.json();
     pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:avencasDrive.id,webUrl:p.webUrl}));
-    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas REMAX...`;
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;
     input.disabled=false;
     showToast(`${pastasSP.length} pastas carregadas`,'success');
   }catch(e){
@@ -1137,62 +1144,15 @@ function gerarTextoPagamento(){
 }
 
 // ─── TOKEN ────────────────────────────────────────────────────────────────────
-// ─── AUTENTICAÇÃO MSAL ────────────────────────────────────────────────────────
-const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
-const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
-const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read'];
-let msalApp=null,graphToken=null;
-
+// ─── TOKEN ────────────────────────────────────────────────────────────────────
 async function getGraphToken(){
-  // 1. Token do portal (se aberto a partir dele)
   if(window.opener&&window.opener.graphToken){
-    graphToken=window.opener.graphToken;
-    return graphToken;
+    try{localStorage.setItem('lbc_graph_token',window.opener.graphToken);}catch(e){}
+    return window.opener.graphToken;
   }
-  // 2. Token já obtido
-  if(graphToken)return graphToken;
-  // 3. Autenticar via MSAL
-  if(!msalApp)throw new Error('MSAL não inicializado');
-  try{
-    const conta=msalApp.getAllAccounts()[0];
-    if(!conta)throw new Error('sem conta');
-    const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:conta});
-    graphToken=r.accessToken;return graphToken;
-  }catch(e){
-    await msalApp.acquireTokenRedirect({scopes:GRAPH_SCOPES});
-  }
-}
-
-async function initMSAL(){
-  return new Promise(resolve=>{
-    // Se veio do portal, usa token do opener
-    if(window.opener&&window.opener.graphToken){
-      graphToken=window.opener.graphToken;
-      resolve();return;
-    }
-    const s=document.createElement('script');
-    s.src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
-    document.head.appendChild(s);
-    s.onload=async()=>{
-      const REDIRECT=window.location.origin+window.location.pathname;
-      msalApp=new msal.PublicClientApplication({
-        auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT},
-        cache:{cacheLocation:'sessionStorage'}
-      });
-      await msalApp.initialize();
-      const resp=await msalApp.handleRedirectPromise().catch(()=>null);
-      if(resp){graphToken=resp.accessToken;resolve();return;}
-      const contas=msalApp.getAllAccounts();
-      if(contas.length>0){
-        try{const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:contas[0]});graphToken=r.accessToken;}catch(e){}
-        resolve();
-      }else{
-        // Fazer login
-        msalApp.loginRedirect({scopes:GRAPH_SCOPES});
-      }
-    };
-    s.onerror=()=>resolve();
-  });
+  const stored=localStorage.getItem('lbc_graph_token');
+  if(stored)return stored;
+  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC.');
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1205,14 +1165,13 @@ function regimenTexto(regime){
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-window.onload=async()=>{
+window.onload=()=>{
   addOutorgante('vendedores');
   addOutorgante('compradores');
   addMatrizUrbana();
   addMatrizRustica();
   document.getElementById('matriz-rustica-fields').style.display='none';
-  await initMSAL();
-  if(graphToken) carregarPastasSP();
+  carregarPastasSP();
   const raw=localStorage.getItem('cpcv_rascunho');
   if(raw)try{restaurarDados(JSON.parse(raw));document.getElementById('rascunho-status').style.display='inline-flex';}catch(e){}
 };
