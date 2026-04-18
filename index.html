@@ -1583,7 +1583,11 @@ tbody tr:hover td{background:#FAFAF8}
               <!-- Pasta SP -->
               <div class="field-group field-full" id="av-p-pasta-wrap" style="display:none">
                 <div class="field-label">Pasta SharePoint</div>
-                <div id="av-p-pasta-link" style="font-size:12px;color:var(--accent);cursor:pointer;padding:.4rem .6rem;background:var(--accent-light);border-radius:6px;word-break:break-all" onclick="avAbrirPasta()">—</div>
+                <button onclick="avAbrirPasta()" style="display:flex;align-items:center;gap:.5rem;width:100%;padding:.6rem .9rem;background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;color:var(--accent-dark);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
+                  <span id="av-p-pasta-link">Abrir pasta no SharePoint</span>
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-left:auto;flex-shrink:0"><path d="M4 8h8M9 5l3 3-3 3"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -3820,13 +3824,20 @@ function avRenderLista(lista){
     const dataC=i[AP.conclusao]?fmtData(i[AP.conclusao]):'—';
     const iniciais=(i[AP.fornecedor]||'?').substring(0,2);
     const cor=corForn[i[AP.fornecedor]]||'var(--text-muted)';
+    const pastaBtn=i[AP.pasta]
+      ?`<button onclick="event.stopPropagation();window.open('${escHtml(i[AP.pasta])}','_blank')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-light);color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Abrir pasta no SharePoint">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
+          Pasta
+        </button>`
+      :'';
     return`<div class="reg-list-item" onclick="abrirPainelAvenca('${i.id}')">
       <div style="width:34px;height:34px;border-radius:8px;background:${cor}22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:${cor};flex-shrink:0">${iniciais}</div>
       <div class="reg-list-main" style="flex:1;min-width:0">
         <div class="reg-list-nome">${escHtml(i[AP.titulo]||'—')} ${urgente}</div>
         <div class="reg-list-meta">${escHtml(i[AP.fornecedor]||'')} · ${escHtml(i[AP.servico]||'')} · ${escHtml(i[AP.responsavel]||'')} · ${dataI}${dataC!=='—'?' → '+dataC:''}</div>
       </div>
-      <div class="reg-list-right">
+      <div class="reg-list-right" style="display:flex;align-items:center;gap:.5rem">
+        ${pastaBtn}
         <span style="border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;${badgeStyle}">${escHtml(estado)}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
       </div>
@@ -3878,8 +3889,12 @@ function abrirPainelAvenca(itemId){
   document.getElementById('av-p-notas').value=i[AP.notas]||'';
   const pastaWrap=document.getElementById('av-p-pasta-wrap');
   const pastaLink=document.getElementById('av-p-pasta-link');
-  if(i[AP.pasta]){pastaWrap.style.display='block';pastaLink.textContent=i[AP.pasta];pastaLink._url=i[AP.pasta];}
-  else{pastaWrap.style.display='none';}
+  if(i[AP.pasta]){
+    pastaWrap.style.display='block';
+    const nomePasta=decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' ')||'Abrir pasta';
+    pastaLink.textContent=nomePasta;
+    pastaLink._url=i[AP.pasta];
+  }else{pastaWrap.style.display='none';}
   document.getElementById('av-overlay').style.display='block';
   document.getElementById('av-painel').classList.add('open');
 }
