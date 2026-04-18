@@ -1126,9 +1126,16 @@ function gerarTextoPagamento(){
 
 // ─── TOKEN ────────────────────────────────────────────────────────────────────
 async function getGraphToken(){
-  const stored=localStorage.getItem('lbc_graph_token');if(stored)return stored;
-  if(window.opener&&window.opener.graphToken)return window.opener.graphToken;
-  throw new Error('Sessão não encontrada. Abre a partir do portal LBC.');
+  // 1. Tentar via window.opener (portal ainda aberto)
+  if(window.opener&&window.opener.graphToken){
+    try{localStorage.setItem('lbc_graph_token',window.opener.graphToken);}catch(e){}
+    return window.opener.graphToken;
+  }
+  // 2. Tentar via localStorage
+  const stored=localStorage.getItem('lbc_graph_token');
+  if(stored)return stored;
+  // 3. Sem token
+  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC e mantém o portal aberto.');
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
