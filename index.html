@@ -1476,15 +1476,26 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="screen" id="screen-avencas">
 
         <!-- HEADER -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-            <input class="reg-search-input" id="av-search" placeholder="Pesquisar cliente ou descrição..." oninput="avFiltrar()" style="width:220px;padding:6px 10px;font-size:12px">
-            <select class="form-select" id="av-f-fornecedor" onchange="avFiltrar()" style="width:160px;font-size:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;flex:1">
+            <input class="reg-search-input" id="av-search" placeholder="Título / descrição..." oninput="avFiltrar()" style="width:200px;padding:6px 10px;font-size:12px">
+            <select class="form-select" id="av-f-fornecedor" onchange="avFiltrar()" style="width:150px;font-size:12px">
               <option value="">Todos os fornecedores</option>
               <option>REMAX</option>
               <option>CM MONFORTE</option>
             </select>
-            <select class="form-select" id="av-f-responsavel" onchange="avFiltrar()" style="width:160px;font-size:12px">
+            <select class="form-select" id="av-f-servico" onchange="avFiltrar()" style="width:150px;font-size:12px">
+              <option value="">Tipo de serviço...</option>
+              <option>CPCV</option>
+              <option>ARRENDAMENTO</option>
+              <option>ANÁLISE</option>
+              <option>PARECER</option>
+              <option>CADASTRO</option>
+              <option>REGISTO</option>
+              <option>INTERNO</option>
+              <option>OUTRO</option>
+            </select>
+            <select class="form-select" id="av-f-responsavel" onchange="avFiltrar()" style="width:150px;font-size:12px">
               <option value="">Todos os responsáveis</option>
               <option>Liliana Cardoso</option>
               <option>Andreia Cabanas</option>
@@ -1493,10 +1504,10 @@ tbody tr:hover td{background:#FAFAF8}
           <button class="btn btn-primary btn-sm" onclick="abrirPainelAvencaNovo()">+ Novo processo</button>
         </div>
 
-        <!-- CHIPS ESTADO -->
+        <!-- CHIPS ESTADO — padrão: Em curso (excluem Concluído) -->
         <div class="filter-row" style="margin-bottom:.75rem">
-          <button class="filter-chip active" onclick="avFiltrarEstado('',this)">Todos</button>
-          <button class="filter-chip" onclick="avFiltrarEstado('Em curso',this)">Em curso</button>
+          <button class="filter-chip" onclick="avFiltrarEstado('',this)">Todos</button>
+          <button class="filter-chip active" onclick="avFiltrarEstado('activos',this)">Em curso</button>
           <button class="filter-chip" onclick="avFiltrarEstado('Aguarda resposta',this)">Aguarda resposta</button>
           <button class="filter-chip" onclick="avFiltrarEstado('Concluído',this)">Concluídos</button>
           <button class="filter-chip" style="color:var(--red);border-color:var(--red)" onclick="avFiltrarEstado('Urgente',this)">Urgentes</button>
@@ -3744,7 +3755,7 @@ const AVENCAS_FORNECEDORES={
   'CM MONFORTE':['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']
 };
 const AP={titulo:'Title',fornecedor:'Fornecedor',servico:'Servico',inicio:'Data_Inicio',conclusao:'Data_Conclusao',estado:'Estado',urgente:'Urgente',responsavel:'Responsavel',notas:'Notas',pasta:'Ligacao_Pasta'};
-let todosProcessosAv=[],filtroEstadoAv='',avPainelItemId=null;
+let todosProcessosAv=[],filtroEstadoAv='activos',avPainelItemId=null;
 
 async function carregarAvencas(){
   document.getElementById('av-loading').style.display='flex';
@@ -3752,26 +3763,31 @@ async function carregarAvencas(){
   try{
     await renovarToken();
     if(!listaIdAvencasProc){
-      // Resolver lista
       const listsRes=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name`);
       listaIdAvencasProc=(listsRes.value||[]).find(l=>l.name==='Avencas_Processos')?.id||null;
     }
     if(!listaIdAvencasProc){showToast('Lista Avencas_Processos não encontrada','error');return;}
     const sel=Object.values(AP).join(',');
-    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items?$expand=fields($select=${sel})&$top=300&$orderby=fields/Data_Inicio desc`);
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items?$expand=fields($select=${sel})&$top=300`);
     todosProcessosAv=(data.value||[]).map(i=>({id:i.id,...i.fields}));
-    avRenderLista(todosProcessosAv);
+    filtroEstadoAv='activos'; // padrão: Em curso ao carregar
+    avFiltrar();
   }catch(e){document.getElementById('av-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
 }
 
 function avFiltrar(){
   const q=(document.getElementById('av-search').value||'').toLowerCase();
   const forn=(document.getElementById('av-f-fornecedor').value||'');
+  const serv=(document.getElementById('av-f-servico')?.value||'');
   const resp=(document.getElementById('av-f-responsavel').value||'');
   let lista=todosProcessosAv;
-  if(filtroEstadoAv==='Urgente') lista=lista.filter(i=>i[AP.urgente]);
+  // Filtro estado
+  if(filtroEstadoAv==='Urgente') lista=lista.filter(i=>i[AP.urgente]&&i[AP.estado]!=='Concluído'&&i[AP.estado]!=='Cancelado');
+  else if(filtroEstadoAv==='activos') lista=lista.filter(i=>i[AP.estado]!=='Concluído'&&i[AP.estado]!=='Cancelado');
   else if(filtroEstadoAv) lista=lista.filter(i=>i[AP.estado]===filtroEstadoAv);
+  // Filtros de pesquisa
   if(forn) lista=lista.filter(i=>i[AP.fornecedor]===forn);
+  if(serv) lista=lista.filter(i=>(i[AP.servico]||'').toLowerCase()===serv.toLowerCase());
   if(resp) lista=lista.filter(i=>i[AP.responsavel]===resp);
   if(q) lista=lista.filter(i=>(i[AP.titulo]||'').toLowerCase().includes(q)||(i[AP.servico]||'').toLowerCase().includes(q));
   avRenderLista(lista);
@@ -3882,7 +3898,7 @@ async function guardarProcessoAvenca(){
   const titulo=document.getElementById('av-p-titulo').value.trim();
   if(!titulo){showToast('Preenche o título/descrição','error');return;}
   const btn=document.getElementById('av-btn-guardar');
-  btn.disabled=true;
+  btn.disabled=true;btn.textContent='A guardar...';
   const body={};
   body[AP.titulo]=titulo;
   const forn=document.getElementById('av-p-fornecedor').value;if(forn)body[AP.fornecedor]=forn;
@@ -3895,19 +3911,43 @@ async function guardarProcessoAvenca(){
   const notas=document.getElementById('av-p-notas').value;if(notas)body[AP.notas]=notas;
   try{
     if(avPainelItemId){
+      // Editar processo existente
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items/${avPainelItemId}/fields`,body);
       const idx=todosProcessosAv.findIndex(i=>i.id===avPainelItemId);
       if(idx>-1)Object.assign(todosProcessosAv[idx],body);
       showToast('Guardado!','success');
     }else{
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
-      showToast('Processo criado!','success');
+      // Novo processo — criar pasta na biblioteca AVENCAS primeiro
+      let ligacaoPasta='';
+      if(driveIdAvencas&&forn){
+        try{
+          // Nome da pasta: AAAAMMDD TITULO SERVICO
+          const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
+          const nomePasta=`${dataStr} ${titulo.substring(0,40).trim()}${serv?' '+serv:''}`.toUpperCase();
+          // Criar sub-pasta dentro de AVENCAS/FORNECEDOR
+          const fornPath=encodeURIComponent(forn);
+          // Garantir que pasta do fornecedor existe
+          await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
+            method:'POST',
+            headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+            body:JSON.stringify({name:nomePasta,folder:{},['@microsoft.graph.conflictBehavior']:'rename'})
+          }).then(async r=>{
+            if(r.ok){
+              const pasta=await r.json();
+              ligacaoPasta=pasta.webUrl||'';
+            }
+          });
+        }catch(ep){console.warn('Erro ao criar pasta:',ep);}
+      }
+      if(ligacaoPasta)body[AP.pasta]=ligacaoPasta;
+      const res=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
+      showToast(ligacaoPasta?'Processo e pasta criados!':'Processo criado (pasta não criada)','success');
       await carregarAvencas();
     }
     fecharPainelAvenca();
     avFiltrar();
   }catch(e){showToast('Erro: '+e.message,'error');}
-  btn.disabled=false;
+  btn.disabled=false;btn.textContent='Guardar';
 }
 let avPastasCache=[];
 let avFornecedorAtivo='';
