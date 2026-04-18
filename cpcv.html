@@ -703,7 +703,7 @@ function onLUChange(){
     title.textContent=val==='alvara'?'Alvará de Licença de Utilização':val==='comunicacao'?'Resposta à comunicação prévia':'Certidão de Isenção';
   }
 }
-  const val=document.getElementById('tipo-predio').value;
+function onTipoPredioChange(){
   const val=document.getElementById('tipo-predio').value;
   const isFracao=val==='fracao',isUrbano=val==='urbano',isRustico=val==='rustico',isMisto=val==='misto';
   document.getElementById('fracao-fields').style.display=isFracao?'block':'none';
