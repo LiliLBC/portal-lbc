@@ -1137,17 +1137,62 @@ function gerarTextoPagamento(){
 }
 
 // ─── TOKEN ────────────────────────────────────────────────────────────────────
+// ─── AUTENTICAÇÃO MSAL ────────────────────────────────────────────────────────
+const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
+const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read'];
+let msalApp=null,graphToken=null;
+
 async function getGraphToken(){
-  // 1. Tentar via window.opener (portal ainda aberto)
+  // 1. Token do portal (se aberto a partir dele)
   if(window.opener&&window.opener.graphToken){
-    try{localStorage.setItem('lbc_graph_token',window.opener.graphToken);}catch(e){}
-    return window.opener.graphToken;
+    graphToken=window.opener.graphToken;
+    return graphToken;
   }
-  // 2. Tentar via localStorage
-  const stored=localStorage.getItem('lbc_graph_token');
-  if(stored)return stored;
-  // 3. Sem token
-  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC e mantém o portal aberto.');
+  // 2. Token já obtido
+  if(graphToken)return graphToken;
+  // 3. Autenticar via MSAL
+  if(!msalApp)throw new Error('MSAL não inicializado');
+  try{
+    const conta=msalApp.getAllAccounts()[0];
+    if(!conta)throw new Error('sem conta');
+    const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:conta});
+    graphToken=r.accessToken;return graphToken;
+  }catch(e){
+    await msalApp.acquireTokenRedirect({scopes:GRAPH_SCOPES});
+  }
+}
+
+async function initMSAL(){
+  return new Promise(resolve=>{
+    // Se veio do portal, usa token do opener
+    if(window.opener&&window.opener.graphToken){
+      graphToken=window.opener.graphToken;
+      resolve();return;
+    }
+    const s=document.createElement('script');
+    s.src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
+    document.head.appendChild(s);
+    s.onload=async()=>{
+      const REDIRECT=window.location.origin+window.location.pathname;
+      msalApp=new msal.PublicClientApplication({
+        auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT},
+        cache:{cacheLocation:'sessionStorage'}
+      });
+      await msalApp.initialize();
+      const resp=await msalApp.handleRedirectPromise().catch(()=>null);
+      if(resp){graphToken=resp.accessToken;resolve();return;}
+      const contas=msalApp.getAllAccounts();
+      if(contas.length>0){
+        try{const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:contas[0]});graphToken=r.accessToken;}catch(e){}
+        resolve();
+      }else{
+        // Fazer login
+        msalApp.loginRedirect({scopes:GRAPH_SCOPES});
+      }
+    };
+    s.onerror=()=>resolve();
+  });
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1160,13 +1205,14 @@ function regimenTexto(regime){
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-window.onload=()=>{
+window.onload=async()=>{
   addOutorgante('vendedores');
   addOutorgante('compradores');
   addMatrizUrbana();
   addMatrizRustica();
   document.getElementById('matriz-rustica-fields').style.display='none';
-  carregarPastasSP();
+  await initMSAL();
+  if(graphToken) carregarPastasSP();
   const raw=localStorage.getItem('cpcv_rascunho');
   if(raw)try{restaurarDados(JSON.parse(raw));document.getElementById('rascunho-status').style.display='inline-flex';}catch(e){}
 };
