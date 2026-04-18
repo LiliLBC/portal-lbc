@@ -3912,26 +3912,6 @@ async function guardarProcessoAvenca(){
 let avPastasCache=[];
 let avFornecedorAtivo='';
 
-function carregarAvencas(){
-  document.getElementById('av-loading').style.display='flex';
-  document.getElementById('av-list').style.display='none';
-  getGraphToken().then(async token=>{
-    try{
-      if(!listaIdAvencasProc){
-        const listsRes=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name`);
-        listaIdAvencasProc=(listsRes.value||[]).find(l=>l.name==='Avencas_Processos')?.id||null;
-      }
-      if(!listaIdAvencasProc){showToast('Lista Avencas_Processos não encontrada','error');document.getElementById('av-loading').style.display='none';return;}
-      const sel=Object.values(AP).join(',');
-      const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items?$expand=fields($select=${sel})&$top=300`);
-      todosProcessosAv=(data.value||[]).map(i=>({id:i.id,...i.fields}));
-      avRenderLista(todosProcessosAv);
-    }catch(e){
-      document.getElementById('av-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;
-    }
-  }).catch(e=>showToast('Erro de autenticação: '+e.message,'error'));
-}
-
 function avOnFornecedorChange(){
   const forn=document.getElementById('av-fornecedor').value;
   const sel=document.getElementById('av-tipo');
