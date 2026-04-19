@@ -16,7 +16,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .page-title{font-size:14px;font-weight:600}
 .page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
 .topbar-actions{display:flex;gap:.5rem;align-items:center}
-.container{max-width:860px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+.container{max-width:1080px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
 .section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
 .section-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
 .section-num{width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
@@ -239,8 +239,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div id="clausulas-livres-block" style="display:none;margin-top:.9rem">
       <div class="form-group">
         <label class="form-label">Texto das cláusulas</label>
-        <textarea class="form-textarea" id="clausulas-livres-texto" rows="5" placeholder="Ex: O presente mandato limita-se à prática dos actos relativos ao imóvel sito em ..."></textarea>
+        <textarea class="form-textarea" id="clausulas-livres-texto" rows="6" style="min-height:130px;line-height:1.55" placeholder="Ex: O presente mandato limita-se à prática dos actos relativos ao imóvel sito em ..."></textarea>
       </div>
+    </div>
+  </div>
+
+  <!-- 7. IMÓVEIS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">7</div>
+      <div><div class="section-name">Imóveis</div><div class="section-desc">Identificação do(s) imóvel(eis) abrangido(s). Serão referenciados automaticamente nos poderes de Imóveis, Heranças e Finanças.</div></div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">Esta procuração envolve imóveis</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-imoveis" onchange="onImoveisChange()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="imoveis-block" style="display:none;margin-top:.9rem">
+      <div id="imoveis-container"></div>
+      <button class="add-outorgante-btn" onclick="addImovel()" type="button">+ Adicionar imóvel</button>
     </div>
   </div>
 
@@ -562,6 +578,245 @@ function updateDataOutorgaExtenso(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// IMÓVEIS — secção opcional, cada imóvel é um bloco com matrizes múltiplas
+// ═══════════════════════════════════════════════════════════════════════════════
+let imoveisCount=0;
+function onImoveisChange(){
+  const on=document.getElementById('toggle-imoveis').checked;
+  document.getElementById('imoveis-block').style.display=on?'block':'none';
+  if(on&&!document.querySelectorAll('#imoveis-container .outorgante-block').length){
+    addImovel();
+  }
+}
+function addImovel(){
+  const idx=++imoveisCount;
+  const id=`im-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">Imóvel ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="document.getElementById('${id}').remove()" title="Remover">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Tipo de prédio <span>*</span></label>
+        <select class="form-select" id="${id}-tipo" onchange="onImovelTipoChange('${id}')">
+          <option value="">Selecionar...</option>
+          <option value="fracao">Fração autónoma</option>
+          <option value="urbano">Prédio urbano</option>
+          <option value="rustico">Prédio rústico</option>
+          <option value="misto">Prédio misto</option>
+        </select>
+      </div>
+      <div class="form-group"></div>
+
+      <!-- Fração — só PH -->
+      <div class="cond-block form-full" id="${id}-fracao-fields" style="display:none">
+        <div class="cond-block-title">Propriedade horizontal</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Letra da fração</label><input type="text" class="form-input" id="${id}-fracao-letra" placeholder="Ex: BJ" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">AP da constituição PH</label><input type="text" class="form-input" id="${id}-ap-ph" placeholder="Ex: Ap. 5 de 2010/06/15"></div>
+        </div>
+      </div>
+
+      <div class="form-group form-full">
+        <label class="form-label">Descrição do prédio</label>
+        <textarea class="form-textarea" id="${id}-descricao" rows="2" style="min-height:60px" placeholder="Ex: Habitação de tipologia T2 no primeiro andar direito..."></textarea>
+      </div>
+
+      <div class="form-group form-full"><label class="form-label">Localização (morada)</label><input type="text" class="form-input" id="${id}-localizacao" placeholder="Ex: Rua das Flores, n.º 5, Évora"></div>
+
+      <div class="form-group"><label class="form-label">Conservatória</label><input type="text" class="form-input" id="${id}-conservatoria" placeholder="Ex: Évora"></div>
+      <div class="form-group"><label class="form-label">Nº de descrição</label><input type="text" class="form-input" id="${id}-num-descricao" placeholder="Ex: 1234"></div>
+      <div class="form-group"><label class="form-label">Freguesia (conservatória)</label><input type="text" class="form-input" id="${id}-freguesia" placeholder="Ex: Évora (Sé)"></div>
+      <div class="form-group"><label class="form-label">AP da aquisição</label><input type="text" class="form-input" id="${id}-ap-aquisicao" placeholder="Ex: Ap. 12 de 2015/04/20"></div>
+
+      <!-- Matrizes urbanas -->
+      <div class="form-full" id="${id}-matriz-urbana-fields" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem;margin-bottom:.5rem">
+          <div class="cond-block-title" style="margin-bottom:0">Matriz predial urbana</div>
+          <button class="btn btn-sm" onclick="addMatrizImovel('${id}','u')" type="button">+ Urbana</button>
+        </div>
+        <div id="${id}-mus-container"></div>
+      </div>
+
+      <!-- Matrizes rústicas -->
+      <div class="form-full" id="${id}-matriz-rustica-fields" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem;margin-bottom:.5rem">
+          <div class="cond-block-title" style="margin-bottom:0">Matriz predial rústica</div>
+          <button class="btn btn-sm" onclick="addMatrizImovel('${id}','r')" type="button">+ Rústica</button>
+        </div>
+        <div id="${id}-mrs-container"></div>
+      </div>
+
+      <!-- Câmara municipal + LU -->
+      <div class="form-group"><label class="form-label">Câmara Municipal</label><input type="text" class="form-input" id="${id}-camara" placeholder="Ex: Évora"></div>
+      <div class="form-group" id="${id}-lu-group" style="display:none">
+        <label class="form-label">Licença de Utilização</label>
+        <select class="form-select" id="${id}-lu-tipo">
+          <option value="na">Não aplicável</option>
+          <option value="alvara">Alvará de Licença de Utilização</option>
+          <option value="comunicacao">Resposta à comunicação prévia</option>
+          <option value="isencao">Certidão de Isenção</option>
+          <option value="sem">Sem LU</option>
+        </select>
+      </div>
+      <div class="form-full" id="${id}-lu-detalhes" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Nº / Referência</label><input type="text" class="form-input" id="${id}-lu-num"></div>
+          <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="${id}-lu-data"></div>
+        </div>
+      </div>
+
+      <!-- Cert. energético -->
+      <div class="form-full">
+        <div class="toggle-row">
+          <div class="toggle-label">Certificado energético</div>
+          <label class="toggle-switch"><input type="checkbox" id="${id}-toggle-cert" onchange="onCertToggle('${id}')"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="${id}-cert-fields" style="display:none;margin-top:.5rem">
+          <div class="form-grid form-grid-2">
+            <div class="form-group"><label class="form-label">Nº do certificado</label><input type="text" class="form-input" id="${id}-cert-num"></div>
+            <div class="form-group"><label class="form-label">Classe energética</label><input type="text" class="form-input" id="${id}-cert-classe" placeholder="Ex: B-"></div>
+            <div class="form-group"><label class="form-label">Data de emissão</label><input type="date" class="form-input" id="${id}-cert-data"></div>
+            <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-cert-val"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ónus -->
+      <div class="form-full">
+        <div class="toggle-row">
+          <div class="toggle-label">Existem ónus ou encargos sobre o imóvel</div>
+          <label class="toggle-switch"><input type="checkbox" id="${id}-toggle-onus" onchange="onOnusToggle('${id}')"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="${id}-onus-fields" style="display:none;margin-top:.5rem">
+          <div class="form-group">
+            <label class="form-label">Descrição dos ónus</label>
+            <textarea class="form-textarea" id="${id}-onus-descricao" rows="2" style="min-height:60px" placeholder="Ex: Hipoteca voluntária registada a favor de..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('imoveis-container').appendChild(div);
+}
+
+function onImovelTipoChange(id){
+  const val=document.getElementById(`${id}-tipo`).value;
+  const isFracao=val==='fracao',isUrbano=val==='urbano',isRustico=val==='rustico',isMisto=val==='misto';
+  document.getElementById(`${id}-fracao-fields`).style.display=isFracao?'block':'none';
+  document.getElementById(`${id}-matriz-urbana-fields`).style.display=(isFracao||isUrbano||isMisto)?'block':'none';
+  document.getElementById(`${id}-matriz-rustica-fields`).style.display=(isRustico||isMisto)?'block':'none';
+  document.getElementById(`${id}-lu-group`).style.display=(isFracao||isUrbano)?'flex':'none';
+  // Auto-adicionar primeira matriz do tipo certo se estiver vazio
+  if((isFracao||isUrbano||isMisto)&&!document.querySelectorAll(`#${id}-mus-container > div`).length)addMatrizImovel(id,'u');
+  if((isRustico||isMisto)&&!document.querySelectorAll(`#${id}-mrs-container > div`).length)addMatrizImovel(id,'r');
+}
+
+function addMatrizImovel(id,tipo){
+  const cont=document.getElementById(tipo==='u'?`${id}-mus-container`:`${id}-mrs-container`);
+  const idx=cont.children.length+1;
+  const mid=`${id}-${tipo==='u'?'mu':'mr'}-${idx}`;
+  const seccaoField=tipo==='r'?`<div class="form-group"><label class="form-label">Secção</label><input type="text" class="form-input" id="${mid}-seccao" placeholder="Ex: S"></div>`:'';
+  const div=document.createElement('div');
+  div.id=mid;
+  div.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.5rem';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted)">${tipo==='u'?'Urbana':'Rústica'} ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="document.getElementById('${mid}').remove()" type="button">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Artigo matricial</label><input type="text" class="form-input" id="${mid}-artigo" placeholder="Ex: 1234"></div>
+      ${seccaoField}
+      <div class="form-group"><label class="form-label">Freguesia</label><input type="text" class="form-input" id="${mid}-freguesia" placeholder="Ex: Évora (Sé)"></div>
+      <div class="form-group"><label class="form-label">VPT (€)</label><input type="text" class="form-input" id="${mid}-vpt" placeholder="Ex: 85.000,00"></div>
+      <div class="form-group"><label class="form-label">Ano do VPT</label><input type="text" class="form-input" id="${mid}-ano" placeholder="Ex: 2024"></div>
+    </div>`;
+  cont.appendChild(div);
+}
+
+function onCertToggle(id){
+  document.getElementById(`${id}-cert-fields`).style.display=document.getElementById(`${id}-toggle-cert`).checked?'block':'none';
+}
+function onOnusToggle(id){
+  document.getElementById(`${id}-onus-fields`).style.display=document.getElementById(`${id}-toggle-onus`).checked?'block':'none';
+}
+
+// Gera texto descritivo de UM imóvel
+function textoImovel(id){
+  const v=k=>document.getElementById(`${id}-${k}`)?.value||'';
+  const tipo=v('tipo');
+  if(!tipo)return'';
+  const conserv=v('conservatoria');
+  const numDesc=v('num-descricao');
+  const freg=v('freguesia');
+  const ap=v('ap-aquisicao');
+  const desc=v('descricao');
+  const loc=v('localizacao');
+  // Matrizes urbanas
+  const musEl=document.querySelectorAll(`[id^="${id}-mu-"][id$="-artigo"]`);
+  const mus=[...musEl].map(el=>{
+    const p=el.id.replace(`${id}-mu-`,'').replace('-artigo','');
+    const art=el.value;const fregM=document.getElementById(`${id}-mu-${p}-freguesia`)?.value||'';
+    const vpt=document.getElementById(`${id}-mu-${p}-vpt`)?.value||'';const ano=document.getElementById(`${id}-mu-${p}-ano`)?.value||'';
+    if(!art)return'';
+    let t=`artigo matricial ${art}`;
+    if(fregM)t+=`, da freguesia de ${fregM}`;
+    if(vpt)t+=`, a que corresponde o valor patrimonial tributário de ${vpt} EUROS${ano?', determinado no ano de '+ano:''}`;
+    return t;
+  }).filter(Boolean);
+  // Matrizes rústicas
+  const mrsEl=document.querySelectorAll(`[id^="${id}-mr-"][id$="-artigo"]`);
+  const mrs=[...mrsEl].map(el=>{
+    const p=el.id.replace(`${id}-mr-`,'').replace('-artigo','');
+    const art=el.value;const sec=document.getElementById(`${id}-mr-${p}-seccao`)?.value||'';
+    const fregM=document.getElementById(`${id}-mr-${p}-freguesia`)?.value||'';
+    const vpt=document.getElementById(`${id}-mr-${p}-vpt`)?.value||'';const ano=document.getElementById(`${id}-mr-${p}-ano`)?.value||'';
+    if(!art)return'';
+    let t=`artigo matricial ${art}${sec?', secção '+sec:''}`;
+    if(fregM)t+=`, da freguesia de ${fregM}`;
+    if(vpt)t+=`, a que corresponde o valor patrimonial tributário de ${vpt} EUROS${ano?', determinado no ano de '+ano:''}`;
+    return t;
+  }).filter(Boolean);
+
+  let txt='';
+  if(tipo==='fracao'){
+    const letra=v('fracao-letra');const apph=v('ap-ph');
+    txt=`a fração autónoma designada pela letra "${letra}"${apph?`, do prédio em regime de propriedade horizontal constituído pela ${apph}`:''}${desc?', composta por '+desc:''}`;
+  }else if(tipo==='rustico'){
+    txt=`o prédio rústico${desc?', '+desc:''}`;
+  }else if(tipo==='misto'){
+    txt=`o prédio misto${desc?', '+desc:''}`;
+  }else{
+    txt=`o prédio urbano${desc?', '+desc:''}`;
+  }
+  if(loc)txt+=`, sito em ${loc}`;
+  if(conserv||numDesc||freg){
+    const partes=[];
+    if(numDesc)partes.push(`sob o número ${numDesc}`);
+    if(freg)partes.push(`freguesia de ${freg}`);
+    txt+=`, descrit${tipo==='fracao'?'a':'o'} na Conservatória do Registo Predial${conserv?' de '+conserv:''}${partes.length?', '+partes.join(', '):''}`;
+  }
+  if(mus.length) txt+=`, inscrito na matriz predial urbana sob o ${mus.join(' e o ')}`;
+  if(mrs.length) txt+=`${mus.length?', e':', inscrito'} na matriz predial rústica sob o ${mrs.join(' e o ')}`;
+  if(ap) txt+=`, adquirido pela ${ap}`;
+  return txt;
+}
+
+// Lista todos os imóveis activos numa frase enumerada
+function textoImoveisLista(){
+  if(!document.getElementById('toggle-imoveis').checked)return'';
+  const blocos=document.querySelectorAll('#imoveis-container .outorgante-block');
+  const textos=[...blocos].map(b=>textoImovel(b.id)).filter(Boolean);
+  if(!textos.length)return'';
+  if(textos.length===1)return textos[0];
+  return textos.map((t,i)=>`${i+1}) ${t}`).join('; ');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PODERES — catálogo + detalhes editáveis
 // ═══════════════════════════════════════════════════════════════════════════════
 const PODERES=[
@@ -604,9 +859,9 @@ function renderPoderesDetalhes(){
       <div class="cond-block-title">Texto dos poderes seleccionados</div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:.6rem">Podes editar o texto de cada bloco antes de gerar o documento. Os blocos aparecem pela ordem em que estão seleccionados.</div>
       ${activos.map(p=>`
-        <div style="margin-bottom:.75rem">
+        <div style="margin-bottom:1rem">
           <label class="form-label" style="display:block;margin-bottom:4px">${p.titulo}</label>
-          <textarea class="form-textarea" id="poder-texto-${p.id}" rows="3">${document.getElementById('poder-texto-'+p.id)?.value||p.texto}</textarea>
+          <textarea class="form-textarea" id="poder-texto-${p.id}" rows="6" style="width:100%;min-height:130px;line-height:1.55">${document.getElementById('poder-texto-'+p.id)?.value||p.texto}</textarea>
         </div>`).join('')}
     </div>`;
 }
@@ -779,7 +1034,22 @@ function textoPoderes(){
   // Ajustes: se substabelecimento está activo como poder E também o toggle dedicado, evita duplicação
   const subtogglActivo=document.getElementById('toggle-substabelecer').checked;
   const filtrados=activos.filter(p=>!(p.id==='subrogacao'&&subtogglActivo));
-  const textos=filtrados.map(p=>document.getElementById('poder-texto-'+p.id)?.value||p.texto);
+
+  // Obter descrição dos imóveis (se aplicável) para anexar aos poderes de imóveis/heranças/finanças
+  const imoveisTxt=textoImoveisLista();
+  const PODERES_COM_IMOVEIS=['imoveis','herancas','financas'];
+
+  const textos=filtrados.map(p=>{
+    let t=document.getElementById('poder-texto-'+p.id)?.value||p.texto;
+    if(imoveisTxt&&PODERES_COM_IMOVEIS.includes(p.id)){
+      // Anexa referência aos imóveis no fim do texto do poder
+      // Remove ponto(s) final(is) para ficar a frase contínua
+      t=t.replace(/\.+\s*$/,'');
+      const multiplo=imoveisTxt.startsWith('1)');
+      t+=`, nomeadamente no que respeita ${multiplo?'aos seguintes imóveis':'ao imóvel'}: ${imoveisTxt}.`;
+    }
+    return t;
+  });
   return textos.map((t,i)=>`${i+1}) ${t}`).join('\n\n');
 }
 
