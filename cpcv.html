@@ -976,6 +976,7 @@ async function gerarContrato(){
         if(nome)meds.push(`${nome}, titular da licença AMI ${ami}`);
       });
       if(meds.length) TXT_Mediacao=`As Partes contratantes declaram, nos termos do Art.º 40 da Lei n.º 15/2013, de 08 de fevereiro, que a compra e venda ora prometida, houve intervenção ${meds.length>1?'das Mediadoras Imobiliárias':'da Mediadora Imobiliária'} ${meds.join(' e ')}.`;
+      else TXT_Mediacao='As Partes contratantes declaram que na presente compra e venda ora prometida não houve intervenção de mediadora imobiliária.';
     } else {
       TXT_Mediacao='As Partes contratantes declaram que na presente compra e venda ora prometida não houve intervenção de mediadora imobiliária.';
     }
@@ -1038,8 +1039,8 @@ async function gerarContrato(){
     const out=dt.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
 
     // ── 4. Guardar na pasta ────────────────────────────────────────────────────
-    const nomeV=vendedores[0]?.nome||vendedores[0]?.empNome||'CPCV';
-    const nomeDoc=`CPCV_${nomeV.split(' ')[0]}.docx`;
+    const morada=v('localizacao-predio')||v('descricao-predio')||'CPCV';
+    const nomeDoc=`CPCV_${morada.substring(0,50).trim()}.docx`;
     if(pastaSeleccionada){
       const ab=await out.arrayBuffer();
       await fetch(
