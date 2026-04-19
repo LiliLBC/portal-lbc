@@ -1081,7 +1081,10 @@ function recolherOutorgantes(tipo){
     }else{
       const ec=document.getElementById(`${id}-estado-civil`)?.value||'solteiro';
       const cojOut=document.getElementById(`${id}-conjuge-outorgante`)?.value||'nao';
-      return{tipo:'singular',nome:document.getElementById(`${id}-nome`)?.value||'',genero:document.getElementById(`${id}-genero`)?.value||'M',naturalidade:document.getElementById(`${id}-naturalidade`)?.value||'',cc:document.getElementById(`${id}-cc`)?.value||'',ccVal:document.getElementById(`${id}-cc-val`)?.value||'',nif:document.getElementById(`${id}-nif`)?.value||'',estadoCivil:ec,regime:document.getElementById(`${id}-regime`)?.value||'',morada:document.getElementById(`${id}-morada`)?.value||'',conjuge:ec==='casado'&&cojOut==='sim'?{nome:document.getElementById(`${id}-conjuge-nome`)?.value||'',genero:document.getElementById(`${id}-conjuge-genero`)?.value||'M',naturalidade:document.getElementById(`${id}-conjuge-naturalidade`)?.value||'',cc:document.getElementById(`${id}-conjuge-cc`)?.value||'',ccVal:document.getElementById(`${id}-conjuge-cc-val`)?.value||'',nif:document.getElementById(`${id}-conjuge-nif`)?.value||''}:null};
+      const moradaConjunta=document.getElementById(`${id}-morada-conjunta`)?.value||'';
+      const moradaSingular=document.getElementById(`${id}-morada`)?.value||'';
+      const moradaFinal=ec==='casado'&&cojOut==='sim'&&moradaConjunta?moradaConjunta:moradaSingular;
+      return{tipo:'singular',nome:document.getElementById(`${id}-nome`)?.value||'',genero:document.getElementById(`${id}-genero`)?.value||'M',naturalidade:document.getElementById(`${id}-naturalidade`)?.value||'',cc:document.getElementById(`${id}-cc`)?.value||'',ccVal:document.getElementById(`${id}-cc-val`)?.value||'',nif:document.getElementById(`${id}-nif`)?.value||'',estadoCivil:ec,regime:document.getElementById(`${id}-regime`)?.value||'',morada:moradaFinal,conjuge:ec==='casado'&&cojOut==='sim'?{nome:document.getElementById(`${id}-conjuge-nome`)?.value||'',genero:document.getElementById(`${id}-conjuge-genero`)?.value||'M',naturalidade:document.getElementById(`${id}-conjuge-naturalidade`)?.value||'',cc:document.getElementById(`${id}-conjuge-cc`)?.value||'',ccVal:document.getElementById(`${id}-conjuge-cc-val`)?.value||'',nif:document.getElementById(`${id}-conjuge-nif`)?.value||''}:null};
     }
   });
 }
