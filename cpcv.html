@@ -991,15 +991,22 @@ async function gerarContrato(){
 
     // ── 3. Carregar template e substituir ─────────────────────────────────────
     const token=await getGraphToken();
-    // Template guardado na raiz da biblioteca lbcsolicitadora2 > Templates
-    const drivesRes=await fetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',{headers:{Authorization:'Bearer '+token}});
+    const drivesRes=await fetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
     const drives=await drivesRes.json();
-    const docsDrive=drives.value.find(d=>d.name==='Documents'||d.name==='Documentos')||drives.value[0];
+    console.log('Drives disponíveis:', drives.value?.map(d=>d.name));
+    const docsDrive=drives.value.find(d=>
+      d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos')
+    );
+    if(!docsDrive) throw new Error('Biblioteca de documentos não encontrada. Drives: '+drives.value?.map(d=>d.name).join(', '));
     const templateRes=await fetch(
       `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_CPCV.docx:/content`,
       {headers:{Authorization:'Bearer '+token}}
     );
-    if(!templateRes.ok) throw new Error('Template TEMPL_CPCV.docx não encontrado em Templates/');
+    if(!templateRes.ok) throw new Error(`Template não encontrado (${templateRes.status}). Confirma que TEMPL_CPCV.docx existe em Templates/`);
     const templateBuf=await templateRes.arrayBuffer();
 
     const zip=new PizZip(templateBuf);
@@ -1146,13 +1153,14 @@ function gerarTextoPagamento(){
 // ─── TOKEN ────────────────────────────────────────────────────────────────────
 // ─── TOKEN ────────────────────────────────────────────────────────────────────
 async function getGraphToken(){
+  // Sempre tenta o portal primeiro — token mais recente
   if(window.opener&&window.opener.graphToken){
-    try{localStorage.setItem('lbc_graph_token',window.opener.graphToken);}catch(e){}
     return window.opener.graphToken;
   }
+  // Fallback localStorage (pode estar expirado)
   const stored=localStorage.getItem('lbc_graph_token');
   if(stored)return stored;
-  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC.');
+  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC e mantém o portal aberto.');
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
