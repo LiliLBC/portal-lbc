@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Procuração — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);transition:all .15s;text-decoration:none}
+.back-btn:hover{background:var(--surface2);color:var(--text)}
+.page-title{font-size:14px;font-weight:600}
+.page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
+.topbar-actions{display:flex;gap:.5rem;align-items:center}
+.container{max-width:860px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.section-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600}
+.section-desc{font-size:11px;color:var(--text-faint);margin-top:1px}
+.form-grid{display:grid;gap:.9rem}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%236B6860' d='M8 10L3 5h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.form-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-textarea{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s;resize:vertical;min-height:80px}
+.form-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+.toggle-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)}
+.toggle-label{font-size:12px;font-weight:500;flex:1}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border-strong);border-radius:20px;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+.outorgante-block{border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-bottom:.75rem;position:relative;background:var(--surface2)}
+.outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.outorgante-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.outorgante-type{display:flex;gap:.4rem}
+.type-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.type-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.remove-btn{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.remove-btn:hover{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.add-outorgante-btn{width:100%;padding:.6rem;border:1px dashed var(--border-strong);border-radius:8px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.add-outorgante-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+.casado-fields{background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.casado-fields-title{font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.cond-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.cond-block-amber{background:var(--amber-light);border-color:#FAC775}
+.cond-block-title{font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.poderes-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.5rem}
+@media(max-width:640px){.poderes-grid{grid-template-columns:1fr}}
+.poder-toggle{display:flex;align-items:flex-start;gap:.6rem;padding:.7rem .9rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.poder-toggle:hover{border-color:var(--accent)}
+.poder-toggle.active{background:var(--accent-light);border-color:var(--accent)}
+.poder-toggle input{margin-top:2px;accent-color:var(--accent)}
+.poder-toggle-label{flex:1;font-size:12px;line-height:1.4}
+.poder-toggle-title{font-weight:600;color:var(--text);margin-bottom:2px}
+.poder-toggle-desc{font-size:10px;color:var(--text-muted)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#236040}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-lg{padding:10px 20px;font-size:13px}
+.divider{border:none;border-top:1px solid var(--border);margin:.5rem 0}
+.rascunho-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:var(--amber-light);border:1px solid #FAC775;color:var(--amber);font-size:11px;font-weight:500}
+.toast{position:fixed;bottom:5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.sticky-footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;z-index:99;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.footer-info{font-size:11px;color:var(--text-faint)}
+.footer-actions{display:flex;gap:.5rem}
+@media(max-width:640px){.form-grid-2,.form-grid-3{grid-template-columns:1fr}.container{padding:1rem 1rem 5rem}#mandatarios-container+div{grid-template-columns:1fr !important}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:window.close()" class="back-btn">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+      Fechar
+    </a>
+    <div>
+      <span class="page-title">Procuração</span>
+      <span class="page-sub" id="page-sub">Nova procuração</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span class="rascunho-badge" id="rascunho-status" style="display:none">
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 5v3.5l2 1.5"/></svg>
+      Rascunho guardado
+    </span>
+    <button class="btn" onclick="guardarRascunho()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>
+      Guardar rascunho
+    </button>
+    <button class="btn btn-success btn-lg" onclick="gerarProcuracao()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
+      Gerar procuração Word
+    </button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PASTA DO CLIENTE -->
+  <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div class="form-label" style="margin-bottom:4px">Pasta do cliente</div>
+        <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">Se seleccionada, permite guardar rascunho e a procuração é guardada na pasta. Sem pasta, só é possível download.</div>
+        <div style="position:relative">
+          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" style="padding-right:2rem" disabled>
+          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+        </div>
+        <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
+          <span id="pasta-selecionada-nome"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;padding-top:1.1rem">
+        <button class="btn btn-sm" onclick="carregarPastasSP()" id="btn-carregar-pastas">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+          Atualizar
+        </button>
+        <button class="btn btn-sm" onclick="carregarRascunhoPasta()" id="btn-carregar-rascunho" disabled>Carregar rascunho</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. TIPO DE DOCUMENTO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">1</div>
+      <div><div class="section-name">Tipo de documento</div><div class="section-desc">Define como a procuração vai ser formalizada</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Forma</label>
+        <select class="form-select" id="tipo-documento" onchange="onTipoDocumentoChange()">
+          <option value="toic">Procuração com Termo de Autenticação (TOIC)</option>
+          <option value="escritura">Procuração por Escritura Pública</option>
+        </select>
+        <div class="form-hint" id="tipo-documento-hint">Autenticada por Advogado/Solicitador ao abrigo do DL 76-A/2006</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data de outorga <span>*</span></label>
+        <input type="date" class="form-input" id="data-outorga" onchange="updateDataOutorgaExtenso()">
+        <div class="form-hint" id="data-outorga-extenso"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Local de outorga <span>*</span></label>
+        <input type="text" class="form-input" id="local-outorga" value="Évora" placeholder="Ex: Évora">
+      </div>
+      <div class="form-group" id="cartorio-group" style="display:none">
+        <label class="form-label">Cartório / Notário</label>
+        <input type="text" class="form-input" id="cartorio-nome" placeholder="Ex: Cartório Notarial de Évora — Dr. X">
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MANDANTES -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">2</div>
+      <div><div class="section-name">Mandantes</div><div class="section-desc">Quem outorga a procuração</div></div>
+    </div>
+    <div id="mandantes-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('mandantes')">+ Adicionar mandante</button>
+  </div>
+
+  <!-- 3. MANDATÁRIOS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">3</div>
+      <div><div class="section-name">Mandatários</div><div class="section-desc">A quem são conferidos os poderes</div></div>
+    </div>
+    <div id="mandatarios-container"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.25rem">
+      <button class="add-outorgante-btn" onclick="addMandatariaFixa('liliana')" type="button">+ Dra. Liliana</button>
+      <button class="add-outorgante-btn" onclick="addMandatariaFixa('andreia')" type="button">+ Dra. Andreia</button>
+      <button class="add-outorgante-btn" onclick="addOutorgante('mandatarios')" type="button">+ Terceiro</button>
+    </div>
+    <div id="atuacao-conjunta-block" style="display:none;margin-top:.9rem">
+      <div class="form-group">
+        <label class="form-label">Quando há vários mandatários, actuam...</label>
+        <select class="form-select" id="atuacao-mandatarios">
+          <option value="isolada">Em separado — qualquer um pode actuar sozinho</option>
+          <option value="conjunta">Em conjunto — todos têm de actuar</option>
+          <option value="conjunta-dois">Pelo menos dois em conjunto</option>
+          <option value="solicitadoras-isolada-terceiro-conjunto">Solicitadoras em separado; terceiro sempre em conjunto com uma delas</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. PODERES / CLÁUSULAS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">4</div>
+      <div><div class="section-name">Poderes conferidos</div><div class="section-desc">Selecciona os blocos de poderes a incluir</div></div>
+    </div>
+    <div class="poderes-grid" id="poderes-grid"></div>
+
+    <!-- Detalhes editáveis por bloco -->
+    <div id="poderes-detalhes" style="margin-top:1rem"></div>
+  </div>
+
+  <!-- 5. VALIDADE -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">5</div>
+      <div><div class="section-name">Validade e substabelecimento</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Validade da procuração</label>
+        <select class="form-select" id="tipo-validade" onchange="onValidadeChange()">
+          <option value="indeterminada">Sem prazo — até revogação</option>
+          <option value="prazo-meses">Prazo fixo (meses a contar da outorga)</option>
+          <option value="prazo-anos">Prazo fixo (anos a contar da outorga)</option>
+          <option value="ate-data">Até data específica</option>
+        </select>
+      </div>
+      <div class="form-group" id="validade-num-group" style="display:none">
+        <label class="form-label" id="validade-num-label">Número</label>
+        <input type="number" class="form-input" id="validade-num" min="1" value="1">
+      </div>
+      <div class="form-group" id="validade-data-group" style="display:none">
+        <label class="form-label">Até ao dia</label>
+        <input type="date" class="form-input" id="validade-data">
+      </div>
+    </div>
+    <div class="toggle-row" style="margin-top:.9rem">
+      <div class="toggle-label">Faculdade de substabelecer (total ou parcialmente, com ou sem reserva)</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-substabelecer"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <!-- 6. CLÁUSULAS LIVRES -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">6</div>
+      <div><div class="section-name">Cláusulas adicionais</div><div class="section-desc">Poderes ou limitações específicas à medida</div></div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">Adicionar cláusulas livres no fim da procuração</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-clausulas-livres" onchange="onClausulasLivresChange()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="clausulas-livres-block" style="display:none;margin-top:.9rem">
+      <div class="form-group">
+        <label class="form-label">Texto das cláusulas</label>
+        <textarea class="form-textarea" id="clausulas-livres-texto" rows="5" placeholder="Ex: O presente mandato limita-se à prática dos actos relativos ao imóvel sito em ..."></textarea>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="sticky-footer">
+  <div class="footer-info" id="footer-info">Preenche os campos e clica em Gerar procuração</div>
+  <div class="footer-actions">
+    <button class="btn" onclick="limparFormulario()">Limpar</button>
+    <button class="btn btn-success" onclick="gerarProcuracao()">Gerar procuração</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DADOS FIXOS — Solicitadoras LBC
+// ═══════════════════════════════════════════════════════════════════════════════
+const SOLICITADORAS={
+  liliana:{
+    tratamento:'Dra.',
+    nome:'LILIANA ISABEL PACHECO BURRICA CARDOSO',
+    genero:'F',
+    cedula:'08733',
+    nif:'219126658',
+    cc:'11841008 3ZU4',
+    ccVal:'2035-05-09',
+    estadoCivil:'casado',
+    naturalidade:'Évora (Sé)',
+    morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  },
+  andreia:{
+    tratamento:'Dra.',
+    nome:'ANDREIA PESSEGUEIRO CABANAS',
+    genero:'F',
+    cedula:'10126',
+    nif:'249651378',
+    cc:'30756227 1ZX4',
+    ccVal:'2027-08-16',
+    estadoCivil:'solteiro',
+    naturalidade:'Évora (Sé)',
+    morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTH — MSAL (mesma app registada do CPCV)
+// ═══════════════════════════════════════════════════════════════════════════════
+const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
+const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+const SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read'];
+
+async function getGraphToken(){
+  // Se o portal já abriu esta janela, reaproveita o token do parent
+  if(window.opener&&window.opener.graphToken){return window.opener.graphToken;}
+  // Caso contrário, autenticação própria via MSAL
+  if(!window.msal){await loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js');}
+  if(!window._msalClient){
+    window._msalClient=new msal.PublicClientApplication({
+      auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:window.location.origin+window.location.pathname}
+    });
+    await window._msalClient.initialize();
+  }
+  const accounts=window._msalClient.getAllAccounts();
+  const acct=accounts[0];
+  try{
+    const res=acct
+      ?await window._msalClient.acquireTokenSilent({scopes:SCOPES,account:acct})
+      :await window._msalClient.acquireTokenPopup({scopes:SCOPES});
+    return res.accessToken;
+  }catch(e){
+    const res=await window._msalClient.acquireTokenPopup({scopes:SCOPES});
+    return res.accessToken;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS — extenso, datas, utilitários
+// ═══════════════════════════════════════════════════════════════════════════════
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function fmtDataPT(d){if(!d)return'';const p=d.split('-');if(p.length!==3)return d;return`${p[2]}/${p[1]}/${p[0]}`;}
+function fmtDataExtenso(d){if(!d)return'';const p=d.split('-');if(p.length!==3)return d;const dia=parseInt(p[2],10),mes=parseInt(p[1],10),ano=parseInt(p[0],10);return`${dia} de ${MESES[mes-1]} de ${ano}`;}
+function fmtDataAAAAMMDD(d){if(!d)return'';return d.replace(/-/g,'');}
+function numExtensoInt(n){
+  if(n===0)return'zero';
+  const un=['','um','dois','três','quatro','cinco','seis','sete','oito','nove'];
+  const dez=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const espc=['dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+  const cen=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function ate999(n){
+    if(n===0)return'';
+    if(n===100)return'cem';
+    const c=Math.floor(n/100),d=Math.floor((n%100)/10),u=n%10;
+    const p=[];
+    if(c)p.push(cen[c]);
+    if(d===1){p.push(espc[u]);}else{if(d)p.push(dez[d]);if(u)p.push(un[u]);}
+    return p.join(' e ');
+  }
+  if(n<0)return'menos '+numExtensoInt(-n);
+  if(n<1000)return ate999(n);
+  if(n<1000000){
+    const m=Math.floor(n/1000),r=n%1000;
+    const mTxt=m===1?'mil':ate999(m)+' mil';
+    if(r===0)return mTxt;
+    return mTxt+(r<100||r%100===0?' e ':', ')+ate999(r);
+  }
+  const m=Math.floor(n/1000000),r=n%1000000;
+  const mTxt=m===1?'um milhão':ate999(m)+' milhões';
+  if(r===0)return mTxt;
+  return mTxt+', '+numExtensoInt(r);
+}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500);}
+
+function estadoCivilTexto(ec,genero){
+  const f=genero==='F';
+  return{solteiro:f?'solteira, maior':'solteiro, maior',casado:f?'casada':'casado',divorciado:f?'divorciada':'divorciado',viuvo:f?'viúva':'viúvo'}[ec]||ec;
+}
+function regimenTexto(regime){
+  return{'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','separacao-total':'separação total de bens','comunhao-geral':'comunhão geral'}[regime]||regime;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OUTORGANTES (mandantes + mandatários) — adaptado do CPCV
+// ═══════════════════════════════════════════════════════════════════════════════
+let mandantesCount=0,mandatariosCount=0;
+
+function addOutorgante(tipo){
+  const isMandante=tipo==='mandantes';
+  const contVar=isMandante?'mandantesCount':'mandatariosCount';
+  const label=isMandante?'Mandante':'Mandatário';
+  const idx=(isMandante?++mandantesCount:++mandatariosCount);
+  const id=`${isMandante?'m':'n'}-${idx}`;
+  const container=document.getElementById(`${tipo}-container`);
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.dataset.tipo=tipo;
+  const tipoBtns=isMandante
+    ?`<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>
+      <button class="type-btn" onclick="setTipoPessoa('${id}','empresa')" type="button">Empresa</button>`
+    :`<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>
+      <button class="type-btn" onclick="setTipoPessoa('${id}','profissional')" type="button">Solicitador(a)/Advogado(a)</button>
+      <button class="type-btn" onclick="setTipoPessoa('${id}','empresa')" type="button">Empresa</button>`;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">${label} ${idx}</span>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="outorgante-type">
+          ${tipoBtns}
+        </div>
+        ${idx>1?`<button class="remove-btn" onclick="removeOutorgante('${id}','${tipo}')" title="Remover">×</button>`:''}
+      </div>
+    </div>
+
+    <!-- SINGULAR -->
+    <div id="${id}-singular">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome completo <span>*</span></label><input type="text" class="form-input" id="${id}-nome" placeholder="NOME COMPLETO" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+        <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-naturalidade" placeholder="Ex: Évora, Sé"></div>
+        <div class="form-group"><label class="form-label">N.º Cartão de Cidadão <span>*</span></label><input type="text" class="form-input" id="${id}-cc" placeholder="Ex: 12345678 0ZZ9"></div>
+        <div class="form-group"><label class="form-label">Válido até <span>*</span></label><input type="date" class="form-input" id="${id}-cc-val"></div>
+        <div class="form-group"><label class="form-label">NIF <span>*</span></label><input type="text" class="form-input" id="${id}-nif" placeholder="Ex: 123456789"></div>
+        <div class="form-group"><label class="form-label">Estado civil <span>*</span></label>
+          <select class="form-select" id="${id}-estado-civil" onchange="onEstadoCivil('${id}')">
+            <option value="solteiro">Solteiro(a)</option>
+            <option value="casado">Casado(a)</option>
+            <option value="divorciado">Divorciado(a)</option>
+            <option value="viuvo">Viúvo(a)</option>
+          </select>
+        </div>
+        <div class="form-group form-full"><label class="form-label">Morada <span>*</span></label><input type="text" class="form-input" id="${id}-morada" placeholder="Rua, n.º, localidade"></div>
+      </div>
+
+      <!-- Dados do casamento -->
+      <div class="casado-fields" id="${id}-casado-fields" style="display:none">
+        <div class="casado-fields-title">Dados do casamento</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Regime <span>*</span></label>
+            <select class="form-select" id="${id}-regime">
+              <option value="comunhao-adquiridos">Comunhão de adquiridos</option>
+              <option value="separacao-bens">Separação de bens</option>
+              <option value="separacao-total">Separação total de bens</option>
+              <option value="comunhao-geral">Comunhão geral</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Cônjuge também outorga?</label>
+            <select class="form-select" id="${id}-conjuge-outorgante" onchange="onConjugeOutorgante('${id}')">
+              <option value="nao">Não</option>
+              <option value="sim">Sim — ambos outorgam</option>
+            </select>
+          </div>
+          <div class="form-group form-full" id="${id}-nome-conjuge-group">
+            <label class="form-label">Nome do cônjuge <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-conjuge-nome" placeholder="NOME COMPLETO" style="text-transform:uppercase">
+          </div>
+          <div id="${id}-conjuge-extra" style="display:none;grid-column:1/-1">
+            <div class="form-grid form-grid-2">
+              <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-conjuge-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+              <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-conjuge-naturalidade"></div>
+              <div class="form-group"><label class="form-label">N.º CC</label><input type="text" class="form-input" id="${id}-conjuge-cc"></div>
+              <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-conjuge-cc-val"></div>
+              <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-conjuge-nif"></div>
+              <div class="form-group form-full"><label class="form-label">Morada partilhada <span>*</span></label><input type="text" class="form-input" id="${id}-morada-conjunta" placeholder="Rua, n.º, localidade"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESA -->
+    <div id="${id}-empresa" style="display:none">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Denominação social <span>*</span></label><input type="text" class="form-input" id="${id}-emp-nome" placeholder="NOME DA EMPRESA, LDA" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">NIPC <span>*</span></label><input type="text" class="form-input" id="${id}-emp-nif"></div>
+        <div class="form-group"><label class="form-label">Capital social (€)</label><input type="text" class="form-input" id="${id}-emp-capital" placeholder="Ex: 5000,00"></div>
+        <div class="form-group form-full"><label class="form-label">Sede <span>*</span></label><input type="text" class="form-input" id="${id}-emp-sede" placeholder="Rua, n.º, localidade"></div>
+        <div class="form-group"><label class="form-label">Matrícula na CRC de</label><input type="text" class="form-input" id="${id}-emp-crc" placeholder="Ex: Évora"></div>
+        <div class="form-group"><label class="form-label">Código da certidão permanente</label><input type="text" class="form-input" id="${id}-crc-cod"></div>
+        <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-crc-val"></div>
+      </div>
+      <div class="cond-block" style="margin-top:.9rem">
+        <div class="cond-block-title">Representante (gerente / administrador)</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-full"><label class="form-label">Nome <span>*</span></label><input type="text" class="form-input" id="${id}-ger-nome" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">Qualidade</label><select class="form-select" id="${id}-ger-qualidade"><option value="gerente">Gerente</option><option value="administrador">Administrador</option><option value="procurador">Procurador</option><option value="socio-gerente">Sócio-gerente</option></select></div>
+          <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-ger-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-ger-naturalidade"></div>
+          <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-ger-estado-civil"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+          <div class="form-group"><label class="form-label">N.º CC</label><input type="text" class="form-input" id="${id}-ger-cc"></div>
+          <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-ger-cc-val"></div>
+          <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-ger-nif"></div>
+          <div class="form-group form-full"><label class="form-label">Morada</label><input type="text" class="form-input" id="${id}-ger-morada"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFISSIONAL (Solicitador/Advogado) -->
+    <div id="${id}-profissional" style="display:none">
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Profissão <span>*</span></label>
+          <select class="form-select" id="${id}-prof-tipo">
+            <option value="solicitador">Solicitador(a)</option>
+            <option value="advogado">Advogado(a)</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">N.º de cédula profissional <span>*</span></label><input type="text" class="form-input" id="${id}-prof-cedula"></div>
+        <div class="form-group form-full"><label class="form-label">Nome completo <span>*</span></label><input type="text" class="form-input" id="${id}-prof-nome" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-prof-genero"><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+        <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-prof-estado-civil"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+        <div class="form-group form-full"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-prof-naturalidade"></div>
+        <div class="form-group"><label class="form-label">N.º CC <span>*</span></label><input type="text" class="form-input" id="${id}-prof-cc"></div>
+        <div class="form-group"><label class="form-label">Válido até <span>*</span></label><input type="date" class="form-input" id="${id}-prof-cc-val"></div>
+        <div class="form-group"><label class="form-label">NIF <span>*</span></label><input type="text" class="form-input" id="${id}-prof-nif"></div>
+        <div class="form-group form-full"><label class="form-label">Domicílio profissional <span>*</span></label><input type="text" class="form-input" id="${id}-prof-morada"></div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+  updateAtuacaoVisibility();
+}
+
+function setTipoPessoa(id,tipo){
+  const bloco=document.getElementById(id);
+  bloco.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  bloco.querySelector(`[onclick*="'${tipo}'"]`).classList.add('active');
+  document.getElementById(`${id}-singular`).style.display=tipo==='singular'?'block':'none';
+  document.getElementById(`${id}-empresa`).style.display=tipo==='empresa'?'block':'none';
+  const profDiv=document.getElementById(`${id}-profissional`);
+  if(profDiv)profDiv.style.display=tipo==='profissional'?'block':'none';
+}
+function removeOutorgante(id,tipo){
+  document.getElementById(id).remove();
+  updateAtuacaoVisibility();
+}
+function onEstadoCivil(id){
+  const ec=document.getElementById(`${id}-estado-civil`)?.value;
+  const cf=document.getElementById(`${id}-casado-fields`);
+  if(!cf)return;
+  if(ec==='casado'){cf.style.display='block';onConjugeOutorgante(id);}
+  else{cf.style.display='none';}
+}
+function onConjugeOutorgante(id){
+  const val=document.getElementById(`${id}-conjuge-outorgante`)?.value;
+  const extra=document.getElementById(`${id}-conjuge-extra`);
+  if(extra){extra.style.display=val==='sim'?'block':'none';}
+}
+
+function updateAtuacaoVisibility(){
+  const mandCount=document.getElementById('mandatarios-container').querySelectorAll('.outorgante-block').length;
+  document.getElementById('atuacao-conjunta-block').style.display=mandCount>1?'block':'none';
+}
+
+// Pré-preenche um bloco de mandatária com dados de uma solicitadora fixa
+function addMandatariaFixa(chave){
+  const dados=SOLICITADORAS[chave];
+  if(!dados){showToast('Dados não encontrados','error');return;}
+  // Verificar se já existe bloco com esta cédula
+  const existentes=document.querySelectorAll('#mandatarios-container .outorgante-block');
+  for(const b of existentes){
+    const cedEl=b.querySelector(`#${b.id}-prof-cedula`);
+    if(cedEl&&cedEl.value===dados.cedula){
+      showToast(`${dados.nome.split(' ')[0]} já foi adicionada`,'');
+      return;
+    }
+  }
+  addOutorgante('mandatarios');
+  // Último bloco criado
+  const blocos=document.querySelectorAll('#mandatarios-container .outorgante-block');
+  const ultimo=blocos[blocos.length-1];
+  const id=ultimo.id;
+  setTipoPessoa(id,'profissional');
+  document.getElementById(`${id}-prof-tipo`).value='solicitador';
+  document.getElementById(`${id}-prof-cedula`).value=dados.cedula;
+  document.getElementById(`${id}-prof-nome`).value=dados.nome;
+  document.getElementById(`${id}-prof-genero`).value=dados.genero;
+  document.getElementById(`${id}-prof-estado-civil`).value=dados.estadoCivil;
+  document.getElementById(`${id}-prof-naturalidade`).value=dados.naturalidade;
+  document.getElementById(`${id}-prof-cc`).value=dados.cc;
+  document.getElementById(`${id}-prof-cc-val`).value=dados.ccVal;
+  document.getElementById(`${id}-prof-nif`).value=dados.nif;
+  document.getElementById(`${id}-prof-morada`).value=dados.morada;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TIPO DE DOCUMENTO / VALIDADE / CLÁUSULAS LIVRES
+// ═══════════════════════════════════════════════════════════════════════════════
+function onTipoDocumentoChange(){
+  const v=document.getElementById('tipo-documento').value;
+  document.getElementById('cartorio-group').style.display=v==='escritura'?'block':'none';
+  document.getElementById('tipo-documento-hint').textContent=v==='toic'
+    ?'Autenticada por Advogado/Solicitador ao abrigo do DL 76-A/2006'
+    :'Outorgada perante Notário em cartório público';
+}
+function onValidadeChange(){
+  const v=document.getElementById('tipo-validade').value;
+  const numG=document.getElementById('validade-num-group');
+  const dataG=document.getElementById('validade-data-group');
+  const numL=document.getElementById('validade-num-label');
+  if(v==='prazo-meses'){numG.style.display='flex';dataG.style.display='none';numL.textContent='Número de meses';}
+  else if(v==='prazo-anos'){numG.style.display='flex';dataG.style.display='none';numL.textContent='Número de anos';}
+  else if(v==='ate-data'){numG.style.display='none';dataG.style.display='flex';}
+  else{numG.style.display='none';dataG.style.display='none';}
+}
+function onClausulasLivresChange(){
+  document.getElementById('clausulas-livres-block').style.display=document.getElementById('toggle-clausulas-livres').checked?'block':'none';
+}
+function updateDataOutorgaExtenso(){
+  const d=document.getElementById('data-outorga').value;
+  document.getElementById('data-outorga-extenso').textContent=d?fmtDataExtenso(d):'';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PODERES — catálogo + detalhes editáveis
+// ═══════════════════════════════════════════════════════════════════════════════
+const PODERES=[
+  {id:'imoveis',titulo:'Imóveis',desc:'Compra, venda, permuta, hipoteca, escrituras',texto:'Comprar, vender, permutar, dar e receber de arrendamento, hipotecar, onerar e por qualquer forma dispor de quaisquer bens imóveis, fracções autónomas ou direitos reais sobre os mesmos, pelos preços, com os prazos e demais condições que entender(em) convenientes, podendo outorgar e assinar todos os contratos, escrituras, contratos-promessa e documentos autenticados necessários, pagar e receber os preços, dar e receber quitação, e, em geral, praticar todos os actos conexos, junto de Conservatórias, Câmaras Municipais, Notários, Advogados, Solicitadores, Balcões Casa Pronta e Casa Simples, Finanças e demais entidades.'},
+  {id:'financas',titulo:'Finanças / AT',desc:'IMI, IMT, IRS, e-Balcão, certidões',texto:'Representar o(s) Mandante(s) perante a Autoridade Tributária e Aduaneira (AT), incluindo qualquer Serviço de Finanças, o Portal das Finanças e o e-Balcão, para todos os efeitos legais, nomeadamente: pedir e levantar certidões, liquidar, pagar, contestar, reclamar e recorrer de impostos (IMI, IMT, IUC, IRS, IRC, IVA, Imposto do Selo), submeter declarações, alterar domicílio fiscal, aceder e consultar informação fiscal, nomear representante fiscal e praticar todos os actos conexos.'},
+  {id:'seg-social',titulo:'Segurança Social',desc:'Prestações, reformas, Segurança Social Directa',texto:'Representar o(s) Mandante(s) perante os Serviços da Segurança Social, incluindo o portal da Segurança Social Directa, para praticar todos os actos relativos a inscrições, alterações, pedidos de prestações sociais, reformas, pensões, subsídios, certidões e demais procedimentos administrativos.'},
+  {id:'conservatorias',titulo:'Conservatórias',desc:'Predial, Comercial, Registo Civil',texto:'Representar o(s) Mandante(s) perante qualquer Conservatória do Registo Predial, Comercial, Civil ou Automóvel, bem como junto dos balcões integrados (Casa Pronta, Casa Simples, Balcão das Heranças, Balcão das Sucessões, Empresa Online, Empresa na Hora), para requerer, outorgar, assinar e levantar registos, averbamentos, certidões, habilitações de herdeiros e todos os actos necessários.'},
+  {id:'bancaria',titulo:'Bancária',desc:'Contas, créditos, transferências, cofres',texto:'Representar o(s) Mandante(s) perante qualquer instituição de crédito ou entidade bancária, para abrir, movimentar, transferir e encerrar contas bancárias de qualquer tipo, subscrever, resgatar ou transferir depósitos e produtos financeiros, contratar, renegociar ou amortizar créditos e empréstimos, aceder e movimentar cofres, emitir, endossar, depositar e levantar cheques, assinar contratos e documentos conexos e praticar todos os actos bancários necessários.'},
+  {id:'veiculos',titulo:'Veículos',desc:'Compra, venda, registo automóvel, IMT',texto:'Comprar, vender, permutar, hipotecar ou por qualquer forma dispor de quaisquer veículos automóveis, motociclos ou outros, pelos preços e condições que entender(em), podendo outorgar e assinar os respectivos contratos, requerimentos, declarações e documentos, requerer e levantar livretes, documentos únicos e certidões junto da Conservatória do Registo Automóvel, do IMT e demais entidades competentes.'},
+  {id:'herancas',titulo:'Heranças / Partilhas',desc:'Habilitação de herdeiros, partilhas',texto:'Representar o(s) Mandante(s) em quaisquer processos de habilitação de herdeiros, inventário, partilha judicial ou extrajudicial de heranças, podendo aceitar ou repudiar heranças e legados com ou sem benefício de inventário, licitar, arrematar, requerer adjudicações, outorgar escrituras de partilha, assinar mapas e todos os documentos necessários, junto de Conservatórias, Notários, Cartórios, Balcão das Heranças, Tribunais e demais entidades.'},
+  {id:'representacao',titulo:'Representação legal',desc:'Tribunal, notário, advogado',texto:'Representar o(s) Mandante(s) em quaisquer processos, procedimentos ou diligências junto de Tribunais, Ministério Público, Notários, Advogados, Solicitadores, Agentes de Execução, Centros de Arbitragem, Julgados de Paz e demais entidades públicas ou privadas, podendo confessar, desistir ou transigir em acções judiciais e praticar todos os actos conexos.'},
+  {id:'camara',titulo:'Câmara Municipal',desc:'Licenciamento, urbanismo, certidões',texto:'Representar o(s) Mandante(s) perante quaisquer Câmaras Municipais, Juntas de Freguesia, Entidades Regionais e demais órgãos da Administração Pública Local, para requerer e levantar licenças, certidões, alvarás, aprovações de projectos, vistorias, participações urbanísticas e todos os documentos relativos a imóveis e procedimentos administrativos municipais.'},
+  {id:'contratos',titulo:'Contratos em geral',desc:'Arrendamento, prestação de serviços',texto:'Celebrar, renegociar, denunciar ou resolver contratos de arrendamento, prestação de serviços, fornecimento de água, electricidade, gás, comunicações e outros serviços domésticos, bem como quaisquer outros contratos de natureza patrimonial ou administrativa, representando o(s) Mandante(s) perante as respectivas contrapartes e prestadores.'},
+  {id:'subrogacao',titulo:'Substabelecimento (sub-rogação)',desc:'Poder de transferir a procuração a terceiros',texto:'Com a faculdade de substabelecer, no todo ou em parte, os poderes ora conferidos, com ou sem reserva dos mesmos para si.'}
+];
+
+function renderPoderes(){
+  const grid=document.getElementById('poderes-grid');
+  grid.innerHTML=PODERES.map(p=>`
+    <label class="poder-toggle" id="poder-toggle-${p.id}">
+      <input type="checkbox" id="poder-${p.id}" onchange="onPoderToggle('${p.id}')">
+      <div class="poder-toggle-label">
+        <div class="poder-toggle-title">${p.titulo}</div>
+        <div class="poder-toggle-desc">${p.desc}</div>
+      </div>
+    </label>`).join('');
+}
+function onPoderToggle(pid){
+  const chk=document.getElementById('poder-'+pid);
+  const lbl=document.getElementById('poder-toggle-'+pid);
+  lbl.classList.toggle('active',chk.checked);
+  renderPoderesDetalhes();
+}
+function renderPoderesDetalhes(){
+  const det=document.getElementById('poderes-detalhes');
+  const activos=PODERES.filter(p=>document.getElementById('poder-'+p.id)?.checked);
+  if(!activos.length){det.innerHTML='';return;}
+  det.innerHTML=`
+    <div class="cond-block cond-block-amber" style="margin-top:0">
+      <div class="cond-block-title">Texto dos poderes seleccionados</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:.6rem">Podes editar o texto de cada bloco antes de gerar o documento. Os blocos aparecem pela ordem em que estão seleccionados.</div>
+      ${activos.map(p=>`
+        <div style="margin-bottom:.75rem">
+          <label class="form-label" style="display:block;margin-bottom:4px">${p.titulo}</label>
+          <textarea class="form-textarea" id="poder-texto-${p.id}" rows="3">${document.getElementById('poder-texto-'+p.id)?.value||p.texto}</textarea>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PASTA DO CLIENTE — SharePoint
+// ═══════════════════════════════════════════════════════════════════════════════
+let pastasSP=[],pastaSeleccionada=null;
+async function carregarPastasSP(){
+  const btn=document.getElementById('btn-carregar-pastas');
+  const input=document.getElementById('pasta-search');
+  btn.textContent='A carregar...';btn.disabled=true;
+  input.placeholder='A carregar pastas...';
+  try{
+    const token=await getGraphToken();
+    const drivesRes=await fetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
+    const drives=await drivesRes.json();
+    const avencasDrive=drives.value.find(d=>d.name==='AVENCAS');
+    if(!avencasDrive) throw new Error('Biblioteca AVENCAS não encontrada');
+    // Carrega pastas de AVENCAS (raiz + REMAX) — ajusta se quiseres outra fonte
+    const todasPastas=[];
+    const raizRes=await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root/children?$top=500&$orderby=name`,
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(raizRes.ok){
+      const raiz=await raizRes.json();
+      for(const f of (raiz.value||[]).filter(p=>p.folder)){
+        // Adiciona a pasta raiz
+        todasPastas.push({id:f.id,nome:f.name,driveId:avencasDrive.id,webUrl:f.webUrl});
+        // Se for REMAX ou similar, também carrega as subpastas
+        if(['REMAX','IDEALISTA','FORNECEDORES'].includes(f.name.toUpperCase())){
+          const subRes=await fetch(
+            `https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/items/${f.id}/children?$top=500&$orderby=lastModifiedDateTime desc`,
+            {headers:{Authorization:'Bearer '+token}}
+          );
+          if(subRes.ok){
+            const sub=await subRes.json();
+            (sub.value||[]).filter(p=>p.folder).forEach(sp=>{
+              todasPastas.push({id:sp.id,nome:`${f.name} / ${sp.name}`,driveId:avencasDrive.id,webUrl:sp.webUrl});
+            });
+          }
+        }
+      }
+    }
+    pastasSP=todasPastas;
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;
+    input.disabled=false;
+    showToast(`${pastasSP.length} pastas carregadas`,'success');
+  }catch(e){
+    input.placeholder='Erro ao carregar — clica em Atualizar';
+    showToast('Erro: '+e.message,'error');
+  }
+  btn.textContent='↺ Atualizar';btn.disabled=false;
+}
+function pesquisarPastas(){
+  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
+  const dropdown=document.getElementById('pasta-dropdown');
+  if(!q){dropdown.style.display='none';return;}
+  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,10);
+  dropdown.innerHTML=res.length?res.map(p=>`<div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''"><div style="font-weight:500;font-family:'DM Mono',monospace">${p.nome}</div></div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  dropdown.style.display='block';
+}
+function selecionarPasta(pasta){
+  pastaSeleccionada=pasta;
+  document.getElementById('pasta-search').value=pasta.nome;
+  document.getElementById('pasta-dropdown').style.display='none';
+  document.getElementById('pasta-selecionada-nome').textContent=pasta.nome;
+  document.getElementById('pasta-selecionada').style.display='block';
+  document.getElementById('btn-carregar-rascunho').disabled=false;
+  document.getElementById('page-sub').textContent=pasta.nome;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown'))document.getElementById('pasta-dropdown').style.display='none';});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RASCUNHO
+// ═══════════════════════════════════════════════════════════════════════════════
+function recolherDados(){
+  const dados={};
+  document.querySelectorAll('.form-input,.form-select,.form-textarea').forEach(el=>{if(el.id)dados[el.id]=el.value;});
+  document.querySelectorAll('input[type=checkbox]').forEach(el=>{if(el.id)dados[el.id]=el.checked;});
+  dados._mandantesCount=document.getElementById('mandantes-container').querySelectorAll('.outorgante-block').length;
+  dados._mandatariosCount=document.getElementById('mandatarios-container').querySelectorAll('.outorgante-block').length;
+  // Tipo de pessoa (singular / empresa / profissional) de cada outorgante
+  dados._tipos={};
+  document.querySelectorAll('.outorgante-block').forEach(b=>{
+    const t=b.querySelector('.type-btn.active')?.textContent||'';
+    let tipo='singular';
+    if(t.includes('Empresa'))tipo='empresa';
+    else if(t.includes('Solicitador')||t.includes('Advogado'))tipo='profissional';
+    dados._tipos[b.id]=tipo;
+  });
+  return dados;
+}
+function restaurarDados(dados){
+  const mc=dados._mandantesCount||1;
+  const nc=dados._mandatariosCount||1;
+  document.getElementById('mandantes-container').innerHTML='';mandantesCount=0;
+  document.getElementById('mandatarios-container').innerHTML='';mandatariosCount=0;
+  for(let i=0;i<mc;i++)addOutorgante('mandantes');
+  for(let i=0;i<nc;i++)addOutorgante('mandatarios');
+  // Tipo pessoa (importante fazer ANTES de restaurar valores, para os campos existirem visíveis)
+  if(dados._tipos){
+    Object.entries(dados._tipos).forEach(([id,t])=>{if(document.getElementById(id))setTipoPessoa(id,t);});
+  }
+  // Valores
+  Object.entries(dados).forEach(([id,val])=>{
+    if(id.startsWith('_'))return;
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(el.type==='checkbox')el.checked=val;
+    else el.value=val;
+  });
+  // Re-trigger
+  document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{if(el.id)onEstadoCivil(el.id.replace('-estado-civil',''));});
+  document.querySelectorAll('[id$="-conjuge-outorgante"]').forEach(el=>{if(el.id)onConjugeOutorgante(el.id.replace('-conjuge-outorgante',''));});
+  onTipoDocumentoChange();onValidadeChange();onClausulasLivresChange();updateDataOutorgaExtenso();
+  // Poderes
+  PODERES.forEach(p=>{const c=document.getElementById('poder-'+p.id);if(c)document.getElementById('poder-toggle-'+p.id).classList.toggle('active',c.checked);});
+  renderPoderesDetalhes();
+}
+
+async function guardarRascunho(){
+  if(!pastaSeleccionada){showToast('Sem pasta associada — só é possível download','error');return;}
+  const json=JSON.stringify(recolherDados(),null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  try{
+    const token=await getGraphToken();
+    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_PROC.json:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:blob});
+    if(!res.ok)throw new Error(res.status);
+    document.getElementById('rascunho-status').style.display='inline-flex';
+    document.getElementById('footer-info').textContent='Guardado em '+pastaSeleccionada.nome+' às '+new Date().toLocaleTimeString('pt-PT');
+    showToast('Rascunho guardado!','success');
+  }catch(e){showToast('Erro ao guardar: '+e.message,'error');}
+}
+async function carregarRascunhoPasta(){
+  if(!pastaSeleccionada)return;
+  try{
+    const token=await getGraphToken();
+    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_PROC.json:/content`,{headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok){showToast('Nenhum rascunho encontrado','');return;}
+    restaurarDados(await res.json());
+    document.getElementById('rascunho-status').style.display='inline-flex';
+    showToast('Rascunho carregado!','success');
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+function limparFormulario(){if(!confirm('Tens a certeza?'))return;location.reload();}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEXTO — identificação dos outorgantes
+// ═══════════════════════════════════════════════════════════════════════════════
+function recolherOutorgantes(tipo){
+  const container=document.getElementById(`${tipo}-container`);
+  const blocos=container.querySelectorAll('.outorgante-block');
+  return [...blocos].map(bloco=>{
+    const id=bloco.id;
+    const tipoAtivo=bloco.querySelector('.type-btn.active')?.textContent||'';
+    const isEmpresa=tipoAtivo.includes('Empresa');
+    const isProfissional=tipoAtivo.includes('Solicitador')||tipoAtivo.includes('Advogado');
+    const g=i=>document.getElementById(`${id}-${i}`)?.value||'';
+    if(isProfissional){
+      return{
+        tipo:'profissional',
+        profTipo:g('prof-tipo')||'solicitador',
+        cedula:g('prof-cedula'),
+        nome:g('prof-nome'),genero:g('prof-genero')||'F',
+        estadoCivil:g('prof-estado-civil')||'solteiro',
+        naturalidade:g('prof-naturalidade'),
+        cc:g('prof-cc'),ccVal:g('prof-cc-val'),nif:g('prof-nif'),
+        morada:g('prof-morada')
+      };
+    }
+    if(isEmpresa){
+      return{
+        tipo:'empresa',
+        empNome:g('emp-nome'),empNIF:g('emp-nif'),empCapital:g('emp-capital'),empSede:g('emp-sede'),
+        empCRC:g('emp-crc'),crcCod:g('crc-cod'),crcVal:g('crc-val'),
+        gerNome:g('ger-nome'),gerQualidade:g('ger-qualidade')||'gerente',gerGenero:g('ger-genero')||'M',
+        gerNatal:g('ger-naturalidade'),gerEC:g('ger-estado-civil')||'solteiro',
+        gerCC:g('ger-cc'),gerCCVal:g('ger-cc-val'),gerNIF:g('ger-nif'),gerMorada:g('ger-morada')
+      };
+    }
+    const ec=g('estado-civil')||'solteiro';
+    const cojOut=g('conjuge-outorgante')||'nao';
+    const moradaConjunta=g('morada-conjunta');
+    const moradaSingular=g('morada');
+    const moradaFinal=ec==='casado'&&cojOut==='sim'&&moradaConjunta?moradaConjunta:moradaSingular;
+    return{
+      tipo:'singular',
+      nome:g('nome'),genero:g('genero')||'M',naturalidade:g('naturalidade'),
+      cc:g('cc'),ccVal:g('cc-val'),nif:g('nif'),
+      estadoCivil:ec,regime:g('regime'),morada:moradaFinal,
+      conjuge:ec==='casado'&&cojOut==='sim'?{
+        nome:g('conjuge-nome'),genero:g('conjuge-genero')||'M',naturalidade:g('conjuge-naturalidade'),
+        cc:g('conjuge-cc'),ccVal:g('conjuge-cc-val'),nif:g('conjuge-nif')
+      }:null
+    };
+  });
+}
+
+function textoOutorgante(o){
+  if(o.tipo==='profissional'){
+    // Ex: LILIANA..., casada, natural de Évora (Sé), Solicitadora com a cédula profissional
+    // número 08733 e portadora do cartão de cidadão emitido pela República Portuguesa com
+    // o número 11841008 3ZU4, válido até 09/05/2035 e número de identificação fiscal
+    // 219.126.658, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora
+    const isMasc=o.genero==='M';
+    const ec=estadoCivilTexto(o.estadoCivil,o.genero);
+    const profissao=o.profTipo==='advogado'?(isMasc?'Advogado':'Advogada'):(isMasc?'Solicitador':'Solicitadora');
+    const nat=o.naturalidade?`, natural de ${o.naturalidade}`:'';
+    const nifFormatado=o.nif?o.nif.replace(/^(\d{3})(\d{3})(\d{3})$/,'$1.$2.$3'):'';
+    return `${o.nome}, ${ec}${nat}, ${profissao} com a cédula profissional número ${o.cedula} e portador${isMasc?'':'a'} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)} e número de identificação fiscal ${nifFormatado||o.nif}, com domicílio profissional ${/^(na|no|em) /i.test(o.morada)?o.morada:'na '+o.morada}`;
+  }
+  if(o.tipo==='empresa'){
+    const capital=o.empCapital?`, com o capital social de ${o.empCapital} euros`:'';
+    const matricula=o.empCRC?`, matriculada na Conservatória do Registo Comercial de ${o.empCRC}`:'';
+    const certPerm=o.crcCod?` (certidão permanente com o código ${o.crcCod}${o.crcVal?`, válido até ${fmtDataPT(o.crcVal)}`:''})`:'';
+    const qualidade={gerente:'seu gerente','socio-gerente':'seu sócio-gerente',administrador:'seu administrador',procurador:'seu procurador'}[o.gerQualidade]||'seu gerente';
+    const gerIsMasc=o.gerGenero==='M';
+    const gerEC=o.gerEC?`, ${estadoCivilTexto(o.gerEC,o.gerGenero)}`:'';
+    const gerNat=o.gerNatal?`, natural de ${o.gerNatal}`:'';
+    const gerCC=o.gerCC?`, portador${gerIsMasc?'':'a'} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}${o.gerCCVal?`, válido até ${fmtDataPT(o.gerCCVal)}`:''}`:'';
+    const gerNIF=o.gerNIF?`, e número de identificação fiscal ${o.gerNIF}`:'';
+    const gerMor=o.gerMorada?`, residente em ${o.gerMorada}`:'';
+    return `${o.empNome}, pessoa colectiva número ${o.empNIF}, com sede em ${o.empSede}${capital}${matricula}${certPerm}, aqui representada pelo ${qualidade} ${o.gerNome}${gerEC}${gerNat}${gerCC}${gerNIF}${gerMor}`;
+  }
+  // Singular
+  const isMasc=o.genero==='M';
+  const casadoComRegime=o.estadoCivil==='casado'&&o.regime;
+  const ecInicial=casadoComRegime?'':`, ${estadoCivilTexto(o.estadoCivil,o.genero)}`;
+  const moradaPartilhada=casadoComRegime&&o.conjuge;
+  const moradaInicial=moradaPartilhada?'':(o.morada?`, residente em ${o.morada}`:'');
+  const nat=o.naturalidade?`, natural de ${o.naturalidade}`:'';
+  let txt=`${o.nome}${ecInicial}${nat}, portador${!isMasc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)}, e número de identificação fiscal ${o.nif}${moradaInicial}`;
+  if(casadoComRegime){
+    txt+=`, ${isMasc?'casado':'casada'} no regime de ${regimenTexto(o.regime)}`;
+    if(o.conjuge){
+      const cg=o.conjuge;const cgF=cg.genero==='F';
+      const cgNat=cg.naturalidade?`, natural de ${cg.naturalidade}`:'';
+      txt+=` com ${cg.nome}${cgNat}, portador${cgF?'a':''} do cartão de cidadão com o número ${cg.cc}, válido até ${fmtDataPT(cg.ccVal)}, e NIF ${cg.nif}, residentes em ${o.morada}`;
+    }
+  }
+  return txt;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEXTO — poderes, validade, atuação, encerramento
+// ═══════════════════════════════════════════════════════════════════════════════
+function textoPoderes(){
+  const activos=PODERES.filter(p=>document.getElementById('poder-'+p.id)?.checked);
+  if(!activos.length)return'[Sem poderes seleccionados]';
+  // Ajustes: se substabelecimento está activo como poder E também o toggle dedicado, evita duplicação
+  const subtogglActivo=document.getElementById('toggle-substabelecer').checked;
+  const filtrados=activos.filter(p=>!(p.id==='subrogacao'&&subtogglActivo));
+  const textos=filtrados.map(p=>document.getElementById('poder-texto-'+p.id)?.value||p.texto);
+  return textos.map((t,i)=>`${i+1}) ${t}`).join('\n\n');
+}
+
+function textoAtuacaoMandatarios(mandatarios){
+  if(mandatarios.length<=1)return'';
+  const modo=document.getElementById('atuacao-mandatarios').value;
+  if(modo==='isolada')return'Os poderes ora conferidos podem ser exercidos por qualquer um dos Mandatários, isolada e individualmente, independentemente da ordem por que aqui são indicados.';
+  if(modo==='conjunta-dois')return'Os poderes ora conferidos só poderão ser exercidos pelo menos por dois dos Mandatários em conjunto.';
+  return'Os poderes ora conferidos só poderão ser exercidos pela totalidade dos Mandatários em conjunto.';
+}
+
+function textoValidade(){
+  const t=document.getElementById('tipo-validade').value;
+  if(t==='indeterminada')return'A presente procuração é válida por tempo indeterminado, até ser expressamente revogada.';
+  if(t==='prazo-meses'){
+    const n=parseInt(document.getElementById('validade-num').value||'1',10);
+    return `A presente procuração é válida pelo prazo de ${n} ${n===1?'mês':'meses'} a contar da data da sua outorga.`;
+  }
+  if(t==='prazo-anos'){
+    const n=parseInt(document.getElementById('validade-num').value||'1',10);
+    return `A presente procuração é válida pelo prazo de ${n} ${n===1?'ano':'anos'} a contar da data da sua outorga.`;
+  }
+  if(t==='ate-data'){
+    const d=document.getElementById('validade-data').value;
+    return d?`A presente procuração é válida até ao dia ${fmtDataExtenso(d)}.`:'A presente procuração é válida até ao dia [indicar data].';
+  }
+  return'';
+}
+
+function textoSubstabelecimento(){
+  return document.getElementById('toggle-substabelecer').checked
+    ?'Confere(m) ao(s) Mandatário(s) a faculdade de substabelecer os presentes poderes, no todo ou em parte, com ou sem reserva dos mesmos para si.'
+    :'';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GERAR DOCUMENTO WORD
+// ═══════════════════════════════════════════════════════════════════════════════
+async function gerarProcuracao(){
+  showToast('A gerar procuração...','');
+  try{
+    if(!window.PizZip){await loadScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');}
+    if(!window.Docxtemplater&&!window.docxtemplater){await loadScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');}
+    const DocxClass=window.Docxtemplater||window.docxtemplater;
+    if(!DocxClass)throw new Error('docxtemplater não carregou.');
+
+    const v=id=>document.getElementById(id)?.value||'';
+
+    const mandantes=recolherOutorgantes('mandantes');
+    const mandatarios=recolherOutorgantes('mandatarios');
+    if(!mandantes.length)throw new Error('Tens de adicionar pelo menos um mandante.');
+    if(!mandatarios.length)throw new Error('Tens de adicionar pelo menos um mandatário.');
+
+    const TXT_Mandantes=mandantes.map(textoOutorgante).join(';\n\n');
+    const TXT_Mandatarios=mandatarios.map(textoOutorgante).join(';\n\n');
+
+    // Frase de abertura (ex: "Pelo presente instrumento, [Nome] constitui seu bastante procurador [Nome]...")
+    const verbo=mandantes.length>1?'constituem':'constitui';
+    const possessivo=mandantes.length>1?'seus bastantes procuradores':'seu bastante procurador';
+    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem ${mandatarios.length>1?'confere(m)':'confere(m)'} os poderes necessários para:`;
+
+    const TXT_Poderes=textoPoderes();
+    const TXT_Validade=textoValidade();
+    const TXT_Atuacao=textoAtuacaoMandatarios(mandatarios);
+    const TXT_Substabelecimento=textoSubstabelecimento();
+
+    let TXT_Clausulas_Livres='';
+    if(document.getElementById('toggle-clausulas-livres').checked){
+      TXT_Clausulas_Livres=v('clausulas-livres-texto');
+    }
+
+    const Local_Outorga=v('local-outorga')||'Évora';
+    const Data_Outorga_Extenso=fmtDataExtenso(v('data-outorga'));
+    const Tipo_Documento=v('tipo-documento');
+    const Cartorio=v('cartorio-nome');
+
+    // Carregar template — tenta SP primeiro; se falhar (sem auth ou offline), pede ficheiro manualmente
+    let templateBuf=null;
+    let token=null;
+    try{
+      token=await getGraphToken();
+      const drivesRes=await fetch(
+        'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
+        {headers:{Authorization:'Bearer '+token}}
+      );
+      if(drivesRes.ok){
+        const drives=await drivesRes.json();
+        const docsDrive=drives.value.find(d=>
+          d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos')
+        );
+        if(docsDrive){
+          const templateRes=await fetch(
+            `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_PROC.docx:/content`,
+            {headers:{Authorization:'Bearer '+token}}
+          );
+          if(templateRes.ok){templateBuf=await templateRes.arrayBuffer();}
+        }
+      }
+    }catch(e){
+      console.warn('SP indisponível, template será pedido manualmente:',e.message);
+    }
+
+    // Fallback: pede ficheiro manual
+    if(!templateBuf){
+      showToast('Sem acesso ao SharePoint — selecciona manualmente o TEMPL_PROC.docx','');
+      templateBuf=await new Promise((resolve,reject)=>{
+        const inp=document.createElement('input');inp.type='file';inp.accept='.docx';
+        inp.onchange=async e=>{const f=e.target.files[0];if(!f)reject(new Error('Cancelado'));else resolve(await f.arrayBuffer());};
+        inp.click();
+      });
+    }
+
+    const data={
+      TXT_Mandantes,TXT_Mandatarios,TXT_Abertura,TXT_Poderes,
+      TXT_Validade,TXT_Atuacao,TXT_Substabelecimento,TXT_Clausulas_Livres,
+      Local_Outorga,Data_Outorga_Extenso,Tipo_Documento,Cartorio
+    };
+
+    const zip=new PizZip(templateBuf);
+    const dt=new DocxClass(zip,{paragraphLoop:true,linebreaks:true});
+    dt.render(data);
+    const out=dt.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+
+    // Nome do ficheiro
+    const dataOutorga=v('data-outorga');
+    const dataAAAAMMDD=dataOutorga?fmtDataAAAAMMDD(dataOutorga):new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const primeiroMandante=mandantes[0];
+    const nomeMandante=(primeiroMandante.tipo==='empresa'?primeiroMandante.empNome:primeiroMandante.nome)||'PROC';
+    const nomeDoc=`PROC_${dataAAAAMMDD}_${nomeMandante.substring(0,50).trim()}.docx`;
+
+    // Guardar no SP SÓ se houver pasta seleccionada E token
+    if(pastaSeleccionada&&token){
+      try{
+        const ab=await out.arrayBuffer();
+        const upRes=await fetch(
+          `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content`,
+          {method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab}
+        );
+        if(upRes.ok)showToast('Procuração guardada na pasta!','success');
+      }catch(e){console.warn('Upload para SP falhou:',e);}
+    }
+
+    // Download local — sempre
+    const url=URL.createObjectURL(out);
+    const a=document.createElement('a');a.href=url;a.download=nomeDoc;a.click();
+    URL.revokeObjectURL(url);
+    showToast('Procuração gerada!','success');
+  }catch(e){showToast('Erro: '+e.message,'error');console.error(e);}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  renderPoderes();
+  addOutorgante('mandantes');
+  addOutorgante('mandatarios');
+  // Data de hoje
+  document.getElementById('data-outorga').value=new Date().toISOString().slice(0,10);
+  updateDataOutorgaExtenso();
+  onTipoDocumentoChange();
+  onValidadeChange();
+  // Carregar pastas automaticamente se token já estiver disponível
+  if(window.opener&&window.opener.graphToken){
+    carregarPastasSP();
+  }
+});
+</script>
+</body>
+</html>
