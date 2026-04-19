@@ -912,6 +912,39 @@ async function selecionarTemplate(){
   atualizarEstadoTemplate(true);
   showToast('Template carregado e guardado localmente','success');
 }
+
+// Tenta carregar o template do SharePoint automaticamente, usando o token do portal pai
+async function carregarTemplateSP(){
+  // 1) Token do portal pai (abertura via index.html)
+  let token=window.opener&&window.opener.graphToken;
+  // 2) Fallback — token guardado no localStorage pelo portal
+  if(!token){try{token=localStorage.getItem('lbc_graph_token');}catch(e){}}
+  if(!token)return false;
+  try{
+    const drivesRes=await fetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!drivesRes.ok)return false;
+    const drives=await drivesRes.json();
+    const docsDrive=drives.value.find(d=>d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos'));
+    if(!docsDrive)return false;
+    const templateRes=await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_PROC.docx:/content`,
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!templateRes.ok)return false;
+    templateBuffer=await templateRes.arrayBuffer();
+    // Guarda localmente como cache — se um dia abrir sem internet, ainda funciona
+    try{await guardarTemplateDB(templateBuffer);}catch(e){}
+    atualizarEstadoTemplate(true);
+    return true;
+  }catch(e){
+    console.warn('Falha ao carregar template do SP:',e.message);
+    return false;
+  }
+}
+
 function atualizarEstadoTemplate(ok){
   const btn=document.getElementById('btn-template');
   const lbl=document.getElementById('btn-template-label');
@@ -1173,11 +1206,15 @@ window.addEventListener('DOMContentLoaded',async ()=>{
   updateDataOutorgaExtenso();
   onTipoDocumentoChange();
   onValidadeChange();
-  // Carregar template guardado localmente, se existir
-  try{
-    const buf=await carregarTemplateDB();
-    if(buf){templateBuffer=buf;atualizarEstadoTemplate(true);}
-  }catch(e){/* silent */}
+  // 1) Tentar carregar o template do SharePoint (precisa do token do portal pai)
+  let ok=await carregarTemplateSP();
+  // 2) Fallback: template guardado localmente (IndexedDB) — cache de sessões anteriores
+  if(!ok){
+    try{
+      const buf=await carregarTemplateDB();
+      if(buf){templateBuffer=buf;atualizarEstadoTemplate(true);}
+    }catch(e){/* silent */}
+  }
 });
 </script>
 </body>
