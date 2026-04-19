@@ -458,8 +458,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div><div class="section-name">Mediação Imobiliária</div></div>
     </div>
     <div class="form-grid">
+      <!-- Prime Team por defeito -->
       <div class="toggle-row">
-        <span class="toggle-label">Houve intervenção de mediação imobiliária</span>
+        <span class="toggle-label">PRIME TEAM – SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA &nbsp;<span style="color:var(--text-faint);font-weight:400">AMI 13123</span></span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-prime-team" checked onchange="onMediacaoChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <!-- Outras mediadoras -->
+      <div class="toggle-row">
+        <span class="toggle-label">Houve intervenção de outra mediadora</span>
         <label class="toggle-switch"><input type="checkbox" id="toggle-mediacao" onchange="onMediacaoChange()"><span class="toggle-slider"></span></label>
       </div>
       <div id="mediacao-fields" style="display:none">
@@ -775,12 +781,13 @@ function onToggleClausulas(){
   document.getElementById('clausulas-fields').style.display=document.getElementById('toggle-clausulas').checked?'block':'none';
 }
 function onMediacaoChange(){
-  const on=document.getElementById('toggle-mediacao').checked;
-  document.getElementById('mediacao-fields').style.display=on?'block':'none';
-  if(on&&mediadoraCnt===0)addMediadora();
+  const outra=document.getElementById('toggle-mediacao').checked;
+  document.getElementById('mediacao-fields').style.display=outra?'block':'none';
+  if(outra&&mediadoraCnt===0)addMediadora();
 }
 function addMediadora(){
   const idx=++mediadoraCnt;
+  const isPrimeira=idx===1;
   const div=document.createElement('div');
   div.className='outorgante-block';div.id=`med-${idx}`;div.style.marginBottom='.5rem';
   div.innerHTML=`
@@ -789,8 +796,8 @@ function addMediadora(){
       ${idx>1?`<button class="remove-btn" onclick="document.getElementById('med-${idx}').remove()" type="button">×</button>`:''}
     </div>
     <div class="form-grid form-grid-2">
-      <div class="form-group form-full"><label class="form-label">Nome da mediadora <span>*</span></label><input type="text" class="form-input" id="med-${idx}-nome" placeholder="Ex: PRIME TEAM — MEDIAÇÃO IMOBILIÁRIA, LDA" style="text-transform:uppercase"></div>
-      <div class="form-group"><label class="form-label">Licença AMI <span>*</span></label><input type="text" class="form-input" id="med-${idx}-ami" placeholder="Ex: 13123"></div>
+      <div class="form-group form-full"><label class="form-label">Nome da mediadora <span>*</span></label><input type="text" class="form-input" id="med-${idx}-nome" value="${isPrimeira?'PRIME TEAM – SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA':''}" placeholder="Ex: PRIME TEAM — MEDIAÇÃO IMOBILIÁRIA, LDA" style="text-transform:uppercase"></div>
+      <div class="form-group"><label class="form-label">Licença AMI <span>*</span></label><input type="text" class="form-input" id="med-${idx}-ami" value="${isPrimeira?'13123':''}" placeholder="Ex: 13123"></div>
     </div>`;
   document.getElementById('mediadoras-container').appendChild(div);
 }
@@ -967,17 +974,21 @@ async function gerarContrato(){
     const Email_Comprador=v('email-comprador')||'___@___.___';
 
     // Mediação
-    let TXT_Mediacao='';
-    if(chk('toggle-mediacao')){
-      const meds=[];
+    const primeTeamOn=chk('toggle-prime-team');
+    const outraOn=chk('toggle-mediacao');
+    const meds=[];
+    if(primeTeamOn) meds.push('PRIME TEAM – SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA, titular da licença AMI 13123');
+    if(outraOn){
       document.querySelectorAll('[id^="med-"][id$="-nome"]').forEach(el=>{
         const idx=el.id.replace('med-','').replace('-nome','');
         const nome=el.value.trim();const ami=document.getElementById(`med-${idx}-ami`)?.value||'';
         if(nome)meds.push(`${nome}, titular da licença AMI ${ami}`);
       });
-      if(meds.length) TXT_Mediacao=`As Partes contratantes declaram, nos termos do Art.º 40 da Lei n.º 15/2013, de 08 de fevereiro, que a compra e venda ora prometida, houve intervenção ${meds.length>1?'das Mediadoras Imobiliárias':'da Mediadora Imobiliária'} ${meds.join(' e ')}.`;
-      else TXT_Mediacao='As Partes contratantes declaram que na presente compra e venda ora prometida não houve intervenção de mediadora imobiliária.';
-    } else {
+    }
+    let TXT_Mediacao='';
+    if(meds.length){
+      TXT_Mediacao=`As Partes contratantes declaram, nos termos do Art.º 40 da Lei n.º 15/2013, de 08 de fevereiro, que a compra e venda ora prometida, houve intervenção ${meds.length>1?'das Mediadoras Imobiliárias':'da Mediadora Imobiliária'} ${meds.join(' e ')}.`;
+    }else{
       TXT_Mediacao='As Partes contratantes declaram que na presente compra e venda ora prometida não houve intervenção de mediadora imobiliária.';
     }
 
