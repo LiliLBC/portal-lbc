@@ -239,24 +239,66 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div id="clausulas-livres-block" style="display:none;margin-top:.9rem">
       <div class="form-group">
         <label class="form-label">Texto das cláusulas</label>
-        <textarea class="form-textarea" id="clausulas-livres-texto" rows="6" style="min-height:130px;line-height:1.55" placeholder="Ex: O presente mandato limita-se à prática dos actos relativos ao imóvel sito em ..."></textarea>
+        <textarea class="form-textarea" id="clausulas-livres-texto" rows="6" style="min-height:130px;line-height:1.55" placeholder="Ex: O presente mandato limita-se à prática dos atos relativos ao imóvel sito em ..."></textarea>
       </div>
     </div>
   </div>
 
-  <!-- 7. IMÓVEIS -->
+  <!-- 7. IDENTIFICAÇÃO DE BENS -->
   <div class="section-card">
     <div class="section-card-header">
       <div class="section-num">7</div>
-      <div><div class="section-name">Imóveis</div><div class="section-desc">Identificação do(s) imóvel(eis) abrangido(s). Serão referenciados automaticamente nos poderes de Imóveis, Heranças e Finanças.</div></div>
+      <div><div class="section-name">Identificação de bens</div><div class="section-desc">Imóveis, contas bancárias, veículos, heranças ou outras categorias. Aparecem no documento antes das cláusulas dos poderes.</div></div>
     </div>
+
+    <!-- Imóveis -->
     <div class="toggle-row">
-      <div class="toggle-label">Esta procuração envolve imóveis</div>
-      <label class="toggle-switch"><input type="checkbox" id="toggle-imoveis" onchange="onImoveisChange()"><span class="toggle-slider"></span></label>
+      <div class="toggle-label">Bens imóveis</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-imoveis" onchange="onBensToggle('imoveis')"><span class="toggle-slider"></span></label>
     </div>
-    <div id="imoveis-block" style="display:none;margin-top:.9rem">
+    <div id="imoveis-block" style="display:none;margin-top:.6rem;margin-bottom:1rem">
       <div id="imoveis-container"></div>
       <button class="add-outorgante-btn" onclick="addImovel()" type="button">+ Adicionar imóvel</button>
+    </div>
+
+    <!-- Contas Bancárias -->
+    <div class="toggle-row">
+      <div class="toggle-label">Contas bancárias</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-contas" onchange="onBensToggle('contas')"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="contas-block" style="display:none;margin-top:.6rem;margin-bottom:1rem">
+      <div id="contas-container"></div>
+      <button class="add-outorgante-btn" onclick="addConta()" type="button">+ Adicionar conta</button>
+    </div>
+
+    <!-- Veículos -->
+    <div class="toggle-row">
+      <div class="toggle-label">Veículos</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-veiculos" onchange="onBensToggle('veiculos')"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="veiculos-block" style="display:none;margin-top:.6rem;margin-bottom:1rem">
+      <div id="veiculos-container"></div>
+      <button class="add-outorgante-btn" onclick="addVeiculo()" type="button">+ Adicionar veículo</button>
+    </div>
+
+    <!-- Heranças -->
+    <div class="toggle-row">
+      <div class="toggle-label">Heranças</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-herancas" onchange="onBensToggle('herancas')"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="herancas-block" style="display:none;margin-top:.6rem;margin-bottom:1rem">
+      <div id="herancas-container"></div>
+      <button class="add-outorgante-btn" onclick="addHeranca()" type="button">+ Adicionar herança</button>
+    </div>
+
+    <!-- Outras categorias à medida -->
+    <div class="toggle-row">
+      <div class="toggle-label">Outras categorias à medida</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-outros" onchange="onBensToggle('outros')"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="outros-block" style="display:none;margin-top:.6rem">
+      <div id="outros-container"></div>
+      <button class="add-outorgante-btn" onclick="addCategoriaMedida()" type="button">+ Adicionar categoria</button>
     </div>
   </div>
 
@@ -363,11 +405,9 @@ function addOutorgante(tipo){
   const div=document.createElement('div');
   div.className='outorgante-block';div.id=id;
   div.dataset.tipo=tipo;
-  const tipoBtns=isMandante
-    ?`<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>
-      <button class="type-btn" onclick="setTipoPessoa('${id}','empresa')" type="button">Empresa</button>`
-    :`<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>
-      <button class="type-btn" onclick="setTipoPessoa('${id}','profissional')" type="button">Solicitador(a)/Advogado(a)</button>
+  // Terceiros e mandantes têm apenas "Pessoa singular" e "Empresa".
+  // O tipo "Profissional" é reservado às Dras. Liliana e Andreia, adicionadas via botão rápido.
+  const tipoBtns=`<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>
       <button class="type-btn" onclick="setTipoPessoa('${id}','empresa')" type="button">Empresa</button>`;
   div.innerHTML=`
     <div class="outorgante-header">
@@ -580,13 +620,17 @@ function updateDataOutorgaExtenso(){
 // ═══════════════════════════════════════════════════════════════════════════════
 // IMÓVEIS — secção opcional, cada imóvel é um bloco com matrizes múltiplas
 // ═══════════════════════════════════════════════════════════════════════════════
-let imoveisCount=0;
-function onImoveisChange(){
-  const on=document.getElementById('toggle-imoveis').checked;
-  document.getElementById('imoveis-block').style.display=on?'block':'none';
-  if(on&&!document.querySelectorAll('#imoveis-container .outorgante-block').length){
-    addImovel();
-  }
+let imoveisCount=0,contasCount=0,veiculosCount=0,herancasCount=0,outrosCount=0;
+
+function onBensToggle(categoria){
+  const on=document.getElementById(`toggle-${categoria}`).checked;
+  document.getElementById(`${categoria}-block`).style.display=on?'block':'none';
+  if(!on)return;
+  // Adicionar primeiro item automaticamente se estiver vazio
+  const container=document.getElementById(`${categoria}-container`);
+  if(container.children.length)return;
+  const addFn={imoveis:addImovel,contas:addConta,veiculos:addVeiculo,herancas:addHeranca,outros:addCategoriaMedida}[categoria];
+  if(addFn)addFn();
 }
 function addImovel(){
   const idx=++imoveisCount;
@@ -806,13 +850,237 @@ function textoImovel(id){
 }
 
 // Lista todos os imóveis activos numa frase enumerada
+// Lista apenas os textos (sem numeração) dos imóveis ativos
 function textoImoveisLista(){
-  if(!document.getElementById('toggle-imoveis').checked)return'';
+  if(!document.getElementById('toggle-imoveis').checked)return[];
   const blocos=document.querySelectorAll('#imoveis-container .outorgante-block');
-  const textos=[...blocos].map(b=>textoImovel(b.id)).filter(Boolean);
-  if(!textos.length)return'';
-  if(textos.length===1)return textos[0];
-  return textos.map((t,i)=>`${i+1}) ${t}`).join('; ');
+  return [...blocos].map(b=>textoImovel(b.id)).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONTAS BANCÁRIAS
+// ═══════════════════════════════════════════════════════════════════════════════
+function addConta(){
+  const idx=++contasCount;
+  const id=`co-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">Conta ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="document.getElementById('${id}').remove()" title="Remover">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Tipo <span>*</span></label>
+        <select class="form-select" id="${id}-tipo">
+          <option value="do">Conta à ordem</option>
+          <option value="prazo">Depósito a prazo</option>
+          <option value="poupanca">Conta poupança</option>
+          <option value="aforro">Certificados de aforro</option>
+          <option value="tesouro">Títulos do Tesouro</option>
+          <option value="tesouro-reforma">Certificados do Tesouro Poupança</option>
+          <option value="fundos">Fundos de investimento</option>
+          <option value="valores">Conta de valores mobiliários</option>
+          <option value="ordenado">Conta ordenado</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Banco / Instituição <span>*</span></label><input type="text" class="form-input" id="${id}-banco" placeholder="Ex: Caixa Geral de Depósitos"></div>
+      <div class="form-group"><label class="form-label">Número da conta / NIB / IBAN</label><input type="text" class="form-input" id="${id}-numero" placeholder="Ex: 0035 0123 12345678900 12"></div>
+      <div class="form-group"><label class="form-label">Agência / Balcão</label><input type="text" class="form-input" id="${id}-agencia" placeholder="Ex: Évora"></div>
+      <div class="form-group form-full"><label class="form-label">Tipo personalizado (só se "Outro")</label><input type="text" class="form-input" id="${id}-tipo-custom" placeholder="Ex: Plano Poupança Reforma"></div>
+      <div class="form-group form-full"><label class="form-label">Observações</label><input type="text" class="form-input" id="${id}-obs" placeholder="Ex: Em regime de contitularidade"></div>
+    </div>`;
+  document.getElementById('contas-container').appendChild(div);
+}
+
+function textoConta(id){
+  const v=k=>document.getElementById(`${id}-${k}`)?.value||'';
+  const tipo=v('tipo');
+  const TIPO_TXT={
+    do:'conta à ordem',prazo:'depósito a prazo',poupanca:'conta poupança',
+    aforro:'certificados de aforro',tesouro:'títulos do Tesouro',
+    'tesouro-reforma':'certificados do Tesouro Poupança',
+    fundos:'fundos de investimento',valores:'conta de valores mobiliários',
+    ordenado:'conta ordenado',outro:v('tipo-custom')||'conta'
+  };
+  const tipoNome=TIPO_TXT[tipo]||'conta';
+  const banco=v('banco');
+  const numero=v('numero');
+  const agencia=v('agencia');
+  const obs=v('obs');
+  let txt=tipoNome.charAt(0).toUpperCase()+tipoNome.slice(1);
+  if(numero)txt+=` n.º ${numero}`;
+  if(banco)txt+=`, d${banco.match(/^[aeiouáéíóúâêôãõà]/i)?"":"o"} ${banco}`.replace(/d(a|o|e)\s+([AEIOU])/,'d$1 $2').replace(', do ',', do ');
+  // Simplificar: "da instituição X" quando banco começa por consoante, senão "do"
+  if(banco){
+    // refazer simples
+    txt=`${tipoNome.charAt(0).toUpperCase()+tipoNome.slice(1)}${numero?' n.º '+numero:''}, do ${banco}`;
+  }
+  if(agencia)txt+=`, agência de ${agencia}`;
+  if(obs)txt+=`, ${obs}`;
+  return txt;
+}
+
+function textoContasLista(){
+  if(!document.getElementById('toggle-contas').checked)return[];
+  const blocos=document.querySelectorAll('#contas-container .outorgante-block');
+  return [...blocos].map(b=>textoConta(b.id)).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VEÍCULOS
+// ═══════════════════════════════════════════════════════════════════════════════
+function addVeiculo(){
+  const idx=++veiculosCount;
+  const id=`ve-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">Veículo ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="document.getElementById('${id}').remove()" title="Remover">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Categoria</label>
+        <select class="form-select" id="${id}-categoria">
+          <option value="ligeiro-passageiros">Ligeiro de passageiros</option>
+          <option value="ligeiro-mercadorias">Ligeiro de mercadorias</option>
+          <option value="pesado-passageiros">Pesado de passageiros</option>
+          <option value="pesado-mercadorias">Pesado de mercadorias</option>
+          <option value="motociclo">Motociclo</option>
+          <option value="ciclomotor">Ciclomotor</option>
+          <option value="reboque">Reboque</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Marca <span>*</span></label><input type="text" class="form-input" id="${id}-marca" placeholder="Ex: Toyota"></div>
+      <div class="form-group"><label class="form-label">Modelo</label><input type="text" class="form-input" id="${id}-modelo" placeholder="Ex: Corolla"></div>
+      <div class="form-group"><label class="form-label">Matrícula <span>*</span></label><input type="text" class="form-input" id="${id}-matricula" placeholder="Ex: 12-AB-34" style="text-transform:uppercase"></div>
+      <div class="form-group"><label class="form-label">N.º de quadro / chassis</label><input type="text" class="form-input" id="${id}-quadro"></div>
+      <div class="form-group"><label class="form-label">Ano</label><input type="text" class="form-input" id="${id}-ano" placeholder="Ex: 2019"></div>
+    </div>`;
+  document.getElementById('veiculos-container').appendChild(div);
+}
+
+function textoVeiculo(id){
+  const v=k=>document.getElementById(`${id}-${k}`)?.value||'';
+  const CAT={
+    'ligeiro-passageiros':'veículo ligeiro de passageiros','ligeiro-mercadorias':'veículo ligeiro de mercadorias',
+    'pesado-passageiros':'veículo pesado de passageiros','pesado-mercadorias':'veículo pesado de mercadorias',
+    motociclo:'motociclo',ciclomotor:'ciclomotor',reboque:'reboque',outro:'veículo'
+  };
+  const cat=CAT[v('categoria')]||'veículo';
+  const marca=v('marca'),modelo=v('modelo'),mat=v('matricula'),quadro=v('quadro'),ano=v('ano');
+  if(!marca&&!mat)return'';
+  let txt=cat;
+  if(marca)txt+=` de marca ${marca}`;
+  if(modelo)txt+=`, modelo ${modelo}`;
+  if(ano)txt+=`, do ano ${ano}`;
+  if(mat)txt+=`, com a matrícula ${mat}`;
+  if(quadro)txt+=`, quadro n.º ${quadro}`;
+  return txt;
+}
+
+function textoVeiculosLista(){
+  if(!document.getElementById('toggle-veiculos').checked)return[];
+  const blocos=document.querySelectorAll('#veiculos-container .outorgante-block');
+  return [...blocos].map(b=>textoVeiculo(b.id)).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HERANÇAS
+// ═══════════════════════════════════════════════════════════════════════════════
+function addHeranca(){
+  const idx=++herancasCount;
+  const id=`he-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">Herança ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="document.getElementById('${id}').remove()" title="Remover">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Nome do autor da herança <span>*</span></label><input type="text" class="form-input" id="${id}-autor-nome" placeholder="NOME COMPLETO" style="text-transform:uppercase"></div>
+      <div class="form-group"><label class="form-label">Estado civil à data do óbito</label>
+        <select class="form-select" id="${id}-autor-ec">
+          <option value="solteiro">Solteiro(a)</option>
+          <option value="casado">Casado(a)</option>
+          <option value="divorciado">Divorciado(a)</option>
+          <option value="viuvo">Viúvo(a)</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-autor-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+      <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-autor-nif"></div>
+      <div class="form-group"><label class="form-label">Data do óbito</label><input type="date" class="form-input" id="${id}-data-obito"></div>
+      <div class="form-group form-full"><label class="form-label">Última residência</label><input type="text" class="form-input" id="${id}-residencia"></div>
+      <div class="form-group form-full"><label class="form-label">Observações (vínculo, processo em curso, etc.)</label><input type="text" class="form-input" id="${id}-obs" placeholder="Ex: Pai do(a) Mandante"></div>
+    </div>`;
+  document.getElementById('herancas-container').appendChild(div);
+}
+
+function textoHeranca(id){
+  const v=k=>document.getElementById(`${id}-${k}`)?.value||'';
+  const nome=v('autor-nome');if(!nome)return'';
+  const genero=v('autor-genero')||'M';
+  const ec=v('autor-ec');
+  const nif=v('autor-nif');
+  const data=v('data-obito');
+  const res=v('residencia');
+  const obs=v('obs');
+  const falecido=genero==='F'?'falecida':'falecido';
+  let txt=`herança aberta por óbito de ${nome}`;
+  if(ec){const ecTxt=estadoCivilTexto(ec,genero);txt+=`, que foi ${ecTxt.replace(', maior','')}`;}
+  if(data)txt+=`, ${falecido} em ${fmtDataPT(data)}`;
+  if(res)txt+=`, com última residência em ${res}`;
+  if(nif)txt+=`, NIF ${nif}`;
+  if(obs)txt+=` (${obs})`;
+  return txt;
+}
+
+function textoHerancasLista(){
+  if(!document.getElementById('toggle-herancas').checked)return[];
+  const blocos=document.querySelectorAll('#herancas-container .outorgante-block');
+  return [...blocos].map(b=>textoHeranca(b.id)).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORIAS À MEDIDA
+// ═══════════════════════════════════════════════════════════════════════════════
+function addCategoriaMedida(){
+  const idx=++outrosCount;
+  const id=`ou-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">Categoria ${idx}</span>
+      <button class="remove-btn" onclick="document.getElementById('${id}').remove()" title="Remover">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Título da categoria <span>*</span></label><input type="text" class="form-input" id="${id}-titulo" placeholder="Ex: DIREITOS DE AUTOR" style="text-transform:uppercase"></div>
+      <div class="form-group"><label class="form-label">Itens (um por linha)</label>
+        <textarea class="form-textarea" id="${id}-itens" rows="5" style="min-height:130px;line-height:1.55" placeholder="Ex:&#10;Direitos sobre a obra «Título do Livro», publicada em 2020&#10;Contrato de edição com a editora X"></textarea>
+      </div>
+      <div class="form-group"><label class="form-label">Referência nos poderes (opcional)</label><input type="text" class="form-input" id="${id}-ref" placeholder="Ex: direitos de autor supra identificados"></div>
+    </div>`;
+  document.getElementById('outros-container').appendChild(div);
+}
+
+function textoCategoriaMedida(id){
+  const v=k=>document.getElementById(`${id}-${k}`)?.value||'';
+  const titulo=v('titulo');
+  const itensTxt=v('itens').trim();
+  if(!titulo||!itensTxt)return null;
+  const itens=itensTxt.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  return {titulo:titulo.toUpperCase(),itens,ref:v('ref')};
+}
+
+function textoOutrosLista(){
+  if(!document.getElementById('toggle-outros').checked)return[];
+  const blocos=document.querySelectorAll('#outros-container .outorgante-block');
+  return [...blocos].map(b=>textoCategoriaMedida(b.id)).filter(Boolean);
 }
 
 
@@ -820,16 +1088,16 @@ function textoImoveisLista(){
 // PODERES — catálogo + detalhes editáveis
 // ═══════════════════════════════════════════════════════════════════════════════
 const PODERES=[
-  {id:'imoveis',titulo:'Imóveis',desc:'Compra, venda, permuta, hipoteca, escrituras',texto:'Comprar, vender, permutar, dar e receber de arrendamento, hipotecar, onerar e por qualquer forma dispor de quaisquer bens imóveis, fracções autónomas ou direitos reais sobre os mesmos, pelos preços, com os prazos e demais condições que entender(em) convenientes, podendo outorgar e assinar todos os contratos, escrituras, contratos-promessa e documentos autenticados necessários, pagar e receber os preços, dar e receber quitação, e, em geral, praticar todos os actos conexos, junto de Conservatórias, Câmaras Municipais, Notários, Advogados, Solicitadores, Balcões Casa Pronta e Casa Simples, Finanças e demais entidades.'},
-  {id:'financas',titulo:'Finanças / AT',desc:'IMI, IMT, IRS, e-Balcão, certidões',texto:'Representar o(s) Mandante(s) perante a Autoridade Tributária e Aduaneira (AT), incluindo qualquer Serviço de Finanças, o Portal das Finanças e o e-Balcão, para todos os efeitos legais, nomeadamente: pedir e levantar certidões, liquidar, pagar, contestar, reclamar e recorrer de impostos (IMI, IMT, IUC, IRS, IRC, IVA, Imposto do Selo), submeter declarações, alterar domicílio fiscal, aceder e consultar informação fiscal, nomear representante fiscal e praticar todos os actos conexos.'},
-  {id:'seg-social',titulo:'Segurança Social',desc:'Prestações, reformas, Segurança Social Directa',texto:'Representar o(s) Mandante(s) perante os Serviços da Segurança Social, incluindo o portal da Segurança Social Directa, para praticar todos os actos relativos a inscrições, alterações, pedidos de prestações sociais, reformas, pensões, subsídios, certidões e demais procedimentos administrativos.'},
-  {id:'conservatorias',titulo:'Conservatórias',desc:'Predial, Comercial, Registo Civil',texto:'Representar o(s) Mandante(s) perante qualquer Conservatória do Registo Predial, Comercial, Civil ou Automóvel, bem como junto dos balcões integrados (Casa Pronta, Casa Simples, Balcão das Heranças, Balcão das Sucessões, Empresa Online, Empresa na Hora), para requerer, outorgar, assinar e levantar registos, averbamentos, certidões, habilitações de herdeiros e todos os actos necessários.'},
-  {id:'bancaria',titulo:'Bancária',desc:'Contas, créditos, transferências, cofres',texto:'Representar o(s) Mandante(s) perante qualquer instituição de crédito ou entidade bancária, para abrir, movimentar, transferir e encerrar contas bancárias de qualquer tipo, subscrever, resgatar ou transferir depósitos e produtos financeiros, contratar, renegociar ou amortizar créditos e empréstimos, aceder e movimentar cofres, emitir, endossar, depositar e levantar cheques, assinar contratos e documentos conexos e praticar todos os actos bancários necessários.'},
-  {id:'veiculos',titulo:'Veículos',desc:'Compra, venda, registo automóvel, IMT',texto:'Comprar, vender, permutar, hipotecar ou por qualquer forma dispor de quaisquer veículos automóveis, motociclos ou outros, pelos preços e condições que entender(em), podendo outorgar e assinar os respectivos contratos, requerimentos, declarações e documentos, requerer e levantar livretes, documentos únicos e certidões junto da Conservatória do Registo Automóvel, do IMT e demais entidades competentes.'},
+  {id:'imoveis',titulo:'Imóveis',desc:'Compra, venda, permuta, hipoteca, escrituras',texto:'Comprar, vender, permutar, dar e receber de arrendamento, hipotecar, onerar e por qualquer forma dispor de quaisquer bens imóveis, frações autónomas ou direitos reais sobre os mesmos, pelos preços, com os prazos e demais condições que entender(em) convenientes, podendo outorgar e assinar todos os contratos, escrituras, contratos-promessa e documentos autenticados necessários, pagar e receber os preços, dar e receber quitação, e, em geral, praticar todos os atos conexos, junto de Conservatórias, Câmaras Municipais, Notários, Advogados, Solicitadores, Balcões Casa Pronta e Casa Simples, Finanças e demais entidades.'},
+  {id:'financas',titulo:'Finanças / AT',desc:'IMI, IMT, IRS, e-Balcão, certidões',texto:'Representar o(s) Mandante(s) perante a Autoridade Tributária e Aduaneira (AT), incluindo qualquer Serviço de Finanças, o Portal das Finanças e o e-Balcão, para todos os efeitos legais, nomeadamente: pedir e levantar certidões, liquidar, pagar, contestar, reclamar e recorrer de impostos (IMI, IMT, IUC, IRS, IRC, IVA, Imposto do Selo), submeter declarações, alterar domicílio fiscal, aceder e consultar informação fiscal, nomear representante fiscal e praticar todos os atos conexos.'},
+  {id:'seg-social',titulo:'Segurança Social',desc:'Prestações, reformas, Segurança Social Direta',texto:'Representar o(s) Mandante(s) perante os Serviços da Segurança Social, incluindo o portal da Segurança Social Direta, para praticar todos os atos relativos a inscrições, alterações, pedidos de prestações sociais, reformas, pensões, subsídios, certidões e demais procedimentos administrativos.'},
+  {id:'conservatorias',titulo:'Conservatórias',desc:'Predial, Comercial, Registo Civil',texto:'Representar o(s) Mandante(s) perante qualquer Conservatória do Registo Predial, Comercial, Civil ou Automóvel, bem como junto dos balcões integrados (Casa Pronta, Casa Simples, Balcão das Heranças, Balcão das Sucessões, Empresa Online, Empresa na Hora), para requerer, outorgar, assinar e levantar registos, averbamentos, certidões, habilitações de herdeiros e todos os atos necessários.'},
+  {id:'bancaria',titulo:'Bancária',desc:'Contas, créditos, transferências, cofres',texto:'Representar o(s) Mandante(s) perante qualquer instituição de crédito ou entidade bancária, para abrir, movimentar, transferir e encerrar contas bancárias de qualquer tipo, subscrever, resgatar ou transferir depósitos e produtos financeiros, contratar, renegociar ou amortizar créditos e empréstimos, aceder e movimentar cofres, emitir, endossar, depositar e levantar cheques, assinar contratos e documentos conexos e praticar todos os atos bancários necessários.'},
+  {id:'veiculos',titulo:'Veículos',desc:'Compra, venda, registo automóvel, IMT',texto:'Comprar, vender, permutar, hipotecar ou por qualquer forma dispor de quaisquer veículos automóveis, motociclos ou outros, pelos preços e condições que entender(em), podendo outorgar e assinar os respetivos contratos, requerimentos, declarações e documentos, requerer e levantar livretes, documentos únicos e certidões junto da Conservatória do Registo Automóvel, do IMT e demais entidades competentes.'},
   {id:'herancas',titulo:'Heranças / Partilhas',desc:'Habilitação de herdeiros, partilhas',texto:'Representar o(s) Mandante(s) em quaisquer processos de habilitação de herdeiros, inventário, partilha judicial ou extrajudicial de heranças, podendo aceitar ou repudiar heranças e legados com ou sem benefício de inventário, licitar, arrematar, requerer adjudicações, outorgar escrituras de partilha, assinar mapas e todos os documentos necessários, junto de Conservatórias, Notários, Cartórios, Balcão das Heranças, Tribunais e demais entidades.'},
-  {id:'representacao',titulo:'Representação legal',desc:'Tribunal, notário, advogado',texto:'Representar o(s) Mandante(s) em quaisquer processos, procedimentos ou diligências junto de Tribunais, Ministério Público, Notários, Advogados, Solicitadores, Agentes de Execução, Centros de Arbitragem, Julgados de Paz e demais entidades públicas ou privadas, podendo confessar, desistir ou transigir em acções judiciais e praticar todos os actos conexos.'},
-  {id:'camara',titulo:'Câmara Municipal',desc:'Licenciamento, urbanismo, certidões',texto:'Representar o(s) Mandante(s) perante quaisquer Câmaras Municipais, Juntas de Freguesia, Entidades Regionais e demais órgãos da Administração Pública Local, para requerer e levantar licenças, certidões, alvarás, aprovações de projectos, vistorias, participações urbanísticas e todos os documentos relativos a imóveis e procedimentos administrativos municipais.'},
-  {id:'contratos',titulo:'Contratos em geral',desc:'Arrendamento, prestação de serviços',texto:'Celebrar, renegociar, denunciar ou resolver contratos de arrendamento, prestação de serviços, fornecimento de água, electricidade, gás, comunicações e outros serviços domésticos, bem como quaisquer outros contratos de natureza patrimonial ou administrativa, representando o(s) Mandante(s) perante as respectivas contrapartes e prestadores.'},
+  {id:'representacao',titulo:'Representação legal',desc:'Tribunal, notário, advogado',texto:'Representar o(s) Mandante(s) em quaisquer processos, procedimentos ou diligências junto de Tribunais, Ministério Público, Notários, Advogados, Solicitadores, Agentes de Execução, Centros de Arbitragem, Julgados de Paz e demais entidades públicas ou privadas, podendo confessar, desistir ou transigir em ações judiciais e praticar todos os atos conexos.'},
+  {id:'camara',titulo:'Câmara Municipal',desc:'Licenciamento, urbanismo, certidões',texto:'Representar o(s) Mandante(s) perante quaisquer Câmaras Municipais, Juntas de Freguesia, Entidades Regionais e demais órgãos da Administração Pública Local, para requerer e levantar licenças, certidões, alvarás, aprovações de projetos, vistorias, participações urbanísticas e todos os documentos relativos a imóveis e procedimentos administrativos municipais.'},
+  {id:'contratos',titulo:'Contratos em geral',desc:'Arrendamento, prestação de serviços',texto:'Celebrar, renegociar, denunciar ou resolver contratos de arrendamento, prestação de serviços, fornecimento de água, eletricidade, gás, comunicações e outros serviços domésticos, bem como quaisquer outros contratos de natureza patrimonial ou administrativa, representando o(s) Mandante(s) perante as respetivas contrapartes e prestadores.'},
   {id:'subrogacao',titulo:'Substabelecimento (sub-rogação)',desc:'Poder de transferir a procuração a terceiros',texto:'Com a faculdade de substabelecer, no todo ou em parte, os poderes ora conferidos, com ou sem reserva dos mesmos para si.'}
 ];
 
@@ -856,8 +1124,8 @@ function renderPoderesDetalhes(){
   if(!activos.length){det.innerHTML='';return;}
   det.innerHTML=`
     <div class="cond-block cond-block-amber" style="margin-top:0">
-      <div class="cond-block-title">Texto dos poderes seleccionados</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:.6rem">Podes editar o texto de cada bloco antes de gerar o documento. Os blocos aparecem pela ordem em que estão seleccionados.</div>
+      <div class="cond-block-title">Texto dos poderes selecionados</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:.6rem">Podes editar o texto de cada bloco antes de gerar o documento. Os blocos aparecem pela ordem em que estão selecionados.</div>
       ${activos.map(p=>`
         <div style="margin-bottom:1rem">
           <label class="form-label" style="display:block;margin-bottom:4px">${p.titulo}</label>
@@ -1037,7 +1305,7 @@ function textoOutorgante(o){
     const gerCC=o.gerCC?`, portador${gerIsMasc?'':'a'} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}${o.gerCCVal?`, válido até ${fmtDataPT(o.gerCCVal)}`:''}`:'';
     const gerNIF=o.gerNIF?`, e número de identificação fiscal ${o.gerNIF}`:'';
     const gerMor=o.gerMorada?`, residente em ${o.gerMorada}`:'';
-    return `${o.empNome}, pessoa colectiva número ${o.empNIF}, com sede em ${o.empSede}${capital}${matricula}${certPerm}, aqui representada pelo ${qualidade} ${o.gerNome}${gerEC}${gerNat}${gerCC}${gerNIF}${gerMor}`;
+    return `${o.empNome}, pessoa coletiva número ${o.empNIF}, com sede em ${o.empSede}${capital}${matricula}${certPerm}, aqui representada pelo ${qualidade} ${o.gerNome}${gerEC}${gerNat}${gerCC}${gerNIF}${gerMor}`;
   }
   // Singular
   const isMasc=o.genero==='M';
@@ -1061,25 +1329,86 @@ function textoOutorgante(o){
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEXTO — poderes, validade, atuação, encerramento
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Converte índice 0,1,2... em a), b), c)...
+function letraAlinea(i){
+  return String.fromCharCode(97+i)+')';  // 97 = 'a'
+}
+
+// Devolve o bloco de identificação de bens a colocar ANTES das cláusulas
+// Retorna string multi-linha (linhas separadas por \n) ou '' se não houver nada
+function textoBensIdentificados(){
+  const linhas=[];
+  const imoveis=textoImoveisLista();
+  const contas=textoContasLista();
+  const veiculos=textoVeiculosLista();
+  const herancas=textoHerancasLista();
+  const outros=textoOutrosLista();
+
+  function emitirCategoria(titulo,itens){
+    if(!itens.length)return;
+    linhas.push(titulo.toUpperCase());
+    itens.forEach((it,i)=>linhas.push(`${letraAlinea(i)} ${it}`));
+    linhas.push(''); // linha em branco entre categorias
+  }
+
+  emitirCategoria('Bens Imóveis',imoveis);
+  emitirCategoria('Contas Bancárias',contas);
+  emitirCategoria('Veículos',veiculos);
+  emitirCategoria('Heranças',herancas);
+  outros.forEach(cat=>emitirCategoria(cat.titulo,cat.itens));
+
+  // Remove última linha em branco
+  while(linhas.length&&!linhas[linhas.length-1])linhas.pop();
+  return linhas.join('\n');
+}
+
+// Devolve mapa com flags e referências aos bens supra identificados
+function referenciasBens(){
+  return{
+    imoveis:{presente:textoImoveisLista().length>0,ref:'bens imóveis supra identificados'},
+    contas:{presente:textoContasLista().length>0,ref:'contas bancárias e valores supra identificados'},
+    veiculos:{presente:textoVeiculosLista().length>0,ref:'veículos supra identificados'},
+    herancas:{presente:textoHerancasLista().length>0,ref:'heranças supra identificadas'},
+    outros:textoOutrosLista().filter(c=>c.ref).map(c=>c.ref)
+  };
+}
+
 function textoPoderes(){
   const activos=PODERES.filter(p=>document.getElementById('poder-'+p.id)?.checked);
-  if(!activos.length)return'[Sem poderes seleccionados]';
-  // Ajustes: se substabelecimento está activo como poder E também o toggle dedicado, evita duplicação
+  if(!activos.length)return'[Sem poderes selecionados]';
   const subtogglActivo=document.getElementById('toggle-substabelecer').checked;
   const filtrados=activos.filter(p=>!(p.id==='subrogacao'&&subtogglActivo));
 
-  // Obter descrição dos imóveis (se aplicável) para anexar aos poderes de imóveis/heranças/finanças
-  const imoveisTxt=textoImoveisLista();
-  const PODERES_COM_IMOVEIS=['imoveis','herancas','financas'];
+  const refs=referenciasBens();
+
+  // Mapeamento: quando cada poder tem bens associados, que referência usar
+  const POD_REF={
+    imoveis:()=>refs.imoveis.presente?refs.imoveis.ref:null,
+    herancas:()=>refs.herancas.presente?refs.herancas.ref:(refs.imoveis.presente?'heranças e respetivos bens supra identificados':null),
+    financas:()=>{
+      const lista=[];
+      if(refs.imoveis.presente)lista.push('bens imóveis');
+      if(refs.veiculos.presente)lista.push('veículos');
+      if(refs.herancas.presente)lista.push('heranças');
+      return lista.length?`${lista.join(', ')} supra identificado${lista.length>1?'s':''}`:null;
+    },
+    bancaria:()=>refs.contas.presente?refs.contas.ref:null,
+    veiculos:()=>refs.veiculos.presente?refs.veiculos.ref:null,
+  };
 
   const textos=filtrados.map(p=>{
     let t=document.getElementById('poder-texto-'+p.id)?.value||p.texto;
-    if(imoveisTxt&&PODERES_COM_IMOVEIS.includes(p.id)){
-      // Anexa referência aos imóveis no fim do texto do poder
-      // Remove ponto(s) final(is) para ficar a frase contínua
+    const refFn=POD_REF[p.id];
+    const ref=refFn?refFn():null;
+    if(ref){
+      // Tira ponto(s) final(is) e acrescenta ", relativamente a(o)(s) X"
       t=t.replace(/\.+\s*$/,'');
-      const multiplo=imoveisTxt.startsWith('1)');
-      t+=`, nomeadamente no que respeita ${multiplo?'aos seguintes imóveis':'ao imóvel'}: ${imoveisTxt}.`;
+      // Escolher "aos / às" consoante se começa por feminino ou masculino
+      // "contas bancárias / heranças" → "às"; tudo resto → "aos"
+      const femPluralStart=/^(contas|heranças)/i.test(ref);
+      const artigo=femPluralStart?'às':'aos';
+      t+=`, relativamente ${artigo} ${ref}.`;
     }
     return t;
   });
@@ -1149,8 +1478,9 @@ async function gerarProcuracao(){
 
     const verbo=mandantes.length>1?'constituem':'constitui';
     const possessivo=mandantes.length>1?'seus bastantes procuradores':'seu bastante procurador';
-    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem confere(m) os poderes necessários para:`;
+    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem confere(m) os poderes necessários para que:`;
 
+    const TXT_Bens=textoBensIdentificados();
     const TXT_Poderes=textoPoderes();
     const TXT_Validade=textoValidade();
     const TXT_Atuacao=textoAtuacaoMandatarios(mandatarios);
@@ -1167,7 +1497,7 @@ async function gerarProcuracao(){
     const Cartorio=v('cartorio-nome');
 
     const data={
-      TXT_Mandantes,TXT_Mandatarios,TXT_Abertura,TXT_Poderes,
+      TXT_Mandantes,TXT_Mandatarios,TXT_Abertura,TXT_Bens,TXT_Poderes,
       TXT_Validade,TXT_Atuacao,TXT_Substabelecimento,TXT_Clausulas_Livres,
       Local_Outorga,Data_Outorga_Extenso,Tipo_Documento,Cartorio
     };
