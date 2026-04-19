@@ -915,8 +915,10 @@ async function gerarContrato(){
   showToast('A gerar contrato...','');
   try{
     // ── 1. Carregar bibliotecas ────────────────────────────────────────────────
-    if(!window.PizZip){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');}
-    if(!window.docxtemplater){await loadScript('https://cdn.jsdelivr.net/npm/docxtemplater@3.44.0/build/docxtemplater.js');}
+    if(!window.PizZip){await loadScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');}
+    if(!window.Docxtemplater&&!window.docxtemplater){await loadScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');}
+    const DocxClass=window.Docxtemplater||window.docxtemplater;
+    if(!DocxClass)throw new Error('docxtemplater não carregou.');
 
     // ── 2. Recolher dados ─────────────────────────────────────────────────────
     const v=id=>document.getElementById(id)?.value||'';
@@ -1006,11 +1008,24 @@ async function gerarContrato(){
       `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_CPCV.docx:/content`,
       {headers:{Authorization:'Bearer '+token}}
     );
-    if(!templateRes.ok) throw new Error(`Template não encontrado (${templateRes.status}). Confirma que TEMPL_CPCV.docx existe em Templates/`);
+    if(!templateRes.ok){
+      // Fallback — seleccionar template manualmente
+      showToast('Template não encontrado no SP — selecciona o ficheiro TEMPL_CPCV.docx manualmente','error');
+      const templateBufManual = await new Promise((resolve,reject)=>{
+        const input=document.createElement('input');input.type='file';input.accept='.docx';
+        input.onchange=async e=>{const f=e.target.files[0];if(!f)reject(new Error('Cancelado'));else resolve(await f.arrayBuffer());};
+        input.click();
+      });
+      const zip2=new PizZip(templateBufManual);
+      const dt2=new DocxClass(zip2,{paragraphLoop:true,linebreaks:true});
+      dt2.render({TXT_Vendedores,TXT_Compradores,TXT_Imovel,TXT_Onus,Preco_Total_Fmt,Preco_Total_Extenso,TXT_Pagamento,TXT_Cert_Energetico,TXT_LU,Data_Escritura_Extenso,Email_Vendedor,Email_Comprador,TXT_Mediacao,TXT_Clausula_Especial,Local_Assinatura,Data_Assinatura_Extenso,Camara_Municipal});
+      const out2=dt2.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const url2=URL.createObjectURL(out2);const a2=document.createElement('a');a2.href=url2;a2.download=`CPCV.docx`;a2.click();URL.revokeObjectURL(url2);
+      showToast('Contrato gerado (download)!','success');return;
+    }
     const templateBuf=await templateRes.arrayBuffer();
-
     const zip=new PizZip(templateBuf);
-    const dt=new docxtemplater(zip,{paragraphLoop:true,linebreaks:true});
+    const dt=new DocxClass(zip,{paragraphLoop:true,linebreaks:true});
     dt.render({
       TXT_Vendedores,TXT_Compradores,TXT_Imovel,TXT_Onus,
       Preco_Total_Fmt,Preco_Total_Extenso,TXT_Pagamento,
