@@ -104,13 +104,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
   <div class="topbar-actions">
-    <span class="rascunho-badge" id="rascunho-status" style="display:none">
-      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 5v3.5l2 1.5"/></svg>
-      Rascunho guardado
-    </span>
-    <button class="btn" onclick="guardarRascunho()">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>
-      Guardar rascunho
+    <button class="btn btn-sm" onclick="selecionarTemplate()" id="btn-template" title="Carregar template Word">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4"/></svg>
+      <span id="btn-template-label">Selecionar template</span>
     </button>
     <button class="btn btn-success btn-lg" onclick="gerarProcuracao()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
@@ -120,31 +116,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 </div>
 
 <div class="container">
-
-  <!-- PASTA DO CLIENTE -->
-  <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
-    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div class="form-label" style="margin-bottom:4px">Pasta do cliente</div>
-        <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">Se seleccionada, permite guardar rascunho e a procuração é guardada na pasta. Sem pasta, só é possível download.</div>
-        <div style="position:relative">
-          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" style="padding-right:2rem" disabled>
-          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
-        </div>
-        <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
-          <span id="pasta-selecionada-nome"></span>
-        </div>
-      </div>
-      <div style="display:flex;gap:.5rem;flex-shrink:0;padding-top:1.1rem">
-        <button class="btn btn-sm" onclick="carregarPastasSP()" id="btn-carregar-pastas">
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
-          Atualizar
-        </button>
-        <button class="btn btn-sm" onclick="carregarRascunhoPasta()" id="btn-carregar-rascunho" disabled>Carregar rascunho</button>
-      </div>
-    </div>
-  </div>
 
   <!-- 1. TIPO DE DOCUMENTO -->
   <div class="section-card">
@@ -314,37 +285,6 @@ const SOLICITADORAS={
     morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora'
   }
 };
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// AUTH — MSAL (mesma app registada do CPCV)
-// ═══════════════════════════════════════════════════════════════════════════════
-const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
-const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
-const SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read'];
-
-async function getGraphToken(){
-  // Se o portal já abriu esta janela, reaproveita o token do parent
-  if(window.opener&&window.opener.graphToken){return window.opener.graphToken;}
-  // Caso contrário, autenticação própria via MSAL
-  if(!window.msal){await loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js');}
-  if(!window._msalClient){
-    window._msalClient=new msal.PublicClientApplication({
-      auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:window.location.origin+window.location.pathname}
-    });
-    await window._msalClient.initialize();
-  }
-  const accounts=window._msalClient.getAllAccounts();
-  const acct=accounts[0];
-  try{
-    const res=acct
-      ?await window._msalClient.acquireTokenSilent({scopes:SCOPES,account:acct})
-      :await window._msalClient.acquireTokenPopup({scopes:SCOPES});
-    return res.accessToken;
-  }catch(e){
-    const res=await window._msalClient.acquireTokenPopup({scopes:SCOPES});
-    return res.accessToken;
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS — extenso, datas, utilitários
@@ -672,151 +612,65 @@ function renderPoderesDetalhes(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PASTA DO CLIENTE — SharePoint
+// TEMPLATE — guardado localmente em IndexedDB (não depende de pasta/SP)
 // ═══════════════════════════════════════════════════════════════════════════════
-let pastasSP=[],pastaSeleccionada=null;
-async function carregarPastasSP(){
-  const btn=document.getElementById('btn-carregar-pastas');
-  const input=document.getElementById('pasta-search');
-  btn.textContent='A carregar...';btn.disabled=true;
-  input.placeholder='A carregar pastas...';
-  try{
-    const token=await getGraphToken();
-    const drivesRes=await fetch(
-      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
-      {headers:{Authorization:'Bearer '+token}}
-    );
-    if(!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
-    const drives=await drivesRes.json();
-    const avencasDrive=drives.value.find(d=>d.name==='AVENCAS');
-    if(!avencasDrive) throw new Error('Biblioteca AVENCAS não encontrada');
-    // Carrega pastas de AVENCAS (raiz + REMAX) — ajusta se quiseres outra fonte
-    const todasPastas=[];
-    const raizRes=await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root/children?$top=500&$orderby=name`,
-      {headers:{Authorization:'Bearer '+token}}
-    );
-    if(raizRes.ok){
-      const raiz=await raizRes.json();
-      for(const f of (raiz.value||[]).filter(p=>p.folder)){
-        // Adiciona a pasta raiz
-        todasPastas.push({id:f.id,nome:f.name,driveId:avencasDrive.id,webUrl:f.webUrl});
-        // Se for REMAX ou similar, também carrega as subpastas
-        if(['REMAX','IDEALISTA','FORNECEDORES'].includes(f.name.toUpperCase())){
-          const subRes=await fetch(
-            `https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/items/${f.id}/children?$top=500&$orderby=lastModifiedDateTime desc`,
-            {headers:{Authorization:'Bearer '+token}}
-          );
-          if(subRes.ok){
-            const sub=await subRes.json();
-            (sub.value||[]).filter(p=>p.folder).forEach(sp=>{
-              todasPastas.push({id:sp.id,nome:`${f.name} / ${sp.name}`,driveId:avencasDrive.id,webUrl:sp.webUrl});
-            });
-          }
-        }
-      }
-    }
-    pastasSP=todasPastas;
-    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;
-    input.disabled=false;
-    showToast(`${pastasSP.length} pastas carregadas`,'success');
-  }catch(e){
-    input.placeholder='Erro ao carregar — clica em Atualizar';
-    showToast('Erro: '+e.message,'error');
-  }
-  btn.textContent='↺ Atualizar';btn.disabled=false;
-}
-function pesquisarPastas(){
-  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
-  const dropdown=document.getElementById('pasta-dropdown');
-  if(!q){dropdown.style.display='none';return;}
-  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,10);
-  dropdown.innerHTML=res.length?res.map(p=>`<div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''"><div style="font-weight:500;font-family:'DM Mono',monospace">${p.nome}</div></div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
-  dropdown.style.display='block';
-}
-function selecionarPasta(pasta){
-  pastaSeleccionada=pasta;
-  document.getElementById('pasta-search').value=pasta.nome;
-  document.getElementById('pasta-dropdown').style.display='none';
-  document.getElementById('pasta-selecionada-nome').textContent=pasta.nome;
-  document.getElementById('pasta-selecionada').style.display='block';
-  document.getElementById('btn-carregar-rascunho').disabled=false;
-  document.getElementById('page-sub').textContent=pasta.nome;
-}
-document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown'))document.getElementById('pasta-dropdown').style.display='none';});
+let templateBuffer=null; // ArrayBuffer do TEMPL_PROC.docx carregado
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// RASCUNHO
-// ═══════════════════════════════════════════════════════════════════════════════
-function recolherDados(){
-  const dados={};
-  document.querySelectorAll('.form-input,.form-select,.form-textarea').forEach(el=>{if(el.id)dados[el.id]=el.value;});
-  document.querySelectorAll('input[type=checkbox]').forEach(el=>{if(el.id)dados[el.id]=el.checked;});
-  dados._mandantesCount=document.getElementById('mandantes-container').querySelectorAll('.outorgante-block').length;
-  dados._mandatariosCount=document.getElementById('mandatarios-container').querySelectorAll('.outorgante-block').length;
-  // Tipo de pessoa (singular / empresa / profissional) de cada outorgante
-  dados._tipos={};
-  document.querySelectorAll('.outorgante-block').forEach(b=>{
-    const t=b.querySelector('.type-btn.active')?.textContent||'';
-    let tipo='singular';
-    if(t.includes('Empresa'))tipo='empresa';
-    else if(t.includes('Solicitador')||t.includes('Advogado'))tipo='profissional';
-    dados._tipos[b.id]=tipo;
+function openTemplateDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('lbc-proc-template',1);
+    req.onupgradeneeded=()=>{req.result.createObjectStore('templates');};
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error);
   });
-  return dados;
 }
-function restaurarDados(dados){
-  const mc=dados._mandantesCount||1;
-  const nc=dados._mandatariosCount||1;
-  document.getElementById('mandantes-container').innerHTML='';mandantesCount=0;
-  document.getElementById('mandatarios-container').innerHTML='';mandatariosCount=0;
-  for(let i=0;i<mc;i++)addOutorgante('mandantes');
-  for(let i=0;i<nc;i++)addOutorgante('mandatarios');
-  // Tipo pessoa (importante fazer ANTES de restaurar valores, para os campos existirem visíveis)
-  if(dados._tipos){
-    Object.entries(dados._tipos).forEach(([id,t])=>{if(document.getElementById(id))setTipoPessoa(id,t);});
-  }
-  // Valores
-  Object.entries(dados).forEach(([id,val])=>{
-    if(id.startsWith('_'))return;
-    const el=document.getElementById(id);
-    if(!el)return;
-    if(el.type==='checkbox')el.checked=val;
-    else el.value=val;
+async function guardarTemplateDB(buf){
+  const db=await openTemplateDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('templates','readwrite');
+    tx.objectStore('templates').put(buf,'TEMPL_PROC');
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
   });
-  // Re-trigger
-  document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{if(el.id)onEstadoCivil(el.id.replace('-estado-civil',''));});
-  document.querySelectorAll('[id$="-conjuge-outorgante"]').forEach(el=>{if(el.id)onConjugeOutorgante(el.id.replace('-conjuge-outorgante',''));});
-  onTipoDocumentoChange();onValidadeChange();onClausulasLivresChange();updateDataOutorgaExtenso();
-  // Poderes
-  PODERES.forEach(p=>{const c=document.getElementById('poder-'+p.id);if(c)document.getElementById('poder-toggle-'+p.id).classList.toggle('active',c.checked);});
-  renderPoderesDetalhes();
+}
+async function carregarTemplateDB(){
+  try{
+    const db=await openTemplateDB();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction('templates','readonly');
+      const req=tx.objectStore('templates').get('TEMPL_PROC');
+      req.onsuccess=()=>res(req.result||null);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){return null;}
 }
 
-async function guardarRascunho(){
-  if(!pastaSeleccionada){showToast('Sem pasta associada — só é possível download','error');return;}
-  const json=JSON.stringify(recolherDados(),null,2);
-  const blob=new Blob([json],{type:'application/json'});
-  try{
-    const token=await getGraphToken();
-    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_PROC.json:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:blob});
-    if(!res.ok)throw new Error(res.status);
-    document.getElementById('rascunho-status').style.display='inline-flex';
-    document.getElementById('footer-info').textContent='Guardado em '+pastaSeleccionada.nome+' às '+new Date().toLocaleTimeString('pt-PT');
-    showToast('Rascunho guardado!','success');
-  }catch(e){showToast('Erro ao guardar: '+e.message,'error');}
+async function selecionarTemplate(){
+  const buf=await new Promise((resolve,reject)=>{
+    const inp=document.createElement('input');inp.type='file';inp.accept='.docx';
+    inp.onchange=async e=>{const f=e.target.files[0];if(!f)reject(new Error('Cancelado'));else resolve(await f.arrayBuffer());};
+    inp.click();
+  }).catch(()=>null);
+  if(!buf)return;
+  templateBuffer=buf;
+  try{await guardarTemplateDB(buf);}catch(e){console.warn('Não foi possível gravar template localmente:',e);}
+  atualizarEstadoTemplate(true);
+  showToast('Template carregado e guardado localmente','success');
 }
-async function carregarRascunhoPasta(){
-  if(!pastaSeleccionada)return;
-  try{
-    const token=await getGraphToken();
-    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_PROC.json:/content`,{headers:{'Authorization':'Bearer '+token}});
-    if(!res.ok){showToast('Nenhum rascunho encontrado','');return;}
-    restaurarDados(await res.json());
-    document.getElementById('rascunho-status').style.display='inline-flex';
-    showToast('Rascunho carregado!','success');
-  }catch(e){showToast('Erro: '+e.message,'error');}
+function atualizarEstadoTemplate(ok){
+  const btn=document.getElementById('btn-template');
+  const lbl=document.getElementById('btn-template-label');
+  if(ok){
+    lbl.textContent='Template OK (trocar)';
+    btn.style.borderColor='var(--green)';
+    btn.style.color='var(--green)';
+  }else{
+    lbl.textContent='Selecionar template';
+    btn.style.borderColor='';
+    btn.style.color='';
+  }
 }
+
 function limparFormulario(){if(!confirm('Tens a certeza?'))return;location.reload();}
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -965,7 +819,6 @@ function textoSubstabelecimento(){
 // GERAR DOCUMENTO WORD
 // ═══════════════════════════════════════════════════════════════════════════════
 async function gerarProcuracao(){
-  showToast('A gerar procuração...','');
   try{
     if(!window.PizZip){await loadScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');}
     if(!window.Docxtemplater&&!window.docxtemplater){await loadScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');}
@@ -979,13 +832,21 @@ async function gerarProcuracao(){
     if(!mandantes.length)throw new Error('Tens de adicionar pelo menos um mandante.');
     if(!mandatarios.length)throw new Error('Tens de adicionar pelo menos um mandatário.');
 
+    // Garantir que temos template
+    if(!templateBuffer){
+      showToast('Selecciona primeiro o template TEMPL_PROC.docx','');
+      await selecionarTemplate();
+      if(!templateBuffer)return; // utilizador cancelou
+    }
+
+    showToast('A gerar procuração...','');
+
     const TXT_Mandantes=mandantes.map(textoOutorgante).join(';\n\n');
     const TXT_Mandatarios=mandatarios.map(textoOutorgante).join(';\n\n');
 
-    // Frase de abertura (ex: "Pelo presente instrumento, [Nome] constitui seu bastante procurador [Nome]...")
     const verbo=mandantes.length>1?'constituem':'constitui';
     const possessivo=mandantes.length>1?'seus bastantes procuradores':'seu bastante procurador';
-    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem ${mandatarios.length>1?'confere(m)':'confere(m)'} os poderes necessários para:`;
+    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem confere(m) os poderes necessários para:`;
 
     const TXT_Poderes=textoPoderes();
     const TXT_Validade=textoValidade();
@@ -1002,49 +863,15 @@ async function gerarProcuracao(){
     const Tipo_Documento=v('tipo-documento');
     const Cartorio=v('cartorio-nome');
 
-    // Carregar template — tenta SP primeiro; se falhar (sem auth ou offline), pede ficheiro manualmente
-    let templateBuf=null;
-    let token=null;
-    try{
-      token=await getGraphToken();
-      const drivesRes=await fetch(
-        'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
-        {headers:{Authorization:'Bearer '+token}}
-      );
-      if(drivesRes.ok){
-        const drives=await drivesRes.json();
-        const docsDrive=drives.value.find(d=>
-          d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos')
-        );
-        if(docsDrive){
-          const templateRes=await fetch(
-            `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_PROC.docx:/content`,
-            {headers:{Authorization:'Bearer '+token}}
-          );
-          if(templateRes.ok){templateBuf=await templateRes.arrayBuffer();}
-        }
-      }
-    }catch(e){
-      console.warn('SP indisponível, template será pedido manualmente:',e.message);
-    }
-
-    // Fallback: pede ficheiro manual
-    if(!templateBuf){
-      showToast('Sem acesso ao SharePoint — selecciona manualmente o TEMPL_PROC.docx','');
-      templateBuf=await new Promise((resolve,reject)=>{
-        const inp=document.createElement('input');inp.type='file';inp.accept='.docx';
-        inp.onchange=async e=>{const f=e.target.files[0];if(!f)reject(new Error('Cancelado'));else resolve(await f.arrayBuffer());};
-        inp.click();
-      });
-    }
-
     const data={
       TXT_Mandantes,TXT_Mandatarios,TXT_Abertura,TXT_Poderes,
       TXT_Validade,TXT_Atuacao,TXT_Substabelecimento,TXT_Clausulas_Livres,
       Local_Outorga,Data_Outorga_Extenso,Tipo_Documento,Cartorio
     };
 
-    const zip=new PizZip(templateBuf);
+    // Importante: usar um clone do ArrayBuffer — PizZip consome-o
+    const bufClone=templateBuffer.slice(0);
+    const zip=new PizZip(bufClone);
     const dt=new DocxClass(zip,{paragraphLoop:true,linebreaks:true});
     dt.render(data);
     const out=dt.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
@@ -1054,21 +881,9 @@ async function gerarProcuracao(){
     const dataAAAAMMDD=dataOutorga?fmtDataAAAAMMDD(dataOutorga):new Date().toISOString().slice(0,10).replace(/-/g,'');
     const primeiroMandante=mandantes[0];
     const nomeMandante=(primeiroMandante.tipo==='empresa'?primeiroMandante.empNome:primeiroMandante.nome)||'PROC';
-    const nomeDoc=`PROC_${dataAAAAMMDD}_${nomeMandante.substring(0,50).trim()}.docx`;
+    const nomeDoc=`PROC_${dataAAAAMMDD}_${nomeMandante.substring(0,60).trim()}.docx`;
 
-    // Guardar no SP SÓ se houver pasta seleccionada E token
-    if(pastaSeleccionada&&token){
-      try{
-        const ab=await out.arrayBuffer();
-        const upRes=await fetch(
-          `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content`,
-          {method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab}
-        );
-        if(upRes.ok)showToast('Procuração guardada na pasta!','success');
-      }catch(e){console.warn('Upload para SP falhou:',e);}
-    }
-
-    // Download local — sempre
+    // Download local
     const url=URL.createObjectURL(out);
     const a=document.createElement('a');a.href=url;a.download=nomeDoc;a.click();
     URL.revokeObjectURL(url);
@@ -1079,7 +894,7 @@ async function gerarProcuracao(){
 // ═══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded',()=>{
+window.addEventListener('DOMContentLoaded',async ()=>{
   renderPoderes();
   addOutorgante('mandantes');
   addOutorgante('mandatarios');
@@ -1088,10 +903,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   updateDataOutorgaExtenso();
   onTipoDocumentoChange();
   onValidadeChange();
-  // Carregar pastas automaticamente se token já estiver disponível
-  if(window.opener&&window.opener.graphToken){
-    carregarPastasSP();
-  }
+  // Carregar template guardado localmente, se existir
+  try{
+    const buf=await carregarTemplateDB();
+    if(buf){templateBuffer=buf;atualizarEstadoTemplate(true);}
+  }catch(e){/* silent */}
 });
 </script>
 </body>
