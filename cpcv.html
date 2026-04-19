@@ -1000,7 +1000,7 @@ async function gerarContrato(){
 
     // Assinatura
     const Local_Assinatura=v('local-assinatura')||'Évora';
-    const Data_Assinatura_Extenso=dataExtenso(v('data-assinatura'));
+    const Data_Assinatura_Extenso=fmtDataPT(v('data-assinatura'));
     const Camara_Municipal=v('camara-municipal');
 
     // ── 3. Carregar template e substituir ─────────────────────────────────────
