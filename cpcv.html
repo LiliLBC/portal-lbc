@@ -1097,7 +1097,7 @@ function textoOutorgante(o,i,total,papel){
   const ec=estadoCivilTexto(o.estadoCivil,o.genero);
   let txt=`${o.nome}, ${ec}, natural de ${o.naturalidade}, portador${!isMasc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)}, e número de identificação fiscal ${o.nif}, residente em ${o.morada}`;
   if(o.estadoCivil==='casado'&&o.regime){
-    txt+=`, casado${!isMasc?'a':''} no regime de ${regimenTexto(o.regime)}`;
+    txt+=`, ${isMasc?'casado':'casada'} no regime de ${regimenTexto(o.regime)}`;
     if(o.conjuge){
       const cg=o.conjuge;const cgF=cg.genero==='F';
       txt+=` com ${cg.nome}, natural de ${cg.naturalidade}, portador${cgF?'a':''} do cartão de cidadão com o número ${cg.cc}, válido até ${fmtDataPT(cg.ccVal)}, e NIF ${cg.nif}`;
@@ -1196,7 +1196,7 @@ async function getGraphToken(){
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function estadoCivilTexto(ec,genero){
   const f=genero==='F';
-  return{solteiro:`solteiro${f?'a':''}, maior`,casado:`casado${f?'a':''}`,divorciado:`divorciad${f?'a':'o'}`,viuvo:`viúvo${f?'a':''}`}[ec]||ec;
+  return{solteiro:f?'solteira, maior':'solteiro, maior',casado:f?'casada':'casado',divorciado:f?'divorciada':'divorciado',viuvo:f?'viúva':'viúvo'}[ec]||ec;
 }
 function regimenTexto(regime){
   return{'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','separacao-total':'separação total de bens','comunhao-geral':'comunhão geral'}[regime]||regime;
