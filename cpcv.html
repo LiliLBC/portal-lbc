@@ -1094,13 +1094,20 @@ function textoOutorgante(o,i,total,papel){
   if(o.tipo==='empresa'){
     return `${o.empNome}, pessoa coletiva número ${o.empNIF}, com sede em ${o.empSede}, aqui representada pelo seu gerente ${o.gerNome}, ${estadoCivilTexto(o.gerEC,o.gerGenero)}, natural de ${o.gerNatal}, portador do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${fmtDataPT(o.gerCCVal)}, e número de identificação fiscal ${o.gerNIF}`;
   }
-  const ec=estadoCivilTexto(o.estadoCivil,o.genero);
-  let txt=`${o.nome}, ${ec}, natural de ${o.naturalidade}, portador${!isMasc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)}, e número de identificação fiscal ${o.nif}, residente em ${o.morada}`;
-  if(o.estadoCivil==='casado'&&o.regime){
+  // Para casados com regime definido, omite-se o estado civil inicial (aparece depois
+  // ligado ao regime de bens + cônjuge). Para os outros estados civis, mostra-se logo.
+  const casadoComRegime=o.estadoCivil==='casado'&&o.regime;
+  const ecInicial=casadoComRegime?'':`, ${estadoCivilTexto(o.estadoCivil,o.genero)}`;
+  // Quando o cônjuge também outorga, a morada é partilhada e vai para o fim (plural "residentes").
+  // Nos restantes casos, a morada aparece logo a seguir à identificação da própria pessoa.
+  const moradaPartilhada=casadoComRegime&&o.conjuge;
+  const moradaInicial=moradaPartilhada?'':`, residente em ${o.morada}`;
+  let txt=`${o.nome}${ecInicial}, natural de ${o.naturalidade}, portador${!isMasc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)}, e número de identificação fiscal ${o.nif}${moradaInicial}`;
+  if(casadoComRegime){
     txt+=`, ${isMasc?'casado':'casada'} no regime de ${regimenTexto(o.regime)}`;
     if(o.conjuge){
       const cg=o.conjuge;const cgF=cg.genero==='F';
-      txt+=` com ${cg.nome}, natural de ${cg.naturalidade}, portador${cgF?'a':''} do cartão de cidadão com o número ${cg.cc}, válido até ${fmtDataPT(cg.ccVal)}, e NIF ${cg.nif}`;
+      txt+=` com ${cg.nome}, natural de ${cg.naturalidade}, portador${cgF?'a':''} do cartão de cidadão com o número ${cg.cc}, válido até ${fmtDataPT(cg.ccVal)}, e NIF ${cg.nif}, residentes em ${o.morada}`;
     }
   }
   return txt;
