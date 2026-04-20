@@ -348,13 +348,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <span class="form-hint">Deixa em branco se isento. Aparece na secção INFORMEI.</span>
       </div>
 
-      <hr class="divider">
-
-      <!-- Cláusulas condicionais -->
-      <div class="toggle-row">
-        <span class="toggle-label">Advertência de condomínio</span>
-        <label class="toggle-switch"><input type="checkbox" id="toggle-condominio"><span class="toggle-slider"></span></label>
+      <!-- Condomínio (só fração) -->
+      <div id="condominig-section" style="display:none">
+        <hr class="divider">
+        <div class="toggle-row">
+          <span class="toggle-label">Declaração de condomínio (art.º 1424-A CC)</span>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-condominig" onchange="onCondominioChange()"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="cond-block" id="condominig-existe" style="display:none">
+          <div class="preview-text">ARQUIVO declaração de condomínio em conformidade com o disposto no artigo 1424º-A do Código Civil, para a fração objeto do presente contrato.</div>
+        </div>
+        <div class="cond-block" id="condominig-nao-existe" style="display:none">
+          <div class="preview-text">A PARTE COMPRADORA declara que prescinde da declaração de condomínio do art.º 1424-Aº do Cód. Civil e foi por mim informada, para efeitos do disposto no art.º54 do Código do Notariado, que em consequência admite qualquer responsabilidade de dívidas ou encargos que possam existir até à data de hoje.</div>
+        </div>
       </div>
+
+      <hr class="divider">
       <div class="toggle-row">
         <span class="toggle-label">Verificação de empresa vendedora (Verificacao_Empresa_V)</span>
         <label class="toggle-switch"><input type="checkbox" id="toggle-emp-v"><span class="toggle-slider"></span></label>
@@ -687,32 +696,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div><div class="section-name">Mediação Imobiliária</div><div class="section-desc">Declaração obrigatória nos termos do art.º 40º da Lei 15/2013</div></div>
     </div>
     <div class="form-grid">
+      <!-- Prime Team por defeito -->
       <div class="toggle-row">
-        <span class="toggle-label">Houve intervenção de mediadora imobiliária</span>
+        <span class="toggle-label">PRIME TEAM – SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA &nbsp;<span style="color:var(--text-faint);font-weight:400">AMI 13123</span></span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-remax" checked onchange="onMediacaoChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <!-- Outra mediadora -->
+      <div class="toggle-row">
+        <span class="toggle-label">Houve intervenção de outra mediadora imobiliária</span>
         <label class="toggle-switch"><input type="checkbox" id="toggle-mediacao" onchange="onMediacaoChange()"><span class="toggle-slider"></span></label>
       </div>
-      <div class="cond-block" id="mediacao-fields" style="display:none">
-        <div class="cond-block-title">Dados da mediadora</div>
-        <div class="toggle-row" style="margin-bottom:.5rem">
-          <span class="toggle-label">REMAX Prime Team AMI 13123 (predefinida)</span>
-          <label class="toggle-switch"><input type="checkbox" id="toggle-remax" onchange="onRemaxChange()" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div id="mediadora-remax" class="cond-block" style="background:var(--green-light);border-color:#9FE1CB">
-          <div style="font-size:13px;font-weight:500">PRIME TEAM — Sociedade de Mediação Imobiliária, Unipessoal, Lda</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Licença AMI <strong>13123</strong></div>
-        </div>
-        <div id="mediadora-outra-fields" style="display:none;margin-top:.5rem">
-          <div class="form-grid form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Nome da mediadora <span>*</span></label>
-              <input type="text" class="form-input" id="mediadora-nome">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Licença AMI <span>*</span></label>
-              <input type="text" class="form-input" id="mediadora-ami">
-            </div>
-          </div>
-        </div>
+      <div id="mediacao-fields" style="display:none">
+        <div id="mediadoras-container"></div>
+        <button class="add-outorgante-btn" onclick="addMediadoraCV()" type="button" style="margin-top:.5rem">+ Adicionar mediadora</button>
       </div>
     </div>
   </div>
@@ -904,6 +900,17 @@ function onTipoPredioChange(){
   const val=document.getElementById('tipo-predio').value;
   document.getElementById('fracao-fields').style.display=val==='fracao'?'block':'none';
   document.getElementById('predio-desc-group').style.display=val&&val!=='fracao'?'block':'none';
+  // Condomínio só para fração
+  document.getElementById('condominig-section').style.display=val==='fracao'?'block':'none';
+  if(val!=='fracao'){
+    document.getElementById('condominig-existe').style.display='none';
+    document.getElementById('condominig-nao-existe').style.display='none';
+  }
+}
+function onCondominioChange(){
+  const tem=document.getElementById('toggle-condominig').checked;
+  document.getElementById('condominig-existe').style.display=tem?'block':'none';
+  document.getElementById('condominig-nao-existe').style.display=tem?'none':'block';
 }
 function onDistrateToggle(){
   document.getElementById('distrate-section').style.display=document.getElementById('toggle-distrate').checked?'block':'none';
@@ -937,14 +944,27 @@ function onPagamentoRestanteChange(){
   document.getElementById('apb-fields').style.display=val==='apb'?'block':'none';
   document.getElementById('cheque-rest-fields').style.display=val==='cheque'?'block':'none';
 }
+let mediadoraCVCnt=0;
 function onMediacaoChange(){
-  document.getElementById('mediacao-fields').style.display=document.getElementById('toggle-mediacao').checked?'block':'none';
+  const outra=document.getElementById('toggle-mediacao').checked;
+  document.getElementById('mediacao-fields').style.display=outra?'block':'none';
+  if(outra&&mediadoraCVCnt===0)addMediadoraCV();
 }
-function onRemaxChange(){
-  const remax=document.getElementById('toggle-remax').checked;
-  document.getElementById('mediadora-remax').style.display=remax?'block':'none';
-  document.getElementById('mediadora-outra-fields').style.display=remax?'none':'block';
+function addMediadoraCV(){
+  const idx=++mediadoraCVCnt;
+  const div=document.createElement('div');div.className='outorgante-block';div.id=`medcv-${idx}`;div.style.marginBottom='.5rem';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted)">Mediadora ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="document.getElementById('medcv-${idx}').remove()" type="button">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Nome da mediadora <span>*</span></label><input type="text" class="form-input" id="medcv-${idx}-nome" style="text-transform:uppercase" placeholder="Ex: REMAX ..."></div>
+      <div class="form-group"><label class="form-label">Licença AMI <span>*</span></label><input type="text" class="form-input" id="medcv-${idx}-ami" placeholder="Ex: 13123"></div>
+    </div>`;
+  document.getElementById('mediadoras-container').appendChild(div);
 }
+function onRemaxChange(){}
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500);}
@@ -1172,7 +1192,12 @@ function recolherDadosContrato(){
   const TXTImpostos=v('txt-impostos')?`--- ${v('txt-impostos')}.`:'';
 
   // Advertência condomínio
-  const TXTAdvert_Condominio=chk('toggle-condominio')?'--- Adverti os outorgantes para as obrigações inerentes ao regime de propriedade horizontal e condomínio, nomeadamente o pagamento das quotas de condomínio.':'';
+  let TXTAdvert_Condominio='';
+  if(document.getElementById('condominig-section')?.style.display!=='none'){
+    TXTAdvert_Condominio=chk('toggle-condominig')
+      ?'ARQUIVO declaração de condomínio em conformidade com o disposto no artigo 1424º-A do Código Civil, para a fração objeto do presente contrato.'
+      :'A PARTE COMPRADORA declara que prescinde da declaração de condomínio do art.º 1424-Aº do Cód. Civil e foi por mim informada, para efeitos do disposto no art.º54 do Código do Notariado, que em consequência admite qualquer responsabilidade de dívidas ou encargos que possam existir até à data de hoje.';
+  }
 
   // Empresa
   const Verificacao_Empresa_V=chk('toggle-emp-v')?'--- Verifiquei os poderes de representação da parte vendedora através da certidão de registo comercial em vigor.':'';
@@ -1250,12 +1275,19 @@ function recolherDadosContrato(){
   }
 
   // Mediação
-  const temMediacao=chk('toggle-mediacao');
-  const usaRemax=chk('toggle-remax');
-  const mediadoraNome=usaRemax?'PRIME TEAM — SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA':v('mediadora-nome');
-  const mediadoraAMI=usaRemax?'13123':v('mediadora-ami');
-  const TXT_Mediacao=temMediacao
-    ?`--- As partes declaram, nos termos do art.º 40.º da Lei n.º 15/2013, de 8 de fevereiro, que na presente transação houve intervenção da mediadora imobiliária ${mediadoraNome}, titular da licença AMI ${mediadoraAMI}.`
+  const primeTeamOn=chk('toggle-remax');
+  const outraOn=chk('toggle-mediacao');
+  const meds=[];
+  if(primeTeamOn)meds.push('PRIME TEAM – SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA, titular da licença AMI 13123');
+  if(outraOn){
+    document.querySelectorAll('[id^="medcv-"][id$="-nome"]').forEach(el=>{
+      const idx=el.id.replace('medcv-','').replace('-nome','');
+      const nome=el.value.trim();const ami=document.getElementById(`medcv-${idx}-ami`)?.value||'';
+      if(nome)meds.push(`${nome}, titular da licença AMI ${ami}`);
+    });
+  }
+  const TXT_Mediacao=meds.length
+    ?`--- As partes declaram, nos termos do art.º 40.º da Lei n.º 15/2013, de 8 de fevereiro, que na presente transação houve intervenção ${meds.length>1?'das Mediadoras Imobiliárias':'da Mediadora Imobiliária'} ${meds.join(' e ')}.`
     :'--- As partes declaram, nos termos do art.º 40.º da Lei n.º 15/2013, de 8 de fevereiro, que na presente transação não houve intervenção de mediadora imobiliária.';
 
   return{
