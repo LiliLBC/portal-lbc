@@ -3889,10 +3889,11 @@ async function servicosInit(){
   document.getElementById('serv-lista').style.display='none';
   document.getElementById('serv-vazio').style.display='none';
   try{
-    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields&$top=500&$orderby=fields/Data_Prazo asc`);
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields&$top=500`);
     const tarefas=(r.value||[])
       .map(i=>({id:i.id,...i.fields}))
-      .filter(i=>i[T.estado]!=='Concluída'&&i[T.estado]!=='Cancelada');
+      .filter(i=>i[T.estado]!=='Concluída'&&i[T.estado]!=='Cancelada')
+      .sort((a,b)=>new Date(a[T.prazo]||'9999')-new Date(b[T.prazo]||'9999'));
     servicosRender(tarefas);
   }catch(e){
     document.getElementById('serv-loading').style.display='none';
@@ -3963,8 +3964,8 @@ async function cliInit(){
       if(!lista)throw new Error('Lista "Clientes" não encontrada no SharePoint. Cria a lista primeiro.');
       cliListaId=lista.id;
     }
-    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items?$expand=fields&$top=500&$orderby=fields/Title`);
-    todosClientes=(r.value||[]).map(i=>({id:i.id,...i.fields}));
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items?$expand=fields&$top=500`);
+    todosClientes=(r.value||[]).map(i=>({id:i.id,...i.fields})).sort((a,b)=>(a[CLI.nome]||'').localeCompare(b[CLI.nome]||'','pt'));
     cliRenderLista(todosClientes);
   }catch(e){
     document.getElementById('cli-loading').style.display='none';
