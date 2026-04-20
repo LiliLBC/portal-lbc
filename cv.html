@@ -1134,7 +1134,7 @@ function textoOutorgante(o){
   if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.empNome}, NIF ${o.empNif}, com sede em ${o.empSede}${o.empCapital?', capital social de €'+o.empCapital:''}, neste ato representada por ${o.gerNome}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão com o número ${o.gerCC}, válido até ${o.gerVal}, NIF ${o.gerNif}, residente em ${o.gerMorada}`;}
   const g=o.genero==='F';
   let txt=`${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do ${o.tipoDoc} emitido pela República Portuguesa com o número ${o.numDoc}, válido até ${o.valDoc}, e número de identificação fiscal ${o.nif}`;
-  if(o.casado){const gc=o.conjGenero==='F';txt+=`, casado${g?'a':''} no regime de ${regimenMap[o.regime]||o.regime} com ${o.conjNome}, natural de ${o.conjNaturalidade}, portador${gc?'a':''} do ${o.conjTipoDoc} com o número ${o.conjNumDoc}, válido até ${o.conjValDoc}, NIF ${o.conjNif}, ambos residentes em ${o.morada}`;}
+  if(o.casado){const gc=o.conjGenero==='F';txt+=`, ${g?'casada':'casado'} no regime de ${regimenMap[o.regime]||o.regime} com ${o.conjNome}, natural de ${o.conjNaturalidade}, portador${gc?'a':''} do ${o.conjTipoDoc} com o número ${o.conjNumDoc}, válido até ${o.conjValDoc}, NIF ${o.conjNif}, ambos residentes em ${o.morada}`;}
   else txt+=`, ${ecTexto(o.estadoCivil,o.genero)}, residente em ${o.morada}`;
   return txt;
 }
@@ -1176,7 +1176,7 @@ function recolherDadosContrato(){
   const isFracao=tipoPredio==='fracao';
   const direito=v('direito-predio');
   const DtoSobrePredio=direito==='usufruto'?'o usufruto sobre o':direito==='superficie'?'o direito de superfície sobre o':'o';
-  const TXT_Fracao=isFracao?` imóvel constituído em regime de propriedade horizontal pela ${v('ap-ph')}, fração autónoma designada pela letra "${v('fracao-letra')}", composta por ${v('fracao-composicao')},`:'';
+  const TXT_Fracao=isFracao?`a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')}, composta por ${v('fracao-composicao')},`:'';
   const Descricao_Predio=isFracao?'':v('descricao-predio');
 
   // Distrate
