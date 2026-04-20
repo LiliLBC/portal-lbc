@@ -603,11 +603,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
             </select>
           </div>
           <div class="form-group" id="entrada-iban-group">
-            <label class="form-label">IBAN origem (comprador)</label>
+            <label class="form-label">IBAN comprador (origem) <span>*</span></label>
             <input type="text" class="form-input" id="entrada-iban" placeholder="PT50 ...">
           </div>
-          <div class="form-group" id="entrada-iban-destino-group" style="display:none">
-            <label class="form-label">IBAN destino (vendedor)</label>
+          <div class="form-group" id="entrada-iban-destino-group">
+            <label class="form-label">IBAN vendedor (destino) <span>*</span></label>
             <input type="text" class="form-input" id="entrada-iban-destino" placeholder="PT50 ...">
           </div>
         </div>
@@ -622,6 +622,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
           <option value="cheque">Cheque bancário</option>
           <option value="numerario">Numerário</option>
         </select>
+      </div>
+
+      <!-- Transferência remanescente -->
+      <div class="cond-block" id="trans-rest-fields" style="display:none">
+        <div class="cond-block-title">Dados da transferência</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">IBAN comprador (origem)</label>
+            <input type="text" class="form-input" id="trans-rest-iban-comprador" placeholder="PT50 ...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">IBAN vendedor (destino)</label>
+            <input type="text" class="form-input" id="trans-rest-iban-vendedor" placeholder="PT50 ...">
+          </div>
+        </div>
       </div>
 
       <!-- Cheque remanescente -->
@@ -918,6 +933,7 @@ function onAPBChange(){
 }
 function onPagamentoRestanteChange(){
   const val=document.getElementById('pagamento-restante').value;
+  document.getElementById('trans-rest-fields').style.display=val==='transferencia'?'block':'none';
   document.getElementById('apb-fields').style.display=val==='apb'?'block':'none';
   document.getElementById('cheque-rest-fields').style.display=val==='cheque'?'block':'none';
 }
@@ -1202,7 +1218,7 @@ function recolherDadosContrato(){
     if(meioRest==='apb'){
       TXT_APB=`--- Ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${v('apb-valor')} EUROS (${valorExtensoMaiusculas(v('apb-valor'))}) mediante transferência bancária da conta ${v('apb-conta-origem')} a creditar na conta ${v('apb-conta-destino')}.`;
     }else if(meioRest==='transferencia'){
-      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante transferência bancária${v('entrada-iban')?` da conta com o IBAN ${v('entrada-iban')}`:''}${v('entrada-iban-destino')?' para a conta com o IBAN '+v('entrada-iban-destino'):''}.`;
+      TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante transferência bancária${v('trans-rest-iban-comprador')?' da conta com o IBAN '+v('trans-rest-iban-comprador'):''}${v('trans-rest-iban-vendedor')?' para a conta com o IBAN '+v('trans-rest-iban-vendedor'):''}.`;
     }else if(meioRest==='cheque'){
       TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato mediante cheque bancário${v('cheque-rest-banco')?' sacado sobre o '+v('cheque-rest-banco'):''}${v('cheque-rest-num')?', com o número '+v('cheque-rest-num'):''}.`;
     }else{
@@ -1227,7 +1243,7 @@ function recolherDadosContrato(){
     }else if(meioRest==='cheque'){
       TXT_APB=`--- O remanescente do preço, no valor de ${v('preco-compra')} EUROS (${valorExtensoMaiusculas(v('preco-compra'))}), é pago na data da outorga da Escritura Pública/DPA mediante cheque bancário${v('cheque-rest-banco')?' sacado sobre o '+v('cheque-rest-banco'):''}${v('cheque-rest-num')?', com o número '+v('cheque-rest-num'):''}.`;
     }else if(meioRest==='transferencia'){
-      TXT_APB=`--- O remanescente do preço é liquidado na data da outorga da Escritura Pública/DPA mediante transferência bancária.`;
+      TXT_APB=`--- O remanescente do preço é liquidado na data da outorga da Escritura Pública/DPA mediante transferência bancária${v('trans-rest-iban-comprador')?' da conta com o IBAN '+v('trans-rest-iban-comprador'):''}${v('trans-rest-iban-vendedor')?' para a conta com o IBAN '+v('trans-rest-iban-vendedor'):''}.`;
     }else{
       TXT_APB=`--- O remanescente do preço é liquidado na data da outorga da Escritura Pública/DPA em numerário.`;
     }
