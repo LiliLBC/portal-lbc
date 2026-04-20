@@ -1607,7 +1607,95 @@ tbody tr:hover td{background:#FAFAF8}
         <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
       </div>
       <div class="screen" id="screen-clientes">
-        <div class="construcao-screen"><div class="construcao-icon">👤</div><div class="construcao-title">Clientes &amp; Serviços</div><div class="construcao-sub">Registo de clientes, histórico de serviços, adiantamentos e saldos. Em desenvolvimento — Fase 3.</div></div>
+
+        <!-- HEADER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="font-weight:600;font-size:15px">Lista Telefónica</div>
+            <div style="font-size:11px;color:var(--text-muted)">Clientes e contactos do escritório</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="cliNovoCliente()">+ Novo cliente</button>
+        </div>
+
+        <!-- FILTROS -->
+        <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;align-items:center">
+          <input class="form-input" id="cli-pesquisa" placeholder="Pesquisar nome, NIF, telefone..." style="flex:1;min-width:180px;font-size:12px" oninput="cliFiltrar()">
+          <select class="form-select" id="cli-filtro-tipo" style="width:140px;font-size:12px" onchange="cliFiltrar()">
+            <option value="">Todos os tipos</option>
+            <option value="Particular">Particular</option>
+            <option value="Empresa">Empresa</option>
+          </select>
+          <select class="form-select" id="cli-filtro-rel" style="width:150px;font-size:12px" onchange="cliFiltrar()">
+            <option value="">Todas as áreas</option>
+            <option value="Escrituras">Escrituras</option>
+            <option value="Processos">Processos</option>
+            <option value="Avenças">Avenças</option>
+            <option value="Tarefas">Tarefas</option>
+          </select>
+        </div>
+
+        <!-- LISTA -->
+        <div id="cli-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar clientes...</div></div>
+        <div id="cli-lista" style="display:none"></div>
+        <div id="cli-vazio" class="notice notice-info" style="display:none">Nenhum cliente encontrado.</div>
+
+        <!-- PAINEL LATERAL -->
+        <div id="cli-painel" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:200;overflow-y:auto;padding:1.25rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+            <div style="font-weight:600;font-size:14px" id="cli-painel-titulo">Novo cliente</div>
+            <button class="btn btn-sm" onclick="cliFecharPainel()">✕</button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group form-full">
+              <label class="form-label">Nome completo <span style="color:var(--red)">*</span></label>
+              <input class="form-input" id="cli-p-nome" style="text-transform:uppercase" placeholder="Nome em maiúsculas">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-select" id="cli-p-tipo">
+                <option value="Particular">Particular</option>
+                <option value="Empresa">Empresa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">NIF</label>
+              <input class="form-input" id="cli-p-nif" placeholder="Ex: 123456789">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefone / Telemóvel</label>
+              <input class="form-input" id="cli-p-tel" placeholder="Ex: 963 000 000" type="tel">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" id="cli-p-email" placeholder="email@exemplo.pt" type="email">
+            </div>
+            <div class="form-group form-full">
+              <label class="form-label">Morada</label>
+              <input class="form-input" id="cli-p-morada" placeholder="Rua, nº, localidade">
+            </div>
+            <div class="form-group form-full">
+              <label class="form-label">Relacionado com</label>
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:.3rem;font-size:12px;cursor:pointer"><input type="checkbox" id="cli-p-rel-esc" value="Escrituras"> Escrituras</label>
+                <label style="display:flex;align-items:center;gap:.3rem;font-size:12px;cursor:pointer"><input type="checkbox" id="cli-p-rel-proc" value="Processos"> Processos</label>
+                <label style="display:flex;align-items:center;gap:.3rem;font-size:12px;cursor:pointer"><input type="checkbox" id="cli-p-rel-av" value="Avenças"> Avenças</label>
+                <label style="display:flex;align-items:center;gap:.3rem;font-size:12px;cursor:pointer"><input type="checkbox" id="cli-p-rel-tar" value="Tarefas"> Tarefas</label>
+              </div>
+            </div>
+            <div class="form-group form-full">
+              <label class="form-label">Notas</label>
+              <textarea class="form-input" id="cli-p-notas" rows="3" placeholder="Observações..."></textarea>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.5rem;margin-top:1rem">
+            <button class="btn btn-primary" id="cli-btn-guardar" onclick="cliGuardar()" style="flex:2">Guardar</button>
+            <button class="btn btn-danger" id="cli-btn-apagar" onclick="cliApagar()" style="flex:1;display:none">Apagar</button>
+          </div>
+        </div>
+        <div id="cli-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:199" onclick="cliFecharPainel()"></div>
+
       </div>
       <div class="screen" id="screen-financeiro">
         <div class="metrics-row">
@@ -1854,6 +1942,7 @@ function nav(id,el){
   if(id==='contabilidade')carregarContabilidade();
   if(id==='financeiro')carregarDashboard();
   if(id==='avencas')carregarAvencas();
+  if(id==='clientes')cliInit();
   if(id==='relatorios')carregarRelatorios();
 }
 
@@ -3777,6 +3866,164 @@ async function uploadAnexoEscritura(input){
     status.textContent='Erro: '+e.message;
     showToast('Erro no upload: '+e.message,'error');
   }
+}
+
+// ─── CLIENTES ─────────────────────────────────────────────────────────────────
+const CLI={nome:'NomeCompleto',tipo:'TipoCliente',nif:'NIF',tel:'Telefone',email:'Email',morada:'Morada',notas:'Notas',rel:'Relacionado'};
+let todosClientes=[],cliItemId=null,cliListaId=null;
+
+async function cliInit(){
+  document.getElementById('cli-loading').style.display='flex';
+  document.getElementById('cli-lista').style.display='none';
+  document.getElementById('cli-vazio').style.display='none';
+  try{
+    if(!cliListaId){
+      const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name`);
+      const lista=r.value.find(l=>l.name.toLowerCase()==='clientes');
+      if(!lista)throw new Error('Lista "Clientes" não encontrada no SharePoint. Cria a lista primeiro.');
+      cliListaId=lista.id;
+    }
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items?$expand=fields&$top=500&$orderby=fields/Title`);
+    todosClientes=(r.value||[]).map(i=>({id:i.id,...i.fields}));
+    cliRenderLista(todosClientes);
+  }catch(e){
+    document.getElementById('cli-loading').style.display='none';
+    showToast('Erro: '+e.message,'error');
+  }
+}
+
+function cliRenderLista(lista){
+  document.getElementById('cli-loading').style.display='none';
+  const el=document.getElementById('cli-lista');
+  const vazio=document.getElementById('cli-vazio');
+  if(!lista.length){el.style.display='none';vazio.style.display='block';return;}
+  vazio.style.display='none';el.style.display='block';
+  const corTipo={Particular:'var(--accent)',Empresa:'var(--blue)'};
+  el.innerHTML=lista.map(i=>{
+    const ini=(i[CLI.nome]||'?').substring(0,2).toUpperCase();
+    const cor=corTipo[i[CLI.tipo]]||'var(--text-muted)';
+    const tel=i[CLI.tel]||'';const email=i[CLI.email]||'';
+    const rel=(i[CLI.rel]||'').split(';').filter(Boolean).map(r=>`<span style="background:var(--accent-light);color:var(--accent-dark);border-radius:10px;padding:1px 7px;font-size:10px">${r.trim()}</span>`).join(' ');
+    return`<div class="reg-list-item" onclick="cliAbrirPainel('${i.id}')" style="align-items:center">
+      <div style="width:36px;height:36px;border-radius:50%;background:${cor}22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${cor};flex-shrink:0">${ini}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${escHtml(i[CLI.nome]||'—')}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${i[CLI.tipo]||''}${i[CLI.nif]?' · NIF '+i[CLI.nif]:''}${i[CLI.morada]?' · '+escHtml(i[CLI.morada]):''}${rel?' · '+rel:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+        ${tel?`<button onclick="event.stopPropagation();window.open('https://wa.me/351${tel.replace(/\D/g,'')}','_blank')" style="border:none;background:none;cursor:pointer;color:#25D366;font-size:16px" title="WhatsApp">💬</button>`:''}
+        ${email?`<button onclick="event.stopPropagation();window.open('https://outlook.cloud.microsoft/mail/deeplink/compose?to=${encodeURIComponent(email)}','_blank')" style="border:none;background:none;cursor:pointer;color:var(--accent);font-size:16px" title="Email">✉️</button>`:''}
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cliFiltrar(){
+  const q=(document.getElementById('cli-pesquisa').value||'').toLowerCase();
+  const tipo=document.getElementById('cli-filtro-tipo').value;
+  const rel=document.getElementById('cli-filtro-rel').value;
+  const filtrado=todosClientes.filter(i=>{
+    const nome=(i[CLI.nome]||'').toLowerCase();
+    const nif=(i[CLI.nif]||'').toLowerCase();
+    const tel=(i[CLI.tel]||'').toLowerCase();
+    const matchQ=!q||nome.includes(q)||nif.includes(q)||tel.includes(q);
+    const matchTipo=!tipo||i[CLI.tipo]===tipo;
+    const matchRel=!rel||(i[CLI.rel]||'').includes(rel);
+    return matchQ&&matchTipo&&matchRel;
+  });
+  cliRenderLista(filtrado);
+}
+
+function cliNovoCliente(){
+  cliItemId=null;
+  document.getElementById('cli-painel-titulo').textContent='Novo cliente';
+  document.getElementById('cli-btn-apagar').style.display='none';
+  ['cli-p-nome','cli-p-nif','cli-p-tel','cli-p-email','cli-p-morada','cli-p-notas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cli-p-tipo').value='Particular';
+  ['cli-p-rel-esc','cli-p-rel-proc','cli-p-rel-av','cli-p-rel-tar'].forEach(id=>document.getElementById(id).checked=false);
+  cliMostrarPainel();
+}
+
+function cliAbrirPainel(itemId){
+  const i=todosClientes.find(c=>c.id===itemId);if(!i)return;
+  cliItemId=itemId;
+  document.getElementById('cli-painel-titulo').textContent='Editar cliente';
+  document.getElementById('cli-btn-apagar').style.display='block';
+  document.getElementById('cli-p-nome').value=i[CLI.nome]||'';
+  document.getElementById('cli-p-tipo').value=i[CLI.tipo]||'Particular';
+  document.getElementById('cli-p-nif').value=i[CLI.nif]||'';
+  document.getElementById('cli-p-tel').value=i[CLI.tel]||'';
+  document.getElementById('cli-p-email').value=i[CLI.email]||'';
+  document.getElementById('cli-p-morada').value=i[CLI.morada]||'';
+  document.getElementById('cli-p-notas').value=i[CLI.notas]||'';
+  const rels=(i[CLI.rel]||'').split(';').map(r=>r.trim());
+  document.getElementById('cli-p-rel-esc').checked=rels.includes('Escrituras');
+  document.getElementById('cli-p-rel-proc').checked=rels.includes('Processos');
+  document.getElementById('cli-p-rel-av').checked=rels.includes('Avenças');
+  document.getElementById('cli-p-rel-tar').checked=rels.includes('Tarefas');
+  cliMostrarPainel();
+}
+
+function cliMostrarPainel(){
+  document.getElementById('cli-painel').style.display='block';
+  document.getElementById('cli-overlay').style.display='block';
+}
+function cliFecharPainel(){
+  document.getElementById('cli-painel').style.display='none';
+  document.getElementById('cli-overlay').style.display='none';
+}
+
+function cliRecolherRel(){
+  const rels=[];
+  if(document.getElementById('cli-p-rel-esc').checked)rels.push('Escrituras');
+  if(document.getElementById('cli-p-rel-proc').checked)rels.push('Processos');
+  if(document.getElementById('cli-p-rel-av').checked)rels.push('Avenças');
+  if(document.getElementById('cli-p-rel-tar').checked)rels.push('Tarefas');
+  return rels.join(';');
+}
+
+async function cliGuardar(){
+  const nome=document.getElementById('cli-p-nome').value.trim();
+  if(!nome){showToast('Nome obrigatório','error');return;}
+  const btn=document.getElementById('cli-btn-guardar');
+  btn.textContent='A guardar...';btn.disabled=true;
+  const fields={
+    Title:nome,
+    [CLI.nome]:nome,
+    [CLI.tipo]:document.getElementById('cli-p-tipo').value,
+    [CLI.nif]:document.getElementById('cli-p-nif').value,
+    [CLI.tel]:document.getElementById('cli-p-tel').value,
+    [CLI.email]:document.getElementById('cli-p-email').value,
+    [CLI.morada]:document.getElementById('cli-p-morada').value,
+    [CLI.notas]:document.getElementById('cli-p-notas').value,
+    [CLI.rel]:cliRecolherRel(),
+  };
+  try{
+    if(cliItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items/${cliItemId}/fields`,fields);
+      const idx=todosClientes.findIndex(c=>c.id===cliItemId);
+      if(idx>-1)todosClientes[idx]={...todosClientes[idx],...fields};
+      showToast('Cliente actualizado!','success');
+    }else{
+      const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items`,{fields});
+      todosClientes.unshift({id:r.id,...fields});
+      showToast('Cliente criado!','success');
+    }
+    cliFecharPainel();
+    cliFiltrar();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  btn.textContent='Guardar';btn.disabled=false;
+}
+
+async function cliApagar(){
+  if(!cliItemId||!confirm('Apagar este cliente?'))return;
+  try{
+    await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items/${cliItemId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+    todosClientes=todosClientes.filter(c=>c.id!==cliItemId);
+    cliFecharPainel();cliFiltrar();
+    showToast('Cliente apagado','success');
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
