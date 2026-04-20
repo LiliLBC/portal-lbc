@@ -1711,7 +1711,44 @@ tbody tr:hover td{background:#FAFAF8}
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
           Sem tarefas em curso — tudo em dia!
         </div>
+
+        <!-- PAINEL EDITAR TAREFA -->
+        <div id="serv-painel" style="display:none;position:fixed;top:0;right:0;width:400px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:200;overflow-y:auto;padding:1.25rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+            <div style="font-weight:600;font-size:14px">Editar tarefa</div>
+            <button class="btn btn-sm" onclick="servFecharPainel()">✕</button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group form-full"><label class="form-label">Descrição *</label><input class="form-input" id="serv-p-titulo" placeholder="Descrição da tarefa"></div>
+            <div class="form-group"><label class="form-label">Responsável</label>
+              <select class="form-select" id="serv-p-resp">
+                <option value="">—</option>
+                <option>Liliana Cardoso</option>
+                <option>Andreia Cabanas</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="serv-p-prazo" type="date"></div>
+            <div class="form-group"><label class="form-label">Prioridade</label>
+              <select class="form-select" id="serv-p-prio">
+                <option>Normal</option><option>Urgente</option><option>Baixa</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Estado</label>
+              <select class="form-select" id="serv-p-estado">
+                <option>Por fazer</option><option>Em curso</option><option>Aguarda resposta</option><option>Concluída</option>
+              </select>
+            </div>
+            <div class="form-group form-full"><label class="form-label">Observações</label><textarea class="form-input" id="serv-p-obs" rows="3" placeholder="Notas..."></textarea></div>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:1rem">
+            <button class="btn btn-primary" onclick="servGuardar()" style="flex:2">Guardar</button>
+            <button class="btn btn-danger" onclick="servEliminar()" style="flex:1">Eliminar</button>
+          </div>
+        </div>
+        <div id="serv-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:199" onclick="servFecharPainel()"></div>
       </div>
+
+      <div class="screen" id="screen-financeiro">
         <div class="metrics-row">
           <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
           <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
@@ -3908,12 +3945,11 @@ function servicosRender(lista){
   if(!lista.length){el.style.display='none';vazio.style.display='block';return;}
   vazio.style.display='none';el.style.display='block';
   const corEstado={'Por fazer':'background:#F3F0FF;color:#4F4580','Em curso':'background:#E0F2FE;color:#0369A1','Aguarda resposta':'background:#FEF3C7;color:#92400E'};
-  const corPrio={Urgente:'var(--red)',Normal:'var(--text-muted)',Baixa:'var(--text-faint)'};
   el.innerHTML=lista.map(i=>{
     const prazo=i[T.prazo]?fmtPrazo(i[T.prazo]):'Sem prazo';
     const atrasada=i[T.prazo]&&new Date(i[T.prazo])<new Date();
     const estadoStyle=corEstado[i[T.estado]]||corEstado['Por fazer'];
-    return`<div class="reg-list-item" style="align-items:flex-start;gap:.75rem;padding:.75rem 1rem;${atrasada?'border-left:3px solid var(--red);':''}">
+    return`<div class="reg-list-item" style="align-items:flex-start;gap:.75rem;padding:.75rem 1rem;cursor:pointer;${atrasada?'border-left:3px solid var(--red);':''}" onclick="servAbrirPainel('${i.id}')">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:3px">
           <span style="font-size:13px;font-weight:600">${escHtml(i[T.titulo]||'—')}</span>
@@ -3927,7 +3963,7 @@ function servicosRender(lista){
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
         <span style="border-radius:20px;padding:2px 10px;font-size:10px;font-weight:500;${estadoStyle}">${escHtml(i[T.estado]||'—')}</span>
-        <select class="td-select" style="width:100px;font-size:10px" onchange="servicosMudarEstado('${i.id}',this.value,this)">
+        <select class="td-select" style="width:100px;font-size:10px" onclick="event.stopPropagation()" onchange="servicosMudarEstado('${i.id}',this.value,this)">
           <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
           <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
           <option ${i[T.estado]==='Aguarda resposta'?'selected':''}>Aguarda resposta</option>
@@ -3936,6 +3972,51 @@ function servicosRender(lista){
       </div>
     </div>`;
   }).join('');
+}
+
+let servItemId=null;
+function servAbrirPainel(itemId){
+  const i=todasTarefas.find(t=>t.id===itemId)||{id:itemId};
+  servItemId=itemId;
+  document.getElementById('serv-p-titulo').value=i[T.titulo]||'';
+  document.getElementById('serv-p-resp').value=i[T.responsavel]||'';
+  document.getElementById('serv-p-prazo').value=i[T.prazo]?i[T.prazo].substring(0,10):'';
+  document.getElementById('serv-p-prio').value=i[T.prioridade]||'Normal';
+  document.getElementById('serv-p-estado').value=i[T.estado]||'Por fazer';
+  document.getElementById('serv-p-obs').value=i[T.observacoes]||'';
+  document.getElementById('serv-painel').style.display='block';
+  document.getElementById('serv-overlay').style.display='block';
+}
+function servFecharPainel(){
+  document.getElementById('serv-painel').style.display='none';
+  document.getElementById('serv-overlay').style.display='none';
+}
+async function servGuardar(){
+  if(!servItemId)return;
+  const prazoVal=document.getElementById('serv-p-prazo').value;
+  const fields={
+    [T.titulo]:document.getElementById('serv-p-titulo').value,
+    [T.responsavel]:document.getElementById('serv-p-resp').value,
+    [T.prazo]:prazoVal?new Date(prazoVal).toISOString():null,
+    [T.prioridade]:document.getElementById('serv-p-prio').value,
+    [T.estado]:document.getElementById('serv-p-estado').value,
+    [T.observacoes]:document.getElementById('serv-p-obs').value,
+  };
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${servItemId}/fields`,fields);
+    showToast('Tarefa guardada!','success');
+    servFecharPainel();
+    servicosInit();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+async function servEliminar(){
+  if(!servItemId||!confirm('Eliminar esta tarefa?'))return;
+  try{
+    await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${servItemId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+    showToast('Tarefa eliminada','success');
+    servFecharPainel();
+    servicosInit();
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 async function servicosMudarEstado(itemId,estado,sel){
