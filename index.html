@@ -263,7 +263,7 @@ tbody tr:hover td{background:#FAFAF8}
 
   /* Calendário — coluna única */
   #screen-dashboard > div[style*="flex"]{flex-direction:column!important}
-  #screen-dashboard > div[style*="flex"] > div[style*="width:340px"]{width:100%!important}
+  #screen-dashboard > div[style*="flex"] > div[style*="width:480px"]{width:100%!important}
 
   /* Filtros em scroll horizontal */
   .filter-row{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:.25rem;scrollbar-width:none}
@@ -410,12 +410,6 @@ tbody tr:hover td{background:#FAFAF8}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
               CPCV
             </div>
-            <div class="dropdown-divider"></div>
-            <div class="dropdown-item-label">Mandatos</div>
-            <div class="dropdown-item" onclick="abrirContrato('proc')">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
-              Procuração
-            </div>
           </div>
         </div>
       </div>
@@ -442,7 +436,7 @@ tbody tr:hover td{background:#FAFAF8}
           </div>
 
           <!-- TAREFAS COMPLETAS -->
-          <div style="width:340px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+          <div style="width:480px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
               <div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--text-muted)">Escritório</div></div>
               <button class="btn btn-primary btn-sm" onclick="toggleFormTarefaDash()">+ Nova</button>
@@ -471,7 +465,7 @@ tbody tr:hover td{background:#FAFAF8}
               <button class="filter-chip" onclick="filtrarTarefasDash('Em curso',this)" style="font-size:10px;padding:2px 8px">Em curso</button>
             </div>
             <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
-            <div id="dash-tar-lista" style="max-height:420px;overflow-y:auto"></div>
+            <div id="dash-tar-lista" style="max-height:580px;overflow-y:auto"></div>
             <div id="dash-tar-vazio" class="notice notice-success" style="display:none;font-size:12px">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
               Sem tarefas pendentes!
@@ -1880,7 +1874,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html',proc:'procuracao.html'};
+  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
@@ -2527,18 +2521,44 @@ function renderTarefasDash(lista){
     return;
   }
   if(vazio) vazio.style.display='none';
-  el.innerHTML=lista.map(i=>`
-    <div class="tarefa-card ${i[T.prioridade]==='Urgente'?'urgente':''}" id="tdash-${i.id}" style="margin-bottom:.4rem;padding:.6rem .75rem">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(i[T.titulo]||'—')}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${i[T.prazo]?' · '+fmtPrazo(i[T.prazo]):''}${i[T.observacoes]?' · <em>'+escHtml(i[T.observacoes])+'</em>':''}</div>
+  el.innerHTML=lista.map(i=>{
+    const prazoTxt=i[T.prazo]?fmtPrazo(i[T.prazo]):'';
+    const obsTxt=i[T.observacoes]||'';
+    const isUrgente=i[T.prioridade]==='Urgente';
+    return`<div class="tarefa-card ${isUrgente?'urgente':''}" id="tdash-${i.id}" style="margin-bottom:.4rem;cursor:pointer" onclick="expandTarefaDash('${i.id}',event)">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600">${escHtml(i[T.titulo]||'—')}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${prazoTxt?' · '+prazoTxt:''}${obsTxt?' · <em>'+escHtml(obsTxt)+'</em>':''}</div>
+        </div>
+        <select class="td-select" style="width:90px;font-size:10px" onclick="event.stopPropagation()" onchange="mudarEstadoTarefaDash('${i.id}',this.value)">
+          <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
+          <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
+          <option ${i[T.estado]==='Concluída'?'selected':''}>Concluída</option>
+        </select>
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" id="tdash-arr-${i.id}" style="color:var(--text-faint);flex-shrink:0;transition:transform .2s"><path d="M4 6l4 4 4-4"/></svg>
       </div>
-      <select class="td-select" style="width:90px;font-size:10px" onchange="mudarEstadoTarefaDash('${i.id}',this.value)">
-        <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
-        <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
-        <option ${i[T.estado]==='Concluída'?'selected':''}>Concluída</option>
-      </select>
-    </div>`).join('');
+      <div id="tdash-detail-${i.id}" style="display:none;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem .75rem">
+          <div><span style="font-weight:600;color:var(--text)">Responsável:</span> ${escHtml(i[T.responsavel]||'—')}</div>
+          <div><span style="font-weight:600;color:var(--text)">Prazo:</span> ${prazoTxt||'—'}</div>
+          <div><span style="font-weight:600;color:var(--text)">Prioridade:</span> ${escHtml(i[T.prioridade]||'Normal')}</div>
+          <div><span style="font-weight:600;color:var(--text)">Estado:</span> ${escHtml(i[T.estado]||'—')}</div>
+          ${obsTxt?`<div style="grid-column:1/-1"><span style="font-weight:600;color:var(--text)">Observações:</span> ${escHtml(obsTxt)}</div>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function expandTarefaDash(id, e){
+  if(e&&e.target.tagName==='SELECT')return;
+  const detail=document.getElementById(`tdash-detail-${id}`);
+  const arr=document.getElementById(`tdash-arr-${id}`);
+  if(!detail)return;
+  const open=detail.style.display==='block';
+  detail.style.display=open?'none':'block';
+  if(arr)arr.style.transform=open?'':'rotate(180deg)';
 }
 
 async function mudarEstadoTarefaDash(itemId,estado){
