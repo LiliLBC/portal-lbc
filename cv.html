@@ -508,57 +508,49 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
       <!-- Licença de utilização -->
       <div class="form-group">
-        <label class="form-label">Licença de utilização <span>*</span></label>
-        <select class="form-select" id="lu-opcao" onchange="onLUChange()">
-          <option value="">Selecionar...</option>
-          <option value="numero">Com licença — indicar número</option>
-          <option value="comunicacao">Comunicação prévia / Autorização</option>
-          <option value="anterior">Construção anterior a 07/08/1951 — isento</option>
-          <option value="rustico">Prédio rústico — não aplicável</option>
-          <option value="isento-outro">Isento — outro fundamento</option>
+        <label class="form-label">Licença de utilização (LU)</label>
+        <select class="form-select" id="tipo-lu" onchange="onLUChange()">
+          <option value="na">Não aplicável</option>
+          <option value="alvara">Alvará de Licença de Utilização</option>
+          <option value="comunicacao">Resposta à comunicação prévia</option>
+          <option value="isencao">Certidão de Isenção</option>
+          <option value="sem">Sem licença (DL 10/2024)</option>
         </select>
       </div>
-      <div id="lu-numero-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Número da licença <span>*</span></label>
-          <input type="text" class="form-input" id="lu-numero" placeholder="Ex: Licença nº 30/1999 · emitida pela CM de Évora">
-        </div>
-      </div>
-      <div id="lu-comunicacao-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Referência da comunicação / autorização <span>*</span></label>
-          <input type="text" class="form-input" id="lu-comunicacao" placeholder="Ex: Comunicação prévia nº 15/2020">
-        </div>
-      </div>
-      <div id="lu-isento-outro-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Fundamento da isenção <span>*</span></label>
-          <input type="text" class="form-input" id="lu-isencao-motivo" placeholder="Indicar fundamento legal">
+      <div class="cond-block" id="lu-fields" style="display:none">
+        <div class="cond-block-title" id="lu-fields-title">Dados da licença</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Número <span>*</span></label>
+            <input type="text" class="form-input" id="lu-numero" placeholder="Nº do documento">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data de emissão <span>*</span></label>
+            <input type="date" class="form-input" id="lu-data">
+          </div>
         </div>
       </div>
 
       <!-- Certificado energético -->
       <div class="form-group" style="margin-top:.5rem">
         <label class="form-label">Certificado energético <span>*</span></label>
-        <select class="form-select" id="ce-opcao" onchange="onCEChange()">
+        <select class="form-select" id="tipo-cert-energetico" onchange="onCertEnergeticoChange()">
           <option value="">Selecionar...</option>
-          <option value="numero">Com certificado — indicar número</option>
-          <option value="anterior">Construção anterior a 07/08/1951 — isento</option>
-          <option value="rustico">Prédio rústico — não aplicável</option>
-          <option value="fracao-autonoma">Fração isenta por lei</option>
-          <option value="isento-outro">Isento — outro fundamento</option>
+          <option value="certificado">Certificado energético</option>
+          <option value="isencao">Certificado de isenção energética</option>
         </select>
       </div>
-      <div id="ce-numero-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Número do certificado <span>*</span></label>
-          <input type="text" class="form-input" id="cert-energetico" placeholder="Ex: SCE265584838 · válido até 09/12/2031">
-        </div>
-      </div>
-      <div id="ce-isento-outro-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Fundamento da isenção</label>
-          <input type="text" class="form-input" id="ce-isencao-motivo" placeholder="Indicar fundamento legal">
+      <div class="cond-block" id="cert-energetico-fields" style="display:none">
+        <div class="cond-block-title" id="cert-energetico-title">Dados do certificado</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Número <span>*</span></label>
+            <input type="text" class="form-input" id="cert-energetico-num" placeholder="Nº do certificado">
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="cert-energetico-data-label">Válido até <span>*</span></label>
+            <input type="date" class="form-input" id="cert-energetico-data">
+          </div>
         </div>
       </div>
 
@@ -867,15 +859,29 @@ function onOnusChange(){
   document.getElementById('onus-fields').style.display=document.getElementById('toggle-onus').checked?'block':'none';
 }
 function onLUChange(){
-  const op=document.getElementById('lu-opcao').value;
-  document.getElementById('lu-numero-fields').style.display=op==='numero'?'block':'none';
-  document.getElementById('lu-comunicacao-fields').style.display=op==='comunicacao'?'block':'none';
-  document.getElementById('lu-isento-outro-fields').style.display=op==='isento-outro'?'block':'none';
+  const val=document.getElementById('tipo-lu').value;
+  const fields=document.getElementById('lu-fields');
+  const title=document.getElementById('lu-fields-title');
+  if(!val||val==='na'||val==='sem'){fields.style.display='none';}
+  else{
+    fields.style.display='block';
+    title.textContent=val==='alvara'?'Alvará de Licença de Utilização':val==='comunicacao'?'Resposta à comunicação prévia':'Certidão de Isenção';
+  }
 }
-function onCEChange(){
-  const op=document.getElementById('ce-opcao').value;
-  document.getElementById('ce-numero-fields').style.display=op==='numero'?'block':'none';
-  document.getElementById('ce-isento-outro-fields').style.display=op==='isento-outro'?'block':'none';
+function onCertEnergeticoChange(){
+  const val=document.getElementById('tipo-cert-energetico').value;
+  const fields=document.getElementById('cert-energetico-fields');
+  const dataLabel=document.getElementById('cert-energetico-data-label');
+  const title=document.getElementById('cert-energetico-title');
+  if(!val){fields.style.display='none';return;}
+  fields.style.display='block';
+  if(val==='certificado'){
+    title.textContent='Certificado energético';
+    dataLabel.innerHTML='Válido até <span>*</span>';
+  }else{
+    title.textContent='Certificado de isenção energética';
+    dataLabel.innerHTML='Data de emissão <span>*</span>';
+  }
 }
 function onIsentoLUChange(){}
 function onIsentoCEChange(){}
@@ -993,7 +999,7 @@ function restaurarDados(d){
   onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();
   onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();
   onMediacaoChange();onRemaxChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
-  onOnusChange();onLUChange();onCEChange();
+  onOnusChange();onLUChange();onCertEnergeticoChange();
   // Restaurar estado civil de cada outorgante (mostra/esconde cônjuge)
   document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{
     const id=el.id.replace('-estado-civil','');
@@ -1111,8 +1117,8 @@ async function confirmarGerar(modo){
 
 function gerarNomeFicheiro(){
   const d=(document.getElementById('data-escritura')?.value||'').replace(/-/g,'')||'SEMDATA';
-  const v=recolherOutorgantes('vendedores')[0]||{};
-  const nome=v.tipo==='empresa'?(v.empNome||'EMPRESA'):(v.nome||'CLIENTE');
+  const c=recolherOutorgantes('compradores')[0]||{};
+  const nome=c.tipo==='empresa'?(c.empNome||'EMPRESA'):(c.nome||'CLIENTE');
   return`CV_${d}_${nome.substring(0,25).trim()}.docx`;
 }
 
@@ -1157,35 +1163,27 @@ function recolherDadosContrato(){
   const Verificacao_Empresa_C=chk('toggle-emp-c')?'--- Verifiquei os poderes de representação da parte compradora através da certidão de registo comercial em vigor.':'';
 
   // Licença de utilização
-  const luOpcao=v('lu-opcao');
+  const tipoLU=v('tipo-lu');
   let TXT_TA_LU='';
-  const luTextos={
-    numero:`--- A licença de utilização ${v('lu-numero')};`,
-    comunicacao:`--- A comunicação prévia/autorização ${v('lu-comunicacao')};`,
-    anterior:'--- O imóvel está isento de licença de utilização por ter sido construído antes de 07/08/1951, nos termos do artigo 6.º do Decreto-Lei n.º 555/99, de 16 de dezembro;',
-    rustico:'--- O imóvel não está sujeito a licença de utilização por se tratar de prédio rústico;',
-    'isento-outro':`--- O imóvel está isento de licença de utilização${v('lu-isencao-motivo')?': '+v('lu-isencao-motivo'):''};`,
-  };
-  TXT_TA_LU=luTextos[luOpcao]||'';
-  const luCorpoTextos={
-    numero:`A licença de utilização ${v('lu-numero')}`,
-    comunicacao:`A comunicação prévia/autorização ${v('lu-comunicacao')}`,
-    anterior:'O imóvel está isento de licença de utilização por ter sido construído antes de 07/08/1951',
-    rustico:'O imóvel não está sujeito a licença de utilização por se tratar de prédio rústico',
-    'isento-outro':`O imóvel está isento de licença de utilização${v('lu-isencao-motivo')?': '+v('lu-isencao-motivo'):''}`,
-  };
-  const TXT_LU=luCorpoTextos[luOpcao]||'A licença de utilização — (não indicada)';
+  if(tipoLU==='sem'){
+    TXT_TA_LU='Ao abrigo do DL 10/2024 de 08 de janeiro, as partes foram por mim informadas que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização.';
+  }else if(tipoLU==='alvara'){
+    TXT_TA_LU=`FOI EXIBIDO Alvará de Licença de Utilização, com o número ${v('lu-numero')}, emitido em ${fmtDataPT(v('lu-data'))}.`;
+  }else if(tipoLU==='comunicacao'){
+    TXT_TA_LU=`FOI EXIBIDO Resposta à comunicação prévia, com o número ${v('lu-numero')}, emitido em ${fmtDataPT(v('lu-data'))}.`;
+  }else if(tipoLU==='isencao'){
+    TXT_TA_LU=`ARQUIVO Certidão de Isenção de Licença de Utilização, com o número ${v('lu-numero')}, emitida em ${fmtDataPT(v('lu-data'))}.`;
+  }
+  const TXT_LU=TXT_TA_LU;
 
   // Certificado energético
-  const ceOpcao=v('ce-opcao');
-  const ceTextos={
-    numero:`O certificado de desempenho energético ${v('cert-energetico')}`,
-    anterior:'O imóvel está isento de certificação energética por ter sido construído antes de 07/08/1951',
-    rustico:'O imóvel não está sujeito a certificação energética por se tratar de prédio rústico',
-    'fracao-autonoma':'O imóvel está isento de certificação energética por força da lei aplicável às frações autónomas',
-    'isento-outro':`O imóvel está isento de certificação energética${v('ce-isencao-motivo')?': '+v('ce-isencao-motivo'):''}`,
-  };
-  const TXT_Cert_Energetico=ceTextos[ceOpcao]||'O certificado de desempenho energético — (não indicado)';
+  const tipoCE=v('tipo-cert-energetico');
+  let TXT_Cert_Energetico='';
+  if(tipoCE==='certificado'){
+    TXT_Cert_Energetico=`FOI EXIBIDO Certificado Energético com o número ${v('cert-energetico-num')}, válido até ${fmtDataPT(v('cert-energetico-data'))}, que foi entregue à parte compradora neste ato.`;
+  }else if(tipoCE==='isencao'){
+    TXT_Cert_Energetico=`FOI EXIBIDO Certificado de Isenção Energética com o número ${v('cert-energetico-num')}, emitido em ${fmtDataPT(v('cert-energetico-data'))}, que foi entregue à parte compradora neste ato.`;
+  }
   let TXT_Canc_Hipoteca='';
   if(chk('toggle-onus')){
     const tipoCancel=v('onus-tipo-cancel');
