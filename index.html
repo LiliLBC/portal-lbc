@@ -339,10 +339,10 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('avencas',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h3M5 11h5"/><path d="M11 8v5"/></svg></span>Avenças
     </div>
-    <div class="nav-item em-construcao">
+    <div class="nav-item" onclick="nav('clientes',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14s1-4 5-4 5 4 5 4"/><path d="M13 7v4M11 9h4"/></svg></span>Clientes
     </div>
-    <div class="nav-item em-construcao">
+    <div class="nav-item" onclick="nav('servicos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 7h6M5 10h4"/></svg></span>Serviços em curso
     </div>
     <div class="nav-section">Financeiro</div>
@@ -1697,7 +1697,21 @@ tbody tr:hover td{background:#FAFAF8}
         <div id="cli-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:199" onclick="cliFecharPainel()"></div>
 
       </div>
-      <div class="screen" id="screen-financeiro">
+      <div class="screen" id="screen-servicos">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div>
+            <div style="font-weight:600;font-size:15px">Serviços em curso</div>
+            <div style="font-size:11px;color:var(--text-muted)">Tarefas não concluídas — da mais antiga para a mais recente</div>
+          </div>
+          <button class="btn btn-sm" onclick="servicosInit()">↺ Actualizar</button>
+        </div>
+        <div id="serv-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar tarefas...</div></div>
+        <div id="serv-lista" style="display:none"></div>
+        <div id="serv-vazio" class="notice notice-success" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
+          Sem tarefas em curso — tudo em dia!
+        </div>
+      </div>
         <div class="metrics-row">
           <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
           <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
@@ -1943,6 +1957,7 @@ function nav(id,el){
   if(id==='financeiro')carregarDashboard();
   if(id==='avencas')carregarAvencas();
   if(id==='clientes')cliInit();
+  if(id==='servicos')servicosInit();
   if(id==='relatorios')carregarRelatorios();
 }
 
@@ -3866,6 +3881,71 @@ async function uploadAnexoEscritura(input){
     status.textContent='Erro: '+e.message;
     showToast('Erro no upload: '+e.message,'error');
   }
+}
+
+// ─── SERVIÇOS EM CURSO ────────────────────────────────────────────────────────
+async function servicosInit(){
+  document.getElementById('serv-loading').style.display='flex';
+  document.getElementById('serv-lista').style.display='none';
+  document.getElementById('serv-vazio').style.display='none';
+  try{
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields&$top=500&$orderby=fields/Data_Prazo asc`);
+    const tarefas=(r.value||[])
+      .map(i=>({id:i.id,...i.fields}))
+      .filter(i=>i[T.estado]!=='Concluída'&&i[T.estado]!=='Cancelada');
+    servicosRender(tarefas);
+  }catch(e){
+    document.getElementById('serv-loading').style.display='none';
+    showToast('Erro: '+e.message,'error');
+  }
+}
+
+function servicosRender(lista){
+  document.getElementById('serv-loading').style.display='none';
+  const el=document.getElementById('serv-lista');
+  const vazio=document.getElementById('serv-vazio');
+  if(!lista.length){el.style.display='none';vazio.style.display='block';return;}
+  vazio.style.display='none';el.style.display='block';
+  const corEstado={'Por fazer':'background:#F3F0FF;color:#4F4580','Em curso':'background:#E0F2FE;color:#0369A1','Aguarda resposta':'background:#FEF3C7;color:#92400E'};
+  const corPrio={Urgente:'var(--red)',Normal:'var(--text-muted)',Baixa:'var(--text-faint)'};
+  el.innerHTML=lista.map(i=>{
+    const prazo=i[T.prazo]?fmtPrazo(i[T.prazo]):'Sem prazo';
+    const atrasada=i[T.prazo]&&new Date(i[T.prazo])<new Date();
+    const estadoStyle=corEstado[i[T.estado]]||corEstado['Por fazer'];
+    return`<div class="reg-list-item" style="align-items:flex-start;gap:.75rem;padding:.75rem 1rem;${atrasada?'border-left:3px solid var(--red);':''}">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:3px">
+          <span style="font-size:13px;font-weight:600">${escHtml(i[T.titulo]||'—')}</span>
+          ${i[T.prioridade]==='Urgente'?'<span style="color:var(--red);font-size:10px;font-weight:700">● URGENTE</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <span>${escHtml(i[T.responsavel]||'—')}</span>
+          <span style="color:${atrasada?'var(--red)':'var(--text-muted)'};font-weight:${atrasada?'600':'400'}">${prazo}${atrasada?' ⚠️':''}</span>
+          ${i[T.observacoes]?`<span style="color:var(--text-faint)">· ${escHtml(i[T.observacoes])}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+        <span style="border-radius:20px;padding:2px 10px;font-size:10px;font-weight:500;${estadoStyle}">${escHtml(i[T.estado]||'—')}</span>
+        <select class="td-select" style="width:100px;font-size:10px" onchange="servicosMudarEstado('${i.id}',this.value,this)">
+          <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
+          <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
+          <option ${i[T.estado]==='Aguarda resposta'?'selected':''}>Aguarda resposta</option>
+          <option ${i[T.estado]==='Concluída'?'selected':''}>Concluída</option>
+        </select>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function servicosMudarEstado(itemId,estado,sel){
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${itemId}/fields`,{[T.estado]:estado});
+    if(estado==='Concluída'){
+      showToast('Tarefa concluída ✓','success');
+      const card=sel.closest('.reg-list-item');
+      if(card){card.style.transition='opacity .4s';card.style.opacity='0';setTimeout(()=>{card.remove();const el=document.getElementById('serv-lista');if(!el.children.length){el.style.display='none';document.getElementById('serv-vazio').style.display='block';}},420);}
+    }
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 // ─── CLIENTES ─────────────────────────────────────────────────────────────────
