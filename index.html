@@ -215,10 +215,10 @@ tbody tr:hover td{background:#FAFAF8}
 .cal-day-num{font-size:11px;font-weight:500;margin-bottom:.3rem;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .cal-day.today .cal-day-num{background:var(--accent);color:#fff}
 .cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font-weight:500}
-.cal-event-escritura{background:#EDE9F8;color:var(--accent-dark)}
-.cal-event-reuniao{background:var(--blue-light);color:var(--blue)}
-.cal-event-ausencia{background:var(--amber-light);color:var(--amber)}
-.cal-event-outro{background:var(--surface2);color:var(--text-muted)}
+.cal-event-escritura{background:#D4EDDA;color:#1E6E3A}
+.cal-event-reuniao{background:#EDE9F8;color:var(--accent-dark)}
+.cal-event-ausencia{background:#F8D7DA;color:#B02A37}
+.cal-event-outro{background:#EDE9F8;color:var(--accent-dark)}
 .cal-event-tarefa{background:var(--red-light);color:var(--red)}
 .cal-more{font-size:10px;color:var(--text-faint);padding:1px 5px}
 
@@ -962,10 +962,14 @@ tbody tr:hover td{background:#FAFAF8}
                 <option>Andreia Cabanas</option>
               </select>
             </div>
+            <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
           </div>
-          <div class="modal-actions">
-            <button class="btn" onclick="fecharModalEvento()">Cancelar</button>
-            <button class="btn btn-primary" onclick="guardarEvento()">Guardar evento</button>
+          <div class="modal-actions" style="justify-content:space-between">
+            <button class="btn" id="ev-btn-eliminar" onclick="eliminarEvento()" style="display:none;color:var(--red);border-color:var(--red)">🗑 Eliminar</button>
+            <div style="display:flex;gap:.5rem;margin-left:auto">
+              <button class="btn" onclick="fecharModalEvento()">Cancelar</button>
+              <button class="btn btn-primary" onclick="guardarEvento()">Guardar evento</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1846,7 +1850,7 @@ const F={
   codCRP:'CERT_PERMANENTE',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
-const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Tipo',responsavel:'Responsavel'};
+const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
@@ -2148,8 +2152,14 @@ async function carregarDashboard(){
   try{
     renderDashCal();
     if(listaIdAgenda){
-      const sel=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel}`;
-      const evData=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${sel})&$top=500`);
+      const selComObs=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
+      const selSemObs=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel}`;
+      let evData;
+      try{
+        evData=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
+      }catch(_){
+        evData=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
+      }
       todosEventos=(evData.value||[]).map(i=>({id:i.id,...i.fields}));
     }
     if(listaIdTarefas){
@@ -2903,8 +2913,14 @@ async function carregarCalendario(){
   renderCalendario();
   try{
     if(listaIdAgenda){
-      const sel=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel}`;
-      const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${sel})&$top=500`);
+      const selComObs=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
+      const selSemObs=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel}`;
+      let data;
+      try{
+        data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
+      }catch(_){
+        data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
+      }
       todosEventos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     }
     if(listaIdTarefas){
@@ -2949,6 +2965,25 @@ function eventosNoDia(dateStr){
   return [...evts,...tasks];
 }
 
+// Renderiza uma pill de evento. Eventos e tarefas clicáveis abrem o respectivo painel.
+function renderEvt(e){
+  const cls=COR_EVENTO[e._tipo]||'cal-event-outro';
+  if(e._tipo==='tarefa'){
+    return `<div class="cal-event ${cls}" title="${e._label}" onclick="abrirTarefaDoCalendario('${e.id}',event)">${e._label}</div>`;
+  }
+  return `<div class="cal-event ${cls}" title="${e._label}" onclick="abrirEventoExistente('${e.id}',event)">${e._label}</div>`;
+}
+
+// Navega para Serviços em curso e abre o painel da tarefa
+function abrirTarefaDoCalendario(tarefaId,ev){
+  if(ev)ev.stopPropagation();
+  // Navegar para o ecrã de serviços (se houver essa nav)
+  const navServ=document.querySelector('.nav-item[onclick*="servicos"]');
+  if(navServ)navServ.click();
+  // Abrir o painel (com pequeno delay para garantir que o ecrã já está visível)
+  setTimeout(()=>servAbrirPainel(tarefaId),100);
+}
+
 function renderMes(wrap){
   const ano=calData.getFullYear(),mes=calData.getMonth();
   document.getElementById('cal-title').textContent=`${MESES[mes]} ${ano}`;
@@ -2969,7 +3004,7 @@ function renderMes(wrap){
     const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoje=dateStr===hojeStr;
     const evts=eventosNoDia(dateStr);
-    const evtsHtml=evts.slice(0,3).map(e=>`<div class="cal-event ${COR_EVENTO[e._tipo]||'cal-event-outro'}" title="${e._label}">${e._label}</div>`).join('');
+    const evtsHtml=evts.slice(0,3).map(renderEvt).join('');
     const mais=evts.length>3?`<div class="cal-more">+${evts.length-3} mais</div>`:'';
     html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')">
       <div class="cal-day-num">${d}</div>
@@ -3006,7 +3041,7 @@ function renderSemana(wrap){
     const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const isHoje=dateStr===hojeStr;
     const evts=eventosNoDia(dateStr);
-    const evtsHtml=evts.map(e=>`<div class="cal-event ${COR_EVENTO[e._tipo]||'cal-event-outro'}" title="${e._label}">${e._label}</div>`).join('');
+    const evtsHtml=evts.map(renderEvt).join('');
     html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')" style="min-height:120px">${evtsHtml}</div>`;
   }
   html+='</div>';
@@ -3014,30 +3049,91 @@ function renderSemana(wrap){
 }
 
 // ─── MODAL EVENTO ─────────────────────────────────────────────────────────────
+let evItemId=null;
+
 function abrirModalEvento(dateStr){
+  evItemId=null;
   document.getElementById('ev-data').value=dateStr;
   document.getElementById('ev-titulo').value='';
   document.getElementById('ev-hora').value='10:00';
   document.getElementById('ev-tipo').value='Escritura';
   document.getElementById('ev-responsavel').value='';
+  document.getElementById('ev-observacoes').value='';
+  document.getElementById('ev-btn-eliminar').style.display='none';
   document.getElementById('modal-evento-titulo').textContent=`Novo evento — ${fmtData(dateStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
 }
-function fecharModalEvento(){document.getElementById('modal-evento').classList.remove('show');}
+
+function abrirEventoExistente(eventoId,ev){
+  if(ev)ev.stopPropagation();
+  const e=(todosEventos||[]).find(x=>x.id===eventoId);
+  if(!e){showToast('Evento não encontrado','error');return;}
+  evItemId=eventoId;
+  const dataStr=e[A.data]?e[A.data].substring(0,10):'';
+  const hora=e[A.hora]||(e[A.data]?e[A.data].substring(11,16):'10:00');
+  document.getElementById('ev-data').value=dataStr;
+  document.getElementById('ev-titulo').value=e[A.titulo]||'';
+  document.getElementById('ev-hora').value=hora;
+  document.getElementById('ev-tipo').value=e[A.tipo]||'Escritura';
+  document.getElementById('ev-responsavel').value=e[A.responsavel]||'';
+  document.getElementById('ev-observacoes').value=e[A.observacoes]||'';
+  document.getElementById('ev-btn-eliminar').style.display='inline-flex';
+  document.getElementById('modal-evento-titulo').textContent=`Editar evento — ${fmtData(dataStr+'T00:00:00')}`;
+  document.getElementById('modal-evento').classList.add('show');
+}
+
+function fecharModalEvento(){document.getElementById('modal-evento').classList.remove('show');evItemId=null;}
 
 async function guardarEvento(){
   const titulo=document.getElementById('ev-titulo').value.trim();
   if(!titulo){showToast('Preenche a descrição.','error');return;}
-  const body={
+  const observacoes=document.getElementById('ev-observacoes').value||'';
+  const bodyBase={
     [A.titulo]:titulo,
     [A.data]:document.getElementById('ev-data').value+'T'+document.getElementById('ev-hora').value+':00',
     [A.hora]:document.getElementById('ev-hora').value,
     [A.tipo]:document.getElementById('ev-tipo').value,
     [A.responsavel]:document.getElementById('ev-responsavel').value,
   };
+  const body={...bodyBase,[A.observacoes]:observacoes};
+
+  const tentar=async b=>{
+    if(evItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items/${evItemId}/fields`,b);
+    }else{
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items`,{fields:b});
+    }
+  };
+
   try{
-    await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items`,{fields:body});
-    showToast('Evento criado!','success');
+    await tentar(body);
+    showToast(evItemId?'Evento actualizado!':'Evento criado!','success');
+    fecharModalEvento();
+    carregarCalendario();
+  }catch(e){
+    // Fallback: se falhou provavelmente por causa do campo Observacoes inexistente na lista SP
+    const msg=(e&&e.message)||'';
+    if(observacoes&&/400|Observacoes|invalid|not.*found|column/i.test(msg)){
+      try{
+        await tentar(bodyBase);
+        showToast('Evento gravado (sem observações — coluna Observacoes não existe na lista SP)','');
+        fecharModalEvento();
+        carregarCalendario();
+        return;
+      }catch(e2){showToast('Erro: '+e2.message,'error');return;}
+    }
+    showToast('Erro: '+msg,'error');
+  }
+}
+
+async function eliminarEvento(){
+  if(!evItemId)return;
+  if(!confirm('Apagar este evento? Esta acção não pode ser desfeita.'))return;
+  try{
+    await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items/${evItemId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    showToast('Evento eliminado','success');
     fecharModalEvento();
     carregarCalendario();
   }catch(e){showToast('Erro: '+e.message,'error');}
@@ -5097,7 +5193,7 @@ function renderDashCal(){
     const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoje=dateStr===hojeStr;
     const evts=eventosNoDia(dateStr);
-    const evtsHtml=evts.slice(0,2).map(e=>`<div class="cal-event ${COR_EVENTO[e._tipo]||'cal-event-outro'}" title="${e._label}">${e._label}</div>`).join('');
+    const evtsHtml=evts.slice(0,2).map(renderEvt).join('');
     const mais=evts.length>2?`<div class="cal-more">+${evts.length-2}</div>`:'';
     html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')"><div class="cal-day-num">${d}</div>${evtsHtml}${mais}</div>`;
   }
