@@ -1202,16 +1202,29 @@ tbody tr:hover td{background:#FAFAF8}
           </div>
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" onclick="carregarContabilidade()">↺ Atualizar</button>
-            <button class="btn btn-sm" onclick="exportarMapaMensal()">⬇ Exportar mês</button>
-            <button class="btn btn-sm" id="cb-btn-extrato" onclick="uploadExtrato()" title="Carregar extrato bancário do mês">📎 Extrato</button>
-            <span id="cb-extrato-link" style="display:none;font-size:11px;align-self:center">
-              <a id="cb-extrato-url" href="#" target="_blank" style="color:var(--accent)">📄 Ver extrato</a>
-            </span>
+            <div style="position:relative">
+              <button class="btn btn-sm" onclick="toggleDropConta('drop-exportar')">⬇ Exportar mês ▾</button>
+              <div id="drop-exportar" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                <div class="dropdown-item" onclick="exportarMapaMensal('Principal');toggleDropConta('drop-exportar')">Conta principal</div>
+                <div class="dropdown-item" onclick="exportarMapaMensal('Secundária');toggleDropConta('drop-exportar')">Conta secundária</div>
+                <div class="dropdown-item" onclick="exportarMapaMensal('');toggleDropConta('drop-exportar')">Todas as contas</div>
+              </div>
+            </div>
+            <div style="position:relative">
+              <button class="btn btn-sm" onclick="toggleDropConta('drop-extrato')">📎 Extrato ▾</button>
+              <div id="drop-extrato" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                <div class="dropdown-item" onclick="uploadExtrato('Principal');toggleDropConta('drop-extrato')">📤 Carregar — Conta principal</div>
+                <div class="dropdown-item" onclick="uploadExtrato('Secundária');toggleDropConta('drop-extrato')">📤 Carregar — Conta secundária</div>
+                <div style="border-top:1px solid var(--border);margin:.2rem 0"></div>
+                <div id="cb-extrato-link-p" style="display:none" class="dropdown-item"><a id="cb-extrato-url-p" href="#" target="_blank" style="color:var(--accent);text-decoration:none">📄 Ver — Conta principal</a></div>
+                <div id="cb-extrato-link-s" style="display:none" class="dropdown-item"><a id="cb-extrato-url-s" href="#" target="_blank" style="color:var(--accent);text-decoration:none">📄 Ver — Conta secundária</a></div>
+              </div>
+            </div>
+            <input type="file" id="cb-extrato-file" accept=".pdf,.xlsx,.csv" style="display:none" onchange="processarUploadExtrato()">
             <button class="btn btn-primary btn-sm" onclick="abrirContabNovo()">+ Novo</button>
           </div>
         </div>
 
-        <input type="file" id="cb-extrato-file" accept=".pdf,.xlsx,.csv" style="display:none" onchange="processarUploadExtrato()">
         <div id="cb-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
         <div id="cb-list" style="display:none"></div>
       </div>
@@ -1260,6 +1273,13 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group">
               <div class="field-label">IVA €</div>
               <input class="form-input" id="cb-iva" type="number" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Conta</div>
+              <select class="form-select" id="cb-conta">
+                <option value="Principal">Conta principal</option>
+                <option value="Secundária">Conta secundária</option>
+              </select>
             </div>
             <div class="field-group">
               <div class="field-label">Meio de pagamento</div>
@@ -1782,7 +1802,7 @@ const LISTA_TAREFAS='Tarefas_Escritorio';
 const LISTA_CONTA='Processos_ContaCorrente';
 const LISTA_CONTAB='Contabilidade';
 const BIBLIOTECA_FATURAS='FATURAS';
-const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',iva:'IVA',meio:'Meio_Pagamento',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes'};
+const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',iva:'IVA',meio:'Meio_Pagamento',conta:'Conta',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes'};
 const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
@@ -3434,7 +3454,7 @@ function renderContabilidade(lista){
     return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')">
       <div class="reg-list-main">
         <div class="reg-list-nome">${escHtml(i[CB.descricao]||'—')}</div>
-        <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
+        <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.conta]&&i[CB.conta]!=='Principal'?' · <span style="color:var(--blue)">'+escHtml(i[CB.conta])+'</span>':''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
         ${i[CB.estadoFatura]==='Sem fatura'?'<div style="font-size:10px;color:var(--amber)">⚠ Sem fatura</div>':''}
       </div>
       <div class="reg-list-right">
@@ -3462,6 +3482,7 @@ function abrirContabNovo(){
   document.getElementById('cb-descricao').value='';
   document.getElementById('cb-valor').value='';
   document.getElementById('cb-meio').value='';
+  document.getElementById('cb-conta').value='Principal';
   document.getElementById('cb-cliente').value='';
   document.getElementById('cb-fatura-interna').value='';
   document.getElementById('cb-estado-fatura').value='';
@@ -3487,6 +3508,7 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-valor').value=i[CB.valor]||'';
   document.getElementById('cb-iva').value=i[CB.iva]||'';
   document.getElementById('cb-meio').value=i[CB.meio]||'';
+  document.getElementById('cb-conta').value=i[CB.conta]||'Principal';
   document.getElementById('cb-cliente').value=i[CB.cliente]||'';
   document.getElementById('cb-fatura-interna').value=i[CB.faturaInterna]||'';
   document.getElementById('cb-estado-fatura').value=i[CB.estadoFatura]||'';
@@ -3618,6 +3640,7 @@ async function guardarContab(){
     [CB.valor]:parseFloat(valor)||0,
     [CB.iva]:parseFloat(document.getElementById('cb-iva').value||0),
     [CB.meio]:document.getElementById('cb-meio').value||'',
+    [CB.conta]:document.getElementById('cb-conta').value||'Principal',
     [CB.cliente]:document.getElementById('cb-cliente').value||'',
     [CB.faturaInterna]:document.getElementById('cb-fatura-interna').value||'',
     [CB.estadoFatura]:document.getElementById('cb-estado-fatura').value||'',
@@ -3641,9 +3664,20 @@ async function guardarContab(){
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
-let extratoUrlAtual='';
+let extratoContaAtual='Principal';
 
-function uploadExtrato(){
+function toggleDropConta(id){
+  ['drop-exportar','drop-extrato'].forEach(d=>{
+    const el=document.getElementById(d);
+    if(el)el.style.display=(d===id&&el.style.display==='none')?'block':'none';
+  });
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('[onclick*="toggleDropConta"]'))['drop-exportar','drop-extrato'].forEach(d=>{const el=document.getElementById(d);if(el)el.style.display='none';});
+});
+
+function uploadExtrato(conta){
+  extratoContaAtual=conta||'Principal';
   document.getElementById('cb-extrato-file').click();
 }
 
@@ -3653,8 +3687,9 @@ async function processarUploadExtrato(){
   const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
   const ano=new Date().getFullYear();
   const mesIdx=MESES_PT.indexOf(mes);
-  const nomeExtrato=`Extrato_${mes}_${ano}.${file.name.split('.').pop()}`;
-  showToast('A carregar extrato...','');
+  const conta=extratoContaAtual;
+  const nomeExtrato=`Extrato_${conta.replace('á','a')}_${mes}_${ano}.${file.name.split('.').pop()}`;
+  showToast(`A carregar extrato (${conta})...`,'');
   try{
     await renovarToken();
     const criarPasta=async(parentId,nome)=>{
@@ -3668,43 +3703,42 @@ async function processarUploadExtrato(){
     const anoId=await criarPasta(rootData.id,String(ano));
     const mesPasta=String(mesIdx+1).padStart(2,'0')+' '+mes;
     const mesId=await criarPasta(anoId,mesPasta);
-    // Upload ficheiro
     const ab=await file.arrayBuffer();
     const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesId}:/${nomeExtrato}:/content`,{
       method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type},body:ab
     });
     const uploaded=await r.json();
-    extratoUrlAtual=uploaded.webUrl||'';
-    // Guardar em localStorage para este mês
-    localStorage.setItem(`lbc_extrato_${ano}_${mes}`,extratoUrlAtual);
-    // Mostrar link
-    document.getElementById('cb-extrato-url').href=extratoUrlAtual;
-    document.getElementById('cb-extrato-link').style.display='flex';
-    showToast(`Upload com sucesso na pasta "${mes} ${ano}"!`,'success');
+    const url=uploaded.webUrl||'';
+    localStorage.setItem(`lbc_extrato_${conta}_${ano}_${mes}`,url);
+    const linkId=conta==='Principal'?'cb-extrato-link-p':'cb-extrato-link-s';
+    const urlId=conta==='Principal'?'cb-extrato-url-p':'cb-extrato-url-s';
+    document.getElementById(linkId).style.display='block';
+    document.getElementById(urlId).href=url;
+    showToast(`Extrato (${conta}) carregado em "${mes} ${ano}"!`,'success');
   }catch(e){showToast('Erro ao carregar extrato: '+e.message,'error');}
 }
 
 function verificarExtratoMes(){
   const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
   const ano=new Date().getFullYear();
-  const url=localStorage.getItem(`lbc_extrato_${ano}_${mes}`)||'';
-  extratoUrlAtual=url;
-  const linkEl=document.getElementById('cb-extrato-link');
-  if(url){
-    document.getElementById('cb-extrato-url').href=url;
-    linkEl.style.display='flex';
-  }else{
-    linkEl.style.display='none';
-  }
+  ['Principal','Secundária'].forEach(conta=>{
+    const url=localStorage.getItem(`lbc_extrato_${conta}_${ano}_${mes}`)||'';
+    const linkId=conta==='Principal'?'cb-extrato-link-p':'cb-extrato-link-s';
+    const urlId=conta==='Principal'?'cb-extrato-url-p':'cb-extrato-url-s';
+    if(url){document.getElementById(linkId).style.display='block';document.getElementById(urlId).href=url;}
+    else{document.getElementById(linkId).style.display='none';}
+  });
 }
 
-async function exportarMapaMensal(){
+async function exportarMapaMensal(contaFiltro){
   const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
   const ano=new Date().getFullYear();
-  const lista=todosMovimentos.filter(i=>i[CB.data]&&MESES_PT[new Date(i[CB.data]).getMonth()]===mes);
+  let lista=todosMovimentos.filter(i=>i[CB.data]&&MESES_PT[new Date(i[CB.data]).getMonth()]===mes);
+  if(contaFiltro)lista=lista.filter(i=>(i[CB.conta]||'Principal')===contaFiltro);
   if(!lista.length){showToast('Sem movimentos para exportar','');return;}
   const lista_ord=[...lista].sort((a,b)=>new Date(a[CB.data]||0)-new Date(b[CB.data]||0));
-  const extratoUrl=localStorage.getItem(`lbc_extrato_${ano}_${mes}`)||'';
+  const extratoUrlP=localStorage.getItem(`lbc_extrato_Principal_${ano}_${mes}`)||'';
+  const extratoUrlS=localStorage.getItem(`lbc_extrato_Secundaria_${ano}_${mes}`)||'';
   const totalDespesa=lista_ord.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalCliente=lista_ord.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalIva=lista_ord.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
@@ -3716,6 +3750,7 @@ async function exportarMapaMensal(){
     const corV=isDespesa?'#C0392B':'#B7800A';
     const corE=i[CB.estadoFatura]==='Sem fatura'?'#C0392B':i[CB.estadoFatura]==='Com fatura'?'#2D7D4F':'#888';
     const link=i[CB.ligacaoFatura]?`<a href="${escHtml(i[CB.ligacaoFatura])}" style="color:#2471A3;font-size:9px">📄 Ver</a>`:'—';
+    const conta=i[CB.conta]||'Principal';
     return`<tr style="background:${idx%2===0?'#F2ECE6':'#fff'}">
       <td style="padding:4px 6px;font-size:9px;color:#7A6355;text-align:center">${fmtData(i[CB.data])}</td>
       <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.tipo]||'')}</td>
@@ -3724,6 +3759,7 @@ async function exportarMapaMensal(){
       <td style="padding:4px 6px;font-size:9px;text-align:right;color:${corV};font-weight:600">${fmt(i[CB.valor])}</td>
       <td style="padding:4px 6px;font-size:9px;text-align:right;color:#2471A3">${parseFloat(i[CB.iva]||0)>0?fmt(i[CB.iva]):'—'}</td>
       <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.meio]||'')}</td>
+      <td style="padding:4px 6px;font-size:9px;font-weight:600;color:${conta==='Principal'?'#4F4580':'#0369A1'}">${conta}</td>
       <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.cliente]||'')}</td>
       <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.faturaInterna]||'')}</td>
       <td style="padding:4px 6px;font-size:9px;text-align:center;color:${corE};font-weight:600">${escHtml(i[CB.estadoFatura]||'')}</td>
@@ -3731,10 +3767,12 @@ async function exportarMapaMensal(){
     </tr>`;
   }).join('');
 
+  const tituloRelatorio=contaFiltro?`Mapa de Contabilidade — ${contaFiltro} — ${mes} ${ano}`:`Mapa de Contabilidade — ${mes} ${ano}`;
+
   const html=`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
-  @page{size:A4 portrait;margin:15mm}
+  @page{size:A4 landscape;margin:10mm}
   body{font-family:Calibri,Arial,sans-serif;color:#4A3728;margin:0;padding:0}
   .header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #C8956C;padding-bottom:12px;margin-bottom:12px}
   .header-text h1{margin:0;font-size:18px;color:#A67550;font-weight:700}
@@ -3743,7 +3781,7 @@ async function exportarMapaMensal(){
   .card{border:1.5px solid;border-radius:6px;padding:8px 10px}
   .card-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
   .card-value{font-size:16px;font-weight:700}
-  .extrato{font-size:9px;color:#2471A3;margin-bottom:10px}
+  .extrato{font-size:9px;color:#2471A3;margin-bottom:6px}
   table{width:100%;border-collapse:collapse;font-size:9px}
   thead tr{background:#E8DDD0}
   thead th{padding:5px 6px;font-size:8px;font-weight:700;color:#4A3728;text-align:left;border-bottom:2px solid #C8956C}
@@ -3756,7 +3794,7 @@ async function exportarMapaMensal(){
 <div class="header">
   <div class="header-text">
     <h1>LBC Solicitadora SP RL</h1>
-    <h2>Mapa de Contabilidade — ${mes} ${ano}</h2>
+    <h2>${tituloRelatorio}</h2>
   </div>
 </div>
 <div class="cards">
@@ -3777,17 +3815,19 @@ async function exportarMapaMensal(){
     <div class="card-value">${fmt(totalSemFat)}</div>
   </div>
 </div>
-${extratoUrl?`<div class="extrato">📄 Extrato bancário: <a href="${extratoUrl}">${extratoUrl}</a></div>`:''}
+${extratoUrlP?`<div class="extrato">📄 Extrato Conta Principal: <a href="${extratoUrlP}">${extratoUrlP}</a></div>`:''}
+${extratoUrlS?`<div class="extrato">📄 Extrato Conta Secundária: <a href="${extratoUrlS}">${extratoUrlS}</a></div>`:''}
 <table>
   <thead><tr>
-    <th style="width:8%">Data</th>
-    <th style="width:13%">Tipo</th>
-    <th style="width:9%">Categoria</th>
-    <th style="width:18%">Descrição</th>
-    <th class="num" style="width:7%">Valor €</th>
-    <th class="num" style="width:6%">IVA €</th>
-    <th style="width:8%">Meio Pag.</th>
-    <th style="width:11%">Cliente</th>
+    <th style="width:7%">Data</th>
+    <th style="width:12%">Tipo</th>
+    <th style="width:8%">Categoria</th>
+    <th style="width:16%">Descrição</th>
+    <th class="num" style="width:6%">Valor €</th>
+    <th class="num" style="width:5%">IVA €</th>
+    <th style="width:7%">Meio Pag.</th>
+    <th style="width:7%">Conta</th>
+    <th style="width:10%">Cliente</th>
     <th style="width:8%">Nº Fatura</th>
     <th style="width:7%">Estado</th>
     <th style="width:5%">Fatura</th>
@@ -3797,20 +3837,19 @@ ${extratoUrl?`<div class="extrato">📄 Extrato bancário: <a href="${extratoUrl
     <td colspan="4" style="text-align:right">TOTAL</td>
     <td style="text-align:right;color:#C0392B">${fmt(totalDespesa+totalCliente)}</td>
     <td style="text-align:right;color:#2471A3">${fmt(totalIva)}</td>
-    <td colspan="5"></td>
+    <td colspan="6"></td>
   </tr></tfoot>
 </table>
 </body></html>`;
 
-  // Download HTML como ficheiro
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download=`Contabilidade_${mes}_${ano}.html`;
+  a.download=`Contabilidade_${contaFiltro?contaFiltro+'_':''}${mes}_${ano}.html`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast(`Mapa de ${mes} ${ano} exportado!`,'success');
+  showToast(`Mapa ${contaFiltro?'('+contaFiltro+') ':''}de ${mes} ${ano} exportado!`,'success');
 }
 
 async function corrigirLinksAbrilParaMarco(){
