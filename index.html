@@ -1199,6 +1199,11 @@ tbody tr:hover td{background:#FAFAF8}
               <option>Com fatura</option>
               <option>Sem fatura</option>
             </select>
+            <select class="form-select" id="cb-filtro-conta" onchange="filtrarContabilidade()" style="width:140px;font-size:12px">
+              <option value="">Todas as contas</option>
+              <option value="Principal">Só Principal</option>
+              <option value="Secundária">Só Secundária</option>
+            </select>
           </div>
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" onclick="carregarContabilidade()">↺ Atualizar</button>
@@ -1278,11 +1283,19 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Valor total € * <span style="font-weight:400;color:var(--text-faint);font-size:10px">(com IVA)</span></div>
-              <input class="form-input" id="cb-valor" type="number" step="0.01" placeholder="0.00" oninput="atualizarLiquido()">
+              <input class="form-input" id="cb-valor" type="number" step="0.01" placeholder="0.00" oninput="recalcularIva();atualizarLiquido()">
             </div>
             <div class="field-group">
-              <div class="field-label">IVA € <span style="font-weight:400;color:var(--text-faint);font-size:10px">(só se tens fatura)</span></div>
-              <input class="form-input" id="cb-iva" type="number" step="0.01" placeholder="0.00" oninput="atualizarLiquido()">
+              <div class="field-label">IVA € <span style="font-weight:400;color:var(--text-faint);font-size:10px" id="cb-iva-hint">(só se com fatura)</span></div>
+              <div style="display:flex;gap:.4rem">
+                <input class="form-input" id="cb-iva" type="number" step="0.01" placeholder="0.00" oninput="atualizarLiquido()" style="flex:1">
+                <select class="form-select" id="cb-iva-taxa" onchange="recalcularIva()" style="width:72px" title="Taxa IVA">
+                  <option value="">—</option>
+                  <option value="6">6%</option>
+                  <option value="13">13%</option>
+                  <option value="23" selected>23%</option>
+                </select>
+              </div>
               <div id="cb-liquido-hint" style="font-size:10px;color:var(--text-faint);margin-top:.25rem;display:none">Líquido: <span id="cb-liquido-val">—</span></div>
             </div>
             <div class="field-group">
@@ -1312,7 +1325,7 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Estado fatura</div>
-              <select class="form-select" id="cb-estado-fatura">
+              <select class="form-select" id="cb-estado-fatura" onchange="recalcularIva()">
                 <option value="">—</option>
                 <option>Com fatura</option>
                 <option>Sem fatura</option>
@@ -3417,7 +3430,7 @@ async function carregarContabilidade(){
   document.getElementById('cb-loading').style.display='flex';
   document.getElementById('cb-list').style.display='none';
   try{
-    const sf='Data,TipoDespesa,Categoria,Descricao,Valor,IVA,Meio_Pagamento,Cliente_Associado,Fatura_Interna,Estado_Fatura_Externa,Ligacao_Fatura,Observacoes';
+    const sf='Data,TipoDespesa,Categoria,Descricao,Valor,IVA,Meio_Pagamento,Conta,Cliente_Associado,Fatura_Interna,Estado_Fatura_Externa,Ligacao_Fatura,Observacoes';
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
     todosMovimentos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     // Seleccionar mês actual por defeito
@@ -3432,6 +3445,7 @@ function filtrarContabilidade(){
   const mes=document.getElementById('cb-filtro-mes').value;
   const tipo=document.getElementById('cb-filtro-tipo').value;
   const fatura=document.getElementById('cb-filtro-fatura').value;
+  const conta=document.getElementById('cb-filtro-conta')?.value||'';
   let lista=todosMovimentos;
   if(mes) lista=lista.filter(i=>{
     if(!i[CB.data])return false;
@@ -3439,6 +3453,7 @@ function filtrarContabilidade(){
   });
   if(tipo) lista=lista.filter(i=>i[CB.tipo]===tipo);
   if(fatura) lista=lista.filter(i=>i[CB.estadoFatura]===fatura);
+  if(conta) lista=lista.filter(i=>(i[CB.conta]||'Principal')===conta);
   // Actualizar métricas
   const despesa=lista.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const cliente=lista.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
@@ -3503,11 +3518,15 @@ function abrirContabNovo(){
   document.getElementById('cb-estado-fatura').value='';
   document.getElementById('cb-observacoes').value='';
   document.getElementById('cb-iva').value='';
+  document.getElementById('cb-iva-taxa').value='23';
   document.getElementById('cb-fatura-file').value='';
   document.getElementById('cb-fatura-ok').style.display='none';
   document.getElementById('cb-categoria-wrap').style.display='none';
   document.getElementById('cb-cliente-wrap').style.display='none';
   document.getElementById('cb-btn-eliminar').style.display='none';
+  // Taxa IVA desactivada até Estado Fatura = Com fatura
+  document.getElementById('cb-iva-taxa').disabled=true;
+  document.getElementById('cb-iva-hint').textContent='(só se com fatura)';
   atualizarLiquido();
   document.getElementById('cb-painel').classList.add('open');
   document.getElementById('cb-overlay').classList.add('show');
@@ -3523,6 +3542,18 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-descricao').value=i[CB.descricao]||'';
   document.getElementById('cb-valor').value=i[CB.valor]||'';
   document.getElementById('cb-iva').value=i[CB.iva]||'';
+  // deduzir taxa IVA a partir do valor total e IVA gravados
+  const vTot=parseFloat(i[CB.valor]||0);
+  const vIva=parseFloat(i[CB.iva]||0);
+  let taxaInferida='23';
+  if(vTot>0&&vIva>0){
+    const liq=vTot-vIva;
+    if(liq>0){
+      const pct=Math.round((vIva/liq)*100);
+      if(pct===6||pct===13||pct===23)taxaInferida=String(pct);
+    }
+  }
+  document.getElementById('cb-iva-taxa').value=taxaInferida;
   document.getElementById('cb-meio').value=i[CB.meio]||'';
   document.getElementById('cb-conta').value=i[CB.conta]||'Principal';
   document.getElementById('cb-cliente').value=i[CB.cliente]||'';
@@ -3533,6 +3564,19 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-fatura-ok').style.display=i[CB.ligacaoFatura]?'block':'none';
   if(i[CB.ligacaoFatura])document.getElementById('cb-fatura-ok-nome').textContent='Fatura já carregada';
   onCbTipoChange();
+  // Ajustar só o estado visual (disabled/hint) sem recalcular o IVA já gravado
+  (function(){
+    const estado=document.getElementById('cb-estado-fatura').value;
+    const taxaSel=document.getElementById('cb-iva-taxa');
+    const hint=document.getElementById('cb-iva-hint');
+    if(estado==='Com fatura'){
+      taxaSel.disabled=false;
+      if(hint)hint.textContent='(taxa aplicada ao valor total)';
+    }else{
+      taxaSel.disabled=true;
+      if(hint)hint.textContent='(só se com fatura)';
+    }
+  })();
   atualizarLiquido();
   document.getElementById('cb-btn-eliminar').style.display='inline-flex';
   document.getElementById('cb-painel').classList.add('open');
@@ -3795,6 +3839,32 @@ function atualizarLiquido(){
   }else{
     hint.style.display='none';
   }
+}
+
+// Calcula o IVA automaticamente a partir do Valor total e da taxa escolhida,
+// mas só quando o Estado Fatura = "Com fatura". Fórmula: IVA = Valor × taxa / (100+taxa)
+function recalcularIva(){
+  const estado=document.getElementById('cb-estado-fatura').value;
+  const valor=parseFloat(document.getElementById('cb-valor').value||0);
+  const taxaSel=document.getElementById('cb-iva-taxa');
+  const campoIva=document.getElementById('cb-iva');
+  const hint=document.getElementById('cb-iva-hint');
+  if(!taxaSel||!campoIva)return;
+  if(estado==='Com fatura'){
+    taxaSel.disabled=false;
+    if(hint)hint.textContent='(taxa aplicada ao valor total)';
+    const taxa=parseFloat(taxaSel.value||0);
+    if(valor>0&&taxa>0){
+      const iva=valor*taxa/(100+taxa);
+      campoIva.value=iva.toFixed(2);
+    }
+  }else if(estado==='Sem fatura'||estado===''){
+    // Sem fatura → IVA zerado e taxa desactivada
+    taxaSel.disabled=true;
+    campoIva.value='';
+    if(hint)hint.textContent='(só se com fatura)';
+  }
+  atualizarLiquido();
 }
 
 // Migração: soma IVA ao Valor em todos os movimentos antigos (Valor sem IVA → Valor com IVA)
