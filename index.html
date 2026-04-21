@@ -1211,16 +1211,26 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
             <div style="position:relative">
-              <button class="btn btn-sm" onclick="toggleDropConta('drop-extrato')">📎 Extrato ▾</button>
-              <div id="drop-extrato" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
-                <div class="dropdown-item" onclick="uploadExtrato('Principal');toggleDropConta('drop-extrato')">📤 Carregar — Conta principal</div>
-                <div class="dropdown-item" onclick="uploadExtrato('Secundária');toggleDropConta('drop-extrato')">📤 Carregar — Conta secundária</div>
-                <div style="border-top:1px solid var(--border);margin:.2rem 0"></div>
-                <div id="cb-extrato-link-p" style="display:none" class="dropdown-item"><a id="cb-extrato-url-p" href="#" target="_blank" style="color:var(--accent);text-decoration:none">📄 Ver — Conta principal</a></div>
-                <div id="cb-extrato-link-s" style="display:none" class="dropdown-item"><a id="cb-extrato-url-s" href="#" target="_blank" style="color:var(--accent);text-decoration:none">📄 Ver — Conta secundária</a></div>
+              <button class="btn btn-sm" id="btn-extrato-p" onclick="extratoBtnClick('Principal')" title="Extrato conta principal">📎 Extrato Principal</button>
+              <div id="drop-extrato-p" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                <div class="dropdown-item" id="cb-extrato-p-ver" onclick="abrirExtrato('Principal');toggleDropConta('drop-extrato-p')" style="color:var(--accent)">📄 Ver extrato</div>
+                <div class="dropdown-item" onclick="uploadExtrato('Principal');toggleDropConta('drop-extrato-p')">🔄 Substituir extrato</div>
+              </div>
+            </div>
+            <div style="position:relative">
+              <button class="btn btn-sm" id="btn-extrato-s" onclick="extratoBtnClick('Secundária')" title="Extrato conta secundária">📎 Extrato Secundária</button>
+              <div id="drop-extrato-s" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                <div class="dropdown-item" id="cb-extrato-s-ver" onclick="abrirExtrato('Secundária');toggleDropConta('drop-extrato-s')" style="color:var(--accent)">📄 Ver extrato</div>
+                <div class="dropdown-item" onclick="uploadExtrato('Secundária');toggleDropConta('drop-extrato-s')">🔄 Substituir extrato</div>
               </div>
             </div>
             <input type="file" id="cb-extrato-file" accept=".pdf,.xlsx,.csv" style="display:none" onchange="processarUploadExtrato()">
+            <div style="position:relative">
+              <button class="btn btn-sm" onclick="toggleDropConta('drop-ferramentas')" title="Ferramentas">⋯</button>
+              <div id="drop-ferramentas" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:240px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                <div class="dropdown-item" onclick="migrarIvaParaValor();toggleDropConta('drop-ferramentas')" style="color:var(--amber)">🔧 Somar IVA ao Valor (migração)</div>
+              </div>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="abrirContabNovo()">+ Novo</button>
           </div>
         </div>
@@ -1267,12 +1277,13 @@ tbody tr:hover td{background:#FAFAF8}
               <input class="form-input" id="cb-descricao" placeholder="Ex: NOS fatura março 2026">
             </div>
             <div class="field-group">
-              <div class="field-label">Valor € *</div>
-              <input class="form-input" id="cb-valor" type="number" step="0.01" placeholder="0.00">
+              <div class="field-label">Valor total € * <span style="font-weight:400;color:var(--text-faint);font-size:10px">(com IVA)</span></div>
+              <input class="form-input" id="cb-valor" type="number" step="0.01" placeholder="0.00" oninput="atualizarLiquido()">
             </div>
             <div class="field-group">
-              <div class="field-label">IVA €</div>
-              <input class="form-input" id="cb-iva" type="number" step="0.01" placeholder="0.00">
+              <div class="field-label">IVA € <span style="font-weight:400;color:var(--text-faint);font-size:10px">(só se tens fatura)</span></div>
+              <input class="form-input" id="cb-iva" type="number" step="0.01" placeholder="0.00" oninput="atualizarLiquido()">
+              <div id="cb-liquido-hint" style="font-size:10px;color:var(--text-faint);margin-top:.25rem;display:none">Líquido: <span id="cb-liquido-val">—</span></div>
             </div>
             <div class="field-group">
               <div class="field-label">Conta</div>
@@ -3451,10 +3462,14 @@ function renderContabilidade(lista){
   el.innerHTML=lista.map(i=>{
     const isDespesa=i[CB.tipo]==='Despesa empresa';
     const val=parseFloat(i[CB.valor]||0);
+    const conta=i[CB.conta]||'Principal';
+    const contaTag=conta==='Secundária'
+      ? '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#DBEAFE;color:#0369A1;margin-right:4px">Secundária</span>'
+      : '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#EDE9FE;color:#4F4580;margin-right:4px">Principal</span>';
     return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')">
       <div class="reg-list-main">
-        <div class="reg-list-nome">${escHtml(i[CB.descricao]||'—')}</div>
-        <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.conta]&&i[CB.conta]!=='Principal'?' · <span style="color:var(--blue)">'+escHtml(i[CB.conta])+'</span>':''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
+        <div class="reg-list-nome">${contaTag}${escHtml(i[CB.descricao]||'—')}</div>
+        <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
         ${i[CB.estadoFatura]==='Sem fatura'?'<div style="font-size:10px;color:var(--amber)">⚠ Sem fatura</div>':''}
       </div>
       <div class="reg-list-right">
@@ -3493,6 +3508,7 @@ function abrirContabNovo(){
   document.getElementById('cb-categoria-wrap').style.display='none';
   document.getElementById('cb-cliente-wrap').style.display='none';
   document.getElementById('cb-btn-eliminar').style.display='none';
+  atualizarLiquido();
   document.getElementById('cb-painel').classList.add('open');
   document.getElementById('cb-overlay').classList.add('show');
 }
@@ -3517,6 +3533,7 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-fatura-ok').style.display=i[CB.ligacaoFatura]?'block':'none';
   if(i[CB.ligacaoFatura])document.getElementById('cb-fatura-ok-nome').textContent='Fatura já carregada';
   onCbTipoChange();
+  atualizarLiquido();
   document.getElementById('cb-btn-eliminar').style.display='inline-flex';
   document.getElementById('cb-painel').classList.add('open');
   document.getElementById('cb-overlay').classList.add('show');
@@ -3666,15 +3683,36 @@ async function guardarContab(){
 
 let extratoContaAtual='Principal';
 
+// chave sem acento para evitar problemas de encoding
+const contaKey=c=>(c==='Secundária'||c==='Secundaria')?'Secundaria':'Principal';
+
 function toggleDropConta(id){
-  ['drop-exportar','drop-extrato'].forEach(d=>{
+  ['drop-exportar','drop-extrato-p','drop-extrato-s','drop-ferramentas'].forEach(d=>{
     const el=document.getElementById(d);
     if(el)el.style.display=(d===id&&el.style.display==='none')?'block':'none';
   });
 }
 document.addEventListener('click',e=>{
-  if(!e.target.closest('[onclick*="toggleDropConta"]'))['drop-exportar','drop-extrato'].forEach(d=>{const el=document.getElementById(d);if(el)el.style.display='none';});
+  if(!e.target.closest('[onclick*="toggleDropConta"]')&&!e.target.closest('[onclick*="extratoBtnClick"]'))
+    ['drop-exportar','drop-extrato-p','drop-extrato-s','drop-ferramentas'].forEach(d=>{const el=document.getElementById(d);if(el)el.style.display='none';});
 });
+
+// clique no botão principal do extrato: se não existe → carregar; se existe → abrir menu Ver/Substituir
+function extratoBtnClick(conta){
+  const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
+  const ano=new Date().getFullYear();
+  const url=localStorage.getItem(`lbc_extrato_${contaKey(conta)}_${ano}_${mes}`)||'';
+  if(!url){uploadExtrato(conta);return;}
+  toggleDropConta(conta==='Principal'?'drop-extrato-p':'drop-extrato-s');
+}
+
+function abrirExtrato(conta){
+  const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
+  const ano=new Date().getFullYear();
+  const url=localStorage.getItem(`lbc_extrato_${contaKey(conta)}_${ano}_${mes}`)||'';
+  if(url)window.open(url,'_blank');
+  else showToast('Sem extrato carregado para este mês','');
+}
 
 function uploadExtrato(conta){
   extratoContaAtual=conta||'Principal';
@@ -3688,7 +3726,7 @@ async function processarUploadExtrato(){
   const ano=new Date().getFullYear();
   const mesIdx=MESES_PT.indexOf(mes);
   const conta=extratoContaAtual;
-  const nomeExtrato=`Extrato_${conta.replace('á','a')}_${mes}_${ano}.${file.name.split('.').pop()}`;
+  const nomeExtrato=`Extrato_${contaKey(conta)}_${mes}_${ano}.${file.name.split('.').pop()}`;
   showToast(`A carregar extrato (${conta})...`,'');
   try{
     await renovarToken();
@@ -3709,11 +3747,8 @@ async function processarUploadExtrato(){
     });
     const uploaded=await r.json();
     const url=uploaded.webUrl||'';
-    localStorage.setItem(`lbc_extrato_${conta}_${ano}_${mes}`,url);
-    const linkId=conta==='Principal'?'cb-extrato-link-p':'cb-extrato-link-s';
-    const urlId=conta==='Principal'?'cb-extrato-url-p':'cb-extrato-url-s';
-    document.getElementById(linkId).style.display='block';
-    document.getElementById(urlId).href=url;
+    localStorage.setItem(`lbc_extrato_${contaKey(conta)}_${ano}_${mes}`,url);
+    verificarExtratoMes();
     showToast(`Extrato (${conta}) carregado em "${mes} ${ano}"!`,'success');
   }catch(e){showToast('Erro ao carregar extrato: '+e.message,'error');}
 }
@@ -3721,13 +3756,93 @@ async function processarUploadExtrato(){
 function verificarExtratoMes(){
   const mes=document.getElementById('cb-filtro-mes').value||MESES_PT[new Date().getMonth()];
   const ano=new Date().getFullYear();
+  // migração: chave antiga com acento → sem acento
+  const antigaS=localStorage.getItem(`lbc_extrato_Secundária_${ano}_${mes}`);
+  if(antigaS){
+    localStorage.setItem(`lbc_extrato_Secundaria_${ano}_${mes}`,antigaS);
+    localStorage.removeItem(`lbc_extrato_Secundária_${ano}_${mes}`);
+  }
   ['Principal','Secundária'].forEach(conta=>{
-    const url=localStorage.getItem(`lbc_extrato_${conta}_${ano}_${mes}`)||'';
-    const linkId=conta==='Principal'?'cb-extrato-link-p':'cb-extrato-link-s';
-    const urlId=conta==='Principal'?'cb-extrato-url-p':'cb-extrato-url-s';
-    if(url){document.getElementById(linkId).style.display='block';document.getElementById(urlId).href=url;}
-    else{document.getElementById(linkId).style.display='none';}
+    const url=localStorage.getItem(`lbc_extrato_${contaKey(conta)}_${ano}_${mes}`)||'';
+    const btnId=conta==='Principal'?'btn-extrato-p':'btn-extrato-s';
+    const btn=document.getElementById(btnId);
+    if(!btn)return;
+    if(url){
+      btn.innerHTML=`📄 Extrato ${conta} ✓`;
+      btn.style.background='var(--accent)';
+      btn.style.color='#fff';
+      btn.style.borderColor='var(--accent)';
+    }else{
+      btn.innerHTML=`📎 Extrato ${conta}`;
+      btn.style.background='';
+      btn.style.color='';
+      btn.style.borderColor='';
+    }
   });
+}
+
+// Ajuda visual no painel: mostra o valor líquido (Valor - IVA) à medida que se preenche
+function atualizarLiquido(){
+  const valor=parseFloat(document.getElementById('cb-valor').value||0);
+  const iva=parseFloat(document.getElementById('cb-iva').value||0);
+  const hint=document.getElementById('cb-liquido-hint');
+  const spanVal=document.getElementById('cb-liquido-val');
+  if(!hint||!spanVal)return;
+  if(iva>0&&valor>0){
+    const liquido=valor-iva;
+    spanVal.textContent=liquido.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+    hint.style.display='block';
+  }else{
+    hint.style.display='none';
+  }
+}
+
+// Migração: soma IVA ao Valor em todos os movimentos antigos (Valor sem IVA → Valor com IVA)
+async function migrarIvaParaValor(){
+  if(!listaIdContab){showToast('Lista Contabilidade não encontrada','error');return;}
+  const MARCA='[IVA_MIGRADO]';
+  // Filtrar: têm IVA > 0 E ainda não foram migrados (observações não contêm a marca)
+  const candidatos=todosMovimentos.filter(i=>{
+    const temIva=parseFloat(i[CB.iva]||0)>0;
+    const jaMigrado=(i[CB.observacoes]||'').includes(MARCA);
+    return temIva&&!jaMigrado;
+  });
+  const jaMigrados=todosMovimentos.filter(i=>(i[CB.observacoes]||'').includes(MARCA)).length;
+  if(!candidatos.length){
+    const info=jaMigrados>0
+      ?`Todos os movimentos com IVA já estão migrados (${jaMigrados} encontrados com a marca ${MARCA}).`
+      :'Não há movimentos com IVA para migrar.';
+    showToast(info,'');return;
+  }
+  const totalIva=candidatos.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
+  const msg=`Vão ser actualizados ${candidatos.length} movimentos:\n\n• Para cada um, o campo Valor passa a incluir o IVA\n• Ex: Valor=100 + IVA=23 → Valor=123 (IVA continua a 23)\n• Total de IVA a somar aos valores: ${totalIva.toLocaleString('pt-PT',{minimumFractionDigits:2})}€\n• Cada movimento migrado recebe a marca ${MARCA} nas observações para não ser migrado outra vez\n${jaMigrados>0?`\n• Já existem ${jaMigrados} movimentos marcados (não serão tocados)\n`:''}\n⚠ Esta operação NÃO PODE SER DESFEITA automaticamente.\n\nConfirmas?`;
+  if(!confirm(msg))return;
+  if(!confirm('Tens a certeza absoluta? Escreve CONFIRMO na próxima janela.'))return;
+  const txt=prompt('Escreve CONFIRMO (em maiúsculas) para prosseguir:');
+  if(txt!=='CONFIRMO'){showToast('Migração cancelada','');return;}
+
+  showToast(`A migrar ${candidatos.length} movimentos...`,'');
+  let ok=0,erro=0;
+  for(const i of candidatos){
+    const novoValor=parseFloat(i[CB.valor]||0)+parseFloat(i[CB.iva]||0);
+    const obsAtuais=i[CB.observacoes]||'';
+    const novasObs=obsAtuais?`${obsAtuais} ${MARCA}`:MARCA;
+    try{
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${i.id}/fields`,{
+        [CB.valor]:novoValor,
+        [CB.observacoes]:novasObs
+      });
+      i[CB.valor]=novoValor;
+      i[CB.observacoes]=novasObs;
+      ok++;
+    }catch(e){
+      console.error('Erro a migrar item',i.id,e);
+      erro++;
+    }
+  }
+  if(erro>0)showToast(`Migração concluída com erros: ${ok} ok, ${erro} falhas`,'error');
+  else showToast(`Migração concluída: ${ok} movimentos actualizados ✓`,'success');
+  filtrarContabilidade();
 }
 
 async function exportarMapaMensal(contaFiltro){
