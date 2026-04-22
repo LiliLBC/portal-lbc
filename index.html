@@ -2053,6 +2053,16 @@ async function graphGet(url){
   if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
   return r.json();
 }
+async function graphGetNonIndexed(url){
+  await renovarToken();
+  const r=await fetch(url,{headers:{
+    'Authorization':'Bearer '+graphToken,
+    'Accept':'application/json',
+    'Prefer':'HonorNonIndexedQueriesWarningMayFailRandomly'
+  }});
+  if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
+  return r.json();
+}
 async function graphPatch(url,body){
   await renovarToken();
   const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -3084,7 +3094,7 @@ async function atualizarBlocoPortefolio(){
 
   // Verificar se já está no portefólio
   try{
-    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${painelItemId}'&$top=1`);
+    const r=await graphGetNonIndexed(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${painelItemId}'&$top=1`);
     const existe=r.value?.[0];
     if(existe){
       const est=existe.fields[PS.estadoPort]||'Pendente';
@@ -3142,7 +3152,7 @@ async function sincronizarPortefolio(escrituraId,body,modo){
   if(!listaIdPortefolio) return; // Lista não configurada
   try{
     // Procurar entrada existente para esta escritura
-    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${escrituraId}'&$top=1`);
+    const r=await graphGetNonIndexed(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${escrituraId}'&$top=1`);
     const existente=r.value?.[0];
 
     if(modo==='marcar'){
