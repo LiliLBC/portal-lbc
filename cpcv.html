@@ -393,6 +393,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
+      <!-- Cláusula penal (só quando NÃO há sinal) -->
+      <div class="cond-block" id="clausula-penal-block" style="display:none">
+        <div class="cond-block-title">Cláusula penal por incumprimento (sem sinal)</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Modo de fixação do valor <span>*</span></label>
+            <select class="form-select" id="cp-modo" onchange="onCPModoChange()">
+              <option value="">Selecionar...</option>
+              <option value="euros">Valor fixo em euros</option>
+              <option value="percent">Percentagem sobre o preço</option>
+              <option value="ambos">Valor em euros correspondente a uma percentagem do preço</option>
+            </select>
+          </div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group" id="cp-euros-group" style="display:none">
+              <label class="form-label">Valor em euros (€) <span>*</span></label>
+              <input type="text" class="form-input" id="cp-euros" placeholder="Ex: 26.500,00" oninput="onCPValorChange()">
+            </div>
+            <div class="form-group" id="cp-euros-extenso-group" style="display:none">
+              <label class="form-label">Por extenso (automático)</label>
+              <input type="text" class="form-input" id="cp-euros-extenso" readonly style="background:var(--surface2)">
+            </div>
+            <div class="form-group" id="cp-percent-group" style="display:none">
+              <label class="form-label">Percentagem sobre o preço (%) <span>*</span></label>
+              <input type="text" class="form-input" id="cp-percent" placeholder="Ex: 10" oninput="onCPValorChange()">
+            </div>
+            <div class="form-group" id="cp-percent-calc-group" style="display:none">
+              <label class="form-label">Valor calculado (automático)</label>
+              <input type="text" class="form-input" id="cp-percent-calc" readonly style="background:var(--surface2)">
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -728,8 +762,31 @@ function updatePrecoExtenso(){
   calcularRemanescente();
 }
 function onToggleSinal(){
-  document.getElementById('sinal-fields').style.display=document.getElementById('toggle-sinal').checked?'block':'none';
+  const temSinal=document.getElementById('toggle-sinal').checked;
+  document.getElementById('sinal-fields').style.display=temSinal?'block':'none';
+  // Quando NÃO há sinal, mostrar bloco da cláusula penal
+  document.getElementById('clausula-penal-block').style.display=temSinal?'none':'block';
   calcularRemanescente();
+}
+function onCPModoChange(){
+  const modo=document.getElementById('cp-modo').value;
+  document.getElementById('cp-euros-group').style.display=(modo==='euros')?'flex':'none';
+  document.getElementById('cp-euros-extenso-group').style.display=(modo==='euros')?'flex':'none';
+  document.getElementById('cp-percent-group').style.display=(modo==='percent'||modo==='ambos')?'flex':'none';
+  document.getElementById('cp-percent-calc-group').style.display=(modo==='ambos')?'flex':'none';
+  onCPValorChange();
+}
+function onCPValorChange(){
+  const modo=document.getElementById('cp-modo').value;
+  if(modo==='euros'){
+    document.getElementById('cp-euros-extenso').value=valorExtenso(document.getElementById('cp-euros').value);
+  }
+  if(modo==='ambos'){
+    const total=parseFloat((document.getElementById('preco-total').value||'0').replace(/\./g,'').replace(',','.'))||0;
+    const pct=parseFloat((document.getElementById('cp-percent').value||'0').replace(',','.'))||0;
+    const calc=total*pct/100;
+    document.getElementById('cp-percent-calc').value=calc>0?calc.toLocaleString('pt-PT',{minimumFractionDigits:2}):'';
+  }
 }
 function onToggleReforco(){
   document.getElementById('reforco-fields').style.display=document.getElementById('toggle-reforco').checked?'block':'none';
@@ -998,6 +1055,43 @@ async function gerarContrato(){
       TXT_Clausula_Especial=`CLÁUSULA ESPECIAL\n\n${v('clausulas-texto')}`;
     }
 
+    // Cláusula 8ª — Incumprimento (com ou sem sinal)
+    let TXT_Incumprimento='';
+    if(chk('toggle-sinal')){
+      // Versão original com sinal
+      TXT_Incumprimento =
+        '1. A Promitente Parte Vendedora terá o direito, em caso de incumprimento definitivo da obrigação de celebração da Escritura Pública ou DPA, dentro do prazo limite previsto no presente contrato, por motivo imputável à Promitente Parte Compradora, a fazer suas todas as quantias recebidas a título de sinal e princípio de pagamento.\n\n'+
+        '2. A Promitente Parte Compradora terá direito, em caso de incumprimento definitivo deste contrato, por motivo imputável à Promitente Parte Vendedora, a receber a restituição em dobro das quantias entregues a título de sinal.\n\n'+
+        '3. Sem prejuízo do disposto nos números anteriores, qualquer das Partes poderá exigir a execução específica do presente contrato-promessa, nos termos do nº 3 do artigo 830.º do Código Civil e demais legislação aplicável.\n\n'+
+        '4. As Partes reconhecem para todos os devidos efeitos, que a impossibilidade de concretização da compra e venda por motivos atendíveis ao exercício de direito de preferência a confinantes nos termos do direito que lhes é legalmente atribuído, não será considerado incumprimento do presente contrato pela Promitente Parte Vendedora, caso em que haverá apenas lugar à devolução à Promitente Parte Compradora, em singelo das quantias recebidas a título de sinal/reforço previsto no nº1 da Cláusula 4ª, no prazo de 3 (três) dias úteis, a contar da data de manifestação de interesse do referido exercício do direito de preferência.';
+    } else {
+      // Versão sem sinal — cláusula penal bilateral compulsória
+      const modo=v('cp-modo');
+      let valorTexto='';
+      if(modo==='euros'){
+        const val=v('cp-euros');
+        const ext=valorExtenso(val);
+        valorTexto=`a quantia de ${val} (${ext})`;
+      } else if(modo==='percent'){
+        const pct=v('cp-percent');
+        valorTexto=`o valor correspondente a ${pct}% (${pct} por cento) do preço global acordado na Cláusula 4ª`;
+      } else if(modo==='ambos'){
+        const pct=v('cp-percent');
+        const calc=document.getElementById('cp-percent-calc').value;
+        const ext=valorExtenso(calc);
+        valorTexto=`a quantia de ${calc} (${ext}), correspondente a ${pct}% (${pct} por cento) do preço global acordado na Cláusula 4ª`;
+      } else {
+        valorTexto='a quantia de € [_______] ([_______ euros])';
+      }
+      TXT_Incumprimento =
+        '1. Não tendo havido lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento no presente contrato, as Partes, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.\n\n'+
+        `2. Em caso de incumprimento definitivo do presente contrato imputável à Promitente Parte Compradora, obriga-se esta a pagar à Promitente Parte Vendedora, a título de cláusula penal, ${valorTexto}.\n\n`+
+        `3. Em caso de incumprimento definitivo do presente contrato imputável à Promitente Parte Vendedora, obriga-se esta a pagar à Promitente Parte Compradora, a título de cláusula penal, quantia de igual montante.\n\n`+
+        '4. As Partes acordam expressamente que a presente cláusula penal tem natureza compulsória e não substitui a indemnização pelos danos efetivamente sofridos pela parte não faltosa, acrescendo a esta nos termos gerais de direito, sem prejuízo do disposto no artigo 811.º, n.º 2, do Código Civil.\n\n'+
+        '5. Para os efeitos do presente contrato, considera-se verificado o incumprimento definitivo quando, após interpelação admonitória dirigida à parte faltosa, por carta registada com aviso de receção, fixando um prazo razoável não inferior a 15 (quinze) dias para o cumprimento, esta não cumpra a obrigação em falta dentro do referido prazo, nos termos do artigo 808.º do Código Civil.\n\n'+
+        '6. Sem prejuízo do disposto nos números anteriores, qualquer das Partes poderá exigir a execução específica do presente contrato-promessa, nos termos do nº 3 do artigo 830.º do Código Civil e demais legislação aplicável.';
+    }
+
     // Assinatura
     const Local_Assinatura=v('local-assinatura')||'Évora';
     const Data_Assinatura_Extenso=fmtDataPT(v('data-assinatura'));
@@ -1030,7 +1124,7 @@ async function gerarContrato(){
       });
       const zip2=new PizZip(templateBufManual);
       const dt2=new DocxClass(zip2,{paragraphLoop:true,linebreaks:true});
-      dt2.render({TXT_Vendedores,TXT_Compradores,TXT_Imovel,TXT_Onus,Preco_Total_Fmt,Preco_Total_Extenso,TXT_Pagamento,TXT_Cert_Energetico,TXT_LU,Data_Escritura_Extenso,Email_Vendedor,Email_Comprador,TXT_Mediacao,TXT_Clausula_Especial,Local_Assinatura,Data_Assinatura_Extenso,Camara_Municipal});
+      dt2.render({TXT_Vendedores,TXT_Compradores,TXT_Imovel,TXT_Onus,Preco_Total_Fmt,Preco_Total_Extenso,TXT_Pagamento,TXT_Cert_Energetico,TXT_LU,Data_Escritura_Extenso,Email_Vendedor,Email_Comprador,TXT_Mediacao,TXT_Clausula_Especial,TXT_Incumprimento,Local_Assinatura,Data_Assinatura_Extenso,Camara_Municipal});
       const out2=dt2.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const url2=URL.createObjectURL(out2);const a2=document.createElement('a');a2.href=url2;a2.download=`CPCV.docx`;a2.click();URL.revokeObjectURL(url2);
       showToast('Contrato gerado (download)!','success');return;
@@ -1043,7 +1137,7 @@ async function gerarContrato(){
       Preco_Total_Fmt,Preco_Total_Extenso,TXT_Pagamento,
       TXT_Cert_Energetico,TXT_LU,
       Data_Escritura_Extenso,Email_Vendedor,Email_Comprador,
-      TXT_Mediacao,TXT_Clausula_Especial,
+      TXT_Mediacao,TXT_Clausula_Especial,TXT_Incumprimento,
       Local_Assinatura,Data_Assinatura_Extenso,
       Camara_Municipal,
     });
