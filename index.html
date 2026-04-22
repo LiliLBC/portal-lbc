@@ -599,6 +599,16 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="metric-value" id="mv-part" style="color:var(--amber);font-size:22px">—</div>
               <div class="metric-sub" id="ms-part">—</div>
             </div>
+            <div class="metric-card" id="mc-depo">
+              <div class="metric-label">Depositadas</div>
+              <div class="metric-value" id="mv-depo" style="color:var(--accent);font-size:22px">—</div>
+              <div class="metric-sub" id="ms-depo">processos</div>
+            </div>
+            <div class="metric-card" id="mc-sup">
+              <div class="metric-label">Suprimentos</div>
+              <div class="metric-value" id="mv-sup" style="color:var(--red);font-size:22px">—</div>
+              <div class="metric-sub" id="ms-sup">processos</div>
+            </div>
           </div>
         </div>
       </div>
@@ -2343,6 +2353,12 @@ function atualizarMetricas(lista){
     document.getElementById(`mv-${k}`).textContent=n;
     document.getElementById(`ms-${k}`).textContent=`escrituras · média ${m?m+'€':'—'}`;
   });
+
+  // Cards Depositadas / Suprimentos (ano corrente)
+  const nDepo=anuais.filter(i=>i[F.estado]==='Depositado').length;
+  const nSup=anuais.filter(i=>i[F.estado]==='Suprimento').length;
+  document.getElementById('mv-depo').textContent=nDepo;
+  document.getElementById('mv-sup').textContent=nSup;
 
 }
 
