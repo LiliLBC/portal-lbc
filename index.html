@@ -717,7 +717,7 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Estado</div>
-              <select class="form-select" id="p-estado">
+              <select class="form-select" id="p-estado" onchange="atualizarBlocoPortefolio()">
                 <option value="">—</option>
                 <option>Concluido</option><option>Suprimento</option><option>Desistência</option>
                 <option>Em curso</option><option>Apresentado</option><option>Depositado</option>
@@ -827,6 +827,18 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <input type="file" id="painel-file-input" style="display:none" onchange="uploadAnexoEscritura(this)">
             <div id="painel-upload-status" style="font-size:11px;margin-top:.4rem;display:none;color:var(--text-muted)"></div>
+          </div>
+
+          <!-- PORTEFÓLIO DE SUPRIMENTOS (só visível se estado = Suprimento) -->
+          <div id="painel-portefolio-bloco" style="display:none">
+            <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem">Portefólio de suprimentos</div>
+            <div class="field-group">
+              <div id="painel-portefolio-status" style="font-size:12px;padding:.5rem .7rem;border-radius:6px;margin-bottom:.5rem">—</div>
+              <button class="btn btn-sm" id="painel-portefolio-btn" onclick="arquivarNoPortefolio()" style="width:100%">
+                📁 Arquivar no portefólio
+              </button>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:.35rem;line-height:1.4">Cria uma entrada no portefólio com os dados da escritura e copia os anexos — para consultares/reutilizares depois.</div>
+            </div>
           </div>
 
         </div><!-- fim side-panel-body -->
@@ -2568,6 +2580,7 @@ function abrirPainelNovo(){
   abrirPainel();
   // Carregar pastas sempre que abre
   carregarPastasPainel();
+  atualizarBlocoPortefolio();
 }
 
 function abrirPainelRegisto(itemId){
@@ -2604,6 +2617,7 @@ function abrirPainelRegisto(itemId){
   calcMargemLiq();
   sv('p-observacoes').value=i[F.observacoes]||'';
   abrirPainel();
+  atualizarBlocoPortefolio();
   // Procurar pasta — por link guardado ou pelo nome do cliente
   procurarPastaRegisto(i);
   setTimeout(carregarAnexosEscritura,300);
@@ -3035,6 +3049,92 @@ async function guardarPainelPort(){
     renderPortefolio();
     fecharPainelPort();
   }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+// Mostra/esconde bloco "Portefólio" no painel da escritura consoante o estado
+async function atualizarBlocoPortefolio(){
+  const bloco=document.getElementById('painel-portefolio-bloco');
+  const estado=document.getElementById('p-estado')?.value||'';
+  const statusEl=document.getElementById('painel-portefolio-status');
+  const btn=document.getElementById('painel-portefolio-btn');
+  if(!bloco)return;
+
+  if(estado!=='Suprimento'){
+    bloco.style.display='none';
+    return;
+  }
+  bloco.style.display='block';
+
+  if(!listaIdPortefolio){
+    statusEl.innerHTML='⚠️ Lista <strong>Portefolio_Suprimentos</strong> não configurada';
+    statusEl.style.background='var(--amber-light)';
+    statusEl.style.color='var(--amber)';
+    btn.disabled=true;
+    return;
+  }
+
+  if(!painelItemId){
+    // Ainda não guardou — portefólio só depois de gravar
+    statusEl.innerHTML='💾 Grava primeiro a escritura com estado Suprimento — depois podes arquivar.';
+    statusEl.style.background='var(--surface2)';
+    statusEl.style.color='var(--text-muted)';
+    btn.disabled=true;
+    return;
+  }
+
+  // Verificar se já está no portefólio
+  try{
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${painelItemId}'&$top=1`);
+    const existe=r.value?.[0];
+    if(existe){
+      const est=existe.fields[PS.estadoPort]||'Pendente';
+      statusEl.innerHTML=`✓ Já arquivado no portefólio · <strong>${est}</strong>`;
+      statusEl.style.background='var(--green-light)';
+      statusEl.style.color='var(--green)';
+      btn.textContent='📂 Abrir no portefólio';
+      btn.disabled=false;
+      btn.onclick=()=>{
+        fecharPainel();
+        nav('portefolio',document.querySelector('.nav-item[onclick*="portefolio"]'));
+        setTimeout(()=>abrirPainelPort(existe.id),600);
+      };
+    }else{
+      statusEl.innerHTML='ℹ️ Ainda não está no portefólio';
+      statusEl.style.background='var(--accent-light)';
+      statusEl.style.color='var(--accent-dark)';
+      btn.innerHTML='📁 Arquivar no portefólio';
+      btn.disabled=false;
+      btn.onclick=arquivarNoPortefolio;
+    }
+  }catch(e){
+    statusEl.innerHTML='⚠️ Erro a verificar: '+e.message;
+    statusEl.style.background='var(--red-light)';
+    statusEl.style.color='var(--red)';
+  }
+}
+
+// Botão manual de arquivar
+async function arquivarNoPortefolio(){
+  if(!painelItemId){showToast('Grava a escritura primeiro','error');return;}
+  if(!listaIdPortefolio){showToast('Lista Portefolio_Suprimentos não encontrada','error');return;}
+  const btn=document.getElementById('painel-portefolio-btn');
+  btn.disabled=true;btn.textContent='A arquivar...';
+  // Construir body da escritura para passar à sincronização
+  const i=todosRegistosReg.find(r=>r.id===painelItemId)||{};
+  const body={
+    [F.nome]:document.getElementById('p-nome').value||i[F.nome],
+    [F.data]:document.getElementById('p-data').value?new Date(document.getElementById('p-data').value).toISOString():i[F.data],
+    [F.predio]:document.getElementById('p-predio').value||i[F.predio],
+    [F.freguesia]:document.getElementById('p-freguesia').value||i[F.freguesia],
+    [F.concelho]:document.getElementById('p-concelho').value||i[F.concelho],
+    [F.apConserv]:document.getElementById('p-apConserv').value||i[F.apConserv],
+    [F.apRegisto]:document.getElementById('p-apRegisto').value||i[F.apRegisto],
+    [F.codCRP]:document.getElementById('p-codCRP').value||i[F.codCRP],
+    [F.observacoes]:document.getElementById('p-observacoes').value||i[F.observacoes]
+  };
+  await sincronizarPortefolio(painelItemId,body,'marcar');
+  // Actualiza o estado do bloco
+  await atualizarBlocoPortefolio();
 }
 
 // Sincronizar: chamado do guardarPainel quando estado muda para/de Suprimento
