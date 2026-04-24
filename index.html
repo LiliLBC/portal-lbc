@@ -329,9 +329,6 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('registo',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span>Registo de escrituras
     </div>
-    <div class="nav-item" onclick="nav('portefolio',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v11H2z"/><path d="M5 1h6v2H5z"/><path d="M5 7h6M5 10h4"/></svg></span>Portefólio de suprimentos
-    </div>
     <div class="nav-section">Clientes &amp; Serviços</div>
     <div class="nav-item" onclick="nav('processos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
@@ -602,16 +599,6 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="metric-value" id="mv-part" style="color:var(--amber);font-size:22px">—</div>
               <div class="metric-sub" id="ms-part">—</div>
             </div>
-            <div class="metric-card" id="mc-depo">
-              <div class="metric-label">Depositadas</div>
-              <div class="metric-value" id="mv-depo" style="color:var(--accent);font-size:22px">—</div>
-              <div class="metric-sub" id="ms-depo">processos</div>
-            </div>
-            <div class="metric-card" id="mc-sup">
-              <div class="metric-label">Suprimentos</div>
-              <div class="metric-value" id="mv-sup" style="color:var(--red);font-size:22px">—</div>
-              <div class="metric-sub" id="ms-sup">processos</div>
-            </div>
           </div>
         </div>
       </div>
@@ -717,7 +704,7 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Estado</div>
-              <select class="form-select" id="p-estado" onchange="atualizarBlocoPortefolio()">
+              <select class="form-select" id="p-estado">
                 <option value="">—</option>
                 <option>Concluido</option><option>Suprimento</option><option>Desistência</option>
                 <option>Em curso</option><option>Apresentado</option><option>Depositado</option>
@@ -829,18 +816,6 @@ tbody tr:hover td{background:#FAFAF8}
             <div id="painel-upload-status" style="font-size:11px;margin-top:.4rem;display:none;color:var(--text-muted)"></div>
           </div>
 
-          <!-- PORTEFÓLIO DE SUPRIMENTOS (só visível se estado = Suprimento) -->
-          <div id="painel-portefolio-bloco" style="display:none">
-            <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem">Portefólio de suprimentos</div>
-            <div class="field-group">
-              <div id="painel-portefolio-status" style="font-size:12px;padding:.5rem .7rem;border-radius:6px;margin-bottom:.5rem">—</div>
-              <button class="btn btn-sm" id="painel-portefolio-btn" onclick="arquivarNoPortefolio()" style="width:100%">
-                📁 Arquivar no portefólio
-              </button>
-              <div style="font-size:10px;color:var(--text-faint);margin-top:.35rem;line-height:1.4">Cria uma entrada no portefólio com os dados da escritura e copia os anexos — para consultares/reutilizares depois.</div>
-            </div>
-          </div>
-
         </div><!-- fim side-panel-body -->
         <div class="side-panel-footer">
           <button class="btn" onclick="fecharPainel()" style="flex:1">Cancelar</button>
@@ -852,128 +827,6 @@ tbody tr:hover td{background:#FAFAF8}
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
             Abrir pasta
           </button>
-        </div>
-      </div>
-
-      <!-- PORTEFÓLIO DE SUPRIMENTOS -->
-      <div class="screen" id="screen-portefolio">
-        <div style="display:flex;gap:1rem;height:calc(100vh - 130px)">
-          <!-- COLUNA ESQUERDA: LISTA -->
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-            <div style="padding:.65rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-              <div><div style="font-size:13px;font-weight:600">Portefólio</div><div style="font-size:11px;color:var(--text-faint)" id="port-count">A carregar...</div></div>
-              <div style="display:flex;gap:.4rem">
-                <button class="btn btn-sm" onclick="carregarPortefolio()">↺</button>
-              </div>
-            </div>
-            <div style="padding:.4rem .5rem;flex-shrink:0;display:flex;flex-direction:column;gap:.3rem">
-              <div class="reg-search-wrap" style="width:100%">
-                <svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
-                <input class="reg-search-input" id="port-search" placeholder="Nome do cliente..." oninput="pesquisarPortefolio()" style="width:100%">
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem">
-                <input class="reg-search-input" id="port-f-categoria" placeholder="Categoria..." list="port-categorias-existentes" oninput="pesquisarPortefolio()" style="padding:5px 8px;font-size:11px">
-                <input class="reg-search-input" id="port-f-palavra" placeholder="Pesquisar em observações/resposta..." oninput="pesquisarPortefolio()" style="padding:5px 8px;font-size:11px">
-              </div>
-              <datalist id="port-categorias-existentes"></datalist>
-            </div>
-            <div class="filter-row" style="padding:.2rem .5rem .4rem;flex-shrink:0">
-              <button class="filter-chip active" onclick="filtrarPortefolio('',this)">Todos</button>
-              <button class="filter-chip" onclick="filtrarPortefolio('Pendente',this)">Pendentes</button>
-              <button class="filter-chip" onclick="filtrarPortefolio('Resolvido',this)">Resolvidos</button>
-            </div>
-            <div id="port-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
-            <div id="port-list" style="display:none;overflow-y:auto;flex:1"></div>
-          </div>
-
-          <!-- COLUNA DIREITA: MÉTRICAS -->
-          <div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;gap:.6rem">
-            <div class="metric-card">
-              <div class="metric-label">Total</div>
-              <div class="metric-value" id="port-mc-total" style="font-size:22px">—</div>
-              <div class="metric-sub">no portefólio</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">Pendentes</div>
-              <div class="metric-value" id="port-mc-pend" style="color:var(--red);font-size:22px">—</div>
-              <div class="metric-sub">por resolver</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">Resolvidos</div>
-              <div class="metric-value" id="port-mc-res" style="color:var(--green);font-size:22px">—</div>
-              <div class="metric-sub">arquivados</div>
-            </div>
-            <div class="metric-card" style="flex:1;overflow-y:auto">
-              <div class="metric-label">Categorias</div>
-              <div id="port-mc-cats" style="margin-top:.4rem;font-size:11px;display:flex;flex-direction:column;gap:.25rem"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAINEL LATERAL PORTEFÓLIO -->
-      <div class="side-panel-overlay" id="port-overlay" onclick="fecharPainelPort()"></div>
-      <div class="side-panel" id="port-painel">
-        <div class="side-panel-header">
-          <div>
-            <div class="side-panel-title" id="port-painel-titulo">Entrada do portefólio</div>
-            <div style="font-size:10px;color:var(--text-faint);font-family:'DM Mono',monospace;margin-top:2px" id="port-painel-ref"></div>
-          </div>
-          <button class="side-panel-close" onclick="fecharPainelPort()">✕</button>
-        </div>
-        <div class="side-panel-body">
-
-          <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.2rem 0 .6rem;border-bottom:1px solid var(--border);margin-bottom:.8rem">Identificação</div>
-          <div class="form-grid-2" style="gap:.75rem">
-            <div class="field-group"><div class="field-label">Nome do cliente</div><input class="form-input" id="port-p-nome" readonly style="background:var(--surface2)"></div>
-            <div class="field-group"><div class="field-label">Data escritura</div><input class="form-input" id="port-p-data" type="date" readonly style="background:var(--surface2)"></div>
-            <div class="field-group" style="grid-column:1/-1"><div class="field-label">Prédio</div><input class="form-input" id="port-p-predio" readonly style="background:var(--surface2)"></div>
-            <div class="field-group"><div class="field-label">Freguesia</div><input class="form-input" id="port-p-freg" readonly style="background:var(--surface2)"></div>
-            <div class="field-group"><div class="field-label">Concelho</div><input class="form-input" id="port-p-conc" readonly style="background:var(--surface2)"></div>
-            <div class="field-group"><div class="field-label">AP Conservatória</div><input class="form-input" id="port-p-apc" readonly style="background:var(--surface2)"></div>
-            <div class="field-group"><div class="field-label">AP Registo</div><input class="form-input" id="port-p-apr" readonly style="background:var(--surface2)"></div>
-          </div>
-
-          <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem;margin-bottom:.6rem">Suprimento</div>
-          <div class="field-group">
-            <div class="field-label">Categoria (escolhe uma existente ou escreve nova)</div>
-            <input class="form-input" id="port-p-categoria" list="port-p-cats-list" placeholder="Ex: Condomínio, Descrição predial, IMT..." oninput="atualizarSimilares()">
-            <datalist id="port-p-cats-list"></datalist>
-          </div>
-          <div class="field-group">
-            <div class="field-label">Observações — detalhe específico deste suprimento</div>
-            <textarea class="form-input" id="port-p-obs" rows="4" placeholder="O que a conservatória pediu neste caso específico..."></textarea>
-          </div>
-          <div class="field-group">
-            <div class="field-label">Resposta / resolução — o que foi feito para resolver</div>
-            <textarea class="form-input" id="port-p-resp" rows="6" placeholder="Texto da resposta, passos dados, documentos anexados..."></textarea>
-          </div>
-
-          <div class="form-grid-2" style="gap:.75rem">
-            <div class="field-group">
-              <div class="field-label">Estado</div>
-              <select class="form-select" id="port-p-estado">
-                <option>Pendente</option>
-                <option>Resolvido</option>
-              </select>
-            </div>
-            <div class="field-group"><div class="field-label">Data resolução</div><input class="form-input" id="port-p-datares" type="date"></div>
-          </div>
-
-          <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem;margin-bottom:.4rem">Casos parecidos (mesma categoria)</div>
-          <div id="port-p-similares" style="font-size:11px;color:var(--text-muted)">—</div>
-
-          <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.8rem;margin-bottom:.4rem">Anexos</div>
-          <div id="port-p-anexos" style="font-size:12px"></div>
-          <div style="margin-top:.5rem">
-            <input type="file" id="port-p-upload" multiple style="display:none" onchange="uploadAnexoPortefolio()">
-            <button class="btn btn-sm" onclick="document.getElementById('port-p-upload').click()">📎 Adicionar anexos</button>
-          </div>
-
-        </div>
-        <div class="side-panel-footer">
-          <button class="btn" onclick="fecharPainelPort()">Cancelar</button>
-          <button class="btn btn-primary" onclick="guardarPainelPort()">✓ Guardar</button>
         </div>
       </div>
 
@@ -1983,16 +1836,6 @@ const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Ga
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
 const BIBLIOTECA_SUPRIMENTOS='SUPRIMENTOS_ANEXOS';
-const LISTA_PORTEFOLIO='Portefolio_Suprimentos';
-const BIBLIOTECA_PORTEFOLIO='PORTEFOLIO_SUPRIMENTOS_ANEXOS';
-const PS={
-  titulo:'Title',escrituraId:'Escritura_Id',dataEscritura:'Data_Escritura',
-  nome:'Nome_Cliente',predio:'Predio',freguesia:'Freguesia',concelho:'Concelho',
-  apConserv:'AP_Conservatoria',apRegisto:'AP_Registo',codCRP:'Codigo_CRP',
-  categoria:'Categoria',observacoes:'Observacoes',resposta:'Resposta_Resolucao',
-  estadoPort:'Estado_Portefolio',dataResol:'Data_Resolucao',dataArquivo:'Data_Arquivo',
-  anexosPasta:'Anexos_Pasta'
-};
 
 const F={
   titulo:'Title',nome:'Nome_Cliente',data:'DataEscritura',produto:'Produto',
@@ -2012,7 +1855,7 @@ const A={titulo:'Title',data:'Data',hora:'Hora',tipo:'Evento',responsavel:'Respo
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
-let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null,driveIdAvencas=null,listaIdPortefolio=null,drivePortefolioId=null;
+let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null,driveIdAvencas=null;
 let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
 let todasTarefas=[],tarefasCarregadas=false;
@@ -2050,16 +1893,6 @@ async function mostrarApp(){
 async function graphGet(url){
   await renovarToken();
   const r=await fetch(url,{headers:{'Authorization':'Bearer '+graphToken,'Accept':'application/json'}});
-  if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
-  return r.json();
-}
-async function graphGetNonIndexed(url){
-  await renovarToken();
-  const r=await fetch(url,{headers:{
-    'Authorization':'Bearer '+graphToken,
-    'Accept':'application/json',
-    'Prefer':'HonorNonIndexedQueriesWarningMayFailRandomly'
-  }});
   if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
   return r.json();
 }
@@ -2102,9 +1935,6 @@ async function resolverSiteIds(){
     bibliotecaFaturasId=drivesDados.value.find(d=>d.name===BIBLIOTECA_FATURAS)?.id;
     driveIdSuprimentos=drivesDados.value.find(d=>d.name===BIBLIOTECA_SUPRIMENTOS)?.id;
     driveIdAvencas=drivesDados.value.find(d=>d.name==='AVENCAS')?.id;
-    const pt=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_PORTEFOLIO}'`);
-    listaIdPortefolio=pt.value[0]?.id;
-    drivePortefolioId=drivesDados.value.find(d=>d.name===BIBLIOTECA_PORTEFOLIO)?.id;
   }catch(e){console.error('Erro IDs:',e);}
 }
 
@@ -2128,7 +1958,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Calendário',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',portefolio:'Portefólio de suprimentos',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
+const pageTitles={dashboard:'Calendário',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
 
 function toggleSidebar(){
   const sidebar=document.querySelector('.sidebar');
@@ -2205,7 +2035,6 @@ function nav(id,el){
   fecharSidebar(); // fechar menu em mobile ao navegar
   if(id==='pastas'&&!pastasCarregadas)carregarPastas();
   if(id==='registo'&&!registosCarregados)carregarRegistos();
-  if(id==='portefolio')carregarPortefolio();
   if(id==='suprimentos')carregarSuprimentos();
   if(id==='tarefas')carregarTarefas();
   if(id==='processos')carregarProcessos();
@@ -2363,6 +2192,8 @@ function renderPastas(lista){
     <div class="pasta-card">
       <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div></div>
       <div class="pasta-actions">
+        <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
+        <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir pasta</a>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
@@ -2370,6 +2201,37 @@ function renderPastas(lista){
   el.style.display='block';
 }
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
+
+async function editarNomePasta(pastaId,nomeAtual){
+  const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
+  const novoNome=prompt('Editar nome da pasta:',nomeDecod);
+  if(novoNome===null)return;
+  const trim=novoNome.trim();
+  if(!trim){showToast('O nome não pode estar vazio','error');return;}
+  if(trim===nomeDecod)return;
+  try{
+    await graphPatch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${pastaId}`,{name:trim});
+    showToast('Pasta renomeada','success');
+    carregarPastas();
+  }catch(e){showToast('Erro ao renomear: '+e.message,'error');}
+}
+
+async function eliminarPasta(pastaId,nome){
+  const nomeDecod=nome.replace(/&#39;/g,"'");
+  // 1ª confirmação
+  if(!confirm(`Eliminar a pasta "${nomeDecod}"?`))return;
+  // 2ª confirmação — irreversível
+  if(!confirm(`⚠ ATENÇÃO: esta acção é IRREVERSÍVEL.\n\nA pasta "${nomeDecod}" e todo o seu conteúdo serão eliminados definitivamente do SharePoint.\n\nConfirmas?`))return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${pastaId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok&&r.status!==204)throw new Error(`Erro ${r.status}: ${await r.text()}`);
+    showToast(`Pasta "${nomeDecod}" eliminada`,'success');
+    carregarPastas();
+  }catch(e){showToast('Erro ao eliminar: '+e.message,'error');}
+}
 
 async function carregarRegistos(){
   registosCarregados=true;
@@ -2515,12 +2377,6 @@ function atualizarMetricas(lista){
     document.getElementById(`ms-${k}`).textContent=`escrituras · média ${m?m+'€':'—'}`;
   });
 
-  // Cards Depositadas / Suprimentos (ano corrente)
-  const nDepo=anuais.filter(i=>i[F.estado]==='Depositado').length;
-  const nSup=anuais.filter(i=>i[F.estado]==='Suprimento').length;
-  document.getElementById('mv-depo').textContent=nDepo;
-  document.getElementById('mv-sup').textContent=nSup;
-
 }
 
 function renderTabelaMetricas(){}
@@ -2590,7 +2446,6 @@ function abrirPainelNovo(){
   abrirPainel();
   // Carregar pastas sempre que abre
   carregarPastasPainel();
-  atualizarBlocoPortefolio();
 }
 
 function abrirPainelRegisto(itemId){
@@ -2627,7 +2482,6 @@ function abrirPainelRegisto(itemId){
   calcMargemLiq();
   sv('p-observacoes').value=i[F.observacoes]||'';
   abrirPainel();
-  atualizarBlocoPortefolio();
   // Procurar pasta — por link guardado ou pelo nome do cliente
   procurarPastaRegisto(i);
   setTimeout(carregarAnexosEscritura,300);
@@ -2777,14 +2631,10 @@ async function guardarPainel(){
       const idx=todosRegistosReg.findIndex(i=>i.id===painelItemId);
       if(idx>-1)Object.assign(todosRegistosReg[idx],body);
       showToast('Guardado!','success');
-      // Sincronizar portefólio de suprimentos
-      if(estado==='Suprimento') await sincronizarPortefolio(painelItemId,body,'marcar');
-      else if(estado && estado!=='Suprimento') await sincronizarPortefolio(painelItemId,body,'resolver');
     }else{
       body[F.titulo]=document.getElementById('painel-ref').textContent||sv('p-nome');
-      const novo=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:body});
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:body});
       showToast('Registo criado!','success');
-      if(estado==='Suprimento' && novo?.id) await sincronizarPortefolio(novo.id,body,'marcar');
       registosCarregados=false;await carregarRegistos();
     }
     fecharPainel();
@@ -2802,442 +2652,6 @@ function registarDePasta(nomePastaCompleto){
     if(pastasPainel.length)selecionarPastaPainel(pasta);
     else{const nomeCliente=nomePastaCompleto.replace(/^\d{8}\s*/,'').trim();document.getElementById('p-nome').value=nomeCliente;}
   },400);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PORTEFÓLIO DE SUPRIMENTOS
-// ═══════════════════════════════════════════════════════════════════════════
-let todosPortefolio=[],portefolioFiltroEstado='',portefolioPainelId=null,portefolioPainelAnexosPasta=null;
-
-async function carregarPortefolio(){
-  document.getElementById('port-loading').style.display='flex';
-  document.getElementById('port-list').style.display='none';
-  if(!listaIdPortefolio){
-    document.getElementById('port-loading').style.display='none';
-    document.getElementById('port-list').style.display='block';
-    document.getElementById('port-list').innerHTML='<div class="notice notice-error" style="margin:1rem">Lista <strong>Portefolio_Suprimentos</strong> não encontrada no SharePoint.</div>';
-    return;
-  }
-  try{
-    const sel=Object.values(PS).join(',');
-    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${sel})&$top=500`);
-    todosPortefolio=(data.value||[]).map(i=>({id:i.id,...i.fields}));
-    // Ordenar por data de arquivo descendente
-    todosPortefolio.sort((a,b)=>{
-      const da=a[PS.dataArquivo]?new Date(a[PS.dataArquivo]).getTime():0;
-      const db=b[PS.dataArquivo]?new Date(b[PS.dataArquivo]).getTime():0;
-      return db-da;
-    });
-    document.getElementById('port-loading').style.display='none';
-    document.getElementById('port-list').style.display='block';
-    atualizarCategoriasDatalist();
-    atualizarMetricasPortefolio();
-    renderPortefolio();
-  }catch(e){
-    document.getElementById('port-loading').style.display='none';
-    document.getElementById('port-list').style.display='block';
-    document.getElementById('port-list').innerHTML=`<div class="notice notice-error" style="margin:1rem">Erro a carregar: ${e.message}</div>`;
-  }
-}
-
-function atualizarCategoriasDatalist(){
-  const cats=[...new Set(todosPortefolio.map(i=>i[PS.categoria]).filter(Boolean))].sort();
-  const html=cats.map(c=>`<option value="${escHtml(c)}">`).join('');
-  const dl1=document.getElementById('port-categorias-existentes');
-  const dl2=document.getElementById('port-p-cats-list');
-  if(dl1)dl1.innerHTML=html;
-  if(dl2)dl2.innerHTML=html;
-}
-
-function atualizarMetricasPortefolio(){
-  const total=todosPortefolio.length;
-  const pend=todosPortefolio.filter(i=>i[PS.estadoPort]==='Pendente').length;
-  const res=todosPortefolio.filter(i=>i[PS.estadoPort]==='Resolvido').length;
-  document.getElementById('port-mc-total').textContent=total;
-  document.getElementById('port-mc-pend').textContent=pend;
-  document.getElementById('port-mc-res').textContent=res;
-  // Distribuição por categoria
-  const catCount={};
-  todosPortefolio.forEach(i=>{const c=i[PS.categoria]||'(sem categoria)';catCount[c]=(catCount[c]||0)+1;});
-  const ordenadas=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('port-mc-cats').innerHTML=ordenadas.length?ordenadas.map(([c,n])=>
-    `<div style="display:flex;justify-content:space-between;gap:.4rem;padding:3px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(c)}">${escHtml(c)}</span>
-      <span style="font-weight:600">${n}</span>
-    </div>`
-  ).join(''):'<div style="color:var(--text-faint);font-style:italic">—</div>';
-}
-
-function filtrarPortefolio(estado,btn){
-  portefolioFiltroEstado=estado;
-  document.querySelectorAll('#screen-portefolio .filter-chip').forEach(c=>c.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  renderPortefolio();
-}
-
-function pesquisarPortefolio(){
-  renderPortefolio();
-}
-
-function renderPortefolio(){
-  const qNome=(document.getElementById('port-search').value||'').toLowerCase().trim();
-  const qCat=(document.getElementById('port-f-categoria').value||'').toLowerCase().trim();
-  const qPal=(document.getElementById('port-f-palavra').value||'').toLowerCase().trim();
-  let lista=todosPortefolio;
-  if(portefolioFiltroEstado) lista=lista.filter(i=>i[PS.estadoPort]===portefolioFiltroEstado);
-  if(qNome) lista=lista.filter(i=>(i[PS.nome]||'').toLowerCase().includes(qNome));
-  if(qCat) lista=lista.filter(i=>(i[PS.categoria]||'').toLowerCase().includes(qCat));
-  if(qPal) lista=lista.filter(i=>
-    (i[PS.observacoes]||'').toLowerCase().includes(qPal) ||
-    (i[PS.resposta]||'').toLowerCase().includes(qPal)
-  );
-  document.getElementById('port-count').textContent=`${lista.length} entrada${lista.length===1?'':'s'}`;
-  const el=document.getElementById('port-list');
-  if(!lista.length){
-    el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-faint);font-style:italic">Sem resultados</div>';
-    return;
-  }
-  el.innerHTML=lista.map(i=>{
-    const estadoCls=i[PS.estadoPort]==='Resolvido'?'badge-green':'badge-amber';
-    const dataEsc=i[PS.dataEscritura]?new Date(i[PS.dataEscritura]).toLocaleDateString('pt-PT'):'—';
-    const obs=(i[PS.observacoes]||'').substring(0,120);
-    const cat=i[PS.categoria]||'(sem categoria)';
-    return `<div onclick="abrirPainelPort('${i.id}')" style="cursor:pointer;padding:.75rem 1rem;border-bottom:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.25rem">
-        <div style="font-weight:600;font-size:13px">${escHtml(i[PS.nome]||'—')}</div>
-        <span class="badge ${estadoCls}">${i[PS.estadoPort]||'—'}</span>
-      </div>
-      <div style="display:flex;gap:.75rem;font-size:11px;color:var(--text-muted);margin-bottom:.35rem;flex-wrap:wrap">
-        <span style="background:var(--accent-light);color:var(--accent-dark);padding:1px 8px;border-radius:9px;font-weight:500">${escHtml(cat)}</span>
-        <span>${dataEsc}</span>
-        <span>${escHtml(i[PS.predio]||'—')}</span>
-        <span>${escHtml(i[PS.concelho]||'—')}</span>
-      </div>
-      ${obs?`<div style="font-size:11px;color:var(--text-muted);line-height:1.4">${escHtml(obs)}${obs.length>=120?'…':''}</div>`:''}
-    </div>`;
-  }).join('');
-}
-
-function abrirPainelPort(id){
-  const i=todosPortefolio.find(x=>x.id===id);
-  if(!i)return;
-  portefolioPainelId=id;
-  portefolioPainelAnexosPasta=i[PS.anexosPasta]||null;
-  document.getElementById('port-painel-titulo').textContent=i[PS.nome]||'Entrada do portefólio';
-  document.getElementById('port-painel-ref').textContent=i[PS.titulo]||'';
-  document.getElementById('port-p-nome').value=i[PS.nome]||'';
-  document.getElementById('port-p-data').value=i[PS.dataEscritura]?i[PS.dataEscritura].substring(0,10):'';
-  document.getElementById('port-p-predio').value=i[PS.predio]||'';
-  document.getElementById('port-p-freg').value=i[PS.freguesia]||'';
-  document.getElementById('port-p-conc').value=i[PS.concelho]||'';
-  document.getElementById('port-p-apc').value=i[PS.apConserv]||'';
-  document.getElementById('port-p-apr').value=i[PS.apRegisto]||'';
-  document.getElementById('port-p-categoria').value=i[PS.categoria]||'';
-  document.getElementById('port-p-obs').value=i[PS.observacoes]||'';
-  document.getElementById('port-p-resp').value=i[PS.resposta]||'';
-  document.getElementById('port-p-estado').value=i[PS.estadoPort]||'Pendente';
-  document.getElementById('port-p-datares').value=i[PS.dataResol]?i[PS.dataResol].substring(0,10):'';
-  atualizarSimilares();
-  carregarAnexosPortefolio();
-  document.getElementById('port-overlay').classList.add('show');
-  document.getElementById('port-painel').classList.add('open');
-}
-
-function fecharPainelPort(){
-  document.getElementById('port-overlay').classList.remove('show');
-  document.getElementById('port-painel').classList.remove('open');
-  portefolioPainelId=null;
-  portefolioPainelAnexosPasta=null;
-}
-
-function atualizarSimilares(){
-  const cat=(document.getElementById('port-p-categoria').value||'').toLowerCase().trim();
-  const el=document.getElementById('port-p-similares');
-  if(!cat){el.innerHTML='<span style="color:var(--text-faint);font-style:italic">Escolhe uma categoria para ver casos parecidos.</span>';return;}
-  const similares=todosPortefolio.filter(i=>
-    i.id!==portefolioPainelId &&
-    (i[PS.categoria]||'').toLowerCase()===cat
-  ).slice(0,5);
-  if(!similares.length){
-    el.innerHTML='<span style="color:var(--text-faint);font-style:italic">Este é o primeiro caso desta categoria.</span>';
-    return;
-  }
-  el.innerHTML=similares.map(s=>{
-    const resp=(s[PS.resposta]||'').substring(0,200);
-    const obs=(s[PS.observacoes]||'').substring(0,100);
-    return `<div style="padding:.5rem .7rem;background:var(--surface2);border-left:2px solid var(--accent);border-radius:4px;margin-bottom:.4rem">
-      <div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.25rem">
-        <div style="font-weight:600;font-size:11px">${escHtml(s[PS.nome]||'—')}</div>
-        <div style="font-size:10px;color:var(--text-faint)">${s[PS.dataArquivo]?new Date(s[PS.dataArquivo]).toLocaleDateString('pt-PT'):''}</div>
-      </div>
-      ${obs?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:.25rem"><strong>Caso:</strong> ${escHtml(obs)}${obs.length>=100?'…':''}</div>`:''}
-      ${resp?`<div style="font-size:11px;color:var(--text);line-height:1.4"><strong>Resposta:</strong> ${escHtml(resp)}${resp.length>=200?'…':''}</div>
-      <button class="btn btn-sm" style="margin-top:.35rem;font-size:10px" onclick="copiarRespostaSimilar('${s.id}')">↓ Usar esta resposta</button>`:''}
-    </div>`;
-  }).join('');
-}
-
-function copiarRespostaSimilar(id){
-  const s=todosPortefolio.find(x=>x.id===id);
-  if(!s||!s[PS.resposta])return;
-  document.getElementById('port-p-resp').value=s[PS.resposta];
-  showToast('Resposta copiada — adapta ao caso actual','success');
-}
-
-async function carregarAnexosPortefolio(){
-  const el=document.getElementById('port-p-anexos');
-  if(!drivePortefolioId){
-    el.innerHTML='<span style="color:var(--text-faint);font-style:italic">Biblioteca de anexos não configurada.</span>';
-    return;
-  }
-  if(!portefolioPainelAnexosPasta){
-    el.innerHTML='<span style="color:var(--text-faint);font-style:italic">Sem anexos.</span>';
-    return;
-  }
-  try{
-    const r=await fetch(`${GRAPH_BASE}/drives/${drivePortefolioId}/root:/${encodeURIComponent(portefolioPainelAnexosPasta)}:/children`,{
-      headers:{'Authorization':`Bearer ${graphToken}`}
-    });
-    if(!r.ok){el.innerHTML='<span style="color:var(--text-faint);font-style:italic">Sem anexos.</span>';return;}
-    const data=await r.json();
-    const files=(data.value||[]).filter(f=>f.file);
-    if(!files.length){el.innerHTML='<span style="color:var(--text-faint);font-style:italic">Sem anexos.</span>';return;}
-    el.innerHTML=files.map(f=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.35rem .5rem;background:var(--surface2);border-radius:6px;margin-bottom:.25rem">
-        <a href="${f.webUrl}" target="_blank" style="text-decoration:none;color:var(--accent-dark);font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📎 ${escHtml(f.name)}</a>
-        <span style="font-size:10px;color:var(--text-faint)">${Math.round((f.size||0)/1024)} KB</span>
-      </div>
-    `).join('');
-  }catch(e){el.innerHTML=`<span style="color:var(--red)">Erro: ${e.message}</span>`;}
-}
-
-async function uploadAnexoPortefolio(){
-  const input=document.getElementById('port-p-upload');
-  const files=Array.from(input.files||[]);
-  if(!files.length)return;
-  if(!drivePortefolioId){showToast('Biblioteca PORTEFOLIO_SUPRIMENTOS_ANEXOS não encontrada','error');return;}
-  if(!portefolioPainelAnexosPasta){
-    // Criar pasta com o nome da entrada
-    portefolioPainelAnexosPasta=`${(document.getElementById('port-p-nome').value||'sem_nome').replace(/[^\w\s-]/g,'_')}_${portefolioPainelId}`;
-    try{
-      await fetch(`${GRAPH_BASE}/drives/${drivePortefolioId}/root/children`,{
-        method:'POST',
-        headers:{'Authorization':`Bearer ${graphToken}`,'Content-Type':'application/json'},
-        body:JSON.stringify({name:portefolioPainelAnexosPasta,folder:{},'@microsoft.graph.conflictBehavior':'replace'})
-      });
-    }catch(e){}
-  }
-  showToast(`A carregar ${files.length} ficheiro(s)...`);
-  for(const file of files){
-    try{
-      const url=`${GRAPH_BASE}/drives/${drivePortefolioId}/root:/${encodeURIComponent(portefolioPainelAnexosPasta)}/${encodeURIComponent(file.name)}:/content`;
-      await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${graphToken}`},body:file});
-    }catch(e){console.error('Erro upload:',e);}
-  }
-  showToast('Anexos carregados','success');
-  input.value='';
-  carregarAnexosPortefolio();
-}
-
-async function guardarPainelPort(){
-  if(!portefolioPainelId)return;
-  const body={};
-  body[PS.categoria]=document.getElementById('port-p-categoria').value||'';
-  body[PS.observacoes]=document.getElementById('port-p-obs').value||'';
-  body[PS.resposta]=document.getElementById('port-p-resp').value||'';
-  body[PS.estadoPort]=document.getElementById('port-p-estado').value||'Pendente';
-  const dr=document.getElementById('port-p-datares').value;
-  if(dr) body[PS.dataResol]=new Date(dr).toISOString();
-  if(portefolioPainelAnexosPasta) body[PS.anexosPasta]=portefolioPainelAnexosPasta;
-  try{
-    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items/${portefolioPainelId}/fields`,body);
-    const idx=todosPortefolio.findIndex(i=>i.id===portefolioPainelId);
-    if(idx>-1)Object.assign(todosPortefolio[idx],body);
-    showToast('Guardado!','success');
-    atualizarCategoriasDatalist();
-    atualizarMetricasPortefolio();
-    renderPortefolio();
-    fecharPainelPort();
-  }catch(e){showToast('Erro: '+e.message,'error');}
-}
-
-// Mostra/esconde bloco "Portefólio" no painel da escritura consoante o estado
-async function atualizarBlocoPortefolio(){
-  const bloco=document.getElementById('painel-portefolio-bloco');
-  const estado=document.getElementById('p-estado')?.value||'';
-  const statusEl=document.getElementById('painel-portefolio-status');
-  const btn=document.getElementById('painel-portefolio-btn');
-  if(!bloco)return;
-
-  if(estado!=='Suprimento'){
-    bloco.style.display='none';
-    return;
-  }
-  bloco.style.display='block';
-
-  if(!listaIdPortefolio){
-    statusEl.innerHTML='⚠️ Lista <strong>Portefolio_Suprimentos</strong> não configurada';
-    statusEl.style.background='var(--amber-light)';
-    statusEl.style.color='var(--amber)';
-    btn.disabled=true;
-    return;
-  }
-
-  if(!painelItemId){
-    // Ainda não guardou — portefólio só depois de gravar
-    statusEl.innerHTML='💾 Grava primeiro a escritura com estado Suprimento — depois podes arquivar.';
-    statusEl.style.background='var(--surface2)';
-    statusEl.style.color='var(--text-muted)';
-    btn.disabled=true;
-    return;
-  }
-
-  // Verificar se já está no portefólio
-  try{
-    const r=await graphGetNonIndexed(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${painelItemId}'&$top=1`);
-    const existe=r.value?.[0];
-    if(existe){
-      const est=existe.fields[PS.estadoPort]||'Pendente';
-      statusEl.innerHTML=`✓ Já arquivado no portefólio · <strong>${est}</strong>`;
-      statusEl.style.background='var(--green-light)';
-      statusEl.style.color='var(--green)';
-      btn.textContent='📂 Abrir no portefólio';
-      btn.disabled=false;
-      btn.onclick=()=>{
-        fecharPainel();
-        nav('portefolio',document.querySelector('.nav-item[onclick*="portefolio"]'));
-        setTimeout(()=>abrirPainelPort(existe.id),600);
-      };
-    }else{
-      statusEl.innerHTML='ℹ️ Ainda não está no portefólio';
-      statusEl.style.background='var(--accent-light)';
-      statusEl.style.color='var(--accent-dark)';
-      btn.innerHTML='📁 Arquivar no portefólio';
-      btn.disabled=false;
-      btn.onclick=arquivarNoPortefolio;
-    }
-  }catch(e){
-    statusEl.innerHTML='⚠️ Erro a verificar: '+e.message;
-    statusEl.style.background='var(--red-light)';
-    statusEl.style.color='var(--red)';
-  }
-}
-
-// Botão manual de arquivar
-async function arquivarNoPortefolio(){
-  if(!painelItemId){showToast('Grava a escritura primeiro','error');return;}
-  if(!listaIdPortefolio){showToast('Lista Portefolio_Suprimentos não encontrada','error');return;}
-  const btn=document.getElementById('painel-portefolio-btn');
-  btn.disabled=true;btn.textContent='A arquivar...';
-  // Construir body da escritura para passar à sincronização
-  const i=todosRegistosReg.find(r=>r.id===painelItemId)||{};
-  const body={
-    [F.nome]:document.getElementById('p-nome').value||i[F.nome],
-    [F.data]:document.getElementById('p-data').value?new Date(document.getElementById('p-data').value).toISOString():i[F.data],
-    [F.predio]:document.getElementById('p-predio').value||i[F.predio],
-    [F.freguesia]:document.getElementById('p-freguesia').value||i[F.freguesia],
-    [F.concelho]:document.getElementById('p-concelho').value||i[F.concelho],
-    [F.apConserv]:document.getElementById('p-apConserv').value||i[F.apConserv],
-    [F.apRegisto]:document.getElementById('p-apRegisto').value||i[F.apRegisto],
-    [F.codCRP]:document.getElementById('p-codCRP').value||i[F.codCRP],
-    [F.observacoes]:document.getElementById('p-observacoes').value||i[F.observacoes]
-  };
-  await sincronizarPortefolio(painelItemId,body,'marcar');
-  // Actualiza o estado do bloco
-  await atualizarBlocoPortefolio();
-}
-
-// Sincronizar: chamado do guardarPainel quando estado muda para/de Suprimento
-async function sincronizarPortefolio(escrituraId,body,modo){
-  if(!listaIdPortefolio) return; // Lista não configurada
-  try{
-    // Procurar entrada existente para esta escritura
-    const r=await graphGetNonIndexed(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items?$expand=fields($select=${PS.escrituraId},${PS.estadoPort})&$filter=fields/${PS.escrituraId} eq '${escrituraId}'&$top=1`);
-    const existente=r.value?.[0];
-
-    if(modo==='marcar'){
-      if(existente){
-        // Já existe — não cria duplicado
-        console.log('Entrada já existe no portefólio para escritura',escrituraId);
-        return;
-      }
-      // Criar nova entrada
-      const nome=body[F.nome]||document.getElementById('p-nome')?.value||'';
-      const predio=body[F.predio]||document.getElementById('p-predio')?.value||'';
-      const portBody={};
-      portBody[PS.titulo]=`${nome} · ${predio}`.substring(0,255);
-      portBody[PS.escrituraId]=String(escrituraId);
-      if(body[F.data])portBody[PS.dataEscritura]=body[F.data];
-      if(nome)portBody[PS.nome]=nome;
-      if(predio)portBody[PS.predio]=predio;
-      if(body[F.freguesia])portBody[PS.freguesia]=body[F.freguesia];
-      if(body[F.concelho])portBody[PS.concelho]=body[F.concelho];
-      if(body[F.apConserv])portBody[PS.apConserv]=body[F.apConserv];
-      if(body[F.apRegisto])portBody[PS.apRegisto]=body[F.apRegisto];
-      if(body[F.codCRP])portBody[PS.codCRP]=body[F.codCRP];
-      if(body[F.observacoes])portBody[PS.observacoes]=body[F.observacoes];
-      portBody[PS.estadoPort]='Pendente';
-      portBody[PS.dataArquivo]=new Date().toISOString();
-      // Copiar anexos do suprimento original
-      const nomePasta=`${nome}_${escrituraId}`.replace(/[^\w\s-]/g,'_');
-      await copiarAnexosSuprimento(nome, nomePasta);
-      portBody[PS.anexosPasta]=nomePasta;
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items`,{fields:portBody});
-      showToast('Suprimento arquivado no portefólio','success');
-    } else if(modo==='resolver' && existente){
-      // Actualizar estado para resolvido
-      const upBody={};
-      upBody[PS.estadoPort]='Resolvido';
-      upBody[PS.dataResol]=new Date().toISOString();
-      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdPortefolio}/items/${existente.id}/fields`,upBody);
-      showToast('Portefólio actualizado: suprimento resolvido','success');
-    }
-  }catch(e){
-    console.error('Erro sincronização portefólio:',e);
-    showToast('Aviso: portefólio não sincronizado — '+e.message,'error');
-  }
-}
-
-async function copiarAnexosSuprimento(nomeCliente, pastaDestino){
-  // Tenta copiar anexos da pasta do suprimento original (SUPRIMENTOS_ANEXOS) para a pasta do portefólio
-  if(!driveIdSuprimentos || !drivePortefolioId) return;
-  try{
-    // Criar a pasta de destino primeiro
-    await fetch(`${GRAPH_BASE}/drives/${drivePortefolioId}/root/children`,{
-      method:'POST',
-      headers:{'Authorization':`Bearer ${graphToken}`,'Content-Type':'application/json'},
-      body:JSON.stringify({name:pastaDestino,folder:{},'@microsoft.graph.conflictBehavior':'replace'})
-    });
-    // Listar pastas do suprimento que correspondam ao cliente
-    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdSuprimentos}/root/children?$top=500`,{
-      headers:{'Authorization':`Bearer ${graphToken}`}
-    });
-    if(!r.ok)return;
-    const data=await r.json();
-    const nomeLower=(nomeCliente||'').toLowerCase();
-    const pasta=(data.value||[]).find(p=>p.folder && (p.name||'').toLowerCase().includes(nomeLower));
-    if(!pasta)return;
-    // Listar ficheiros da pasta
-    const rf=await fetch(`${GRAPH_BASE}/drives/${driveIdSuprimentos}/items/${pasta.id}/children`,{
-      headers:{'Authorization':`Bearer ${graphToken}`}
-    });
-    if(!rf.ok)return;
-    const df=await rf.json();
-    const ficheiros=(df.value||[]).filter(f=>f.file);
-    // Copiar cada ficheiro
-    for(const f of ficheiros){
-      try{
-        await fetch(`${GRAPH_BASE}/drives/${driveIdSuprimentos}/items/${f.id}/copy`,{
-          method:'POST',
-          headers:{'Authorization':`Bearer ${graphToken}`,'Content-Type':'application/json'},
-          body:JSON.stringify({
-            parentReference:{driveId:drivePortefolioId,path:`/drive/root:/${pastaDestino}`},
-            name:f.name
-          })
-        });
-      }catch(e){console.warn('Não foi possível copiar',f.name,e);}
-    }
-  }catch(e){console.warn('Erro a copiar anexos do suprimento:',e);}
 }
 
 async function carregarSuprimentos(){
