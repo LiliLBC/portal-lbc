@@ -369,6 +369,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="add-outorgante-btn" onclick="addOutorgante('vendedores')">+ Adicionar vendedor</button>
   </div>
 
+  <!-- TRATO SUCESSIVO / HERANÇA -->
+  <div class="section-card" id="trato-suc-section">
+    <div class="section-card-header">
+      <div class="section-num" style="background:var(--amber,#F59E0B)22;color:var(--amber,#F59E0B)">⚖</div>
+      <div style="flex:1">
+        <div class="section-name">Trato Sucessivo / Herança</div>
+        <div class="section-desc">Venda de herança com registo de falecidos e herdeiros</div>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-trato-suc" onchange="onTratoSucChange()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="trato-suc-fields" style="display:none;margin-top:.75rem">
+      <div id="falecidos-container"></div>
+      <button class="add-outorgante-btn" onclick="addFalecido()" type="button">+ Adicionar falecido</button>
+    </div>
+  </div>
+
   <!-- ④ SECÇÃO 4 — COMPRADORES -->
   <div class="section-card">
     <div class="section-card-header">
@@ -1512,33 +1528,153 @@ function showToast(msg, type='') {
   setTimeout(() => t.className = 'toast', 3500);
 }
 
+// ─── TRATO SUCESSIVO ──────────────────────────────────────────────────────────
+let falecidoCnt=0, herdeiroCnt={};
+
+function onTratoSucChange(){
+  const on=document.getElementById('toggle-trato-suc').checked;
+  document.getElementById('trato-suc-fields').style.display=on?'block':'none';
+  if(on&&falecidoCnt===0)addFalecido();
+}
+
+function addFalecido(dados={}){
+  const idx=++falecidoCnt;
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=`falecido-${idx}`;div.style.marginBottom='1rem';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+      <span style="font-size:12px;font-weight:700;color:var(--text)">Falecido ${idx}</span>
+      ${idx>1?`<button class="remove-btn" onclick="removerFalecido(${idx})" type="button">× Remover</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Nome do falecido <span>*</span></label>
+        <input type="text" class="form-input" id="falecido-${idx}-nome" value="${dados.nome||''}" placeholder="Nome completo" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data de falecimento <span>*</span></label>
+        <input type="date" class="form-input" id="falecido-${idx}-data-obito" value="${dados.dataObito||''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Freguesia de óbito <span>*</span></label>
+        <input type="text" class="form-input" id="falecido-${idx}-freguesia" value="${dados.freguesia||''}" placeholder="Ex: Évora (Sé e São Pedro)">
+      </div>
+    </div>
+    <div style="margin-top:.5rem;padding:.75rem;background:var(--surface2);border-radius:8px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em">Habilitação de herdeiros</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="falecido-${idx}-hab-tipo" onchange="onHabTipoChange(${idx})">
+            <option value="">Selecionar...</option>
+            <option value="codigo" ${dados.habTipo==='codigo'?'selected':''}>Com código de acesso</option>
+            <option value="copia" ${dados.habTipo==='copia'?'selected':''}>Cópia certificada</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data da habilitação <span>*</span></label>
+          <input type="date" class="form-input" id="falecido-${idx}-hab-data" value="${dados.habData||''}">
+        </div>
+        <div class="form-group" id="falecido-${idx}-cod-group" style="display:${dados.habTipo==='codigo'?'block':'none'}">
+          <label class="form-label">Código de acesso</label>
+          <input type="text" class="form-input" id="falecido-${idx}-hab-codigo" value="${dados.habCodigo||''}" placeholder="Ex: 2024PT123456">
+        </div>
+        <div class="form-group" id="falecido-${idx}-copia-group" style="display:${dados.habTipo==='copia'?'block':'none'}">
+          <label class="form-label">Referência da cópia</label>
+          <input type="text" class="form-input" id="falecido-${idx}-hab-copia" value="${dados.habCopia||''}" placeholder="Ex: Certidão nº 123/2024">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notário / Conservatória</label>
+          <input type="text" class="form-input" id="falecido-${idx}-hab-notario" value="${dados.habNotario||''}" placeholder="Ex: Cartório Notarial de Évora">
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:.5rem;padding:.75rem;background:var(--surface2);border-radius:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Herdeiros</div>
+        <button class="btn btn-sm" onclick="addHerdeiro(${idx})" type="button" style="font-size:10px;padding:2px 8px">+ Herdeiro</button>
+      </div>
+      <div id="falecido-${idx}-herdeiros"></div>
+    </div>`;
+  document.getElementById('falecidos-container').appendChild(div);
+  if(dados.herdeiros&&dados.herdeiros.length){dados.herdeiros.forEach(h=>addHerdeiro(idx,h));}
+  else{addHerdeiro(idx);}
+}
+
+function addHerdeiro(falecidoIdx,dados={}){
+  if(!herdeiroCnt[falecidoIdx])herdeiroCnt[falecidoIdx]=0;
+  const hidx=++herdeiroCnt[falecidoIdx];
+  const container=document.getElementById(`falecido-${falecidoIdx}-herdeiros`);if(!container)return;
+  const div=document.createElement('div');
+  div.id=`falecido-${falecidoIdx}-herdeiro-${hidx}`;
+  div.style.cssText='display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;margin-bottom:.4rem';
+  div.innerHTML=`<input type="text" class="form-input" id="falecido-${falecidoIdx}-herdeiro-${hidx}-nome" value="${dados.nome||''}" placeholder="Nome do herdeiro" style="font-size:12px;text-transform:uppercase">
+    ${hidx>1?`<button class="remove-btn" onclick="document.getElementById('falecido-${falecidoIdx}-herdeiro-${hidx}').remove()" type="button">×</button>`:'<div></div>'}`;
+  container.appendChild(div);
+}
+
+function removerFalecido(idx){document.getElementById(`falecido-${idx}`)?.remove();}
+
+function onHabTipoChange(idx){
+  const tipo=document.getElementById(`falecido-${idx}-hab-tipo`).value;
+  document.getElementById(`falecido-${idx}-cod-group`).style.display=tipo==='codigo'?'block':'none';
+  document.getElementById(`falecido-${idx}-copia-group`).style.display=tipo==='copia'?'block':'none';
+}
+
+function recolherTratoSuc(){
+  if(!document.getElementById('toggle-trato-suc').checked)return null;
+  const falecidos=[];
+  document.querySelectorAll('#falecidos-container .outorgante-block').forEach(bloco=>{
+    const idx=bloco.id.replace('falecido-','');
+    const v=id=>document.getElementById(`falecido-${idx}-${id}`)?.value||'';
+    const herdeiros=[];
+    bloco.querySelectorAll(`[id^="falecido-${idx}-herdeiro-"][id$="-nome"]`).forEach(el=>{if(el.value.trim())herdeiros.push({nome:el.value.trim()});});
+    falecidos.push({nome:v('nome'),dataObito:v('data-obito'),freguesia:v('freguesia'),habTipo:v('hab-tipo'),habData:v('hab-data'),habCodigo:v('hab-codigo'),habCopia:v('hab-copia'),habNotario:v('hab-notario'),herdeiros});
+  });
+  return falecidos;
+}
+
 // ─── RECOLHER DADOS ───────────────────────────────────────────────────────────
 function recolherDados() {
   const dados = {};
-  document.querySelectorAll('.form-input, .form-select').forEach(el => {
-    if (el.id) dados[el.id] = el.value;
-  });
-  document.querySelectorAll('input[type=checkbox]').forEach(el => {
-    if (el.id) dados[el.id] = el.checked;
-  });
+  document.querySelectorAll('.form-input, .form-select').forEach(el => { if (el.id) dados[el.id] = el.value; });
+  document.querySelectorAll('input[type=checkbox]').forEach(el => { if (el.id) dados[el.id] = el.checked; });
+  // Outorgantes múltiplos
+  dados._vendedores=document.querySelectorAll('#vendedores-container .outorgante-block').length;
+  dados._compradores=document.querySelectorAll('#compradores-container .outorgante-block').length;
+  // Trato sucessivo
+  const ts=recolherTratoSuc();if(ts)dados._trato_suc=ts;
   return dados;
 }
 
 function restaurarDados(dados) {
+  // Restaurar outorgantes extra
+  const nVend=parseInt(dados._vendedores||1);
+  const nComp=parseInt(dados._compradores||1);
+  while(document.querySelectorAll('#vendedores-container .outorgante-block').length<nVend)addOutorgante('vendedores');
+  while(document.querySelectorAll('#compradores-container .outorgante-block').length<nComp)addOutorgante('compradores');
+  // Campos simples
   Object.entries(dados).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (el.type === 'checkbox') el.checked = val;
-    else el.value = val;
+    if(id.startsWith('_'))return;
+    const el = document.getElementById(id); if (!el) return;
+    if (el.type === 'checkbox') el.checked = val; else el.value = val;
   });
+  // Trato sucessivo
+  if(dados._trato_suc&&dados._trato_suc.length){
+    document.getElementById('toggle-trato-suc').checked=true;
+    onTratoSucChange();
+    falecidoCnt=0;herdeiroCnt={};
+    document.getElementById('falecidos-container').innerHTML='';
+    dados._trato_suc.forEach(f=>addFalecido(f));
+  }
   // Re-trigger change events
   ['ent-autenticadora','procurador-cgd','distrate','regime-fiscal','tipo-lu','tipo-cert-energetico','tipo-predio','forma-pagamento'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.dispatchEvent(new Event('change'));
+    const el = document.getElementById(id); if (el) el.dispatchEvent(new Event('change'));
   });
-  updateDataExtenso();
-  updatePrecoExtenso();
-  calcularIS();
+  document.querySelectorAll('[id$="-hab-tipo"]').forEach(el=>{
+    const idx=el.id.replace('falecido-','').replace('-hab-tipo','');onHabTipoChange(idx);
+  });
+  updateDataExtenso(); updatePrecoExtenso(); calcularIS();
 }
 
 // ─── PASTA DO CLIENTE ─────────────────────────────────────────────────────────
