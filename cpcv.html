@@ -93,14 +93,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
   <div class="topbar-actions">
-    <span class="rascunho-badge" id="rascunho-status" style="display:none">
-      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 5v3.5l2 1.5"/></svg>
-      Rascunho guardado
-    </span>
-    <button class="btn" onclick="guardarRascunho()">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>
-      Guardar rascunho
-    </button>
     <button class="btn btn-success btn-lg" onclick="gerarContrato()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
       Gerar contrato Word
@@ -109,59 +101,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 </div>
 
 <div class="container">
-
-  <!-- PASTA DO CLIENTE -->
-  <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
-    <!-- BANNER MODO A: veio com pasta no URL (avença) -->
-    <div id="pasta-modo-a" style="display:none;padding:.5rem .75rem;background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;margin-bottom:.5rem;display:none;align-items:center;gap:.75rem;flex-wrap:wrap">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Pasta da Avença</div>
-        <div id="pasta-modo-a-nome" style="font-size:12px;color:var(--accent-dark);font-weight:600;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-      </div>
-      <button class="btn btn-sm" onclick="trocarParaModoB()" type="button" style="font-size:10px">Alterar</button>
-    </div>
-
-    <!-- MODO B/C: escolher pasta OU sem pasta -->
-    <div id="pasta-modo-b">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:.5rem">
-        <div>
-          <div class="form-label" style="margin-bottom:2px">Pasta do cliente</div>
-          <div style="font-size:11px;color:var(--text-faint)">Se seleccionada, o contrato é guardado na pasta. Sem pasta, só download.</div>
-        </div>
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:11px;color:var(--text-muted);cursor:pointer">
-          <input type="checkbox" id="pasta-sem-pasta" onchange="onSemPastaChange()">
-          Sem pasta — só download
-        </label>
-      </div>
-      <div id="pasta-fields" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:140px">
-          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Biblioteca</div>
-          <select class="form-select" id="pasta-biblioteca" onchange="onBibliotecaChange()" disabled>
-            <option value="">A carregar bibliotecas...</option>
-          </select>
-        </div>
-        <div style="flex:2;min-width:200px;position:relative">
-          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Pasta</div>
-          <input class="form-input" id="pasta-search" placeholder="Escolhe biblioteca primeiro" oninput="pesquisarPastas()" autocomplete="off" disabled>
-          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:200px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
-        </div>
-        <div style="display:flex;gap:.4rem">
-          <button class="btn btn-sm" onclick="carregarBibliotecas()" id="btn-recarregar" type="button" title="Recarregar bibliotecas">
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 8a6 6 0 11-1.76-4.24M14 2v4h-4"/></svg>
-          </button>
-          <button class="btn btn-sm btn-primary" onclick="carregarRascunhoPasta()" id="btn-carregar-rascunho" type="button" disabled>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4"/></svg>
-            Rascunho
-          </button>
-        </div>
-      </div>
-      <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:6px;display:none;align-items:center;gap:.4rem">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
-        <span id="pasta-selecionada-nome"></span>
-      </div>
-    </div>
-  </div>
 
   <!-- ① VENDEDORES -->
   <div class="section-card">
@@ -575,10 +514,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
 </div>
 <div class="sticky-footer">
-  <div class="footer-info" id="footer-info">Preenche o formulário e guarda o rascunho</div>
+  <div class="footer-info" id="footer-info">Preenche o formulário e gera o contrato</div>
   <div class="footer-actions">
     <button class="btn" onclick="limparFormulario()">Limpar tudo</button>
-    <button class="btn" onclick="guardarRascunho()">Guardar rascunho</button>
     <button class="btn btn-success" onclick="gerarContrato()">Gerar contrato Word</button>
   </div>
 </div>
@@ -920,200 +858,10 @@ function restaurarDados(dados){
   updateDataAssinaturaExtenso();
 }
 
-// ─── PASTA DO CLIENTE — 3 MODOS ───────────────────────────────────────────────
-// Modo A: pasta veio no URL (avença) → usa directamente
-// Modo B: utilizador escolhe biblioteca + pasta
-// Modo C: "sem pasta — só download"
-let pastasSP=[],pastaSeleccionada=null,bibliotecasSP=[],bibliotecaActiva=null,modoAtivo='B';
+// ─── PASTA NÃO USADA NESTE FORMULÁRIO ────────────────────────────────────────
+// O CPCV autónomo não guarda na pasta — só faz download
+let pastaSeleccionada=null;
 
-// ── INIT — chamado no onload ─────────────────────────────────────────────────
-function inicializarPasta(){
-  // Verificar se vem com pasta no URL
-  const params=new URLSearchParams(location.search);
-  const driveId=params.get('driveId');
-  const itemId=params.get('itemId');
-  const nome=params.get('nome');
-  const webUrl=params.get('webUrl');
-  if(driveId&&itemId&&nome){
-    // ─── MODO A ─────────────────────────────────────────────────────────────
-    pastaSeleccionada={driveId,id:itemId,nome:decodeURIComponent(nome),webUrl:webUrl?decodeURIComponent(webUrl):null};
-    modoAtivo='A';
-    document.getElementById('pasta-modo-a').style.display='flex';
-    document.getElementById('pasta-modo-b').style.display='none';
-    document.getElementById('pasta-modo-a-nome').textContent=pastaSeleccionada.nome;
-    document.getElementById('btn-carregar-rascunho').disabled=false;
-    document.getElementById('page-sub').textContent=pastaSeleccionada.nome;
-    // Tentar carregar rascunho automaticamente
-    setTimeout(()=>carregarRascunhoPasta(true),500);
-  } else {
-    // ─── MODO B (default) ───────────────────────────────────────────────────
-    document.getElementById('pasta-modo-b').style.display='block';
-    carregarBibliotecas();
-  }
-}
-
-function trocarParaModoB(){
-  if(!confirm('Trocar de pasta? Vais ter de escolher manualmente.'))return;
-  pastaSeleccionada=null;
-  modoAtivo='B';
-  document.getElementById('pasta-modo-a').style.display='none';
-  document.getElementById('pasta-modo-b').style.display='block';
-  document.getElementById('btn-carregar-rascunho').disabled=true;
-  if(!bibliotecasSP.length)carregarBibliotecas();
-}
-
-function onSemPastaChange(){
-  const semPasta=document.getElementById('pasta-sem-pasta').checked;
-  document.getElementById('pasta-fields').style.opacity=semPasta?'.4':'1';
-  document.getElementById('pasta-fields').style.pointerEvents=semPasta?'none':'auto';
-  if(semPasta){
-    pastaSeleccionada=null;
-    modoAtivo='C';
-    document.getElementById('pasta-selecionada').style.display='none';
-    document.getElementById('btn-carregar-rascunho').disabled=true;
-  } else {
-    modoAtivo='B';
-  }
-}
-
-// ── MODO B: listar bibliotecas do site ───────────────────────────────────────
-async function carregarBibliotecas(){
-  const select=document.getElementById('pasta-biblioteca');
-  const btn=document.getElementById('btn-recarregar');
-  btn.disabled=true;
-  select.disabled=true;
-  select.innerHTML='<option value="">A carregar...</option>';
-  try{
-    const res=await graphFetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives');
-    if(!res.ok) throw new Error(`Erro ${res.status} ao listar bibliotecas`);
-    const data=await res.json();
-    bibliotecasSP=(data.value||[]).filter(d=>{
-      // Esconder bibliotecas técnicas que não interessam
-      const n=(d.name||'').toUpperCase();
-      return !n.includes('STYLE LIBRARY')&&!n.includes('SITE PAGES')&&!n.includes('FORM TEMPLATES');
-    });
-    select.innerHTML='<option value="">Selecionar biblioteca...</option>'+
-      bibliotecasSP.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
-    select.disabled=false;
-    // Auto-seleccionar AVENCAS por defeito
-    const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-    const avencas=bibliotecasSP.find(d=>norm(d.name)==='AVENCAS');
-    if(avencas){select.value=avencas.id;onBibliotecaChange();}
-  }catch(e){
-    console.error('[CPCV] carregarBibliotecas:',e);
-    select.innerHTML='<option value="">Erro — clica em recarregar</option>';
-    showToast('Erro: '+e.message,'error');
-  }
-  btn.disabled=false;
-}
-
-async function onBibliotecaChange(){
-  const select=document.getElementById('pasta-biblioteca');
-  const input=document.getElementById('pasta-search');
-  const driveId=select.value;
-  if(!driveId){
-    bibliotecaActiva=null;
-    pastasSP=[];
-    input.disabled=true;
-    input.placeholder='Escolhe biblioteca primeiro';
-    input.value='';
-    return;
-  }
-  bibliotecaActiva=bibliotecasSP.find(d=>d.id===driveId);
-  input.placeholder='A carregar pastas...';
-  input.disabled=true;
-  input.value='';
-  pastasSP=[];
-  try{
-    // Listar todas as pastas (incluindo subpastas) recursivamente — limitado a 2 níveis
-    pastasSP=await listarPastasDrive(driveId);
-    input.placeholder=pastasSP.length?`Pesquisar entre ${pastasSP.length} pastas...`:'Sem pastas';
-    input.disabled=false;
-  }catch(e){
-    console.error('[CPCV] onBibliotecaChange:',e);
-    input.placeholder='Erro ao carregar pastas';
-    showToast('Erro: '+e.message,'error');
-  }
-}
-
-// Lista pastas até 2 níveis de profundidade (cobre AVENCAS/REMAX/<pasta>)
-async function listarPastasDrive(driveId){
-  const todas=[];
-  // Nível 1
-  const r1=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root/children?$top=100`);
-  if(!r1.ok) throw new Error(`Erro ${r1.status} ao listar raiz`);
-  const d1=await r1.json();
-  const pastasN1=(d1.value||[]).filter(p=>p.folder);
-  // Para cada pasta de nível 1, ir buscar as de nível 2
-  for(const p1 of pastasN1){
-    todas.push({id:p1.id,nome:p1.name,driveId,webUrl:p1.webUrl,caminho:p1.name});
-    try{
-      const r2=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${p1.id}/children?$top=500&$orderby=lastModifiedDateTime desc`);
-      if(r2.ok){
-        const d2=await r2.json();
-        (d2.value||[]).filter(p=>p.folder).forEach(p2=>{
-          todas.push({id:p2.id,nome:p2.name,driveId,webUrl:p2.webUrl,caminho:`${p1.name}/${p2.name}`});
-        });
-      }
-    }catch(e){console.warn('Falha ao listar nível 2 de',p1.name,e);}
-  }
-  return todas;
-}
-
-function pesquisarPastas(){
-  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
-  const dropdown=document.getElementById('pasta-dropdown');
-  if(!q){dropdown.style.display='none';return;}
-  const res=pastasSP.filter(p=>(p.caminho||p.nome).toLowerCase().includes(q)).slice(0,12);
-  dropdown.innerHTML=res.length?res.map(p=>{
-    const safeP=JSON.stringify(p).replace(/"/g,'&quot;');
-    return `<div onclick="selecionarPasta(${safeP})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
-      <div style="font-weight:500;font-family:'DM Mono',monospace">${p.caminho||p.nome}</div>
-    </div>`;
-  }).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
-  dropdown.style.display='block';
-}
-
-function selecionarPasta(pasta){
-  pastaSeleccionada=pasta;
-  document.getElementById('pasta-search').value=pasta.caminho||pasta.nome;
-  document.getElementById('pasta-dropdown').style.display='none';
-  document.getElementById('pasta-selecionada-nome').textContent=pasta.caminho||pasta.nome;
-  document.getElementById('pasta-selecionada').style.display='flex';
-  document.getElementById('btn-carregar-rascunho').disabled=false;
-  document.getElementById('page-sub').textContent=pasta.nome;
-}
-
-document.addEventListener('click',e=>{
-  if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown'))
-    document.getElementById('pasta-dropdown').style.display='none';
-});
-
-// ─── RASCUNHO ─────────────────────────────────────────────────────────────────
-async function guardarRascunho(){
-  if(!pastaSeleccionada){showToast('Sem pasta associada — só é possível download','error');return;}
-  const json=JSON.stringify(recolherDados(),null,2);
-  const blob=new Blob([json],{type:'application/json'});
-  try{
-    const res=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`,
-      {method:'PUT',headers:{'Content-Type':'application/json'},body:blob});
-    if(!res.ok)throw new Error(res.status);
-    document.getElementById('rascunho-status').style.display='inline-flex';
-    document.getElementById('footer-info').textContent='Guardado em '+pastaSeleccionada.nome+' às '+new Date().toLocaleTimeString('pt-PT');
-    showToast('Rascunho guardado!','success');
-  }catch(e){showToast('Erro ao guardar: '+e.message,'error');}
-}
-
-async function carregarRascunhoPasta(silencioso){
-  if(!pastaSeleccionada)return;
-  try{
-    const res=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`);
-    if(!res.ok){if(!silencioso)showToast('Nenhum rascunho encontrado','');return;}
-    restaurarDados(await res.json());
-    document.getElementById('rascunho-status').style.display='inline-flex';
-    showToast('Rascunho carregado!','success');
-  }catch(e){if(!silencioso)showToast('Erro: '+e.message,'error');}
-}
 function limparFormulario(){if(!confirm('Tens a certeza?'))return;localStorage.removeItem('cpcv_rascunho');location.reload();}
 
 // ─── GERAR CONTRATO ───────────────────────────────────────────────────────────
@@ -1481,9 +1229,6 @@ window.onload=()=>{
   addMatrizUrbana();
   addMatrizRustica();
   document.getElementById('matriz-rustica-fields').style.display='none';
-  inicializarPasta();
-  const raw=localStorage.getItem('cpcv_rascunho');
-  if(raw)try{restaurarDados(JSON.parse(raw));document.getElementById('rascunho-status').style.display='inline-flex';}catch(e){}
 };
 </script>
 </body>
