@@ -4641,6 +4641,9 @@ function avRenderLista(lista){
         ${cpcvBtn}
         ${pastaBtn}
         <span style="border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;${badgeStyle}">${escHtml(estado)}</span>
+        <button onclick="event.stopPropagation();apagarAvenca('${i.id}')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-faint);cursor:pointer" title="Apagar avença" onmouseover="this.style.background='#FEE';this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-faint)';this.style.borderColor='var(--border)'">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M6 4V2.5A.5.5 0 016.5 2h3a.5.5 0 01.5.5V4M5 4l1 9.5a.5.5 0 00.5.5h3a.5.5 0 00.5-.5L11 4"/></svg>
+        </button>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
       </div>
     </div>`;
@@ -4773,13 +4776,20 @@ function avAbrirPasta(){
 
 async function guardarProcessoAvenca(){
   const titulo=document.getElementById('av-p-titulo').value.trim();
+  const forn=document.getElementById('av-p-fornecedor').value;
+  const serv=document.getElementById('av-p-servico').value;
   if(!titulo){showToast('Preenche o título/descrição','error');return;}
+  // Para NOVOS processos, fornecedor e tipo de serviço são obrigatórios (precisos para criar pasta)
+  if(!avPainelItemId){
+    if(!forn){showToast('Escolhe o fornecedor (REMAX ou CM Monforte)','error');return;}
+    if(!serv){showToast('Escolhe o tipo de serviço','error');return;}
+  }
   const btn=document.getElementById('av-btn-guardar');
   btn.disabled=true;btn.textContent='A guardar...';
   const body={};
   body[AP.titulo]=titulo;
-  const forn=document.getElementById('av-p-fornecedor').value;if(forn)body[AP.fornecedor]=forn;
-  const serv=document.getElementById('av-p-servico').value;if(serv)body[AP.servico]=serv;
+  if(forn)body[AP.fornecedor]=forn;
+  if(serv)body[AP.servico]=serv;
   const ini=document.getElementById('av-p-inicio').value;if(ini)body[AP.inicio]=new Date(ini).toISOString();
   const conc=document.getElementById('av-p-conclusao').value;if(conc)body[AP.conclusao]=new Date(conc).toISOString();
   body[AP.estado]=document.getElementById('av-p-estado').value;
@@ -4794,37 +4804,52 @@ async function guardarProcessoAvenca(){
       if(idx>-1)Object.assign(todosProcessosAv[idx],body);
       showToast('Guardado!','success');
     }else{
-      // Novo processo — criar pasta na biblioteca AVENCAS primeiro
-      let ligacaoPasta='';
-      if(driveIdAvencas&&forn){
-        try{
-          // Nome da pasta: AAAAMMDD TITULO SERVICO
-          const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
-          const nomePasta=`${dataStr} ${titulo.substring(0,40).trim()}${serv?' '+serv:''}`.toUpperCase();
-          // Criar sub-pasta dentro de AVENCAS/FORNECEDOR
-          const fornPath=encodeURIComponent(forn);
-          // Garantir que pasta do fornecedor existe
-          await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
-            method:'POST',
-            headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
-            body:JSON.stringify({name:nomePasta,folder:{},['@microsoft.graph.conflictBehavior']:'rename'})
-          }).then(async r=>{
-            if(r.ok){
-              const pasta=await r.json();
-              ligacaoPasta=pasta.webUrl||'';
-            }
-          });
-        }catch(ep){console.warn('Erro ao criar pasta:',ep);}
+      // Novo processo — criar pasta na biblioteca AVENCAS primeiro (obrigatório)
+      if(!driveIdAvencas)throw new Error('Biblioteca AVENCAS não disponível — recarrega a página');
+      // Nome da pasta: AAAAMMDD TITULO SERVICO (em maiúsculas)
+      const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
+      const nomePasta=`${dataStr} ${titulo.substring(0,40).trim()}${serv?' '+serv:''}`.toUpperCase();
+      const fornPath=encodeURIComponent(forn);
+      const pastaRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+        body:JSON.stringify({name:nomePasta,folder:{},['@microsoft.graph.conflictBehavior']:'rename'})
+      });
+      if(!pastaRes.ok){
+        const err=await pastaRes.text();
+        console.error('[Avenças] Falha ao criar pasta:',pastaRes.status,err);
+        throw new Error(`Não consegui criar pasta em AVENCAS/${forn}/. Verifica que a pasta "${forn}" existe na biblioteca AVENCAS. (erro ${pastaRes.status})`);
       }
-      if(ligacaoPasta)body[AP.pasta]=ligacaoPasta;
-      const res=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
-      showToast(ligacaoPasta?'Processo e pasta criados!':'Processo criado (pasta não criada)','success');
+      const pasta=await pastaRes.json();
+      body[AP.pasta]=pasta.webUrl;
+      // Só agora cria o registo na lista — se a pasta falhou, não cria registo órfão
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
+      showToast(`Processo criado em ${forn}/${nomePasta}`,'success');
       await carregarAvencas();
     }
     fecharPainelAvenca();
     avFiltrar();
-  }catch(e){showToast('Erro: '+e.message,'error');}
+  }catch(e){showToast('Erro: '+e.message,'error');console.error('[Avenças] guardarProcessoAvenca:',e);}
   btn.disabled=false;btn.textContent='Guardar';
+}
+
+// ─── APAGAR AVENÇA ───────────────────────────────────────────────────────────
+// Apaga só o registo da lista do SharePoint — a pasta no SP fica intocada por segurança
+async function apagarAvenca(itemId){
+  const i=todosProcessosAv.find(r=>r.id===itemId);if(!i)return;
+  const titulo=i[AP.titulo]||'esta avença';
+  if(!confirm(`Apagar "${titulo}"?\n\n⚠️ Apaga apenas o registo. A pasta no SharePoint mantém-se (podes apagar manualmente se quiseres).`))return;
+  try{
+    await renovarToken();
+    const res=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items/${itemId}`,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!res.ok&&res.status!==204)throw new Error(`Erro ${res.status} ao apagar`);
+    todosProcessosAv=todosProcessosAv.filter(r=>r.id!==itemId);
+    avFiltrar();
+    showToast('Avença apagada','success');
+  }catch(e){showToast('Erro: '+e.message,'error');console.error('[Avenças] apagar:',e);}
 }
 let avPastasCache=[];
 let avFornecedorAtivo='';
