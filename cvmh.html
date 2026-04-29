@@ -2129,8 +2129,8 @@ function recolherDadosContrato() {
   const direito = v('direito-predio');
   const DtoSobrePredio = direito === 'usufruto' ? 'o usufruto sobre ' : direito === 'superficie' ? 'o direito de superfície sobre ' : '';
   const TXT_Fracao = isFracao
-    ? `a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')},`
-    : 'o prédio urbano,';
+    ? `a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')}`
+    : 'o prédio urbano';
 
   // ── Casa Pronta ───────────────────────────────────────────────────────────
   let TXT_CasaPronta_Bloco = '';
