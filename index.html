@@ -1642,6 +1642,10 @@ tbody tr:hover td{background:#FAFAF8}
           </div>
           <div class="side-panel-footer">
             <button class="btn" onclick="fecharPainelAvenca()" style="flex:1">Cancelar</button>
+            <button class="btn btn-success" id="av-btn-cpcv" onclick="gerarCPCVDaAvenca()" style="flex:1.5;display:none">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V6L9 1z"/><path d="M9 1v5h5"/></svg>
+              Gerar CPCV
+            </button>
             <button class="btn btn-primary" id="av-btn-guardar" onclick="guardarProcessoAvenca()" style="flex:2">
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg>
               Guardar
@@ -4684,8 +4688,56 @@ function abrirPainelAvenca(itemId){
     pastaLink.textContent=nomePasta;
     pastaLink._url=i[AP.pasta];
   }else{pastaWrap.style.display='none';}
+  // Mostrar botão Gerar CPCV se for CPCV e tiver pasta
+  const btnCPCV=document.getElementById('av-btn-cpcv');
+  const ehCPCV=(i[AP.servico]||'').toUpperCase()==='CPCV';
+  btnCPCV.style.display=(ehCPCV&&i[AP.pasta])?'flex':'none';
+  // Guardar dados da avença actual para uso pelo gerarCPCVDaAvenca
+  btnCPCV._dados={
+    webUrl:i[AP.pasta]||'',
+    fornecedor:i[AP.fornecedor]||'',
+    titulo:i[AP.titulo]||'',
+    nomePasta:i[AP.pasta]?decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' '):''
+  };
   document.getElementById('av-overlay').style.display='block';
   document.getElementById('av-painel').classList.add('open');
+}
+
+// ─── GERAR CPCV A PARTIR DA AVENÇA ───────────────────────────────────────────
+async function gerarCPCVDaAvenca(){
+  const btn=document.getElementById('av-btn-cpcv');
+  const dados=btn._dados;
+  if(!dados||!dados.webUrl){showToast('Sem pasta associada','error');return;}
+  btn.disabled=true;
+  const txtAntes=btn.innerHTML;
+  btn.textContent='A preparar...';
+  try{
+    if(!driveIdAvencas)throw new Error('Biblioteca AVENCAS não disponível');
+    await renovarToken();
+    // Resolver itemId pela navegação <fornecedor>/<nomePasta>
+    const path=`${dados.fornecedor}/${dados.nomePasta}`;
+    const resolveRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(dados.fornecedor)}/${encodeURIComponent(dados.nomePasta)}`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!resolveRes.ok)throw new Error(`Não consegui localizar pasta ${path} (${resolveRes.status})`);
+    const item=await resolveRes.json();
+    // Guardar o token actualizado para o cpcv.html ler
+    if(graphToken)localStorage.setItem('lbc_graph_token',graphToken);
+    // Construir URL com pasta como query string
+    const params=new URLSearchParams({
+      driveId:driveIdAvencas,
+      itemId:item.id,
+      nome:dados.nomePasta,
+      webUrl:dados.webUrl,
+      fornecedor:dados.fornecedor
+    });
+    window.open(`cpcv.html?${params.toString()}`,'_blank');
+  }catch(e){
+    showToast('Erro: '+e.message,'error');
+    console.error('[CPCV from avença]',e);
+  }
+  btn.disabled=false;
+  btn.innerHTML=txtAntes;
 }
 
 function fecharPainelAvenca(){
