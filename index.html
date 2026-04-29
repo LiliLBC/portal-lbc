@@ -651,12 +651,30 @@ tbody tr:hover td{background:#FAFAF8}
               </select>
             </div>
             <div class="field-group">
-              <div class="field-label">Estado</div>
-              <select class="form-select" id="p-estado">
-                <option value="">—</option>
-                <option>Concluido</option><option>Suprimento</option><option>Desistência</option>
-                <option>Em curso</option><option>Apresentado</option><option>Depositado</option>
-              </select>
+              <div class="field-label">Nº Processo</div>
+              <input class="form-input" id="p-numProcesso" placeholder="—">
+            </div>
+
+            <!-- ─── CONTACTOS (colapsável) ──────────────────────────────────── -->
+            <div class="field-group field-full" style="margin-bottom:.4rem">
+              <button type="button" id="btn-toggle-contactos" onclick="toggleContactos()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:.55rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-family:inherit">
+                <span style="display:flex;align-items:center;gap:.5rem;font-size:11px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.05em">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h2l1 4-2 1a8 8 0 005 5l1-2 4 1v2a1 1 0 01-1 1A12 12 0 012 3a1 1 0 011-1z"/></svg>
+                  Contactos
+                  <span id="contactos-count" style="font-size:10px;color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0">0 contactos</span>
+                </span>
+                <svg id="contactos-chevron" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="transition:transform .2s"><path d="M4 6l4 4 4-4"/></svg>
+              </button>
+              <div id="contactos-wrap" style="display:none;margin-top:.5rem;padding:.6rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
+                <!-- TELEFONES -->
+                <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">📞 Telefones</div>
+                <div id="contactos-telefones"></div>
+
+                <!-- EMAILS -->
+                <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin:.75rem 0 .4rem">✉ Emails</div>
+                <div id="contactos-emails"></div>
+                <div style="font-size:10px;color:var(--text-faint);margin-top:.4rem;font-style:italic">Mínimo: 1 telefone+email Vendedor e 1 Comprador</div>
+              </div>
             </div>
 
             <div class="section-divider">Imóvel</div>
@@ -698,10 +716,6 @@ tbody tr:hover td{background:#FAFAF8}
               <input class="form-input" id="p-apConserv" placeholder="—">
             </div>
             <div class="field-group">
-              <div class="field-label">Nº Processo</div>
-              <input class="form-input" id="p-numProcesso" placeholder="—">
-            </div>
-            <div class="field-group">
               <div class="field-label">Nº Pedido</div>
               <input class="form-input" id="p-numPedido" placeholder="—">
             </div>
@@ -713,6 +727,14 @@ tbody tr:hover td{background:#FAFAF8}
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 3l7 6 7-6"/></svg>
                 </button>
               </div>
+            </div>
+            <div class="field-group field-full">
+              <div class="field-label">Estado</div>
+              <select class="form-select" id="p-estado">
+                <option value="">—</option>
+                <option>Concluido</option><option>Suprimento</option><option>Desistência</option>
+                <option>Em curso</option><option>Apresentado</option><option>Depositado</option>
+              </select>
             </div>
 
             <div class="section-divider">Valores</div>
@@ -912,6 +934,7 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group" style="margin-bottom:.75rem">
               <div class="field-label">Para (email do cliente)</div>
               <input type="email" class="form-input" id="dep-email-para" placeholder="cliente@email.com">
+              <div id="dep-contactos-em" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem"></div>
             </div>
             <div class="field-group" style="margin-bottom:.75rem">
               <div class="field-label">Assunto</div>
@@ -933,6 +956,7 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group" style="margin-bottom:.75rem">
               <div class="field-label">Nº de telemóvel (com indicativo)</div>
               <input type="tel" class="form-input" id="dep-wa-telefone" placeholder="Ex: 351912345678">
+              <div id="dep-contactos-tel" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem"></div>
             </div>
             <div class="field-group" style="margin-bottom:.75rem">
               <div class="field-label">Mensagem</div>
@@ -1863,6 +1887,7 @@ const F={
   numProcesso:'N_x00fa_mero_Processo',
   pago:'Pago',
   codCRP:'CERT_PERMANENTE',
+  contactos:'Contactos',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes'};
@@ -1995,13 +2020,43 @@ function abrirModalCodDeposito(){
   const cod=document.getElementById('p-codDeposito')?.value?.trim();
   if(!cod){showToast('Preenche primeiro o código de depósito','error');return;}
   const nome=document.getElementById('p-nome')?.value||'';
-  document.getElementById('dep-email-para').value='';
+  // Recolher contactos do painel para pré-preenchimento
+  const contactos=recolherContactos();
+  const compradorEm=contactos.emails.find(e=>e.tipo==='Comprador')||contactos.emails[0];
+  const compradorTel=contactos.telefones.find(t=>t.tipo==='Comprador')||contactos.telefones[0];
+  // Preencher email
+  document.getElementById('dep-email-para').value=compradorEm?compradorEm.valor:'';
   document.getElementById('dep-email-assunto').value=`Código de Depósito DPA${nome?' — '+nome:''}`;
   document.getElementById('dep-email-corpo').value=textoDeposito(cod);
-  document.getElementById('dep-wa-telefone').value='351';
+  // Preencher whatsapp (limpar espaços e prefixo +)
+  let telWa=compradorTel?compradorTel.valor.replace(/[\s+()-]/g,''):'351';
+  if(telWa&&!telWa.startsWith('351')&&telWa.length===9)telWa='351'+telWa;
+  document.getElementById('dep-wa-telefone').value=telWa||'351';
   document.getElementById('dep-wa-mensagem').value=textoDeposito(cod);
+  // Renderizar lista clicável de outros contactos disponíveis
+  renderContactosNoModal(contactos);
   depSetTab('email');
   document.getElementById('modal-cod-deposito').classList.add('show');
+}
+
+// Mostra os contactos como botões clicáveis para preencher rapidamente
+function renderContactosNoModal(contactos){
+  const wrapEm=document.getElementById('dep-contactos-em');
+  const wrapTel=document.getElementById('dep-contactos-tel');
+  if(wrapEm){
+    wrapEm.innerHTML=contactos.emails.length
+      ?contactos.emails.map(e=>`<button type="button" onclick="document.getElementById('dep-email-para').value='${e.valor.replace(/'/g,'')}'" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);font-size:10px;cursor:pointer;font-family:'DM Mono',monospace">${e.tipo?'<strong>'+e.tipo+'</strong> · ':''}${e.valor}</button>`).join(' ')
+      :'<span style="font-size:10px;color:var(--text-faint)">Sem emails registados — adiciona na secção Contactos</span>';
+  }
+  if(wrapTel){
+    wrapTel.innerHTML=contactos.telefones.length
+      ?contactos.telefones.map(t=>{
+        let n=t.valor.replace(/[\s+()-]/g,'');
+        if(n&&!n.startsWith('351')&&n.length===9)n='351'+n;
+        return `<button type="button" onclick="document.getElementById('dep-wa-telefone').value='${n}'" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);font-size:10px;cursor:pointer;font-family:'DM Mono',monospace">${t.tipo?'<strong>'+t.tipo+'</strong> · ':''}${t.valor}</button>`;
+      }).join(' ')
+      :'<span style="font-size:10px;color:var(--text-faint)">Sem telefones registados — adiciona na secção Contactos</span>';
+  }
 }
 
 function fecharModalCodDeposito(){
@@ -2228,8 +2283,16 @@ async function carregarRegistos(){
   document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
   const rc=document.getElementById('reg-result-count');if(rc)rc.style.display='none';
   try{
-    const sf=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago,F.codCRP].join(',');
-    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
+    const baseFields=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago,F.codCRP];
+    let data;
+    try{
+      const sf=[...baseFields,F.contactos].join(',');
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
+    }catch(_){
+      // Fallback: campo Contactos ainda não criado na lista SP
+      const sf=baseFields.join(',');
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
+    }
     todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     // Ordenar do mais recente para o mais antigo
     todosRegistosReg.sort((a,b)=>{
@@ -2428,6 +2491,11 @@ function abrirPainelNovo(){
   });
   document.getElementById('p-estado').value='Agendado';
   document.getElementById('p-pago').value='';
+  // Contactos
+  renderContactosUI();
+  restaurarContactos(null);
+  document.getElementById('contactos-wrap').style.display='none';
+  document.getElementById('contactos-chevron').style.transform='rotate(0deg)';
   const laEl=document.getElementById('painel-anexos-lista');
   if(laEl)laEl.innerHTML='<span style="font-size:11px;color:var(--text-faint)">Preenche os campos do imóvel para activar os anexos.</span>';
   const stEl=document.getElementById('painel-upload-status');
@@ -2462,6 +2530,11 @@ function abrirPainelRegisto(itemId){
   sv('p-numProcesso').value=i[F.numProcesso]||'';
   sv('p-numPedido').value=i[F.numPedido]||'';
   sv('p-codDeposito').value=i[F.codDeposito]||'';
+  // Contactos
+  renderContactosUI();
+  restaurarContactos(i[F.contactos]||null);
+  document.getElementById('contactos-wrap').style.display='none';
+  document.getElementById('contactos-chevron').style.transform='rotate(0deg)';
   sv('p-montCredito').value=i[F.montCredito]||'';
   sv('p-valorProc').value=i[F.valorProc]||'';
   sv('p-valorServico').value=i[F.valorServico]||'';
@@ -2566,6 +2639,101 @@ function fecharPainel(){
   document.getElementById('painel-pasta-dropdown').style.display='none';
 }
 
+// ─── CONTACTOS DO REGISTO ─────────────────────────────────────────────────────
+// Suporta até 4 telefones e 4 emails. Cada um tem tipo: Vendedor, Comprador, Imobiliária, Outro.
+// Guardado no SP como JSON string no campo Contactos.
+const CONTACTOS_TIPOS=['Vendedor','Comprador','Imobiliária','Outro'];
+
+function renderContactosUI(){
+  const tels=document.getElementById('contactos-telefones');
+  const ems=document.getElementById('contactos-emails');
+  if(!tels||!ems)return;
+  let htmlT='',htmlE='';
+  for(let i=1;i<=4;i++){
+    htmlT+=`<div style="display:grid;grid-template-columns:1fr 110px;gap:.4rem;margin-bottom:.35rem">
+      <input class="form-input" id="ct-tel-${i}" placeholder="Telefone ${i}" style="font-size:11px;font-family:'DM Mono',monospace" oninput="atualizarContactosCount()">
+      <select class="form-select" id="ct-tel-${i}-tipo" style="font-size:11px">
+        <option value="">—</option>
+        ${CONTACTOS_TIPOS.map(t=>`<option>${t}</option>`).join('')}
+      </select>
+    </div>`;
+    htmlE+=`<div style="display:grid;grid-template-columns:1fr 110px;gap:.4rem;margin-bottom:.35rem">
+      <input class="form-input" id="ct-em-${i}" type="email" placeholder="Email ${i}" style="font-size:11px;font-family:'DM Mono',monospace" oninput="atualizarContactosCount()">
+      <select class="form-select" id="ct-em-${i}-tipo" style="font-size:11px">
+        <option value="">—</option>
+        ${CONTACTOS_TIPOS.map(t=>`<option>${t}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  tels.innerHTML=htmlT;
+  ems.innerHTML=htmlE;
+}
+
+function toggleContactos(){
+  const wrap=document.getElementById('contactos-wrap');
+  const chev=document.getElementById('contactos-chevron');
+  const aberto=wrap.style.display!=='none';
+  wrap.style.display=aberto?'none':'block';
+  chev.style.transform=aberto?'rotate(0deg)':'rotate(180deg)';
+}
+
+function atualizarContactosCount(){
+  let n=0;
+  for(let i=1;i<=4;i++){
+    if(document.getElementById('ct-tel-'+i)?.value.trim())n++;
+    if(document.getElementById('ct-em-'+i)?.value.trim())n++;
+  }
+  const span=document.getElementById('contactos-count');
+  if(span)span.textContent=n===0?'sem contactos':(n+(n===1?' contacto':' contactos'));
+}
+
+// Recolhe os contactos do form em formato {telefones:[...], emails:[...]}
+function recolherContactos(){
+  const out={telefones:[],emails:[]};
+  for(let i=1;i<=4;i++){
+    const tel=document.getElementById('ct-tel-'+i)?.value.trim();
+    const telT=document.getElementById('ct-tel-'+i+'-tipo')?.value;
+    if(tel)out.telefones.push({valor:tel,tipo:telT||''});
+    const em=document.getElementById('ct-em-'+i)?.value.trim();
+    const emT=document.getElementById('ct-em-'+i+'-tipo')?.value;
+    if(em)out.emails.push({valor:em,tipo:emT||''});
+  }
+  return out;
+}
+
+// Restaura os contactos no form a partir do JSON guardado
+function restaurarContactos(json){
+  // Limpar tudo
+  for(let i=1;i<=4;i++){
+    const tel=document.getElementById('ct-tel-'+i);if(tel)tel.value='';
+    const telT=document.getElementById('ct-tel-'+i+'-tipo');if(telT)telT.value='';
+    const em=document.getElementById('ct-em-'+i);if(em)em.value='';
+    const emT=document.getElementById('ct-em-'+i+'-tipo');if(emT)emT.value='';
+  }
+  let dados={telefones:[],emails:[]};
+  if(json){try{dados=typeof json==='string'?JSON.parse(json):json;}catch(e){console.warn('Contactos JSON inválido:',e);}}
+  (dados.telefones||[]).slice(0,4).forEach((c,idx)=>{
+    const i=idx+1;
+    const tel=document.getElementById('ct-tel-'+i);if(tel)tel.value=c.valor||'';
+    const telT=document.getElementById('ct-tel-'+i+'-tipo');if(telT)telT.value=c.tipo||'';
+  });
+  (dados.emails||[]).slice(0,4).forEach((c,idx)=>{
+    const i=idx+1;
+    const em=document.getElementById('ct-em-'+i);if(em)em.value=c.valor||'';
+    const emT=document.getElementById('ct-em-'+i+'-tipo');if(emT)emT.value=c.tipo||'';
+  });
+  atualizarContactosCount();
+}
+
+function validarContactos(){
+  const c=recolherContactos();
+  const temVendedor=c.telefones.some(t=>t.tipo==='Vendedor')&&c.emails.some(e=>e.tipo==='Vendedor');
+  const temComprador=c.telefones.some(t=>t.tipo==='Comprador')&&c.emails.some(e=>e.tipo==='Comprador');
+  if(!temVendedor)return 'Falta pelo menos 1 telefone E 1 email do Vendedor';
+  if(!temComprador)return 'Falta pelo menos 1 telefone E 1 email do Comprador';
+  return null;
+}
+
 function abrirCRP(){
   const cod=document.getElementById('p-codCRP')?.value?.trim();
   if(cod){
@@ -2612,20 +2780,38 @@ async function guardarPainel(){
   const custoSup=svNum('p-custoSup'); if(custoSup!==undefined) body[F.custoSup]=custoSup;
   const dataResolSup=svDate('p-dataResolSup'); if(dataResolSup) body[F.dataResolSup]=dataResolSup;
   const observacoes=svText('p-observacoes'); if(observacoes) body[F.observacoes]=observacoes;
+  // Contactos como JSON
+  const contactos=recolherContactos();
+  if(contactos.telefones.length||contactos.emails.length){
+    body[F.contactos]=JSON.stringify(contactos);
+  }
   if(painelPastaUrl) body[F.ligacaoPasta]=painelPastaUrl;
+  // Versão sem Contactos (caso a coluna ainda não exista no SP)
+  const bodySemContactos={...body};delete bodySemContactos[F.contactos];
+  const tentar=async b=>{
+    if(painelItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${painelItemId}/fields`,b);
+      const idx=todosRegistosReg.findIndex(i=>i.id===painelItemId);
+      if(idx>-1)Object.assign(todosRegistosReg[idx],b);
+    }else{
+      b[F.titulo]=document.getElementById('painel-ref').textContent||sv('p-nome');
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:b});
+    }
+  };
   try{
     console.log('Body a enviar:', JSON.stringify(body));
-    if(painelItemId){
-      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${painelItemId}/fields`,body);
-      const idx=todosRegistosReg.findIndex(i=>i.id===painelItemId);
-      if(idx>-1)Object.assign(todosRegistosReg[idx],body);
-      showToast('Guardado!','success');
-    }else{
-      body[F.titulo]=document.getElementById('painel-ref').textContent||sv('p-nome');
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:body});
-      showToast('Registo criado!','success');
-      registosCarregados=false;await carregarRegistos();
+    try{
+      await tentar(body);
+      showToast(painelItemId?'Guardado!':'Registo criado!','success');
+    }catch(e){
+      const msg=(e&&e.message)||'';
+      if(body[F.contactos]&&/Contactos|400|invalid|not.*found|column/i.test(msg)){
+        // Fallback: gravar sem contactos
+        await tentar(bodySemContactos);
+        showToast('Guardado (campo Contactos não existe na lista SP — adiciona-o para guardar contactos)','');
+      } else throw e;
     }
+    if(!painelItemId){registosCarregados=false;await carregarRegistos();}
     fecharPainel();
     renderRegistos(registosFiltradosAtual);
   }catch(e){showToast('Erro: '+e.message,'error');}
