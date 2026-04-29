@@ -1948,8 +1948,8 @@ async function guardarNoSharePoint(blob, nomeFile, dados) {
 
     const arrayBuffer = await blob.arrayBuffer();
     const uploadUrl = pastaId === 'root'
-      ? `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${nomeFile}:/content`
-      : `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${pastaId}:/${nomeFile}:/content`;
+      ? `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${nomeFile}:/content?@microsoft.graph.conflictBehavior=rename`
+      : `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${pastaId}:/${nomeFile}:/content?@microsoft.graph.conflictBehavior=rename`;
 
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
@@ -1957,7 +1957,12 @@ async function guardarNoSharePoint(blob, nomeFile, dados) {
       body: arrayBuffer
     });
     if (!uploadRes.ok) throw new Error(`Erro ao guardar: ${uploadRes.status}`);
-    showToast('✓ Contrato guardado na pasta do cliente!', 'success');
+    const uploaded = await uploadRes.json().catch(()=>({}));
+    const nomeFinal = uploaded.name || nomeFile;
+    const renomeado = nomeFinal !== nomeFile;
+    showToast(renomeado
+      ?`✓ Contrato guardado como "${nomeFinal}" (já existia ficheiro com mesmo nome)`
+      :'✓ Contrato guardado na pasta do cliente!', 'success');
   } catch(e) {
     if (!window.saveAs) await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');
     saveAs(blob, nomeFile);
