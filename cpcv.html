@@ -1039,14 +1039,19 @@ async function gerarContrato(){
     if(pastaSeleccionada){
       const ab=await out.arrayBuffer();
       const upRes=await graphFetch(
-        `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content`,
+        `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content?@microsoft.graph.conflictBehavior=rename`,
         {method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab}
       );
       if(!upRes.ok){
         console.error('[CPCV] Upload falhou:',upRes.status);
         showToast(`Contrato gerado mas não foi guardado na pasta (erro ${upRes.status}). Faz upload manual.`,'error');
       } else {
-        showToast(`Guardado em ${pastaSeleccionada.nome}`,'success');
+        const uploaded=await upRes.json().catch(()=>({}));
+        const nomeFinal=uploaded.name||nomeDoc;
+        const renomeado=nomeFinal!==nomeDoc;
+        showToast(renomeado
+          ?`Guardado como "${nomeFinal}" (já existia ficheiro com mesmo nome)`
+          :`Guardado em ${pastaSeleccionada.nome}`,'success');
       }
     }
 
