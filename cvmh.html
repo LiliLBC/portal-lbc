@@ -1634,6 +1634,48 @@ function recolherTratoSuc(){
   return falecidos;
 }
 
+// ─── GERAR TEXTOS DO TRATO SUCESSIVO ─────────────────────────────────────────
+// Devolve {TXT_TratoSuc_Legitimidade, TXT_TratoSuc_Texto} — strings vazias se trato sucessivo desligado
+function gerarTextosTratoSuc(){
+  const falecidos=recolherTratoSuc();
+  if(!falecidos||!falecidos.length)return{TXT_TratoSuc_Legitimidade:'',TXT_TratoSuc_Texto:''};
+
+  // ── 1. LEGITIMIDADE (vai para o Termo de Autenticação) ─────────────────────
+  // Uma frase por falecido (cada habilitação pode ter tipo diferente)
+  const legitLinhas=falecidos.map(f=>{
+    const dataHab=fmtDataPT(f.habData);
+    const notario=f.habNotario||'';
+    if(f.habTipo==='codigo'){
+      return `--- Verifiquei a legitimidade dos outorgantes pela Habilitação de herdeiros lavrada em ${dataHab}, no cartório notarial de ${notario} através do código ${f.habCodigo||''}; ----------`;
+    } else {
+      return `--- Verifiquei a legitimidade dos outorgantes pela Habilitação de herdeiros lavrada em ${dataHab}, no cartório notarial de ${notario} e que arquivo; ----------`;
+    }
+  });
+
+  // ── 2. TEXTO (vai para a cláusula da Compra e Venda) ───────────────────────
+  const textoLinhas=falecidos.map(f=>{
+    const nome=(f.nome||'').toUpperCase();
+    const dataObito=fmtDataPT(f.dataObito);
+    const freguesia=f.freguesia||'';
+    const herdNomes=(f.herdeiros||[]).map(h=>h.nome.toUpperCase()).filter(Boolean);
+    const herdStr=listarComEVirgula(herdNomes);
+    return `--- ${nome}, faleceu em ${dataObito}, na freguesia de ${freguesia}, sem deixar testamento ou disposição de última vontade, sucedendo-lhe como herdeiros ${herdStr}; -------`;
+  });
+
+  return {
+    TXT_TratoSuc_Legitimidade: legitLinhas.join('\n'),
+    TXT_TratoSuc_Texto: textoLinhas.join('\n')
+  };
+}
+
+// Helper: ['ANA','LUÍS','PEDRO'] → 'ANA, LUÍS e PEDRO'
+function listarComEVirgula(arr){
+  if(!arr.length)return'';
+  if(arr.length===1)return arr[0];
+  if(arr.length===2)return`${arr[0]} e ${arr[1]}`;
+  return arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1];
+}
+
 // ─── RECOLHER DADOS ───────────────────────────────────────────────────────────
 function recolherDados() {
   const dados = {};
@@ -2150,7 +2192,11 @@ function recolherDadosContrato() {
   // ── Destino ───────────────────────────────────────────────────────────────
   const destinoMap = {'habitacao-propria':'habitação própria e permanente','habitacao-sec':'habitação secundária','investimento':'investimento','servicos':'serviços'};
 
+  // ── Trato sucessivo / Herança ─────────────────────────────────────────────
+  const tratoSuc = gerarTextosTratoSuc();
+
   return {
+    ...tratoSuc,
     DATA_EXTENSO: dataExtenso(v('data-escritura')),
     Entd_Tituladora: entAut ? S[entAut].nomeAbrev : '',
     CD_Profissional: entAut ? S[entAut].cedula : '',
