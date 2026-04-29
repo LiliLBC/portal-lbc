@@ -1591,9 +1591,14 @@ async function guardarNoSharePoint(blob,nomeFile){
     const token=await getGraphToken();
     if(!pastaSeleccionada)throw new Error('Nenhuma pasta seleccionada');
     const ab=await blob.arrayBuffer();
-    const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeFile}:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab});
+    const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeFile}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab});
     if(!r.ok)throw new Error(`Erro ${r.status}`);
-    showToast('✓ Contrato guardado na pasta do cliente!','success');
+    const uploaded=await r.json().catch(()=>({}));
+    const nomeFinal=uploaded.name||nomeFile;
+    const renomeado=nomeFinal!==nomeFile;
+    showToast(renomeado
+      ?`✓ Contrato guardado como "${nomeFinal}" (já existia ficheiro com mesmo nome)`
+      :'✓ Contrato guardado na pasta do cliente!','success');
   }catch(e){if(!window.saveAs)await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');saveAs(blob,nomeFile);showToast('Guardado localmente','');}
 }
 
