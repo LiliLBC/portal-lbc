@@ -112,28 +112,53 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
   <!-- PASTA DO CLIENTE -->
   <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
-    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div class="form-label" style="margin-bottom:4px">Pasta do cliente</div>
-        <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">Se seleccionada, permite guardar rascunho e o contrato é guardado na pasta. Sem pasta, só é possível download.</div>
-        <div style="position:relative">
-          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" style="padding-right:2rem" disabled>
-          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+    <!-- BANNER MODO A: veio com pasta no URL (avença) -->
+    <div id="pasta-modo-a" style="display:none;padding:.5rem .75rem;background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;margin-bottom:.5rem;display:none;align-items:center;gap:.75rem;flex-wrap:wrap">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Pasta da Avença</div>
+        <div id="pasta-modo-a-nome" style="font-size:12px;color:var(--accent-dark);font-weight:600;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+      </div>
+      <button class="btn btn-sm" onclick="trocarParaModoB()" type="button" style="font-size:10px">Alterar</button>
+    </div>
+
+    <!-- MODO B/C: escolher pasta OU sem pasta -->
+    <div id="pasta-modo-b">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div class="form-label" style="margin-bottom:2px">Pasta do cliente</div>
+          <div style="font-size:11px;color:var(--text-faint)">Se seleccionada, o contrato é guardado na pasta. Sem pasta, só download.</div>
         </div>
-        <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
-          <span id="pasta-selecionada-nome"></span>
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:11px;color:var(--text-muted);cursor:pointer">
+          <input type="checkbox" id="pasta-sem-pasta" onchange="onSemPastaChange()">
+          Sem pasta — só download
+        </label>
+      </div>
+      <div id="pasta-fields" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Biblioteca</div>
+          <select class="form-select" id="pasta-biblioteca" onchange="onBibliotecaChange()" disabled>
+            <option value="">A carregar bibliotecas...</option>
+          </select>
+        </div>
+        <div style="flex:2;min-width:200px;position:relative">
+          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Pasta</div>
+          <input class="form-input" id="pasta-search" placeholder="Escolhe biblioteca primeiro" oninput="pesquisarPastas()" autocomplete="off" disabled>
+          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:200px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+        </div>
+        <div style="display:flex;gap:.4rem">
+          <button class="btn btn-sm" onclick="carregarBibliotecas()" id="btn-recarregar" type="button" title="Recarregar bibliotecas">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 8a6 6 0 11-1.76-4.24M14 2v4h-4"/></svg>
+          </button>
+          <button class="btn btn-sm btn-primary" onclick="carregarRascunhoPasta()" id="btn-carregar-rascunho" type="button" disabled>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4"/></svg>
+            Rascunho
+          </button>
         </div>
       </div>
-      <div style="display:flex;gap:.5rem;flex-shrink:0;padding-top:1.1rem">
-        <button class="btn btn-sm" onclick="carregarPastasSP()" id="btn-carregar-pastas">
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
-          Carregar pastas
-        </button>
-        <button class="btn btn-sm btn-primary" onclick="carregarRascunhoPasta()" id="btn-carregar-rascunho" disabled>
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4"/></svg>
-          Carregar rascunho
-        </button>
+      <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:6px;display:none;align-items:center;gap:.4rem">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
+        <span id="pasta-selecionada-nome"></span>
       </div>
     </div>
   </div>
@@ -895,57 +920,174 @@ function restaurarDados(dados){
   updateDataAssinaturaExtenso();
 }
 
-// ─── PASTA DO CLIENTE ─────────────────────────────────────────────────────────
-let pastasSP=[],pastaSeleccionada=null;
-async function carregarPastasSP(){
-  const btn=document.getElementById('btn-carregar-pastas');
-  const input=document.getElementById('pasta-search');
-  btn.textContent='A carregar...';btn.disabled=true;
-  input.placeholder='A carregar pastas...';
+// ─── PASTA DO CLIENTE — 3 MODOS ───────────────────────────────────────────────
+// Modo A: pasta veio no URL (avença) → usa directamente
+// Modo B: utilizador escolhe biblioteca + pasta
+// Modo C: "sem pasta — só download"
+let pastasSP=[],pastaSeleccionada=null,bibliotecasSP=[],bibliotecaActiva=null,modoAtivo='B';
+
+// ── INIT — chamado no onload ─────────────────────────────────────────────────
+function inicializarPasta(){
+  // Verificar se vem com pasta no URL
+  const params=new URLSearchParams(location.search);
+  const driveId=params.get('driveId');
+  const itemId=params.get('itemId');
+  const nome=params.get('nome');
+  const webUrl=params.get('webUrl');
+  if(driveId&&itemId&&nome){
+    // ─── MODO A ─────────────────────────────────────────────────────────────
+    pastaSeleccionada={driveId,id:itemId,nome:decodeURIComponent(nome),webUrl:webUrl?decodeURIComponent(webUrl):null};
+    modoAtivo='A';
+    document.getElementById('pasta-modo-a').style.display='flex';
+    document.getElementById('pasta-modo-b').style.display='none';
+    document.getElementById('pasta-modo-a-nome').textContent=pastaSeleccionada.nome;
+    document.getElementById('btn-carregar-rascunho').disabled=false;
+    document.getElementById('page-sub').textContent=pastaSeleccionada.nome;
+    // Tentar carregar rascunho automaticamente
+    setTimeout(()=>carregarRascunhoPasta(true),500);
+  } else {
+    // ─── MODO B (default) ───────────────────────────────────────────────────
+    document.getElementById('pasta-modo-b').style.display='block';
+    carregarBibliotecas();
+  }
+}
+
+function trocarParaModoB(){
+  if(!confirm('Trocar de pasta? Vais ter de escolher manualmente.'))return;
+  pastaSeleccionada=null;
+  modoAtivo='B';
+  document.getElementById('pasta-modo-a').style.display='none';
+  document.getElementById('pasta-modo-b').style.display='block';
+  document.getElementById('btn-carregar-rascunho').disabled=true;
+  if(!bibliotecasSP.length)carregarBibliotecas();
+}
+
+function onSemPastaChange(){
+  const semPasta=document.getElementById('pasta-sem-pasta').checked;
+  document.getElementById('pasta-fields').style.opacity=semPasta?'.4':'1';
+  document.getElementById('pasta-fields').style.pointerEvents=semPasta?'none':'auto';
+  if(semPasta){
+    pastaSeleccionada=null;
+    modoAtivo='C';
+    document.getElementById('pasta-selecionada').style.display='none';
+    document.getElementById('btn-carregar-rascunho').disabled=true;
+  } else {
+    modoAtivo='B';
+  }
+}
+
+// ── MODO B: listar bibliotecas do site ───────────────────────────────────────
+async function carregarBibliotecas(){
+  const select=document.getElementById('pasta-biblioteca');
+  const btn=document.getElementById('btn-recarregar');
+  btn.disabled=true;
+  select.disabled=true;
+  select.innerHTML='<option value="">A carregar...</option>';
   try{
-    const token=await getGraphToken();
-    const drivesRes=await fetch(
-      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
-      {headers:{Authorization:'Bearer '+token}}
-    );
-    if(!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
-    const drives=await drivesRes.json();
-    const avencasDrive=drives.value.find(d=>d.name==='AVENCAS');
-    if(!avencasDrive) throw new Error('Biblioteca AVENCAS não encontrada');
-    const pastasRes=await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root:/REMAX:/children?$top=500&$orderby=lastModifiedDateTime desc`,
-      {headers:{Authorization:'Bearer '+token}}
-    );
-    if(!pastasRes.ok) throw new Error(`Erro ${pastasRes.status} ao listar pastas REMAX`);
-    const pastas=await pastasRes.json();
-    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:avencasDrive.id,webUrl:p.webUrl}));
-    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;
-    input.disabled=false;
-    showToast(`${pastasSP.length} pastas carregadas`,'success');
+    const res=await graphFetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives');
+    if(!res.ok) throw new Error(`Erro ${res.status} ao listar bibliotecas`);
+    const data=await res.json();
+    bibliotecasSP=(data.value||[]).filter(d=>{
+      // Esconder bibliotecas técnicas que não interessam
+      const n=(d.name||'').toUpperCase();
+      return !n.includes('STYLE LIBRARY')&&!n.includes('SITE PAGES')&&!n.includes('FORM TEMPLATES');
+    });
+    select.innerHTML='<option value="">Selecionar biblioteca...</option>'+
+      bibliotecasSP.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+    select.disabled=false;
+    // Auto-seleccionar AVENCAS por defeito
+    const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+    const avencas=bibliotecasSP.find(d=>norm(d.name)==='AVENCAS');
+    if(avencas){select.value=avencas.id;onBibliotecaChange();}
   }catch(e){
-    input.placeholder='Erro ao carregar — clica em Atualizar';
+    console.error('[CPCV] carregarBibliotecas:',e);
+    select.innerHTML='<option value="">Erro — clica em recarregar</option>';
     showToast('Erro: '+e.message,'error');
   }
-  btn.textContent='↺ Atualizar';btn.disabled=false;
+  btn.disabled=false;
 }
+
+async function onBibliotecaChange(){
+  const select=document.getElementById('pasta-biblioteca');
+  const input=document.getElementById('pasta-search');
+  const driveId=select.value;
+  if(!driveId){
+    bibliotecaActiva=null;
+    pastasSP=[];
+    input.disabled=true;
+    input.placeholder='Escolhe biblioteca primeiro';
+    input.value='';
+    return;
+  }
+  bibliotecaActiva=bibliotecasSP.find(d=>d.id===driveId);
+  input.placeholder='A carregar pastas...';
+  input.disabled=true;
+  input.value='';
+  pastasSP=[];
+  try{
+    // Listar todas as pastas (incluindo subpastas) recursivamente — limitado a 2 níveis
+    pastasSP=await listarPastasDrive(driveId);
+    input.placeholder=pastasSP.length?`Pesquisar entre ${pastasSP.length} pastas...`:'Sem pastas';
+    input.disabled=false;
+  }catch(e){
+    console.error('[CPCV] onBibliotecaChange:',e);
+    input.placeholder='Erro ao carregar pastas';
+    showToast('Erro: '+e.message,'error');
+  }
+}
+
+// Lista pastas até 2 níveis de profundidade (cobre AVENCAS/REMAX/<pasta>)
+async function listarPastasDrive(driveId){
+  const todas=[];
+  // Nível 1
+  const r1=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root/children?$top=100`);
+  if(!r1.ok) throw new Error(`Erro ${r1.status} ao listar raiz`);
+  const d1=await r1.json();
+  const pastasN1=(d1.value||[]).filter(p=>p.folder);
+  // Para cada pasta de nível 1, ir buscar as de nível 2
+  for(const p1 of pastasN1){
+    todas.push({id:p1.id,nome:p1.name,driveId,webUrl:p1.webUrl,caminho:p1.name});
+    try{
+      const r2=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${p1.id}/children?$top=500&$orderby=lastModifiedDateTime desc`);
+      if(r2.ok){
+        const d2=await r2.json();
+        (d2.value||[]).filter(p=>p.folder).forEach(p2=>{
+          todas.push({id:p2.id,nome:p2.name,driveId,webUrl:p2.webUrl,caminho:`${p1.name}/${p2.name}`});
+        });
+      }
+    }catch(e){console.warn('Falha ao listar nível 2 de',p1.name,e);}
+  }
+  return todas;
+}
+
 function pesquisarPastas(){
   const q=document.getElementById('pasta-search').value.toLowerCase().trim();
   const dropdown=document.getElementById('pasta-dropdown');
   if(!q){dropdown.style.display='none';return;}
-  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
-  dropdown.innerHTML=res.length?res.map(p=>`<div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''"><div style="font-weight:500;font-family:'DM Mono',monospace">${p.nome}</div></div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  const res=pastasSP.filter(p=>(p.caminho||p.nome).toLowerCase().includes(q)).slice(0,12);
+  dropdown.innerHTML=res.length?res.map(p=>{
+    const safeP=JSON.stringify(p).replace(/"/g,'&quot;');
+    return `<div onclick="selecionarPasta(${safeP})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+      <div style="font-weight:500;font-family:'DM Mono',monospace">${p.caminho||p.nome}</div>
+    </div>`;
+  }).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
   dropdown.style.display='block';
 }
+
 function selecionarPasta(pasta){
   pastaSeleccionada=pasta;
-  document.getElementById('pasta-search').value=pasta.nome;
+  document.getElementById('pasta-search').value=pasta.caminho||pasta.nome;
   document.getElementById('pasta-dropdown').style.display='none';
-  document.getElementById('pasta-selecionada-nome').textContent=pasta.nome;
-  document.getElementById('pasta-selecionada').style.display='block';
+  document.getElementById('pasta-selecionada-nome').textContent=pasta.caminho||pasta.nome;
+  document.getElementById('pasta-selecionada').style.display='flex';
   document.getElementById('btn-carregar-rascunho').disabled=false;
   document.getElementById('page-sub').textContent=pasta.nome;
 }
-document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown'))document.getElementById('pasta-dropdown').style.display='none';});
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown'))
+    document.getElementById('pasta-dropdown').style.display='none';
+});
 
 // ─── RASCUNHO ─────────────────────────────────────────────────────────────────
 async function guardarRascunho(){
@@ -953,24 +1095,24 @@ async function guardarRascunho(){
   const json=JSON.stringify(recolherDados(),null,2);
   const blob=new Blob([json],{type:'application/json'});
   try{
-    const token=await getGraphToken();
-    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:blob});
+    const res=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`,
+      {method:'PUT',headers:{'Content-Type':'application/json'},body:blob});
     if(!res.ok)throw new Error(res.status);
     document.getElementById('rascunho-status').style.display='inline-flex';
     document.getElementById('footer-info').textContent='Guardado em '+pastaSeleccionada.nome+' às '+new Date().toLocaleTimeString('pt-PT');
     showToast('Rascunho guardado!','success');
   }catch(e){showToast('Erro ao guardar: '+e.message,'error');}
 }
-async function carregarRascunhoPasta(){
+
+async function carregarRascunhoPasta(silencioso){
   if(!pastaSeleccionada)return;
   try{
-    const token=await getGraphToken();
-    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`,{headers:{'Authorization':'Bearer '+token}});
-    if(!res.ok){showToast('Nenhum rascunho encontrado','');return;}
+    const res=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`);
+    if(!res.ok){if(!silencioso)showToast('Nenhum rascunho encontrado','');return;}
     restaurarDados(await res.json());
     document.getElementById('rascunho-status').style.display='inline-flex';
     showToast('Rascunho carregado!','success');
-  }catch(e){showToast('Erro: '+e.message,'error');}
+  }catch(e){if(!silencioso)showToast('Erro: '+e.message,'error');}
 }
 function limparFormulario(){if(!confirm('Tens a certeza?'))return;localStorage.removeItem('cpcv_rascunho');location.reload();}
 
@@ -1098,25 +1240,25 @@ async function gerarContrato(){
     const Camara_Municipal=v('camara-municipal');
 
     // ── 3. Carregar template e substituir ─────────────────────────────────────
-    const token=await getGraphToken();
-    const drivesRes=await fetch(
-      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
-      {headers:{Authorization:'Bearer '+token}}
+    const drivesRes=await graphFetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives'
     );
     if(!drivesRes.ok) throw new Error(`Erro ${drivesRes.status} ao aceder ao SharePoint`);
     const drives=await drivesRes.json();
-    console.log('Drives disponíveis:', drives.value?.map(d=>d.name));
-    const docsDrive=drives.value.find(d=>
-      d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos')
-    );
+    console.log('[CPCV] Drives disponíveis:', drives.value?.map(d=>d.name));
+    const normName=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+    const docsDrive=drives.value.find(d=>{
+      const n=normName(d.name);
+      return n==='DOCUMENTOS PARTILHADOS'||n==='DOCUMENTS'||n==='SHARED DOCUMENTS'||(d.webUrl||'').toUpperCase().includes('DOCUMENTOS');
+    });
     if(!docsDrive) throw new Error('Biblioteca de documentos não encontrada. Drives: '+drives.value?.map(d=>d.name).join(', '));
-    const templateRes=await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_CPCV.docx:/content`,
-      {headers:{Authorization:'Bearer '+token}}
+    const templateRes=await graphFetch(
+      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_CPCV.docx:/content`
     );
     if(!templateRes.ok){
+      console.error('[CPCV] Template fetch falhou:',templateRes.status,'em drive',docsDrive.name);
       // Fallback — seleccionar template manualmente
-      showToast('Template não encontrado no SP — selecciona o ficheiro TEMPL_CPCV.docx manualmente','error');
+      showToast(`Template não encontrado em ${docsDrive.name}/Templates/TEMPL_CPCV.docx — selecciona manualmente`,'error');
       const templateBufManual = await new Promise((resolve,reject)=>{
         const input=document.createElement('input');input.type='file';input.accept='.docx';
         input.onchange=async e=>{const f=e.target.files[0];if(!f)reject(new Error('Cancelado'));else resolve(await f.arrayBuffer());};
@@ -1148,17 +1290,23 @@ async function gerarContrato(){
     const nomeDoc=`CPCV_${morada.substring(0,50).trim()}.docx`;
     if(pastaSeleccionada){
       const ab=await out.arrayBuffer();
-      await fetch(
+      const upRes=await graphFetch(
         `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content`,
-        {method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab}
+        {method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab}
       );
+      if(!upRes.ok){
+        console.error('[CPCV] Upload falhou:',upRes.status);
+        showToast(`Contrato gerado mas não foi guardado na pasta (erro ${upRes.status}). Faz upload manual.`,'error');
+      } else {
+        showToast(`Guardado em ${pastaSeleccionada.nome}`,'success');
+      }
     }
 
     // ── 5. Download local ──────────────────────────────────────────────────────
     const url=URL.createObjectURL(out);
     const a=document.createElement('a');a.href=url;a.download=nomeDoc;a.click();
     URL.revokeObjectURL(url);
-    showToast('Contrato gerado!','success');
+    if(!pastaSeleccionada)showToast('Contrato gerado!','success');
   }catch(e){showToast('Erro: '+e.message,'error');console.error(e);}
 }
 
@@ -1281,17 +1429,40 @@ function gerarTextoPagamento(){
   return linhas.join('\n\n');
 }
 
-// ─── TOKEN ────────────────────────────────────────────────────────────────────
-// ─── TOKEN ────────────────────────────────────────────────────────────────────
+// ─── TOKEN + FETCH HELPER ────────────────────────────────────────────────────
 async function getGraphToken(){
-  // Sempre tenta o portal primeiro — token mais recente
-  if(window.opener&&window.opener.graphToken){
-    return window.opener.graphToken;
-  }
-  // Fallback localStorage (pode estar expirado)
+  // 1. Token do portal pai — sempre o mais fresco (portal renova)
+  try{
+    if(window.opener&&!window.opener.closed&&window.opener.graphToken){
+      const t=window.opener.graphToken;
+      try{localStorage.setItem('lbc_graph_token',t);}catch(e){}
+      return t;
+    }
+  }catch(e){/* cross-origin ou outra falha silenciosa */}
+  // 2. Fallback: localStorage (pode estar expirado)
   const stored=localStorage.getItem('lbc_graph_token');
   if(stored)return stored;
   throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC e mantém o portal aberto.');
+}
+
+// Fetch com retry automático em caso de 401 (token expirado)
+async function graphFetch(url,opts={}){
+  let token=await getGraphToken();
+  opts.headers={...(opts.headers||{}),Authorization:'Bearer '+token};
+  let res=await fetch(url,opts);
+  if(res.status===401){
+    try{localStorage.removeItem('lbc_graph_token');}catch(e){}
+    if(window.opener&&!window.opener.closed&&window.opener.graphToken){
+      token=window.opener.graphToken;
+      try{localStorage.setItem('lbc_graph_token',token);}catch(e){}
+      opts.headers.Authorization='Bearer '+token;
+      res=await fetch(url,opts);
+    }
+    if(res.status===401){
+      throw new Error('Sessão expirada. Volta ao portal LBC e abre o CPCV outra vez.');
+    }
+  }
+  return res;
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1310,7 +1481,7 @@ window.onload=()=>{
   addMatrizUrbana();
   addMatrizRustica();
   document.getElementById('matriz-rustica-fields').style.display='none';
-  carregarPastasSP();
+  inicializarPasta();
   const raw=localStorage.getItem('cpcv_rascunho');
   if(raw)try{restaurarDados(JSON.parse(raw));document.getElementById('rascunho-status').style.display='inline-flex';}catch(e){}
 };
