@@ -289,9 +289,9 @@ tbody tr:hover td{background:#FAFAF8}
   /* Registo — painel lateral em ecrã inteiro */
   .side-panel{width:100%!important;max-width:100%!important}
 
-  /* Calendário — coluna única */
-  #screen-dashboard > div[style*="flex"]{flex-direction:column!important}
-  #screen-dashboard > div[style*="flex"] > div[style*="width:480px"]{width:100%!important}
+  /* Calendário — coluna única em mobile */
+  #screen-calendario > div[style*="flex"]{flex-direction:column!important}
+  #screen-calendario > div[style*="flex"] > div[style*="width:480px"]{width:100%!important}
 
   /* Filtros em scroll horizontal */
   .filter-row{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:.25rem;scrollbar-width:none}
@@ -344,8 +344,9 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="logo-sub">Portal interno</div>
     </div>
     <div class="nav-section">Visão geral</div>
-    <div class="nav-item active" onclick="nav('dashboard',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></span>Dashboard
+    <div class="nav-item active" onclick="nav('calendario',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Calendário
+      <span class="nav-badge nav-badge-amber" id="tarefas-badge"></span>
     </div>
     <div class="nav-section">Escrituras</div>
     <div class="nav-item" onclick="nav('agendar',this)">
@@ -382,11 +383,6 @@ tbody tr:hover td{background:#FAFAF8}
     </div>
     <div class="nav-item" onclick="nav('contabilidade',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
-    </div>
-    <div class="nav-section">Escritório</div>
-    <div class="nav-item active" onclick="nav('dashboard',this)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Calendário
-      <span class="nav-badge nav-badge-amber" id="tarefas-badge"></span>
     </div>
     <div class="sidebar-footer">
       <div class="user-info">
@@ -445,82 +441,6 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="content">
 
       <!-- DASHBOARD / CALENDÁRIO -->
-      <div class="screen active" id="screen-dashboard">
-
-        <!-- LAYOUT: CALENDÁRIO (esquerda) + TAREFAS (direita) -->
-        <div style="display:flex;gap:1rem;align-items:flex-start">
-
-          <!-- CALENDÁRIO GRANDE -->
-          <div style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
-            <div class="cal-header" style="margin-bottom:.75rem">
-              <div class="cal-nav">
-                <button class="btn btn-sm" onclick="dashCalNav(-1)">‹</button>
-                <span class="cal-title" id="dash-cal-title"></span>
-                <button class="btn btn-sm" onclick="dashCalNav(1)">›</button>
-                <button class="btn btn-sm" onclick="dashCalHoje()">Hoje</button>
-              </div>
-            </div>
-            <div id="dash-cal-wrap"></div>
-          </div>
-
-          <!-- TAREFAS COMPLETAS -->
-          <div style="width:480px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-              <div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--text-muted)">Escritório</div></div>
-              <button class="btn btn-primary btn-sm" onclick="toggleFormTarefaDash()">+ Nova</button>
-            </div>
-            <!-- Form inline nova tarefa -->
-            <div id="dash-tarefa-form" style="display:none;margin-bottom:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-              <div class="form-group" style="margin-bottom:.4rem"><input class="form-input" id="dash-tar-titulo" placeholder="Descrição *" style="font-size:12px"></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.4rem">
-                <select class="form-select" id="dash-tar-responsavel" style="font-size:12px"><option value="">Responsável</option><option>Liliana Cardoso</option><option>Andreia Cabanas</option></select>
-                <input class="form-input" id="dash-tar-prazo" type="date" style="font-size:12px">
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
-                <select class="form-select" id="dash-tar-prioridade" style="font-size:12px"><option>Normal</option><option>Urgente</option><option>Baixa</option></select>
-                <input class="form-input" id="dash-tar-obs" placeholder="Observações" style="font-size:12px">
-              </div>
-              <div style="display:flex;gap:.4rem">
-                <button class="btn btn-primary btn-sm" style="flex:1" onclick="criarTarefaDash()">Criar</button>
-                <button class="btn btn-sm" onclick="toggleFormTarefaDash()">Cancelar</button>
-              </div>
-            </div>
-            <!-- Filtros -->
-            <div class="filter-row" style="margin-bottom:.6rem;gap:.3rem">
-              <button class="filter-chip active" onclick="filtrarTarefasDash('',this)" style="font-size:10px;padding:2px 8px">Todas</button>
-              <button class="filter-chip" onclick="filtrarTarefasDash('Urgente',this)" style="font-size:10px;padding:2px 8px">Urgentes</button>
-              <button class="filter-chip" onclick="filtrarTarefasDash('Por fazer',this)" style="font-size:10px;padding:2px 8px">Por fazer</button>
-              <button class="filter-chip" onclick="filtrarTarefasDash('Em curso',this)" style="font-size:10px;padding:2px 8px">Em curso</button>
-            </div>
-            <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
-            <div id="dash-tar-lista" style="max-height:580px;overflow-y:auto"></div>
-            <div id="dash-tar-vazio" class="notice notice-success" style="display:none;font-size:12px">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
-              Sem tarefas pendentes!
-            </div>
-          </div>
-
-        </div>
-
-        <!-- LEMBRETES RÁPIDOS -->
-        <div style="margin-top:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
-          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
-            <div style="font-weight:600;font-size:13px">⚡ Lembretes rápidos</div>
-            <div style="display:flex;gap:.5rem;flex:1">
-              <input class="form-input" id="lembrete-texto" placeholder="Ex: Devolver chamada à Maria..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
-              <input class="form-input" id="lembrete-obs" placeholder="Nota (opcional)" style="width:180px;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
-              <button class="btn btn-primary btn-sm" onclick="adicionarLembrete()">+ Adicionar</button>
-            </div>
-          </div>
-          <div id="lembretes-lista" style="display:flex;flex-wrap:wrap;gap:.5rem">
-            <div style="font-size:12px;color:var(--text-faint);padding:.4rem 0">Sem lembretes. Adiciona o primeiro acima.</div>
-          </div>
-        </div>
-        <div id="dash-sup-loading" style="display:none"></div>
-        <div id="dash-sup-lista" style="display:none"></div>
-        <div id="dash-sup-vazio" style="display:none"></div>
-      </div>
-
       <!-- AGENDAMENTO -->
       <div class="screen" id="screen-agendar">
         <div class="notice notice-info">
@@ -904,21 +824,80 @@ tbody tr:hover td{background:#FAFAF8}
       </div>
 
       <!-- CALENDÁRIO -->
-      <div class="screen" id="screen-calendario">
-        <div class="cal-header">
-          <div class="cal-nav">
-            <button class="btn btn-sm" onclick="calNav(-1)">‹</button>
-            <span class="cal-title" id="cal-title"></span>
-            <button class="btn btn-sm" onclick="calNav(1)">›</button>
-            <button class="btn btn-sm" onclick="calHoje()">Hoje</button>
+      <div class="screen active" id="screen-calendario">
+        <!-- LAYOUT: CALENDÁRIO (esquerda) + TAREFAS (direita) -->
+        <div style="display:flex;gap:1rem;align-items:flex-start">
+
+          <!-- CALENDÁRIO COM 3 VISTAS -->
+          <div style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+            <div class="cal-header">
+              <div class="cal-nav">
+                <button class="btn btn-sm" onclick="calNav(-1)">‹</button>
+                <span class="cal-title" id="cal-title"></span>
+                <button class="btn btn-sm" onclick="calNav(1)">›</button>
+                <button class="btn btn-sm" onclick="calHoje()">Hoje</button>
+              </div>
+              <div class="cal-view-btns">
+                <button class="cal-view-btn" onclick="calSetView('dia',this)">Dia</button>
+                <button class="cal-view-btn" onclick="calSetView('semana',this)">Semana</button>
+                <button class="cal-view-btn active" onclick="calSetView('mes',this)">Mês</button>
+              </div>
+            </div>
+            <div id="cal-grid-wrap"></div>
           </div>
-          <div class="cal-view-btns">
-            <button class="cal-view-btn" onclick="calSetView('dia',this)">Dia</button>
-            <button class="cal-view-btn" onclick="calSetView('semana',this)">Semana</button>
-            <button class="cal-view-btn active" onclick="calSetView('mes',this)">Mês</button>
+
+          <!-- TAREFAS -->
+          <div style="width:480px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+              <div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--text-muted)">Escritório</div></div>
+              <button class="btn btn-primary btn-sm" onclick="toggleFormTarefaDash()">+ Nova</button>
+            </div>
+            <!-- Form inline nova tarefa -->
+            <div id="dash-tarefa-form" style="display:none;margin-bottom:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+              <div class="form-group" style="margin-bottom:.4rem"><input class="form-input" id="dash-tar-titulo" placeholder="Descrição *" style="font-size:12px"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.4rem">
+                <select class="form-select" id="dash-tar-responsavel" style="font-size:12px"><option value="">Responsável</option><option>Liliana Cardoso</option><option>Andreia Cabanas</option></select>
+                <input class="form-input" id="dash-tar-prazo" type="date" style="font-size:12px">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
+                <select class="form-select" id="dash-tar-prioridade" style="font-size:12px"><option>Normal</option><option>Urgente</option><option>Baixa</option></select>
+                <input class="form-input" id="dash-tar-obs" placeholder="Observações" style="font-size:12px">
+              </div>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-primary btn-sm" style="flex:1" onclick="criarTarefaDash()">Criar</button>
+                <button class="btn btn-sm" onclick="toggleFormTarefaDash()">Cancelar</button>
+              </div>
+            </div>
+            <!-- Filtros -->
+            <div class="filter-row" style="margin-bottom:.6rem;gap:.3rem">
+              <button class="filter-chip active" onclick="filtrarTarefasDash('',this)" style="font-size:10px;padding:2px 8px">Todas</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Urgente',this)" style="font-size:10px;padding:2px 8px">Urgentes</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Por fazer',this)" style="font-size:10px;padding:2px 8px">Por fazer</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Em curso',this)" style="font-size:10px;padding:2px 8px">Em curso</button>
+            </div>
+            <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
+            <div id="dash-tar-lista" style="max-height:580px;overflow-y:auto"></div>
+            <div id="dash-tar-vazio" class="notice notice-success" style="display:none;font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
+              Sem tarefas pendentes!
+            </div>
           </div>
         </div>
-        <div id="cal-grid-wrap"></div>
+
+        <!-- LEMBRETES RÁPIDOS -->
+        <div style="margin-top:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+            <div style="font-weight:600;font-size:13px">⚡ Lembretes rápidos</div>
+            <div style="display:flex;gap:.5rem;flex:1">
+              <input class="form-input" id="lembrete-texto" placeholder="Ex: Devolver chamada à Maria..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
+              <input class="form-input" id="lembrete-obs" placeholder="Nota (opcional)" style="width:180px;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
+              <button class="btn btn-primary btn-sm" onclick="adicionarLembrete()">+ Adicionar</button>
+            </div>
+          </div>
+          <div id="lembretes-lista" style="display:flex;flex-wrap:wrap;gap:.5rem">
+            <div style="font-size:12px;color:var(--text-faint);padding:.4rem 0">Sem lembretes. Adiciona o primeiro acima.</div>
+          </div>
+        </div>
       </div>
 
       <!-- MODAL CÓDIGO DEPÓSITO -->
@@ -1922,7 +1901,7 @@ async function mostrarApp(){
   const nome=contaAtual.name||contaAtual.username;
   document.getElementById('user-name').textContent=nome.split(' ')[0];
   document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
-  setDates();await resolverSiteIds();carregarDashboard();carregarLembretes();
+  setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
 }
 
 async function graphGet(url){
@@ -1993,7 +1972,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={dashboard:'Calendário',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
+const pageTitles={financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
 
 function toggleSidebar(){
   const sidebar=document.querySelector('.sidebar');
@@ -2080,6 +2059,7 @@ function nav(id,el){
   if(id==='clientes')cliInit();
   if(id==='servicos')servicosInit();
   if(id==='relatorios')carregarRelatorios();
+  if(id==='calendario'){carregarCalendario();carregarDashboard();carregarLembretes();}
 }
 
 // ─── DROPDOWN CONTRATOS ────────────────────────────────────────────────────────
@@ -2110,29 +2090,28 @@ function abrirContrato(tipo){
 }
 
 async function carregarDashboard(){
+  // Esta função foi simplificada: o Dashboard antigo foi removido e fundido no Calendário.
+  // Mantém-se a:
+  // 1) carregar tarefas (usadas no painel direito do Calendário)
+  // 2) carregar registos para alimentar o Dashboard Financeiro (separado)
   try{
     const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico}`;
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
     todosRegistos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
 
     const anoAtual=new Date().getFullYear();
-    const anuais=todosRegistos.filter(i=>{
-      if(!i[F.data])return false;
-      return new Date(i[F.data]).getFullYear()===anoAtual;
-    });
-
+    const anuais=todosRegistos.filter(i=>i[F.data]&&new Date(i[F.data]).getFullYear()===anoAtual);
     const total=anuais.length;
     const concl=anuais.filter(i=>(i[F.estado]||'').toLowerCase()==='concluido').length;
     const emcurso=anuais.filter(i=>i[F.estado]==='Apresentado'||i[F.estado]==='Depositado').length;
     const supsLista=anuais.filter(i=>i[F.estado]==='Suprimento'||i[F.estado]==='Desistência');
     const sups=supsLista.length;
 
-    // Somar custoSup de TODOS os registos (todos os anos) com valor > 0
+    // Custo acumulado de suprimentos por ano
     const todosComSup=todosRegistos.filter(i=>{
       const v=parseFloat(String(i[F.custoSup]||'0').replace(',','.'));
       return v>0;
     });
-    // Agrupar por ano
     const porAno={};
     todosComSup.forEach(i=>{
       const ano=i[F.data]?new Date(i[F.data]).getFullYear():'?';
@@ -2143,68 +2122,43 @@ async function carregarDashboard(){
     const fmtEur=v=>v.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
     const linhasAno=Object.keys(porAno).sort().map(a=>`${a}: ${fmtEur(porAno[a])}`).join(' · ');
 
-    document.getElementById('m-total').textContent=total;
-    document.getElementById('m-concluidos').textContent=concl;
-    document.getElementById('m-emcurso').textContent=emcurso;
-    document.getElementById('m-suprimentos').textContent=totalGeral>0?fmtEur(totalGeral):'0,00€';
-    document.getElementById('m-total-sub').textContent=`escrituras em ${anoAtual}`;
-    document.getElementById('m-concluidos-sub').textContent=`${Math.round(concl/(total||1)*100)}% do total`;
-    document.getElementById('m-emcurso-sub').textContent=`apresentados + depositados`;
-    document.getElementById('m-suprimentos-sub').textContent=linhasAno||'sem valores registados';
+    // Métricas do Dashboard Financeiro (só preenche se os elementos existirem)
+    const setIfExists=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+    setIfExists('m-total',total);
+    setIfExists('m-concluidos',concl);
+    setIfExists('m-emcurso',emcurso);
+    setIfExists('m-suprimentos',totalGeral>0?fmtEur(totalGeral):'0,00€');
+    setIfExists('m-total-sub',`escrituras em ${anoAtual}`);
+    setIfExists('m-concluidos-sub',`${Math.round(concl/(total||1)*100)}% do total`);
+    setIfExists('m-emcurso-sub','apresentados + depositados');
+    setIfExists('m-suprimentos-sub',linhasAno||'sem valores registados');
 
-    if(sups>0){const b=document.getElementById('sup-badge');b.textContent=sups;b.style.display='inline-block';}
-    document.getElementById('dash-sup-loading').style.display='none';
-    if(!supsLista.length){
-      document.getElementById('dash-sup-vazio').style.display='flex';
-    } else {
-      document.getElementById('dash-sup-lista').innerHTML=supsLista.slice(0,3).map(i=>`
-        <div class="sup-card">
-          <div style="flex:1">
-            <div class="sup-card-title">${escHtml(i[F.titulo]||'—')} — ${escHtml(i[F.nome]||'—')}</div>
-            <div class="sup-card-meta">${fmtData(i[F.data])} · ${escHtml(i[F.produto]||'—')} · ${escHtml(i[F.procurador]||'—')}</div>
-            ${i[F.observacoes]?`<div class="sup-card-obs">${escHtml(i[F.observacoes])}</div>`:''}
-          </div>
-          <span class="badge badge-red">Suprimento</span>
-        </div>`).join('');
-    }
-  }catch(e){
-    document.getElementById('dash-sup-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;
-  }
+    // Badge de suprimentos no menu lateral
+    const supBadge=document.getElementById('sup-badge');
+    if(supBadge&&sups>0){supBadge.textContent=sups;supBadge.style.display='inline-block';}
+  }catch(e){console.warn('Erro registos:',e);}
+
+  // Tarefas para o painel direito do Calendário
   try{
-    if(!listaIdTarefas){document.getElementById('dash-tar-loading').style.display='none';document.getElementById('dash-tar-vazio').style.display='flex';return;}
+    if(!listaIdTarefas){
+      const ld=document.getElementById('dash-tar-loading');if(ld)ld.style.display='none';
+      const vz=document.getElementById('dash-tar-vazio');if(vz)vz.style.display='flex';
+      return;
+    }
     const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
     todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     const pendentes=todasTarefas.filter(i=>i[T.estado]!=='Concluída');
     const urgentes=pendentes.filter(i=>i[T.prioridade]==='Urgente');
-    if(urgentes.length>0){const b=document.getElementById('tarefas-badge');b.textContent=urgentes.length;b.style.display='inline-block';}
-    document.getElementById('dash-tar-loading').style.display='none';
+    const tBadge=document.getElementById('tarefas-badge');
+    if(tBadge&&urgentes.length>0){tBadge.textContent=urgentes.length;tBadge.style.display='inline-block';}
+    const ld=document.getElementById('dash-tar-loading');if(ld)ld.style.display='none';
     renderTarefasDash(pendentes);
   }catch(e){
-    document.getElementById('dash-tar-loading').style.display='none';
-    document.getElementById('dash-tar-vazio').style.display='flex';
+    const ld=document.getElementById('dash-tar-loading');if(ld)ld.style.display='none';
+    const vz=document.getElementById('dash-tar-vazio');if(vz)vz.style.display='flex';
+    console.warn('Erro tarefas:',e);
   }
-  // Carregar eventos para o calendário do dashboard
-  try{
-    renderDashCal();
-    if(listaIdAgenda){
-      const selComObs=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
-      const selSemObs=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel}`;
-      let evData;
-      try{
-        evData=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
-      }catch(_){
-        evData=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
-      }
-      todosEventos=(evData.value||[]).map(i=>({id:i.id,...i.fields}));
-    }
-    if(listaIdTarefas){
-      const sel2=`${T.titulo},${T.prazo},${T.prioridade},${T.estado}`;
-      const tData=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel2})&$top=200`);
-      todasTarefasCal=(tData.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>i[T.prazo]&&i[T.estado]!=='Concluída');
-    }
-    renderDashCal();
-  }catch(e){console.warn('Erro calendário dashboard:',e);}
 }
 
 async function carregarPastas(){
@@ -2769,7 +2723,7 @@ function toggleFormTarefaDash(){
 }
 
 function filtrarTarefasDash(filtro,el){
-  document.querySelectorAll('#screen-dashboard .filter-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('#screen-calendario .filter-chip').forEach(c=>c.classList.remove('active'));
   if(el) el.classList.add('active');
   if(!filtro) renderTarefasDash(todasTarefas.filter(i=>i[T.estado]!=='Concluída'));
   else if(filtro==='Urgente') renderTarefasDash(todasTarefas.filter(i=>i[T.prioridade]==='Urgente'&&i[T.estado]!=='Concluída'));
@@ -2859,7 +2813,7 @@ async function criarTarefaDash(){
     document.getElementById('dash-tar-prioridade').selectedIndex=0;
     toggleFormTarefaDash();
     await carregarTarefas();
-    filtrarTarefasDash('',document.querySelector('#screen-dashboard .filter-chip.active'));
+    filtrarTarefasDash('',document.querySelector('#screen-calendario .filter-chip.active'));
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
@@ -5473,7 +5427,6 @@ function renderRelatorios(){
 }
 
 
-let dashCalData=new Date();
 // ─── LEMBRETES RÁPIDOS ────────────────────────────────────────────────────────
 function carregarLembretes(){
   const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
@@ -5523,34 +5476,6 @@ function concluirLembrete(idx){
       renderLembretes(lista);
     },360);
   }
-}
-
-function dashCalNav(dir){dashCalData=new Date(dashCalData);dashCalData.setMonth(dashCalData.getMonth()+dir);renderDashCal();}
-function dashCalHoje(){dashCalData=new Date();renderDashCal();}
-function renderDashCal(){
-  const wrap=document.getElementById('dash-cal-wrap');
-  if(!wrap)return;
-  const ano=dashCalData.getFullYear(),mes=dashCalData.getMonth();
-  document.getElementById('dash-cal-title').textContent=`${MESES[mes]} ${ano}`;
-  const primeiro=new Date(ano,mes,1),ultimo=new Date(ano,mes+1,0);
-  const inicioSem=primeiro.getDay();
-  const hoje=new Date();
-  const hojeStr=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
-  let html='<div class="cal-grid">';
-  DIAS_SEMANA.forEach(d=>html+=`<div class="cal-day-header">${d}</div>`);
-  for(let i=0;i<inicioSem;i++){const d=new Date(ano,mes,i-inicioSem+1);html+=`<div class="cal-day other-month"><div class="cal-day-num">${d.getDate()}</div></div>`;}
-  for(let d=1;d<=ultimo.getDate();d++){
-    const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isHoje=dateStr===hojeStr;
-    const evts=eventosNoDia(dateStr);
-    const evtsHtml=evts.slice(0,2).map(renderEvt).join('');
-    const mais=evts.length>2?`<div class="cal-more">+${evts.length-2}</div>`:'';
-    html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')"><div class="cal-day-num">${d}</div>${evtsHtml}${mais}</div>`;
-  }
-  const restantes=(7-((inicioSem+ultimo.getDate())%7))%7;
-  for(let i=1;i<=restantes;i++)html+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
-  html+='</div>';
-  wrap.innerHTML=html;
 }
 
 async function init(){
