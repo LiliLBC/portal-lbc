@@ -1063,19 +1063,72 @@ tbody tr:hover td{background:#FAFAF8}
 
         <!-- NOVA PASTA CLIENTE -->
         <div id="proc-tab-content-novo" style="display:none">
-          <div class="section-card" style="max-width:500px">
+          <!-- PASSO 1: Pesquisar primeiro -->
+          <div class="section-card" id="proc-novo-passo1" style="max-width:560px">
             <div class="section-card-header">
               <div class="section-num">1</div>
-              <div><div class="section-name">Nova pasta de cliente</div><div class="section-desc">Cria a pasta principal do cliente em PROCESSOS</div></div>
+              <div>
+                <div class="section-name">Pesquisar cliente</div>
+                <div class="section-desc">Antes de criar uma nova pasta, verifica se o cliente já existe — para evitar pastas duplicadas</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nome do cliente</label>
+              <div class="pasta-sp-wrap">
+                <input class="form-input" id="proc-novo-search" placeholder="Escreve o nome para pesquisar..." oninput="pesquisarClienteAntesNovo()" autocomplete="off" style="text-transform:uppercase;font-family:'DM Mono',monospace;font-size:12px">
+                <div class="pasta-sp-dropdown" id="proc-novo-search-dropdown"></div>
+              </div>
+              <div id="proc-novo-search-info" style="font-size:11px;color:var(--text-faint);margin-top:.4rem"></div>
+            </div>
+            <div class="form-actions" style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="btn" onclick="procPesquisaConfirmaNova()" id="proc-btn-criar-nova" disabled style="opacity:.5">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v14M1 8h14"/></svg>
+                Criar pasta nova
+              </button>
+              <span style="font-size:10px;color:var(--text-faint);align-self:center">Disponível depois de pesquisares</span>
+            </div>
+          </div>
+
+          <!-- PASSO 2: Cliente já existe — mostrar processos -->
+          <div class="section-card" id="proc-novo-cliente-existe" style="max-width:680px;display:none;border-color:var(--accent)">
+            <div class="section-card-header">
+              <div class="section-num" style="background:var(--accent);color:#fff">!</div>
+              <div>
+                <div class="section-name">Cliente já existe</div>
+                <div class="section-desc" id="proc-existe-sub">A pasta deste cliente já está criada.</div>
+              </div>
+            </div>
+            <div id="proc-existe-procs" style="margin:.5rem 0"></div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
+              <button class="btn btn-primary" onclick="procIrParaNovoProcesso()" style="flex:1">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v14M1 8h14"/></svg>
+                + Novo processo neste cliente
+              </button>
+              <button class="btn" onclick="procVoltarPesquisa()" style="font-size:11px">↺ Pesquisar outro</button>
+            </div>
+          </div>
+
+          <!-- PASSO 3: Confirmar nome para criar -->
+          <div class="section-card" id="proc-novo-passo2" style="max-width:560px;display:none">
+            <div class="section-card-header">
+              <div class="section-num">2</div>
+              <div>
+                <div class="section-name">Criar pasta nova</div>
+                <div class="section-desc">Confirma o nome do cliente. Vais ser direccionada para criar o processo a seguir.</div>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Nome do cliente *</label>
               <input class="form-input" id="proc-novo-nome" placeholder="Ex: JOAQUIM MIGUEL VELEZ" style="text-transform:uppercase">
             </div>
-            <div class="form-actions" style="margin-top:1rem">
-              <button class="btn btn-primary" onclick="criarPastaCliente()">Criar pasta cliente</button>
+            <div id="proc-novo-preview" style="font-size:11px;color:var(--text-faint);margin-top:.25rem;font-family:'DM Mono',monospace"></div>
+            <div class="form-actions" style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="criarPastaCliente()">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg>
+                Criar e abrir Novo Processo
+              </button>
+              <button class="btn" onclick="procVoltarPesquisa()" style="font-size:11px">↺ Voltar</button>
             </div>
-            <div id="proc-novo-preview" style="font-size:11px;color:var(--text-faint);margin-top:.5rem;font-family:'DM Mono',monospace"></div>
           </div>
         </div>
 
@@ -3636,6 +3689,7 @@ async function eliminarEvento(){
 
 // ─── PROCESSOS ────────────────────────────────────────────────────────────────
 let todasPastasClientes=[],pastaClienteSeleccionada=null;
+let procPesquisaClienteEscolhido=null; // {pasta, nome, processos}
 
 function procSetTab(tab,el){
   ['pastas','novo','subpasta'].forEach(t=>{
@@ -3643,7 +3697,140 @@ function procSetTab(tab,el){
   });
   document.querySelectorAll('#screen-processos .filter-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
+  // Reset do fluxo "Nova pasta cliente" sempre que entra
+  if(tab==='novo')procResetFluxoNovo();
 }
+
+// ─── FLUXO GUIADO "NOVA PASTA CLIENTE" ────────────────────────────────────────
+function procResetFluxoNovo(){
+  document.getElementById('proc-novo-passo1').style.display='block';
+  document.getElementById('proc-novo-cliente-existe').style.display='none';
+  document.getElementById('proc-novo-passo2').style.display='none';
+  const search=document.getElementById('proc-novo-search');
+  if(search)search.value='';
+  document.getElementById('proc-novo-search-info').textContent='';
+  document.getElementById('proc-novo-search-dropdown').style.display='none';
+  const btn=document.getElementById('proc-btn-criar-nova');
+  if(btn){btn.disabled=true;btn.style.opacity='.5';}
+  procPesquisaClienteEscolhido=null;
+}
+
+function procVoltarPesquisa(){procResetFluxoNovo();}
+
+// Pesquisa em tempo real à medida que o utilizador escreve
+function pesquisarClienteAntesNovo(){
+  const q=(document.getElementById('proc-novo-search').value||'').toUpperCase().trim();
+  const dropdown=document.getElementById('proc-novo-search-dropdown');
+  const info=document.getElementById('proc-novo-search-info');
+  const btnCriar=document.getElementById('proc-btn-criar-nova');
+  if(q.length<2){
+    dropdown.style.display='none';
+    info.textContent='Escreve pelo menos 2 letras para pesquisar';
+    btnCriar.disabled=true;btnCriar.style.opacity='.5';
+    return;
+  }
+  // Procurar correspondências exactas e parciais
+  const matches=todasPastasClientes
+    .filter(p=>(p.nome||p.name||'').toUpperCase().includes(q))
+    .slice(0,15);
+  if(matches.length===0){
+    dropdown.style.display='none';
+    info.innerHTML=`<span style="color:var(--green)">✓ Nenhum cliente com "${escHtml(q)}" — podes criar pasta nova</span>`;
+    btnCriar.disabled=false;btnCriar.style.opacity='1';
+    btnCriar.dataset.nome=q;
+  } else {
+    info.innerHTML=`<span style="color:var(--amber)">⚠ ${matches.length} ${matches.length===1?'cliente parecido encontrado':'clientes parecidos encontrados'} — clica num para ver os processos, ou continua a escrever</span>`;
+    dropdown.innerHTML=matches.map(p=>{
+      const nome=escHtml(p.nome||p.name||'');
+      const safe=JSON.stringify({id:p.id,nome:p.nome||p.name,webUrl:p.webUrl}).replace(/"/g,'&quot;');
+      return `<div class="pasta-sp-item" onclick="procEscolherClienteExistente(${safe})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">
+        <div style="font-weight:500">${nome}</div>
+      </div>`;
+    }).join('');
+    dropdown.style.display='block';
+    // Permite criar nova mesmo com matches (caso o utilizador insista)
+    btnCriar.disabled=false;btnCriar.style.opacity='.85';
+    btnCriar.dataset.nome=q;
+  }
+}
+
+// Utilizador escolheu um cliente existente da lista — mostrar processos
+async function procEscolherClienteExistente(pasta){
+  document.getElementById('proc-novo-search-dropdown').style.display='none';
+  document.getElementById('proc-novo-passo1').style.display='none';
+  document.getElementById('proc-novo-cliente-existe').style.display='block';
+  procPesquisaClienteEscolhido={...pasta,processos:[]};
+  const sub=document.getElementById('proc-existe-sub');
+  sub.innerHTML=`A pasta de <strong>${escHtml(pasta.nome)}</strong> já existe. Aqui estão os processos dentro dela:`;
+  const procs=document.getElementById('proc-existe-procs');
+  procs.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:.5rem">A carregar processos...</div>';
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pasta.id}/children?$top=200`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    const data=await r.json();
+    const subPastas=(data.value||[]).filter(i=>i.folder).sort((a,b)=>(b.name||'').localeCompare(a.name||''));
+    procPesquisaClienteEscolhido.processos=subPastas;
+    if(!subPastas.length){
+      procs.innerHTML='<div class="notice notice-info" style="margin:0;font-size:12px">Esta pasta de cliente ainda não tem processos dentro. Clica em "+ Novo processo neste cliente" para criar o primeiro.</div>';
+    } else {
+      procs.innerHTML=`<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">${subPastas.length} ${subPastas.length===1?'processo':'processos'}</div>`+
+        subPastas.map(s=>`
+          <a href="${escHtml(s.webUrl||'#')}" target="_blank" class="reg-list-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;margin-bottom:.3rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
+            <span style="flex:1;font-size:11px;font-family:'DM Mono',monospace;font-weight:500">${escHtml(s.name)}</span>
+            <span style="font-size:9px;color:var(--text-faint)">${s.lastModifiedDateTime?fmtData(s.lastModifiedDateTime):''}</span>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 1l8 7-8 7"/></svg>
+          </a>
+        `).join('');
+    }
+  }catch(e){
+    procs.innerHTML=`<div class="notice notice-error" style="margin:0;font-size:12px">Erro a listar processos: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// Vai para o tab "Novo processo" com o cliente já seleccionado
+function procIrParaNovoProcesso(){
+  const cliente=procPesquisaClienteEscolhido;
+  if(!cliente){showToast('Cliente não seleccionado','error');return;}
+  procSetTab('subpasta',document.getElementById('proc-tab-subpasta'));
+  // Pré-preencher o cliente no formulário do "Novo processo"
+  setTimeout(()=>{
+    pastaClienteSeleccionada={id:cliente.id,nome:cliente.nome};
+    document.getElementById('proc-sub-cliente-search').value=cliente.nome;
+    const ok=document.getElementById('proc-sub-cliente-ok');
+    if(ok){
+      ok.style.display='block';
+      document.getElementById('proc-sub-cliente-ok-nome').textContent=cliente.nome;
+    }
+    document.getElementById('proc-sub-data').value=new Date().toISOString().substring(0,10);
+    atualizarPreviewSubpasta();
+    document.getElementById('proc-sub-tipo').focus();
+  },50);
+}
+
+// Quando carrega "Criar pasta nova" no passo 1
+function procPesquisaConfirmaNova(){
+  const btn=document.getElementById('proc-btn-criar-nova');
+  const nome=(btn.dataset.nome||document.getElementById('proc-novo-search').value||'').toUpperCase().trim();
+  if(!nome){showToast('Pesquisa primeiro o nome','error');return;}
+  document.getElementById('proc-novo-passo1').style.display='none';
+  document.getElementById('proc-novo-cliente-existe').style.display='none';
+  document.getElementById('proc-novo-passo2').style.display='block';
+  document.getElementById('proc-novo-nome').value=nome;
+  document.getElementById('proc-novo-preview').textContent=nome?`Pasta a criar: ${nome}`:'';
+  document.getElementById('proc-novo-nome').focus();
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#proc-novo-search')&&!e.target.closest('#proc-novo-search-dropdown')){
+    const d=document.getElementById('proc-novo-search-dropdown');
+    if(d)d.style.display='none';
+  }
+});
 
 async function carregarProcessos(){
   if(!bibliotecaProcessosId){showToast('Biblioteca PROCESSOS não encontrada','error');return;}
@@ -3663,18 +3850,173 @@ function renderProcessos(lista){
   document.getElementById('proc-loading').style.display='none';
   const el=document.getElementById('proc-list');
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada. Cria a primeira pasta de cliente!</div>';el.style.display='block';return;}
-  el.innerHTML=lista.map(p=>`
-    <div class="pasta-card">
+  el.innerHTML=lista.map(p=>{
+    const safeNome=escHtml(p.nome||'').replace(/'/g,'&#39;');
+    return `
+    <div class="pasta-card" id="pc-${p.id}">
       <div style="flex:1;min-width:0">
         <div class="pasta-ref">${escHtml(p.nome||'—')}</div>
         <div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div>
       </div>
       <div class="pasta-actions">
-        <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
+        <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
+        <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
+        <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir</a>
         <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.nome||'')}','${escHtml(p.id||'')}')">+ Processo</button>
       </div>
-    </div>`).join('');
+    </div>
+    <div id="pc-procs-${p.id}" style="display:none;margin:-.5rem 0 .75rem 1.5rem;padding:.5rem .75rem;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 7px 7px 0"></div>`;
+  }).join('');
   el.style.display='block';
+}
+
+// ─── EDITAR / APAGAR PASTA DE CLIENTE ─────────────────────────────────────────
+async function editarPastaCliente(pastaId,nomeAtual){
+  const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
+  const novoNome=prompt('Editar nome da pasta:',nomeDecod);
+  if(novoNome===null)return;
+  const trim=sanitizarNomePasta(novoNome.trim().toUpperCase());
+  if(!trim){showToast('O nome não pode estar vazio','error');return;}
+  if(trim===nomeDecod)return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}`,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({name:trim})
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    showToast(`Pasta renomeada para "${trim}"`,'success');
+    await carregarProcessos();
+  }catch(e){showToast('Erro ao renomear: '+e.message,'error');}
+}
+
+async function apagarPastaCliente(pastaId,nomeAtual){
+  const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
+  // Primeiro verificar se está vazia (sem processos)
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}/children?$top=5`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status} ao verificar conteúdo`);
+    const data=await r.json();
+    const processos=(data.value||[]).filter(i=>i.folder);
+    const ficheiros=(data.value||[]).filter(i=>!i.folder);
+    if(processos.length>0||ficheiros.length>0){
+      const partes=[];
+      if(processos.length)partes.push(`${processos.length} ${processos.length===1?'processo':'processos'}`);
+      if(ficheiros.length)partes.push(`${ficheiros.length} ${ficheiros.length===1?'ficheiro':'ficheiros'}`);
+      alert(`Não é possível apagar a pasta "${nomeDecod}" — contém ${partes.join(' e ')} dentro.\n\nApaga primeiro o conteúdo (processos/ficheiros) e tenta de novo.`);
+      return;
+    }
+    // Pasta vazia — confirmar
+    if(!confirm(`Apagar a pasta vazia "${nomeDecod}"?\n\nEsta acção não pode ser desfeita.`))return;
+    const del=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!del.ok&&del.status!==204)throw new Error(`Erro ${del.status}`);
+    showToast(`Pasta "${nomeDecod}" eliminada`,'success');
+    await carregarProcessos();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+// ─── EXPANDIR PROCESSOS DE UM CLIENTE ─────────────────────────────────────────
+async function toggleProcessosCliente(pastaId,nomeCliente){
+  const wrap=document.getElementById(`pc-procs-${pastaId}`);
+  if(!wrap)return;
+  if(wrap.style.display==='block'){
+    wrap.style.display='none';
+    return;
+  }
+  wrap.style.display='block';
+  wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:.4rem">A carregar processos...</div>';
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}/children?$top=200`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    const data=await r.json();
+    const procs=(data.value||[]).filter(i=>i.folder).sort((a,b)=>(b.name||'').localeCompare(a.name||''));
+    if(!procs.length){
+      wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:.4rem">Esta pasta ainda não tem processos. Clica em "+ Processo" para criar o primeiro.</div>';
+      return;
+    }
+    wrap.innerHTML=`<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">${procs.length} ${procs.length===1?'processo':'processos'}</div>`+
+      procs.map(s=>{
+        const safeNomeProc=escHtml(s.name||'').replace(/'/g,'&#39;');
+        return `<div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .55rem;margin-bottom:.3rem;background:var(--surface);border-radius:6px;border:1px solid var(--border)">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
+          <a href="${escHtml(s.webUrl||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)}</a>
+          <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
+          <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
+        </div>`;
+      }).join('');
+  }catch(e){
+    wrap.innerHTML=`<div class="notice notice-error" style="margin:0;font-size:11px">Erro: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ─── EDITAR / APAGAR PROCESSO (subpasta) ──────────────────────────────────────
+async function editarProcesso(procId,nomeAtual,pastaClienteId){
+  const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
+  const novoNome=prompt('Renomear o processo:',nomeDecod);
+  if(novoNome===null)return;
+  const trim=sanitizarNomePasta(novoNome.trim());
+  if(!trim){showToast('O nome não pode estar vazio','error');return;}
+  if(trim===nomeDecod)return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${procId}`,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({name:trim})
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    showToast(`Processo renomeado`,'success');
+    // Recarregar lista de processos do cliente
+    const wrap=document.getElementById(`pc-procs-${pastaClienteId}`);
+    if(wrap)wrap.style.display='none';
+    toggleProcessosCliente(pastaClienteId,'');
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+async function apagarProcesso(procId,nomeAtual,pastaClienteId){
+  const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
+  try{
+    await renovarToken();
+    // Verificar se está vazio (sem ficheiros nem subpastas)
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${procId}/children?$top=5`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status} ao verificar conteúdo`);
+    const data=await r.json();
+    const itens=data.value||[];
+    if(itens.length===0){
+      // Vazio — 1 confirmação
+      if(!confirm(`Apagar o processo vazio "${nomeDecod}"?\n\nEsta acção não pode ser desfeita.`))return;
+    } else {
+      // Tem conteúdo — confirmação dupla
+      const subPastas=itens.filter(i=>i.folder).length;
+      const ficheiros=itens.filter(i=>!i.folder).length;
+      const partes=[];
+      if(ficheiros)partes.push(`${ficheiros} ${ficheiros===1?'ficheiro':'ficheiros'}`);
+      if(subPastas)partes.push(`${subPastas} ${subPastas===1?'subpasta':'subpastas'}`);
+      if(!confirm(`⚠ O processo "${nomeDecod}" contém ${partes.join(' e ')}.\n\nQueres mesmo apagar TUDO?`))return;
+      if(!confirm(`⚠ ATENÇÃO: confirmação final\n\nVais apagar DEFINITIVAMENTE o processo "${nomeDecod}" e todo o seu conteúdo (${partes.join(' e ')}).\n\nEsta acção é IRREVERSÍVEL. Confirmas?`))return;
+    }
+    const del=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${procId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!del.ok&&del.status!==204)throw new Error(`Erro ${del.status}`);
+    showToast(`Processo "${nomeDecod}" eliminado`,'success');
+    // Recarregar lista
+    const wrap=document.getElementById(`pc-procs-${pastaClienteId}`);
+    if(wrap)wrap.style.display='none';
+    toggleProcessosCliente(pastaClienteId,'');
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 function filtrarProcessos(){
@@ -3698,22 +4040,45 @@ function atualizarPreviewSubpasta(){
   const tipo=document.getElementById('proc-sub-tipo').value;
   const desc=document.getElementById('proc-sub-desc').value.trim();
   const preview=data&&tipo&&desc?`${data} ${tipo} ${desc}`:'';
-  document.getElementById('proc-sub-preview').textContent=preview?`Subpasta: ${preview}`:'';
+  const el=document.getElementById('proc-sub-preview');
+  if(!preview){el.textContent='';return;}
+  const sanitized=typeof sanitizarNomePasta==='function'?sanitizarNomePasta(preview):preview;
+  if(sanitized!==preview){
+    el.innerHTML=`<span style="color:var(--text-faint)">Subpasta:</span> <span style="color:var(--amber)">${sanitized}</span> <span style="color:var(--text-faint)">(símbolos / \\ : * ? " &lt; &gt; | foram substituídos por -)</span>`;
+  } else {
+    el.textContent=`Subpasta: ${preview}`;
+  }
 }
 
 async function criarPastaCliente(){
   const nome=document.getElementById('proc-novo-nome').value.toUpperCase().trim();
   if(!nome){showToast('Preenche o nome do cliente.','error');return;}
+  const nomeSan=sanitizarNomePasta(nome);
+  if(!nomeSan){showToast('Nome inválido.','error');return;}
   try{
-    await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children`,{name:nome,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
-    showToast(`Pasta "${nome}" criada!`,'success');
+    const res=await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children`,{name:nomeSan,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
+    showToast(`Pasta "${nomeSan}" criada! Vamos criar o primeiro processo...`,'success');
     document.getElementById('proc-novo-nome').value='';
     document.getElementById('proc-novo-preview').textContent='';
-    carregarProcessos();
-    procSetTab('pastas',document.getElementById('proc-tab-pastas'));
+    // Recarregar pastas + ir directo para "Novo processo" com cliente pré-seleccionado
+    await carregarProcessos();
+    procSetTab('subpasta',document.getElementById('proc-tab-subpasta'));
+    setTimeout(()=>{
+      pastaClienteSeleccionada={id:res.id||'',nome:nomeSan};
+      document.getElementById('proc-sub-cliente-search').value=nomeSan;
+      const ok=document.getElementById('proc-sub-cliente-ok');
+      if(ok){
+        ok.style.display='block';
+        document.getElementById('proc-sub-cliente-ok-nome').textContent=nomeSan;
+      }
+      document.getElementById('proc-sub-data').value=new Date().toISOString().substring(0,10);
+      atualizarPreviewSubpasta();
+      document.getElementById('proc-sub-tipo').focus();
+    },200);
   }catch(e){
-    if(e.message.includes('409')||e.message.includes('nameAlreadyExists'))showToast('Já existe uma pasta com este nome.','error');
-    else showToast('Erro: '+e.message,'error');
+    if(e.message.includes('409')||e.message.includes('nameAlreadyExists')){
+      showToast('Já existe uma pasta com este nome — usa "Pesquisar cliente" para ver os processos.','error');
+    } else showToast('Erro: '+e.message,'error');
   }
 }
 
@@ -3747,24 +4112,42 @@ function iniciarSubpasta(nome,id){
   atualizarPreviewSubpasta();
 }
 
+// Sanitiza o nome da pasta — SharePoint proíbe / \ : * ? " < > | e nomes muito compridos
+function sanitizarNomePasta(nome){
+  return (nome||'')
+    .replace(/[\/\\:*?"<>|]/g,'-')  // chars proibidos → travessão
+    .replace(/\s+/g,' ')              // espaços múltiplos → 1
+    .replace(/\.+$/,'')               // remove pontos finais (proibido)
+    .replace(/^\.+/,'')               // remove pontos iniciais
+    .trim()
+    .substring(0,200);                // limite seguro de tamanho
+}
+
 async function criarSubpastaProcesso(){
   if(!pastaClienteSeleccionada){showToast('Seleciona o cliente.','error');return;}
   const data=(document.getElementById('proc-sub-data').value||'').replace(/-/g,'');
   const tipo=document.getElementById('proc-sub-tipo').value;
   const desc=document.getElementById('proc-sub-desc').value.trim();
   if(!data||!tipo||!desc){showToast('Preenche todos os campos.','error');return;}
-  const nomePasta=`${data} ${tipo} ${desc}`;
+  const nomeOriginal=`${data} ${tipo} ${desc}`;
+  const nomePasta=sanitizarNomePasta(nomeOriginal);
+  if(!nomePasta){showToast('Nome inválido. Usa caracteres normais.','error');return;}
   try{
     await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaClienteSeleccionada.id}/children`,{name:nomePasta,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
-    showToast(`Processo "${nomePasta}" criado!`,'success');
+    const renomeado=nomePasta!==nomeOriginal;
+    showToast(renomeado
+      ?`Processo "${nomePasta}" criado (caracteres / \\ : * ? " < > | foram substituídos por -)`
+      :`Processo "${nomePasta}" criado!`,'success');
     document.getElementById('proc-sub-tipo').value='';
     document.getElementById('proc-sub-desc').value='';
     document.getElementById('proc-sub-preview').textContent='';
     procSetTab('pastas',document.getElementById('proc-tab-pastas'));
     carregarProcessos();
   }catch(e){
-    if(e.message.includes('409')||e.message.includes('nameAlreadyExists'))showToast('Já existe um processo com este nome.','error');
-    else showToast('Erro: '+e.message,'error');
+    const msg=e.message||'';
+    if(msg.includes('409')||msg.includes('nameAlreadyExists'))showToast('Já existe um processo com este nome.','error');
+    else if(msg.includes('400'))showToast('Erro 400: nome contém caracteres inválidos. Tenta sem barras (/) ou outros símbolos especiais.','error');
+    else showToast('Erro: '+msg,'error');
   }
 }
 
@@ -4888,7 +5271,7 @@ function nomePastaAnexo(){
   const nome = (document.getElementById('p-nome')?.value || '').trim();
   if(!dataEscritura || !nome) return null;
   const dataStr = dataEscritura.replace(/-/g,'');
-  return `${dataStr} ${nome.toUpperCase()}`;
+  return sanitizarNomePasta(`${dataStr} ${nome.toUpperCase()}`);
 }
 
 async function garantirPastaAnexo(nomePasta){
@@ -5502,7 +5885,7 @@ async function guardarProcessoAvenca(){
       if(!driveIdAvencas)throw new Error('Biblioteca AVENCAS não disponível — recarrega a página');
       // Nome da pasta: AAAAMMDD TITULO SERVICO (em maiúsculas)
       const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
-      const nomePasta=`${dataStr} ${titulo.substring(0,40).trim()}${serv?' '+serv:''}`.toUpperCase();
+      const nomePasta=sanitizarNomePasta(`${dataStr} ${titulo.substring(0,40).trim()}${serv?' '+serv:''}`.toUpperCase());
       const fornPath=encodeURIComponent(forn);
       const pastaRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
         method:'POST',
@@ -5589,7 +5972,7 @@ async function avCriarPasta(){
   if(!forn||!tipo||!data||!nome){showToast('Preenche todos os campos','error');return;}
   if(!driveIdAvencas){showToast('Biblioteca AVENCAS não encontrada no SharePoint','error');return;}
   const dataFmt=data.replace(/-/g,'');
-  const nomePastaAv=`${dataFmt} ${tipo} ${nome}`;
+  const nomePastaAv=sanitizarNomePasta(`${dataFmt} ${tipo} ${nome}`);
   const btn=document.getElementById('av-btn-criar');
   btn.disabled=true;btn.textContent='A criar...';
   try{
