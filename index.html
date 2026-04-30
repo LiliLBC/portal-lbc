@@ -1001,6 +1001,54 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <!-- MODAL CONCILIAÇÃO BANCÁRIA -->
+      <div class="modal-overlay" id="modal-conciliacao">
+        <div class="modal-box" style="max-width:1100px;width:95%">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div class="modal-box-title" style="margin:0">📋 Conciliação bancária</div>
+            <button class="btn btn-sm" onclick="fecharModalConciliacao()" title="Fechar">✕</button>
+          </div>
+
+          <!-- PASSO 1: Cola texto do extrato -->
+          <div id="conc-passo1">
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem">
+              <strong>1. Abre o PDF do extrato bancário</strong> (CGD, Millennium, etc). Selecciona todo o texto da página de movimentos (Ctrl+A → Ctrl+C) e cola na caixa abaixo.
+            </div>
+            <div class="field-group" style="margin-bottom:.5rem">
+              <label class="form-label" style="font-size:11px">Conta bancária *</label>
+              <select class="form-select" id="conc-conta" style="font-size:12px">
+                <option value="Principal">Principal (CGD)</option>
+                <option value="Secundária">Secundária</option>
+              </select>
+            </div>
+            <textarea class="form-input" id="conc-texto" rows="14" placeholder="Cola aqui o texto do extrato bancário..." style="font-family:'DM Mono',monospace;font-size:11px;width:100%"></textarea>
+            <div style="display:flex;gap:.5rem;margin-top:.75rem;justify-content:flex-end">
+              <button class="btn" onclick="fecharModalConciliacao()">Cancelar</button>
+              <button class="btn btn-primary" onclick="processarConciliacao()">📋 Processar e comparar</button>
+            </div>
+          </div>
+
+          <!-- PASSO 2: Resultados -->
+          <div id="conc-passo2" style="display:none">
+            <div id="conc-resumo" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem"></div>
+            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap">
+              <button class="conc-tab active" data-tab="conciliados" onclick="concSetTab('conciliados',this)" style="padding:6px 12px;font-size:11px;border:1px solid var(--border);background:var(--accent-light);color:var(--accent-dark);border-radius:6px;cursor:pointer">✓ Conciliados</button>
+              <button class="conc-tab" data-tab="extrato-sem-portal" onclick="concSetTab('extrato-sem-portal',this)" style="padding:6px 12px;font-size:11px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:6px;cursor:pointer">⚠ No extrato sem lançamento</button>
+              <button class="conc-tab" data-tab="portal-sem-extrato" onclick="concSetTab('portal-sem-extrato',this)" style="padding:6px 12px;font-size:11px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:6px;cursor:pointer">⚠ No portal sem extrato</button>
+              <button class="conc-tab" data-tab="provaveis" onclick="concSetTab('provaveis',this)" style="padding:6px 12px;font-size:11px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:6px;cursor:pointer">💡 Possíveis matches</button>
+            </div>
+            <div id="conc-conteudo" style="max-height:500px;overflow-y:auto"></div>
+            <div style="display:flex;gap:.5rem;margin-top:.75rem;justify-content:space-between;flex-wrap:wrap">
+              <button class="btn btn-sm" onclick="conciliacaoVoltarTexto()">← Voltar (colar outro extrato)</button>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-sm" onclick="conciliacaoExportarHTML()">⬇ Exportar relatório HTML</button>
+                <button class="btn btn-primary" onclick="fecharModalConciliacao()">Fechar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL NOVO EVENTO -->
       <div class="modal-overlay" id="modal-evento">
         <div class="modal-box">
@@ -1302,7 +1350,7 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
 
         <div class="section-header">
-          <div style="display:flex;gap:.5rem;align-items:center">
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
             <select class="form-select" id="cb-filtro-mes" onchange="filtrarContabilidade()" style="width:130px;font-size:12px">
               <option value="">Todos os meses</option>
               <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
@@ -1310,9 +1358,15 @@ tbody tr:hover td{background:#FAFAF8}
               <option>Julho</option><option>Agosto</option><option>Setembro</option>
               <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
             </select>
-            <select class="form-select" id="cb-filtro-tipo" onchange="filtrarContabilidade()" style="width:180px;font-size:12px">
+            <!-- Chips de tipo: Empresa / Cliente -->
+            <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+              <button class="cb-tipo-chip active" data-tipo="Despesa empresa" onclick="cbTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--accent-light);color:var(--accent-dark);border:none;cursor:pointer;font-family:inherit;font-weight:500;border-right:1px solid var(--border)">💼 Despesa empresa</button>
+              <button class="cb-tipo-chip" data-tipo="Pagamento por conta cliente" onclick="cbTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;font-family:inherit;font-weight:500">💳 Por conta cliente</button>
+            </div>
+            <!-- Hidden select compatível com filtrarContabilidade -->
+            <select id="cb-filtro-tipo" onchange="filtrarContabilidade()" style="display:none">
               <option value="">Todos os tipos</option>
-              <option>Despesa empresa</option>
+              <option selected>Despesa empresa</option>
               <option>Pagamento por conta cliente</option>
             </select>
             <select class="form-select" id="cb-filtro-fatura" onchange="filtrarContabilidade()" style="width:130px;font-size:12px">
@@ -1351,6 +1405,7 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
             <input type="file" id="cb-extrato-file" accept=".pdf,.xlsx,.csv" style="display:none" onchange="processarUploadExtrato()">
+            <button class="btn btn-sm" onclick="abrirModalConciliacao()" style="background:#FFF3CD;border-color:#FFC107;color:#856404">📋 Conciliar extrato</button>
             <div style="position:relative">
               <button class="btn btn-sm" onclick="toggleDropConta('drop-ferramentas')" title="Ferramentas">⋯</button>
               <div id="drop-ferramentas" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:240px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
@@ -4439,7 +4494,8 @@ function filtrarContabilidade(){
   const despesa=lista.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const cliente=lista.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalIva=lista.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
-  const semFatura=lista.filter(i=>i[CB.estadoFatura]==='Sem fatura').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  // "Sem fatura" só conta despesas da empresa — pagamentos por conta cliente NÃO precisam fatura
+  const semFatura=lista.filter(i=>i[CB.estadoFatura]==='Sem fatura'&&i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   document.getElementById('cb-total-despesa').textContent=despesa.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-total-cliente').textContent=cliente.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-total-geral').textContent=totalIva.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
@@ -4447,6 +4503,334 @@ function filtrarContabilidade(){
   document.getElementById('cb-mes-label').textContent=mes||'todos os meses';
   verificarExtratoMes();
   renderContabilidade(lista);
+}
+
+// ─── CHIPS DE TIPO (Despesa empresa / Por conta cliente) ─────────────────────
+function cbTipoChip(el){
+  document.querySelectorAll('.cb-tipo-chip').forEach(c=>{
+    c.classList.remove('active');
+    c.style.background='var(--surface)';
+    c.style.color='var(--text-muted)';
+  });
+  el.classList.add('active');
+  el.style.background='var(--accent-light)';
+  el.style.color='var(--accent-dark)';
+  document.getElementById('cb-filtro-tipo').value=el.dataset.tipo;
+  filtrarContabilidade();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── CONCILIAÇÃO BANCÁRIA ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+let resultadoConciliacao=null;
+
+function abrirModalConciliacao(){
+  document.getElementById('conc-passo1').style.display='block';
+  document.getElementById('conc-passo2').style.display='none';
+  document.getElementById('conc-texto').value='';
+  // Pre-selecionar conta de filtro actual (se houver)
+  const contaActual=document.getElementById('cb-filtro-conta')?.value||'Principal';
+  document.getElementById('conc-conta').value=contaActual==='Secundária'?'Secundária':'Principal';
+  document.getElementById('modal-conciliacao').classList.add('show');
+}
+
+function fecharModalConciliacao(){
+  document.getElementById('modal-conciliacao').classList.remove('show');
+}
+
+function conciliacaoVoltarTexto(){
+  document.getElementById('conc-passo1').style.display='block';
+  document.getElementById('conc-passo2').style.display='none';
+}
+
+// Parser do extrato CGD/Millennium/etc — formato genérico:
+//   YYYY-MM-DD YYYY-MM-DD <descrição> -123,45 12.345,67
+//   ou DD/MM/YYYY DD/MM/YYYY <descrição> -123,45 12.345,67
+function parsearExtrato(texto){
+  const linhas=texto.split(/\r?\n/);
+  const movimentos=[];
+  // Regex flexível: 2 datas (com - ou /) + descrição + valor (com sinal) + saldo
+  // Aceita: "2026-03-02 2026-03-02 GRENKE RENTING S A -52,58 19.581,15"
+  const re=/^(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})\s+(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/;
+  for(const linha of linhas){
+    const m=linha.match(re);
+    if(m){
+      const dataStr=m[1];
+      let data;
+      if(dataStr.includes('/')){
+        const [d,mo,a]=dataStr.split('/');
+        data=`${a}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+      } else {
+        data=dataStr;
+      }
+      const desc=m[3].trim();
+      // Valor: trocar . pelo nada (separador de milhares) e , por .
+      const valorNum=parseFloat(m[4].replace(/\./g,'').replace(',','.'));
+      movimentos.push({data,descricao:desc,valor:valorNum,saldo:m[5],linhaOriginal:linha.trim()});
+    }
+  }
+  return movimentos;
+}
+
+// Algoritmo de matching:
+// 1. Conciliados: mesmo valor + data ±3 dias
+// 2. Possíveis: mesmo valor mas data >3 dias OU mesma data mas valor diferente <5%
+// 3. Resto: extrato órfão / portal órfão
+function conciliarMovimentos(movsExtrato,movsPortal){
+  const conciliados=[]; // {extrato, portal}
+  const provaveis=[];   // {extrato, portal, motivo}
+  const portalUsadoIds=new Set();
+  const extratoUsadoIdx=new Set();
+
+  // Tentar match exacto: mesmo valor + ±3 dias
+  movsExtrato.forEach((ext,idxExt)=>{
+    if(extratoUsadoIdx.has(idxExt))return;
+    const dataExt=new Date(ext.data);
+    // Despesa no extrato é negativa, no portal é positiva (TipoDespesa)
+    // Receita no extrato é positiva, no portal pode ser receita (não temos no nosso modelo)
+    const valorAbs=Math.abs(ext.valor);
+    const candidato=movsPortal.find(p=>{
+      if(portalUsadoIds.has(p.id))return false;
+      const dataP=new Date(p[CB.data]);
+      const diffDias=Math.abs((dataExt-dataP)/86400000);
+      if(diffDias>3)return false;
+      const valorP=parseFloat(p[CB.valor]||0);
+      return Math.abs(valorAbs-valorP)<0.01;
+    });
+    if(candidato){
+      conciliados.push({extrato:ext,portal:candidato});
+      portalUsadoIds.add(candidato.id);
+      extratoUsadoIdx.add(idxExt);
+    }
+  });
+
+  // Match aproximado: pagamentos conjuntos (1 movimento extrato = vários portal mesma ref)
+  movsExtrato.forEach((ext,idxExt)=>{
+    if(extratoUsadoIdx.has(idxExt))return;
+    const dataExt=new Date(ext.data);
+    const valorAbs=Math.abs(ext.valor);
+    // Procurar grupos no portal com refConjunta cuja soma ±0.01 bate
+    const grupos={};
+    movsPortal.forEach(p=>{
+      if(portalUsadoIds.has(p.id))return;
+      const ref=p[CB.refConjunta];
+      if(!ref)return;
+      const dataP=new Date(p[CB.data]);
+      const diffDias=Math.abs((dataExt-dataP)/86400000);
+      if(diffDias>5)return;
+      if(!grupos[ref])grupos[ref]={total:0,items:[]};
+      grupos[ref].total+=parseFloat(p[CB.valor]||0);
+      grupos[ref].items.push(p);
+    });
+    for(const ref in grupos){
+      if(Math.abs(grupos[ref].total-valorAbs)<0.01){
+        conciliados.push({extrato:ext,portalGrupo:grupos[ref].items,refConjunta:ref});
+        grupos[ref].items.forEach(p=>portalUsadoIds.add(p.id));
+        extratoUsadoIdx.add(idxExt);
+        break;
+      }
+    }
+  });
+
+  // Match fraco: mesmo valor sem importar data (até 30 dias)
+  movsExtrato.forEach((ext,idxExt)=>{
+    if(extratoUsadoIdx.has(idxExt))return;
+    const dataExt=new Date(ext.data);
+    const valorAbs=Math.abs(ext.valor);
+    const candidato=movsPortal.find(p=>{
+      if(portalUsadoIds.has(p.id))return false;
+      const dataP=new Date(p[CB.data]);
+      const diffDias=Math.abs((dataExt-dataP)/86400000);
+      if(diffDias>30)return false;
+      const valorP=parseFloat(p[CB.valor]||0);
+      return Math.abs(valorAbs-valorP)<0.01;
+    });
+    if(candidato){
+      const dataP=new Date(candidato[CB.data]);
+      const diffDias=Math.round(Math.abs((dataExt-dataP)/86400000));
+      provaveis.push({extrato:ext,portal:candidato,motivo:`Mesmo valor mas datas com ${diffDias} dias de diferença`});
+      portalUsadoIds.add(candidato.id);
+      extratoUsadoIdx.add(idxExt);
+    }
+  });
+
+  // Restantes
+  const extratoSemPortal=movsExtrato.filter((_,i)=>!extratoUsadoIdx.has(i));
+  const portalSemExtrato=movsPortal.filter(p=>!portalUsadoIds.has(p.id));
+
+  return {conciliados,provaveis,extratoSemPortal,portalSemExtrato};
+}
+
+async function processarConciliacao(){
+  const texto=document.getElementById('conc-texto').value.trim();
+  const conta=document.getElementById('conc-conta').value;
+  if(!texto){showToast('Cola o texto do extrato','error');return;}
+  const movsExtrato=parsearExtrato(texto);
+  if(!movsExtrato.length){
+    showToast('Não consegui detectar nenhum movimento no texto. Confirma o formato.','error');
+    return;
+  }
+  // Filtrar movimentos do portal pela mesma conta
+  const movsPortal=todosMovimentos.filter(m=>(m[CB.conta]||'Principal')===conta);
+  resultadoConciliacao=conciliarMovimentos(movsExtrato,movsPortal);
+  resultadoConciliacao.conta=conta;
+  renderResumoConciliacao();
+  document.getElementById('conc-passo1').style.display='none';
+  document.getElementById('conc-passo2').style.display='block';
+  // Por defeito mostra "no extrato sem lançamento" (mais accionável)
+  const tabExtSem=document.querySelector('.conc-tab[data-tab="extrato-sem-portal"]');
+  if(tabExtSem)concSetTab('extrato-sem-portal',tabExtSem);
+}
+
+function renderResumoConciliacao(){
+  const r=resultadoConciliacao;
+  const c=r.conciliados.length;
+  const e=r.extratoSemPortal.length;
+  const p=r.portalSemExtrato.length;
+  const pr=r.provaveis.length;
+  document.getElementById('conc-resumo').innerHTML=`
+    <div style="padding:.6rem .9rem;border-radius:7px;background:#D4EDDA;color:#1E6E3A;font-size:11px;font-weight:500"><strong>${c}</strong> conciliados</div>
+    <div style="padding:.6rem .9rem;border-radius:7px;background:#FFF3CD;color:#856404;font-size:11px;font-weight:500"><strong>${e}</strong> no extrato sem lançamento</div>
+    <div style="padding:.6rem .9rem;border-radius:7px;background:#FFF3CD;color:#856404;font-size:11px;font-weight:500"><strong>${p}</strong> no portal sem extrato</div>
+    <div style="padding:.6rem .9rem;border-radius:7px;background:#E0E7FF;color:#3730A3;font-size:11px;font-weight:500"><strong>${pr}</strong> possíveis matches</div>
+  `;
+  // Atualizar contadores nos tabs
+  document.querySelector('.conc-tab[data-tab="conciliados"]').textContent=`✓ Conciliados (${c})`;
+  document.querySelector('.conc-tab[data-tab="extrato-sem-portal"]').textContent=`⚠ No extrato sem lançamento (${e})`;
+  document.querySelector('.conc-tab[data-tab="portal-sem-extrato"]').textContent=`⚠ No portal sem extrato (${p})`;
+  document.querySelector('.conc-tab[data-tab="provaveis"]').textContent=`💡 Possíveis matches (${pr})`;
+}
+
+function concSetTab(tab,el){
+  document.querySelectorAll('.conc-tab').forEach(c=>{
+    c.classList.remove('active');
+    c.style.background='var(--surface)';
+    c.style.color='var(--text-muted)';
+  });
+  el.classList.add('active');
+  el.style.background='var(--accent-light)';
+  el.style.color='var(--accent-dark)';
+  renderConteudoConciliacao(tab);
+}
+
+function fmtEur(v){return parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';}
+
+function renderConteudoConciliacao(tab){
+  const wrap=document.getElementById('conc-conteudo');
+  const r=resultadoConciliacao;
+  if(!r){wrap.innerHTML='';return;}
+  if(tab==='conciliados'){
+    if(!r.conciliados.length){wrap.innerHTML='<div class="notice notice-info">Nenhum conciliado.</div>';return;}
+    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Movimentos do extrato que correspondem a lançamentos no portal.</div>'+
+      r.conciliados.map(c=>{
+        const ext=c.extrato;
+        if(c.portalGrupo){
+          // Pagamento conjunto
+          return `<div style="background:#E8F5E9;border:1px solid #1E6E3A;border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
+              <span style="font-size:11px;font-weight:600;color:#1E6E3A">✓ Pagamento conjunto · ${escHtml(ext.data)} · ${escHtml(c.refConjunta)}</span>
+              <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:#1E6E3A">${fmtEur(Math.abs(ext.valor))}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:.3rem">Extrato: ${escHtml(ext.descricao)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${c.portalGrupo.length} lançamentos:</div>
+            ${c.portalGrupo.map(p=>`<div style="margin-left:.6rem;font-size:11px;font-family:'DM Mono',monospace">• ${fmtData(p[CB.data])} ${escHtml(p[CB.descricao]||'—')} <strong>${fmtEur(p[CB.valor])}</strong></div>`).join('')}
+          </div>`;
+        }
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid var(--border);border-left:3px solid #1E6E3A;border-radius:7px">
+          <span style="font-size:13px">✓</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:500">${escHtml(ext.data)} · ${escHtml(ext.descricao.substring(0,80))}</div>
+            <div style="font-size:10px;color:var(--text-faint)">→ Portal: ${fmtData(c.portal[CB.data])} · ${escHtml(c.portal[CB.descricao]||'—')}</div>
+          </div>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:#1E6E3A">${fmtEur(Math.abs(ext.valor))}</span>
+        </div>`;
+      }).join('');
+  } else if(tab==='extrato-sem-portal'){
+    if(!r.extratoSemPortal.length){wrap.innerHTML='<div class="notice notice-success">✓ Tudo conciliado!</div>';return;}
+    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Movimentos no extrato bancário sem lançamento correspondente. <strong>Provavelmente faltam lançar no portal</strong> (em "Despesa empresa" ou "Por conta cliente").</div>'+
+      r.extratoSemPortal.map(ext=>{
+        const eDespesa=ext.valor<0;
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #FFC107;border-radius:7px">
+          <span style="font-size:13px">⚠</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:500">${escHtml(ext.data)} · ${escHtml(ext.descricao)}</div>
+          </div>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${eDespesa?'var(--red)':'var(--green)'}">${fmtEur(ext.valor)}</span>
+        </div>`;
+      }).join('');
+  } else if(tab==='portal-sem-extrato'){
+    if(!r.portalSemExtrato.length){wrap.innerHTML='<div class="notice notice-success">✓ Tudo conciliado!</div>';return;}
+    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Lançamentos no portal sem movimento correspondente no extrato. Pode ser de outro mês ou erro de data.</div>'+
+      r.portalSemExtrato.map(p=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #FFC107;border-radius:7px">
+        <span style="font-size:13px">⚠</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:500">${fmtData(p[CB.data])} · ${escHtml(p[CB.descricao]||'—')}</div>
+          <div style="font-size:10px;color:var(--text-faint)">${escHtml(p[CB.tipo]||'')}${p[CB.refConjunta]?' · 🔗 '+escHtml(p[CB.refConjunta]):''}</div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--red)">${fmtEur(p[CB.valor])}</span>
+      </div>`).join('');
+  } else if(tab==='provaveis'){
+    if(!r.provaveis.length){wrap.innerHTML='<div class="notice notice-info">Sem prováveis matches.</div>';return;}
+    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Mesmo valor encontrado mas com data diferente — pode ser erro a corrigir.</div>'+
+      r.provaveis.map(c=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #6366F1;border-radius:7px">
+        <span style="font-size:13px">💡</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:500">${escHtml(c.extrato.data)} extrato: ${escHtml(c.extrato.descricao.substring(0,60))}</div>
+          <div style="font-size:10px;color:var(--text-faint)">↔ Portal: ${fmtData(c.portal[CB.data])} · ${escHtml(c.portal[CB.descricao]||'—')} <em>(${escHtml(c.motivo)})</em></div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${fmtEur(Math.abs(c.extrato.valor))}</span>
+      </div>`).join('');
+  }
+}
+
+function conciliacaoExportarHTML(){
+  const r=resultadoConciliacao;
+  if(!r){showToast('Sem dados para exportar','error');return;}
+  const dataHoje=new Date().toLocaleDateString('pt-PT');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Conciliação Bancária — ${escHtml(r.conta)}</title>
+<style>
+body{font-family:Arial,sans-serif;padding:2rem;color:#222;max-width:1100px;margin:0 auto;font-size:12px}
+h1{color:#5B4A8B;margin:0 0 .3rem 0}
+h2{color:#5B4A8B;border-bottom:2px solid #5B4A8B;padding-bottom:.3rem;margin-top:1.5rem}
+.sub{color:#888;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;margin-bottom:1rem}
+th,td{padding:.4rem .6rem;border-bottom:1px solid #eee;text-align:left;font-size:11px}
+th{background:#f5f5f5;text-transform:uppercase;font-size:10px;letter-spacing:.05em}
+.val{font-family:'DM Mono',monospace;text-align:right}
+.neg{color:#c62828}.pos{color:#2e7d32}
+.cards{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.card{padding:.6rem .9rem;border-radius:7px;font-size:11px;font-weight:500}
+.c1{background:#D4EDDA;color:#1E6E3A}.c2{background:#FFF3CD;color:#856404}.c3{background:#E0E7FF;color:#3730A3}
+</style></head><body>
+<h1>Conciliação Bancária — ${escHtml(r.conta)}</h1>
+<div class="sub">Gerado em ${dataHoje} · LBC Solicitadora</div>
+<div class="cards">
+  <div class="card c1">${r.conciliados.length} conciliados</div>
+  <div class="card c2">${r.extratoSemPortal.length} no extrato sem lançamento</div>
+  <div class="card c2">${r.portalSemExtrato.length} no portal sem extrato</div>
+  <div class="card c3">${r.provaveis.length} possíveis matches</div>
+</div>
+<h2>Conciliados (${r.conciliados.length})</h2>
+<table><thead><tr><th>Data</th><th>Descrição extrato</th><th>Lançamento portal</th><th class="val">Valor</th></tr></thead><tbody>
+${r.conciliados.map(c=>{
+  if(c.portalGrupo)return `<tr><td>${escHtml(c.extrato.data)}</td><td>${escHtml(c.extrato.descricao)}</td><td><strong>🔗 Pagto conjunto: ${escHtml(c.refConjunta)}</strong> (${c.portalGrupo.length} lançamentos)</td><td class="val">${fmtEur(Math.abs(c.extrato.valor))}</td></tr>`;
+  return `<tr><td>${escHtml(c.extrato.data)}</td><td>${escHtml(c.extrato.descricao)}</td><td>${escHtml(c.portal[CB.descricao]||'—')}</td><td class="val">${fmtEur(Math.abs(c.extrato.valor))}</td></tr>`;
+}).join('')}</tbody></table>
+<h2>No extrato sem lançamento (${r.extratoSemPortal.length})</h2>
+<table><thead><tr><th>Data</th><th>Descrição</th><th class="val">Valor</th></tr></thead><tbody>
+${r.extratoSemPortal.map(e=>`<tr><td>${escHtml(e.data)}</td><td>${escHtml(e.descricao)}</td><td class="val ${e.valor<0?'neg':'pos'}">${fmtEur(e.valor)}</td></tr>`).join('')}</tbody></table>
+<h2>No portal sem extrato (${r.portalSemExtrato.length})</h2>
+<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="val">Valor</th></tr></thead><tbody>
+${r.portalSemExtrato.map(p=>`<tr><td>${fmtData(p[CB.data])}</td><td>${escHtml(p[CB.descricao]||'—')}</td><td>${escHtml(p[CB.tipo]||'')}</td><td class="val neg">${fmtEur(p[CB.valor])}</td></tr>`).join('')}</tbody></table>
+<h2>Possíveis matches (${r.provaveis.length})</h2>
+<table><thead><tr><th>Data extrato</th><th>Extrato</th><th>Portal</th><th>Motivo</th><th class="val">Valor</th></tr></thead><tbody>
+${r.provaveis.map(c=>`<tr><td>${escHtml(c.extrato.data)}</td><td>${escHtml(c.extrato.descricao)}</td><td>${fmtData(c.portal[CB.data])} ${escHtml(c.portal[CB.descricao]||'—')}</td><td>${escHtml(c.motivo)}</td><td class="val">${fmtEur(Math.abs(c.extrato.valor))}</td></tr>`).join('')}</tbody></table>
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`Conciliacao_${r.conta}_${new Date().toISOString().substring(0,10)}.html`;a.click();
+  URL.revokeObjectURL(url);
+  showToast('Relatório exportado!','success');
 }
 
 function renderContabilidade(lista){
