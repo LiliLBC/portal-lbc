@@ -374,15 +374,21 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('servicos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 7h6M5 10h4"/></svg></span>Serviços em curso
     </div>
-    <div class="nav-section">Financeiro</div>
-    <div class="nav-item" onclick="nav('financeiro',this)">
+    <div class="nav-section" id="nav-section-financeiro">Financeiro</div>
+    <div class="nav-item" id="nav-fin-desbloquear" onclick="abrirModalFinanceiro()">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4.5a3 3 0 016 0V7"/></svg></span>🔒 Área financeira
+    </div>
+    <div class="nav-item" id="nav-fin-financeiro" onclick="nav('financeiro',this)" style="display:none">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 11V5l7-4 7 4v6l-7 4-7-4z"/></svg></span>Dashboard financeiro
     </div>
-    <div class="nav-item" onclick="nav('relatorios',this)">
+    <div class="nav-item" id="nav-fin-relatorios" onclick="nav('relatorios',this)" style="display:none">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12V6l4-4h6l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><path d="M5 9h6M5 11h4"/></svg></span>Relatórios
     </div>
-    <div class="nav-item" onclick="nav('contabilidade',this)">
+    <div class="nav-item" id="nav-fin-contabilidade" onclick="nav('contabilidade',this)" style="display:none">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
+    </div>
+    <div class="nav-item" id="nav-fin-bloquear" onclick="bloquearFinanceiro()" style="display:none;color:var(--text-faint)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4a3 3 0 016 0v3"/></svg></span>Bloquear área
     </div>
     <div class="sidebar-footer">
       <div class="user-info">
@@ -972,6 +978,29 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <!-- MODAL ÁREA FINANCEIRA -->
+      <div class="modal-overlay" id="modal-financeiro">
+        <div class="modal-box" style="max-width:380px">
+          <div class="modal-box-title" style="display:flex;align-items:center;gap:.5rem">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4.5a3 3 0 016 0V7"/></svg>
+            Área financeira
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem">Esta área está protegida. Introduz a palavra-passe para aceder ao Dashboard financeiro, Relatórios e Contabilidade.</div>
+          <div class="form-group form-full" style="margin-bottom:.5rem">
+            <label class="form-label">Palavra-passe</label>
+            <input class="form-input" id="fin-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')validarPasswordFinanceiro()" autocomplete="off">
+          </div>
+          <div id="fin-erro" style="font-size:11px;color:var(--red);margin-bottom:.5rem;display:none">Palavra-passe incorrecta</div>
+          <div class="modal-actions" style="margin-top:.75rem">
+            <button class="btn" onclick="fecharModalFinanceiro()" style="flex:1">Cancelar</button>
+            <button class="btn btn-primary" onclick="validarPasswordFinanceiro()" style="flex:2">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/></svg>
+              Desbloquear
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL NOVO EVENTO -->
       <div class="modal-overlay" id="modal-evento">
         <div class="modal-box">
@@ -1373,7 +1402,16 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group field-full">
               <div class="field-label">Upload fatura (PDF)</div>
               <input type="file" id="cb-fatura-file" accept=".pdf,.jpg,.png" style="font-size:12px;padding:4px">
-              <div id="cb-fatura-ok" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="cb-fatura-ok-nome"></span></div>
+              <div id="cb-fatura-ok" style="font-size:11px;color:var(--green);margin-top:6px;display:none;align-items:center;gap:.5rem;flex-wrap:wrap">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
+                <span id="cb-fatura-ok-nome"></span>
+                <a id="cb-fatura-ok-link" href="#" target="_blank" style="font-size:10px;text-decoration:underline" onclick="event.stopPropagation()">Ver</a>
+                <button type="button" class="btn btn-sm" onclick="document.getElementById('cb-fatura-file').click()" style="font-size:10px;padding:2px 6px" title="Substituir o ficheiro mantendo a ligação">↻ Substituir</button>
+                <button type="button" class="btn btn-sm" onclick="removerLigacaoFatura()" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red)" title="Remover apenas a ligação (não apaga o ficheiro do SharePoint)">✕ Remover</button>
+              </div>
+              <div id="cb-fatura-substituir" style="font-size:10px;color:#856404;margin-top:3px;display:none;background:#FFF3CD;padding:4px 8px;border-radius:4px">
+                Vai substituir o ficheiro existente com o novo (mantém a ligação ao movimento)
+              </div>
             </div>
 
             <div class="section-divider">Observações</div>
@@ -1926,6 +1964,8 @@ async function mostrarApp(){
   const nome=contaAtual.name||contaAtual.username;
   document.getElementById('user-name').textContent=nome.split(' ')[0];
   document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
+  // Se a área financeira ainda está desbloqueada nesta sessão, mostrar os itens
+  if(financeiroDesbloqueado())mostrarMenuFinanceiro();
   setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
 }
 
@@ -2092,6 +2132,65 @@ function fecharSidebar(){
   document.querySelector('.sidebar')?.classList.remove('open');
   document.getElementById('hamburger')?.classList.remove('open');
   document.getElementById('sidebar-overlay')?.classList.remove('show');
+}
+
+// ─── ÁREA FINANCEIRA — proteção ──────────────────────────────────────────────
+// NOTA: Esta protecção é apenas visual. Para mudar a palavra-passe, edita a
+// linha abaixo. Procura "PASSWORD_FINANCEIRO" no ficheiro.
+const PASSWORD_FINANCEIRO='Lbc1982@';
+
+function financeiroDesbloqueado(){
+  return sessionStorage.getItem('lbc_fin_unlocked')==='1';
+}
+
+function abrirModalFinanceiro(){
+  if(financeiroDesbloqueado()){mostrarMenuFinanceiro();return;}
+  document.getElementById('fin-pass').value='';
+  document.getElementById('fin-erro').style.display='none';
+  document.getElementById('modal-financeiro').classList.add('show');
+  setTimeout(()=>document.getElementById('fin-pass').focus(),50);
+}
+
+function fecharModalFinanceiro(){
+  document.getElementById('modal-financeiro').classList.remove('show');
+}
+
+function validarPasswordFinanceiro(){
+  const tentativa=document.getElementById('fin-pass').value;
+  if(tentativa===PASSWORD_FINANCEIRO){
+    sessionStorage.setItem('lbc_fin_unlocked','1');
+    fecharModalFinanceiro();
+    mostrarMenuFinanceiro();
+    showToast('Área financeira desbloqueada','success');
+  } else {
+    document.getElementById('fin-erro').style.display='block';
+    document.getElementById('fin-pass').value='';
+    document.getElementById('fin-pass').focus();
+  }
+}
+
+function mostrarMenuFinanceiro(){
+  document.getElementById('nav-fin-desbloquear').style.display='none';
+  document.getElementById('nav-fin-financeiro').style.display='flex';
+  document.getElementById('nav-fin-relatorios').style.display='flex';
+  document.getElementById('nav-fin-contabilidade').style.display='flex';
+  document.getElementById('nav-fin-bloquear').style.display='flex';
+}
+
+function bloquearFinanceiro(){
+  if(!confirm('Bloquear a área financeira? Vais ter de introduzir a palavra-passe novamente para aceder.'))return;
+  sessionStorage.removeItem('lbc_fin_unlocked');
+  document.getElementById('nav-fin-desbloquear').style.display='flex';
+  document.getElementById('nav-fin-financeiro').style.display='none';
+  document.getElementById('nav-fin-relatorios').style.display='none';
+  document.getElementById('nav-fin-contabilidade').style.display='none';
+  document.getElementById('nav-fin-bloquear').style.display='none';
+  // Se estiver numa página financeira, voltar ao Calendário
+  const screenAtivo=document.querySelector('.screen.active');
+  if(screenAtivo&&['screen-financeiro','screen-relatorios','screen-contabilidade'].includes(screenAtivo.id)){
+    nav('calendario',document.querySelector(".nav-item[onclick*=\"calendario\"]"));
+  }
+  showToast('Área financeira bloqueada','');
 }
 
 function nav(id,el){
@@ -3922,8 +4021,15 @@ async function carregarContabilidade(){
   document.getElementById('cb-loading').style.display='flex';
   document.getElementById('cb-list').style.display='none';
   try{
-    const sf='Data,TipoDespesa,Categoria,Descricao,Valor,IVA,Meio_Pagamento,Conta,Cliente_Associado,Fatura_Interna,Estado_Fatura_Externa,Ligacao_Fatura,Observacoes';
-    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
+    const sfBase='Data,TipoDespesa,Categoria,Descricao,Valor,IVA,Meio_Pagamento,Conta,Cliente_Associado,Fatura_Interna,Estado_Fatura_Externa,Ligacao_Fatura,Observacoes';
+    let data;
+    try{
+      const sf=sfBase+',Pagto_Conjunto,Ref_Conjunta';
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
+    }catch(_){
+      // Fallback: colunas Pagto_Conjunto/Ref_Conjunta ainda não criadas
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sfBase})&$top=500`);
+    }
     todosMovimentos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     // Seleccionar mês actual por defeito
     const mesActual=MESES_PT[new Date().getMonth()];
@@ -3966,6 +4072,12 @@ function renderContabilidade(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhum movimento encontrado.</div>';el.style.display='block';return;}
   // Ordenar por data desc
   lista=[...lista].sort((a,b)=>new Date(b[CB.data]||0)-new Date(a[CB.data]||0));
+  // Pré-calcular tamanho dos grupos para mostrar contador na etiqueta
+  const tamanhoGrupo={};
+  todosMovimentos.forEach(m=>{
+    const r=m[CB.refConjunta];
+    if(r)tamanhoGrupo[r]=(tamanhoGrupo[r]||0)+1;
+  });
   el.innerHTML=lista.map(i=>{
     const isDespesa=i[CB.tipo]==='Despesa empresa';
     const val=parseFloat(i[CB.valor]||0);
@@ -3973,9 +4085,13 @@ function renderContabilidade(lista){
     const contaTag=conta==='Secundária'
       ? '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#DBEAFE;color:#0369A1;margin-right:4px">Secundária</span>'
       : '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#EDE9FE;color:#4F4580;margin-right:4px">Principal</span>';
+    const ref=i[CB.refConjunta]||'';
+    const refTag=ref
+      ? `<span onclick="event.stopPropagation();filtrarPorRef('${escHtml(ref).replace(/'/g,'')}')" style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#FEF3C7;color:#92400E;margin-left:4px;cursor:pointer" title="Clica para ver os ${tamanhoGrupo[ref]||1} movimentos deste pagamento conjunto">🔗 ${escHtml(ref)}${tamanhoGrupo[ref]>1?` (${tamanhoGrupo[ref]})`:''}</span>`
+      : '';
     return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')">
       <div class="reg-list-main">
-        <div class="reg-list-nome">${contaTag}${escHtml(i[CB.descricao]||'—')}</div>
+        <div class="reg-list-nome">${contaTag}${escHtml(i[CB.descricao]||'—')}${refTag}</div>
         <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
         ${i[CB.estadoFatura]==='Sem fatura'?'<div style="font-size:10px;color:var(--amber)">⚠ Sem fatura</div>':''}
       </div>
@@ -3987,6 +4103,123 @@ function renderContabilidade(lista){
     </div>`;
   }).join('');
   el.style.display='block';
+}
+
+// Filtrar listagem para mostrar só os movimentos com a mesma referência conjunta
+function filtrarPorRef(ref){
+  if(!ref||!todosMovimentos)return;
+  const grupo=todosMovimentos.filter(m=>m[CB.refConjunta]===ref);
+  if(!grupo.length){showToast('Nenhum movimento com essa referência','');return;}
+  // Calcular total
+  const total=grupo.reduce((s,m)=>s+(parseFloat(m[CB.valor]||0)||0),0);
+  const fmt=v=>v.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+  // Mostrar info no topo (antes da lista)
+  const el=document.getElementById('cb-list');
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('cb-loading').style.display='none';
+  el.style.display='block';
+  el.innerHTML=`<div class="notice notice-info" style="margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
+    <div><strong>🔗 Pagamento conjunto:</strong> ${escHtml(ref)} · ${grupo.length} movimentos · Total: <strong>${fmt(total)}</strong></div>
+    <button class="btn btn-sm" onclick="filtrarContabilidade()">✕ Limpar filtro</button>
+  </div>`+grupo.sort((a,b)=>new Date(b[CB.data]||0)-new Date(a[CB.data]||0)).map(i=>{
+    const val=parseFloat(i[CB.valor]||0);
+    const isDespesa=i[CB.tipo]==='Despesa empresa';
+    return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')">
+      <div class="reg-list-main">
+        <div class="reg-list-nome">${escHtml(i[CB.descricao]||'—')}</div>
+        <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}</div>
+      </div>
+      <div class="reg-list-right">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:${isDespesa?'var(--red)':'var(--amber)'}">${val.toLocaleString('pt-PT',{minimumFractionDigits:2})}€</span>
+        ${i[CB.ligacaoFatura]?`<a href="${escHtml(i[CB.ligacaoFatura])}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" title="Ver fatura">📄</a>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Marca a fatura para remoção (limpa o link sem apagar o ficheiro do SP)
+function removerLigacaoFatura(){
+  if(!confirm('Remover a ligação da fatura a este movimento?\n\nO ficheiro continua no SharePoint mas deixa de estar associado a este registo.'))return;
+  document.getElementById('cb-fatura-file').dataset.remover='1';
+  document.getElementById('cb-fatura-ok').style.display='none';
+  document.getElementById('cb-fatura-substituir').style.display='none';
+  document.getElementById('cb-fatura-file').value='';
+  showToast('Ligação removida — guarda o movimento para confirmar','');
+}
+
+// Listener no input de ficheiro: mostra aviso de substituição se já existe fatura
+document.addEventListener('DOMContentLoaded',()=>{
+  const input=document.getElementById('cb-fatura-file');
+  if(input){
+    input.addEventListener('change',()=>{
+      const okBox=document.getElementById('cb-fatura-ok');
+      const aviso=document.getElementById('cb-fatura-substituir');
+      const temFatura=okBox&&okBox.style.display!=='none';
+      if(input.files[0]&&temFatura&&aviso){
+        aviso.style.display='block';
+      } else if(aviso){
+        aviso.style.display='none';
+      }
+    });
+  }
+  // Listener da ref. de pagamento conjunto e do valor
+  const refInput=document.getElementById('cb-ref-conjunta');
+  if(refInput)refInput.addEventListener('input',atualizarInfoRef);
+  const valorInput=document.getElementById('cb-valor');
+  if(valorInput)valorInput.addEventListener('input',()=>{
+    const refWrap=document.getElementById('cb-ref-conjunta-wrap');
+    if(refWrap&&refWrap.style.display!=='none')atualizarInfoRef();
+  });
+});
+
+// ─── PAGAMENTO CONJUNTO ──────────────────────────────────────────────────────
+function onCbPagtoConjuntoChange(){
+  const cb=document.getElementById('cb-pagto-conjunto');
+  const wrap=document.getElementById('cb-ref-conjunta-wrap');
+  if(cb.checked){
+    wrap.style.display='block';
+    atualizarRefsExistentes();
+    setTimeout(()=>document.getElementById('cb-ref-conjunta').focus(),50);
+  } else {
+    wrap.style.display='none';
+    document.getElementById('cb-ref-conjunta').value='';
+    document.getElementById('cb-ref-info').textContent='';
+  }
+}
+
+function usarHojeComoRef(){
+  const d=document.getElementById('cb-data').value||new Date().toISOString().substring(0,10);
+  document.getElementById('cb-ref-conjunta').value='EXT-'+d.replace(/-/g,'');
+  atualizarInfoRef();
+}
+
+// Autocompletar com refs já usadas noutros movimentos
+function atualizarRefsExistentes(){
+  const datalist=document.getElementById('cb-refs-existentes');
+  if(!datalist||!todosMovimentos)return;
+  const refs=new Set();
+  todosMovimentos.forEach(m=>{const r=m[CB.refConjunta];if(r)refs.add(r);});
+  datalist.innerHTML=[...refs].map(r=>`<option value="${escHtml(r)}">`).join('');
+}
+
+// Mostra quantos movimentos partilham a mesma referência + soma
+function atualizarInfoRef(){
+  const info=document.getElementById('cb-ref-info');
+  const refEl=document.getElementById('cb-ref-conjunta');
+  if(!info||!refEl)return;
+  const ref=refEl.value.trim();
+  if(!ref){info.textContent='';return;}
+  if(!todosMovimentos){info.textContent='';return;}
+  const grupo=todosMovimentos.filter(m=>m[CB.refConjunta]===ref&&m.id!==cbItemId);
+  if(grupo.length===0){
+    info.innerHTML='<span style="color:var(--accent-dark)">→ Será o primeiro movimento com esta referência</span>';
+  } else {
+    const total=grupo.reduce((s,m)=>s+(parseFloat(m[CB.valor]||0)||0),0);
+    const valorAtual=parseFloat(document.getElementById('cb-valor').value||0)||0;
+    const totalComEste=total+valorAtual;
+    const fmt=v=>v.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+    info.innerHTML=`<span style="color:var(--green)">→ ${grupo.length} ${grupo.length===1?'movimento já tem':'movimentos já têm'} esta ref. · Total ${grupo.length===1?'desse movimento':'do grupo'}: ${fmt(total)}${valorAtual?` · Total com este: ${fmt(totalComEste)}`:''}</span>`;
+  }
 }
 
 function onCbTipoChange(){
@@ -4012,10 +4245,18 @@ function abrirContabNovo(){
   document.getElementById('cb-iva').value='';
   document.getElementById('cb-iva-taxa').value='23';
   document.getElementById('cb-fatura-file').value='';
+  document.getElementById('cb-fatura-file').dataset.remover='';
   document.getElementById('cb-fatura-ok').style.display='none';
+  const subEl=document.getElementById('cb-fatura-substituir');
+  if(subEl)subEl.style.display='none';
   document.getElementById('cb-categoria-wrap').style.display='none';
   document.getElementById('cb-cliente-wrap').style.display='none';
   document.getElementById('cb-btn-eliminar').style.display='none';
+  // Pagamento conjunto
+  document.getElementById('cb-pagto-conjunto').checked=false;
+  document.getElementById('cb-ref-conjunta').value='';
+  document.getElementById('cb-ref-conjunta-wrap').style.display='none';
+  document.getElementById('cb-ref-info').textContent='';
   // Taxa IVA desactivada até Estado Fatura = Com fatura
   document.getElementById('cb-iva-taxa').disabled=true;
   document.getElementById('cb-iva-hint').textContent='(só se com fatura)';
@@ -4053,8 +4294,30 @@ function abrirContabEditar(itemId){
   document.getElementById('cb-estado-fatura').value=i[CB.estadoFatura]||'';
   document.getElementById('cb-observacoes').value=i[CB.observacoes]||'';
   document.getElementById('cb-fatura-file').value='';
-  document.getElementById('cb-fatura-ok').style.display=i[CB.ligacaoFatura]?'block':'none';
-  if(i[CB.ligacaoFatura])document.getElementById('cb-fatura-ok-nome').textContent='Fatura já carregada';
+  document.getElementById('cb-fatura-file').dataset.remover='';
+  document.getElementById('cb-fatura-substituir').style.display='none';
+  if(i[CB.ligacaoFatura]){
+    document.getElementById('cb-fatura-ok').style.display='flex';
+    // Tentar extrair o nome do ficheiro a partir da URL
+    let nomeFat='Fatura já carregada';
+    try{
+      const m=i[CB.ligacaoFatura].match(/\/([^/?#]+)(?:[?#]|$)/);
+      if(m&&m[1])nomeFat=decodeURIComponent(m[1]);
+    }catch(e){}
+    document.getElementById('cb-fatura-ok-nome').textContent=nomeFat;
+    const linkEl=document.getElementById('cb-fatura-ok-link');
+    if(linkEl)linkEl.href=i[CB.ligacaoFatura];
+  } else {
+    document.getElementById('cb-fatura-ok').style.display='none';
+  }
+  // Pagamento conjunto
+  const refConjunta=i[CB.refConjunta]||'';
+  const ehConjunto=!!(i[CB.pagtoConjunto]||refConjunta);
+  document.getElementById('cb-pagto-conjunto').checked=ehConjunto;
+  document.getElementById('cb-ref-conjunta').value=refConjunta;
+  document.getElementById('cb-ref-conjunta-wrap').style.display=ehConjunto?'block':'none';
+  if(ehConjunto){atualizarRefsExistentes();atualizarInfoRef();}
+  else document.getElementById('cb-ref-info').textContent='';
   onCbTipoChange();
   // Ajustar só o estado visual (disabled/hint) sem recalcular o IVA já gravado
   (function(){
@@ -4152,6 +4415,9 @@ async function guardarContab(){
   const anoConf=dataObj.getFullYear();
   if(!confirm(`Confirmas que queres guardar este movimento em ${mesConf} ${anoConf}?`))return;
   let ligacaoFatura=cbItemId?((todosMovimentos.find(i=>i.id===cbItemId)||{})[CB.ligacaoFatura]||''):'';
+  // Marcador para saber se temos de remover a ligação ao guardar
+  const removerLigacao=document.getElementById('cb-fatura-file')?.dataset?.remover==='1';
+  if(removerLigacao)ligacaoFatura='';
   const file=document.getElementById('cb-fatura-file').files[0];
   if(file&&bibliotecaFaturasId){
     try{
@@ -4173,17 +4439,43 @@ async function guardarContab(){
       const anoId=await criarPasta(rootData.id,String(ano));
       const mesId=await criarPasta(anoId,mesPasta);
       const ab=await file.arrayBuffer();
-      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesId}:/${file.name}:/content?@microsoft.graph.conflictBehavior=rename`,{
+
+      // ── ESTRATÉGIA DE UPLOAD ──
+      // SUBSTITUIR (já há fatura ligada): mantém o NOME original do ficheiro existente,
+      //   força replace → URL antiga continua válida → fica corrigido
+      // ADICIONAR (sem fatura ligada): usa o nome do ficheiro carregado e rename automático
+      //   se já existir outro com mesmo nome (protege contra colisões)
+      const substituir=!!ligacaoFatura;
+      let nomeUpload=file.name;
+      if(substituir){
+        // Extrair o nome do ficheiro a partir do webUrl (depois do último /)
+        try{
+          const m=ligacaoFatura.match(/\/([^/?#]+)(?:[?#]|$)/);
+          if(m&&m[1]){
+            // O nome já vem URL-encoded
+            nomeUpload=decodeURIComponent(m[1]);
+          }
+        }catch(e){console.warn('Não foi possível extrair nome do URL:',e);}
+      }
+      const conflictBehavior=substituir?'replace':'rename';
+      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaFaturasId}/items/${mesId}:/${encodeURIComponent(nomeUpload)}:/content?@microsoft.graph.conflictBehavior=${conflictBehavior}`,{
         method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':file.type},body:ab
       });
+      if(!r.ok)throw new Error(`Erro ${r.status} ao fazer upload`);
       const uploaded=await r.json();
-      ligacaoFatura=uploaded.webUrl||'';
-      const renomeado=uploaded.name&&uploaded.name!==file.name;
-      showToast(renomeado
-        ?`Upload com sucesso! Já existia um ficheiro com o mesmo nome — guardado como "${uploaded.name}"`
-        :`Upload com sucesso na pasta "${mesNome} ${ano}"!`,'success');
-      document.getElementById('cb-fatura-ok').style.display='block';
+      ligacaoFatura=uploaded.webUrl||ligacaoFatura;
+      const renomeado=uploaded.name&&uploaded.name!==nomeUpload;
+      if(substituir){
+        showToast(`Fatura substituída: "${uploaded.name}"`,'success');
+      } else {
+        showToast(renomeado
+          ?`Upload com sucesso! Já existia ficheiro com mesmo nome — guardado como "${uploaded.name}"`
+          :`Upload com sucesso na pasta "${mesNome} ${ano}"!`,'success');
+      }
+      document.getElementById('cb-fatura-ok').style.display='flex';
       document.getElementById('cb-fatura-ok-nome').textContent=uploaded.name||file.name;
+      const linkEl=document.getElementById('cb-fatura-ok-link');
+      if(linkEl)linkEl.href=ligacaoFatura||'#';
     }catch(e){showToast('Aviso: fatura não carregada — '+e.message,'');}
   }
 
@@ -4202,18 +4494,38 @@ async function guardarContab(){
     [CB.estadoFatura]:document.getElementById('cb-estado-fatura').value||'',
     [CB.observacoes]:document.getElementById('cb-observacoes').value||'',
   };
-  if(ligacaoFatura) body[CB.ligacaoFatura]=ligacaoFatura;
+  // Sempre escrever a ligação (mesmo vazia) para suportar remoção
+  body[CB.ligacaoFatura]=ligacaoFatura||'';
+  // Pagamento conjunto
+  const ehConjunto=document.getElementById('cb-pagto-conjunto').checked;
+  const refConjunta=ehConjunto?document.getElementById('cb-ref-conjunta').value.trim():'';
+  body[CB.pagtoConjunto]=ehConjunto;
+  body[CB.refConjunta]=refConjunta;
+  // Versão sem campos novos (caso colunas Pagto_Conjunto / Ref_Conjunta não existam no SP)
+  const bodySemConjunto={...body};
+  delete bodySemConjunto[CB.pagtoConjunto];
+  delete bodySemConjunto[CB.refConjunta];
 
-  try{
+  const tentar=async b=>{
     if(cbItemId){
-      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${cbItemId}/fields`,body);
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${cbItemId}/fields`,b);
       const idx=todosMovimentos.findIndex(i=>i.id===cbItemId);
-      if(idx>-1)Object.assign(todosMovimentos[idx],body);
-      showToast('Guardado!','success');
-    }else{
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items`,{fields:body});
-      showToast('Movimento criado!','success');
+      if(idx>-1)Object.assign(todosMovimentos[idx],b);
+    } else {
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items`,{fields:b});
       await carregarContabilidade();
+    }
+  };
+  try{
+    try{
+      await tentar(body);
+      showToast(cbItemId?'Guardado!':'Movimento criado!','success');
+    }catch(e){
+      const msg=(e&&e.message)||'';
+      if(/Pagto_Conjunto|Ref_Conjunta|400|invalid|not.*found|column/i.test(msg)){
+        await tentar(bodySemConjunto);
+        showToast('Guardado (campos Pagto_Conjunto/Ref_Conjunta não existem na lista SP — adiciona-os para guardar)','');
+      } else throw e;
     }
     fecharContabPainel();
     filtrarContabilidade();
