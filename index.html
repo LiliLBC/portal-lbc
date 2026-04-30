@@ -4252,11 +4252,17 @@ function abrirContabNovo(){
   document.getElementById('cb-categoria-wrap').style.display='none';
   document.getElementById('cb-cliente-wrap').style.display='none';
   document.getElementById('cb-btn-eliminar').style.display='none';
-  // Pagamento conjunto
-  document.getElementById('cb-pagto-conjunto').checked=false;
-  document.getElementById('cb-ref-conjunta').value='';
-  document.getElementById('cb-ref-conjunta-wrap').style.display='none';
-  document.getElementById('cb-ref-info').textContent='';
+  // Pagamento conjunto (defensivo)
+  try{
+    const cbPagto=document.getElementById('cb-pagto-conjunto');
+    if(cbPagto)cbPagto.checked=false;
+    const cbRef=document.getElementById('cb-ref-conjunta');
+    if(cbRef)cbRef.value='';
+    const cbRefWrap=document.getElementById('cb-ref-conjunta-wrap');
+    if(cbRefWrap)cbRefWrap.style.display='none';
+    const cbRefInfo=document.getElementById('cb-ref-info');
+    if(cbRefInfo)cbRefInfo.textContent='';
+  }catch(err){console.warn('[Contab] reset pagto conjunto:',err);}
   // Taxa IVA desactivada até Estado Fatura = Com fatura
   document.getElementById('cb-iva-taxa').disabled=true;
   document.getElementById('cb-iva-hint').textContent='(só se com fatura)';
@@ -4310,14 +4316,20 @@ function abrirContabEditar(itemId){
   } else {
     document.getElementById('cb-fatura-ok').style.display='none';
   }
-  // Pagamento conjunto
-  const refConjunta=i[CB.refConjunta]||'';
-  const ehConjunto=!!(i[CB.pagtoConjunto]||refConjunta);
-  document.getElementById('cb-pagto-conjunto').checked=ehConjunto;
-  document.getElementById('cb-ref-conjunta').value=refConjunta;
-  document.getElementById('cb-ref-conjunta-wrap').style.display=ehConjunto?'block':'none';
-  if(ehConjunto){atualizarRefsExistentes();atualizarInfoRef();}
-  else document.getElementById('cb-ref-info').textContent='';
+  // Pagamento conjunto (defensivo — se elementos não existirem, ignora)
+  try{
+    const refConjunta=i[CB.refConjunta]||'';
+    const ehConjunto=!!(i[CB.pagtoConjunto]||refConjunta);
+    const cbPagto=document.getElementById('cb-pagto-conjunto');
+    const cbRef=document.getElementById('cb-ref-conjunta');
+    const cbRefWrap=document.getElementById('cb-ref-conjunta-wrap');
+    const cbRefInfo=document.getElementById('cb-ref-info');
+    if(cbPagto)cbPagto.checked=ehConjunto;
+    if(cbRef)cbRef.value=refConjunta;
+    if(cbRefWrap)cbRefWrap.style.display=ehConjunto?'block':'none';
+    if(ehConjunto){atualizarRefsExistentes();atualizarInfoRef();}
+    else if(cbRefInfo)cbRefInfo.textContent='';
+  }catch(err){console.warn('[Contab] pagto conjunto:',err);}
   onCbTipoChange();
   // Ajustar só o estado visual (disabled/hint) sem recalcular o IVA já gravado
   (function(){
@@ -4496,9 +4508,11 @@ async function guardarContab(){
   };
   // Sempre escrever a ligação (mesmo vazia) para suportar remoção
   body[CB.ligacaoFatura]=ligacaoFatura||'';
-  // Pagamento conjunto
-  const ehConjunto=document.getElementById('cb-pagto-conjunto').checked;
-  const refConjunta=ehConjunto?document.getElementById('cb-ref-conjunta').value.trim():'';
+  // Pagamento conjunto (defensivo)
+  const cbPagtoEl=document.getElementById('cb-pagto-conjunto');
+  const cbRefEl=document.getElementById('cb-ref-conjunta');
+  const ehConjunto=cbPagtoEl?cbPagtoEl.checked:false;
+  const refConjunta=(ehConjunto&&cbRefEl)?cbRefEl.value.trim():'';
   body[CB.pagtoConjunto]=ehConjunto;
   body[CB.refConjunta]=refConjunta;
   // Versão sem campos novos (caso colunas Pagto_Conjunto / Ref_Conjunta não existam no SP)
