@@ -2065,9 +2065,9 @@ function recolherDadosContrato() {
   const empV = vendedores.find(o => o.tipo === 'empresa');
   const empC = compradores.find(o => o.tipo === 'empresa');
   const Verificacao_Empresa_V = empV
-    ? `Verifiquei a qualidade e poderes do PRIMEIRO através da Certidão de Registo Comercial com o código de acesso ${empV.crcCod}, disponível em www.eportugal.gov.pt, válida até ${fmtDataPT(empV.crcVal)} e o cumprimento das obrigações declarativas para efeitos de Registo Central de Beneficiário Efetivo através de consulta em rcbe.justica.gov.pt nos termos da Lei 78/2021, de 21 de agosto;` : '';
+    ? `Verifiquei a qualidade e poderes do PRIMEIRO através da Certidão de Registo Comercial com o código de acesso ${empV.crcCod}, disponível em www.eportugal.gov.pt, válida até ${fmtDataPT(empV.crcVal)} e o cumprimento das obrigações declarativas para efeitos de Registo Central de Beneficiário Efetivo através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto;` : '';
   const Verificacao_Empresa_C = empC
-    ? `Verifiquei a qualidade e poderes do SEGUNDO através da Certidão de Registo Comercial com o código de acesso ${empC.crcCod}, disponível em www.eportugal.gov.pt, válida até ${fmtDataPT(empC.crcVal)} e o cumprimento das obrigações declarativas para efeitos de Registo Central de Beneficiário Efetivo através de consulta em rcbe.justica.gov.pt nos termos da Lei 78/2021, de 21 de agosto;` : '';
+    ? `Verifiquei a qualidade e poderes do SEGUNDO através da Certidão de Registo Comercial com o código de acesso ${empC.crcCod}, disponível em www.eportugal.gov.pt, válida até ${fmtDataPT(empC.crcVal)} e o cumprimento das obrigações declarativas para efeitos de Registo Central de Beneficiário Efetivo através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto;` : '';
 
   // ── Distrate ──────────────────────────────────────────────────────────────
   const distrate = v('distrate');
