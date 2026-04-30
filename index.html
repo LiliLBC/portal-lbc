@@ -1493,7 +1493,7 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-group field-full" style="background:#FFFBF0;padding:.6rem .75rem;border-radius:7px;border:1px solid #FFE7B5">
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:12px;color:var(--text-muted);margin-bottom:.4rem">
                 <input type="checkbox" id="cb-rf-checkbox" onchange="onCbRetencaoChange()">
-                <span><strong>📋 Retenção na fonte</strong> — fornecedor desconta % no valor a pagar</span>
+                <span><strong>📋 Retenção na fonte</strong> — desconto à retenção (entrego ao Estado, fornecedor recebe menos)</span>
               </label>
               <div id="cb-rf-detalhes" style="display:none;padding-top:.4rem;border-top:1px dashed #FFE7B5">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
@@ -4701,38 +4701,49 @@ async function parsearPDFExtrato(file){
 
 // Parser CSV — trata o formato de exportação CGD
 async function parsearCSVExtrato(file){
-  const texto=await file.text();
+  // CGD exporta CSV em Windows-1252 (latin-1), não UTF-8
+  const ab=await file.arrayBuffer();
+  let texto;
+  try{
+    // Tentar UTF-8 primeiro
+    texto=new TextDecoder('utf-8',{fatal:true}).decode(ab);
+  }catch(_){
+    // Fallback: Windows-1252 (CGD)
+    texto=new TextDecoder('windows-1252').decode(ab);
+  }
+  // Se não tem ; mas tem , separador é ,
+  const sep=texto.includes(';')?';':',';
   const linhas=texto.split(/\r?\n/);
   const movimentos=[];
-  // CSV CGD: separador ; ou , — detectar automaticamente
-  const sep=texto.includes(';')?';':',';
+  // Procurar formato data (CGD usa DD-MM-YYYY)
   for(const linha of linhas){
     if(!linha.trim())continue;
     const cols=linha.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
-    // Procurar colunas que pareçam: data, descrição, valor
-    // Formato CGD típico: Data Mov;Data Valor;Descrição;Valor;Saldo
     if(cols.length<4)continue;
-    const dataMatch=cols[0].match(/^(\d{4}-\d{2}-\d{2})$/)||cols[0].match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if(!dataMatch)continue;
-    let data;
-    if(dataMatch.length===2)data=dataMatch[1];
-    else data=`${dataMatch[3]}-${dataMatch[2]}-${dataMatch[1]}`;
-    // Encontrar a coluna do valor (formato tipo -123,45 ou -123.45)
-    let valorIdx=-1,valorNum=null;
+    // CGD CSV: Data Mov;Data-valor;Descrição;Montante;Saldo;
+    let data='';
+    const m1=cols[0].match(/^(\d{2})-(\d{2})-(\d{4})$/);    // DD-MM-YYYY (CGD)
+    const m2=cols[0].match(/^(\d{4})-(\d{2})-(\d{2})$/);    // YYYY-MM-DD
+    const m3=cols[0].match(/^(\d{2})\/(\d{2})\/(\d{4})$/);  // DD/MM/YYYY
+    if(m1)data=`${m1[3]}-${m1[2]}-${m1[1]}`;
+    else if(m2)data=cols[0];
+    else if(m3)data=`${m3[3]}-${m3[2]}-${m3[1]}`;
+    else continue;
+    // Encontrar valor (montante) — penúltima coluna numérica
+    // Última = saldo, antepenúltima = montante
+    let valorNum=null;
+    const numCols=[];
     for(let i=cols.length-1;i>=2;i--){
       const v=cols[i].replace(/\s/g,'').replace(/\./g,'').replace(',','.');
       const n=parseFloat(v);
-      if(!isNaN(n)&&Math.abs(n)<1e9&&v.match(/^-?\d+(\.\d+)?$/)){
-        if(valorIdx===-1){
-          // primeiro número da direita = saldo, segundo = valor
-          valorIdx=i;continue;
-        }
-        valorIdx=i;valorNum=n;break;
-      }
+      if(!isNaN(n)&&v.match(/^-?\d+(\.\d+)?$/))numCols.push({idx:i,val:n});
     }
-    if(valorNum===null)continue;
-    // Descrição = cols entre data e valor
-    const desc=cols.slice(2,valorIdx).join(' ').trim();
+    if(numCols.length<2)continue;
+    // Última coluna numérica = saldo. A anterior = montante.
+    valorNum=numCols[1].val;
+    const valorIdx=numCols[1].idx;
+    // Descrição = entre data e valor
+    const desc=cols.slice(2,valorIdx).join(' ').replace(/\s+/g,' ').trim();
     movimentos.push({data,descricao:desc,valor:valorNum,linhaOriginal:linha});
   }
   return movimentos.sort((a,b)=>a.data.localeCompare(b.data));
@@ -4749,60 +4760,105 @@ async function parsearXLSXExtrato(file){
   const movimentos=[];
   for(const linha of linhas){
     if(!linha||linha.length<3)continue;
-    // Procurar primeira célula com data
+    // Procurar primeira célula com data (DD-MM-YYYY ou YYYY-MM-DD ou DD/MM/YYYY)
     let dataStr='';
     for(const c of linha){
       const s=String(c||'').trim();
-      const m=s.match(/^(\d{4}-\d{2}-\d{2})$/)||s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if(m){
-        if(m.length===2)dataStr=m[1];
-        else dataStr=`${m[3]}-${m[2]}-${m[1]}`;
-        break;
-      }
+      const m1=s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const m3=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if(m1){dataStr=`${m1[3]}-${m1[2]}-${m1[1]}`;break;}
+      if(m2){dataStr=s;break;}
+      if(m3){dataStr=`${m3[3]}-${m3[2]}-${m3[1]}`;break;}
     }
     if(!dataStr)continue;
-    // Procurar valor (primeiro número negativo ou positivo isolado)
-    let valorNum=null;
+    // Procurar valor — penúltimo número
+    const numCols=[];
     for(let i=linha.length-1;i>=0;i--){
       const s=String(linha[i]||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
       const n=parseFloat(s);
-      if(!isNaN(n)&&s.match(/^-?\d+(\.\d+)?$/)&&Math.abs(n)<1e7){
-        // O 1º da direita é saldo. Pegar o seguinte.
-        if(valorNum===null){valorNum=n;continue;}
-        valorNum=n;break;
-      }
+      if(!isNaN(n)&&s.match(/^-?\d+(\.\d+)?$/)&&Math.abs(n)<1e7)numCols.push(n);
     }
-    if(valorNum===null)continue;
-    // Descrição = cells de texto
+    if(numCols.length<2)continue;
+    const valorNum=numCols[1]; // penúltimo é o montante
+    // Descrição = cells de texto não-vazias
     const desc=linha.filter(c=>{
       const s=String(c||'').trim();
-      return s.length>3&&!s.match(/^-?[\d.,]+$/)&&!s.match(/^\d{4}-\d{2}-\d{2}$/)&&!s.match(/^\d{2}\/\d{2}\/\d{4}$/);
-    }).join(' ').trim();
+      return s.length>3&&!s.match(/^-?[\d.,]+$/)&&!s.match(/^\d{2,4}[-\/]\d{2}[-\/]\d{2,4}$/);
+    }).join(' ').replace(/\s+/g,' ').trim();
     movimentos.push({data:dataStr,descricao:desc,valor:valorNum});
   }
   return movimentos.sort((a,b)=>a.data.localeCompare(b.data));
 }
 
-// Parser do TEXTO (usado pelo PDF) — formato CGD:
-//   2026-03-02 2026-03-02 GRENKE RENTING S A -52,58 19.581,15
+// Parser do TEXTO (usado pelo PDF) — formato CGD com 2 variantes:
+//   1. Antiga (extrato mensal):    "2026-03-02 2026-03-02 GRENKE RENTING S A -52,58 19.581,15"
+//   2. Nova (movimentos online):   "30-04-2026 30-04-2026 INSTITUTO REGISTOS NO -20,00 20.427,40"
+//      (atenção: descrição pode partir em 2 linhas — "INSTITUTO REGISTOS\nNO ...")
 function parsearExtrato(texto){
   const linhas=texto.split(/\r?\n/);
   const movimentos=[];
-  const re=/^(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})\s+(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/;
-  for(const linha of linhas){
-    const m=linha.match(re);
-    if(m){
-      const dataStr=m[1];
-      let data;
-      if(dataStr.includes('/')){
-        const [d,mo,a]=dataStr.split('/');
-        data=`${a}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
-      } else {
-        data=dataStr;
+  // Padrão de início de linha: 2 datas (YYYY-MM-DD ou DD-MM-YYYY)
+  const reInicio=/^(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})\s+(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})\s+/;
+  // Padrão completo (descrição na mesma linha): ...descrição -123,45 saldo
+  const reCompleto=/^(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})\s+(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/;
+  // Padrão parcial (descrição cortada — 2ª linha começa depois): ...descrição (sem valor)
+  const reParcial=/^(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})\s+(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})\s+(.+?)\s*$/;
+  // Linha que termina com valores (-123,45 12.345,67)
+  const reFim=/^(.*?)(-?[\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/;
+  // Continuação: linha sem datas iniciais que vem após linha parcial
+  function normalizaData(s){
+    if(!s)return '';
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+    const m=s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if(m)return `${m[3]}-${m[2]}-${m[1]}`;
+    return s;
+  }
+  for(let i=0;i<linhas.length;i++){
+    const linha=linhas[i].trim();
+    if(!linha)continue;
+    // Tentar match completo
+    const c=linha.match(reCompleto);
+    if(c){
+      movimentos.push({
+        data:normalizaData(c[1]),
+        descricao:c[3].trim(),
+        valor:parseFloat(c[4].replace(/\./g,'').replace(',','.')),
+        linhaOriginal:linha
+      });
+      continue;
+    }
+    // Caso parcial: começa com 2 datas mas não tem valor — junta com linha(s) seguinte(s)
+    const p=linha.match(reParcial);
+    if(p){
+      // Procurar nas próximas linhas até encontrar uma que termina com 2 valores
+      let descricao=p[3];
+      let valorEncontrado=null;
+      for(let j=i+1;j<Math.min(i+4,linhas.length);j++){
+        const seg=linhas[j].trim();
+        if(!seg)continue;
+        // Se a linha seguinte começa com data, parar
+        if(reInicio.test(seg))break;
+        // Se termina com valor
+        const f=seg.match(reFim);
+        if(f){
+          descricao=(descricao+' '+f[1]).trim();
+          valorEncontrado=parseFloat(f[2].replace(/\./g,'').replace(',','.'));
+          i=j;
+          break;
+        } else {
+          // Junta texto e continua
+          descricao=(descricao+' '+seg).trim();
+        }
       }
-      const desc=m[3].trim();
-      const valorNum=parseFloat(m[4].replace(/\./g,'').replace(',','.'));
-      movimentos.push({data,descricao:desc,valor:valorNum,linhaOriginal:linha.trim()});
+      if(valorEncontrado!==null){
+        movimentos.push({
+          data:normalizaData(p[1]),
+          descricao:descricao.replace(/\s+/g,' '),
+          valor:valorEncontrado,
+          linhaOriginal:linha
+        });
+      }
     }
   }
   return movimentos;
@@ -5906,7 +5962,8 @@ function atualizarLiquido(){
   if(info&&rfActiva){
     const baseRF=valor-iva; // base sem IVA
     if(baseRF>0&&rfValor>0){
-      info.innerHTML=`Cálculo: <strong>${baseRF.toFixed(2)}€</strong> (base s/IVA) → RF <strong>${rfValor.toFixed(2)}€</strong> · A pagar: <strong>${(valor-rfValor).toFixed(2)}€</strong>`;
+      const aPagar=(valor-rfValor).toFixed(2);
+      info.innerHTML=`Cálculo sobre <strong>${baseRF.toFixed(2)}€</strong> (base s/IVA) → reteres <strong>${rfValor.toFixed(2)}€</strong> p/ Estado · pagas ao fornecedor <strong>${aPagar}€</strong>`;
     } else {
       info.textContent='Preenche o valor da fatura para calcular automaticamente';
     }
