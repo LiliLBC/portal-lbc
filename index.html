@@ -1011,6 +1011,7 @@ tbody tr:hover td{background:#FAFAF8}
 
           <!-- PASSO 1: Upload do extrato -->
           <div id="conc-passo1">
+            <div id="conc-mes-info" style="font-size:11px;color:#5B4A8B;margin-bottom:.5rem;background:#EDE9FE;padding:.5rem .75rem;border-radius:7px"></div>
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;background:#E0F2FE;padding:.6rem .75rem;border-radius:7px;border-left:3px solid #0EA5E9">
               <strong>💡 Recomendado:</strong> exporta o extrato em <strong>CSV ou Excel</strong> da Caixa Directa Empresas (mais fiável que PDF).<br>
               <span style="font-size:11px">Suporta: PDF, CSV, XLSX, XLS</span>
@@ -1052,6 +1053,37 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- MODAL RESUMO POR CATEGORIA -->
+      <div class="modal-overlay" id="modal-resumo-cat">
+        <div class="modal-box" style="max-width:900px;width:95%">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div class="modal-box-title" style="margin:0">📊 Resumo por categoria</div>
+            <button class="btn btn-sm" onclick="fecharModalResumoCategorias()" title="Fechar">✕</button>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+            <select class="form-select" id="rc-mes" onchange="renderResumoCategorias()" style="font-size:12px;width:auto">
+              <option value="">Todos os meses</option>
+              <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
+              <option>Abril</option><option>Maio</option><option>Junho</option>
+              <option>Julho</option><option>Agosto</option><option>Setembro</option>
+              <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+            </select>
+            <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+              <button class="rc-tipo-chip active" data-tipo="" onclick="rcTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--accent-light);color:var(--accent-dark);border:none;cursor:pointer;font-family:inherit;font-weight:500;border-right:1px solid var(--border)">Todos</button>
+              <button class="rc-tipo-chip" data-tipo="Despesa empresa" onclick="rcTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;font-family:inherit;font-weight:500;border-right:1px solid var(--border)">💼 Despesa empresa</button>
+              <button class="rc-tipo-chip" data-tipo="Pagamento por conta cliente" onclick="rcTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;font-family:inherit;font-weight:500">💳 Por conta cliente</button>
+            </div>
+            <select class="form-select" id="rc-conta" onchange="renderResumoCategorias()" style="font-size:12px;width:auto">
+              <option value="">Todas as contas</option>
+              <option value="Principal">Principal</option>
+              <option value="Secundária">Secundária</option>
+            </select>
+            <button class="btn btn-sm" onclick="exportarResumoCategoriasCSV()" style="margin-left:auto">⬇ CSV</button>
+          </div>
+          <div id="rc-conteudo" style="max-height:500px;overflow-y:auto"></div>
         </div>
       </div>
 
@@ -1369,10 +1401,11 @@ tbody tr:hover td{background:#FAFAF8}
               <option>Julho</option><option>Agosto</option><option>Setembro</option>
               <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
             </select>
-            <!-- Chips de tipo: Empresa / Cliente -->
+            <!-- Chips de tipo: Despesa / Cliente / Todos -->
             <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden">
               <button class="cb-tipo-chip active" data-tipo="Despesa empresa" onclick="cbTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--accent-light);color:var(--accent-dark);border:none;cursor:pointer;font-family:inherit;font-weight:500;border-right:1px solid var(--border)">💼 Despesa empresa</button>
-              <button class="cb-tipo-chip" data-tipo="Pagamento por conta cliente" onclick="cbTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;font-family:inherit;font-weight:500">💳 Por conta cliente</button>
+              <button class="cb-tipo-chip" data-tipo="Pagamento por conta cliente" onclick="cbTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;font-family:inherit;font-weight:500;border-right:1px solid var(--border)">💳 Por conta cliente</button>
+              <button class="cb-tipo-chip" data-tipo="" onclick="cbTipoChip(this)" style="padding:6px 12px;font-size:11px;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;font-family:inherit;font-weight:500">Todos</button>
             </div>
             <!-- Hidden select compatível com filtrarContabilidade -->
             <select id="cb-filtro-tipo" onchange="filtrarContabilidade()" style="display:none">
@@ -1399,11 +1432,16 @@ tbody tr:hover td{background:#FAFAF8}
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" onclick="carregarContabilidade()">↺ Atualizar</button>
             <div style="position:relative">
-              <button class="btn btn-sm" onclick="toggleDropConta('drop-exportar')">⬇ Exportar mês ▾</button>
-              <div id="drop-exportar" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
-                <div class="dropdown-item" onclick="exportarMapaMensal('Principal');toggleDropConta('drop-exportar')">Conta principal</div>
-                <div class="dropdown-item" onclick="exportarMapaMensal('Secundária');toggleDropConta('drop-exportar')">Conta secundária</div>
-                <div class="dropdown-item" onclick="exportarMapaMensal('');toggleDropConta('drop-exportar')">Todas as contas</div>
+              <button class="btn btn-sm" onclick="toggleDropConta('drop-exportar')">⬇ Exportar ▾</button>
+              <div id="drop-exportar" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                <div style="font-size:10px;color:var(--text-faint);padding:.3rem .5rem;text-transform:uppercase;letter-spacing:.05em">Mês actual</div>
+                <div class="dropdown-item" onclick="exportarMapaMensal('Principal');toggleDropConta('drop-exportar')">📅 Mês — Principal</div>
+                <div class="dropdown-item" onclick="exportarMapaMensal('Secundária');toggleDropConta('drop-exportar')">📅 Mês — Secundária</div>
+                <div class="dropdown-item" onclick="exportarMapaMensal('');toggleDropConta('drop-exportar')">📅 Mês — Todas as contas</div>
+                <div style="font-size:10px;color:var(--text-faint);padding:.3rem .5rem;text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--border);margin-top:.3rem">Ano completo</div>
+                <div class="dropdown-item" onclick="exportarMapaAnual('Principal');toggleDropConta('drop-exportar')">📊 Ano — Principal</div>
+                <div class="dropdown-item" onclick="exportarMapaAnual('Secundária');toggleDropConta('drop-exportar')">📊 Ano — Secundária</div>
+                <div class="dropdown-item" onclick="exportarMapaAnual('');toggleDropConta('drop-exportar')">📊 Ano — Todas as contas</div>
               </div>
             </div>
             <div style="position:relative">
@@ -1422,6 +1460,7 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <input type="file" id="cb-extrato-file" accept=".pdf,.xlsx,.csv" style="display:none" onchange="processarUploadExtrato()">
             <button class="btn btn-sm" onclick="abrirModalConciliacao()" style="background:#FFF3CD;border-color:#FFC107;color:#856404">📋 Conciliar extrato</button>
+            <button class="btn btn-sm" onclick="abrirModalResumoCategorias()" style="background:#E0E7FF;border-color:#6366F1;color:#3730A3">📊 Resumo categorias</button>
             <div style="position:relative">
               <button class="btn btn-sm" onclick="toggleDropConta('drop-ferramentas')" title="Ferramentas">⋯</button>
               <div id="drop-ferramentas" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.3rem;z-index:50;min-width:240px;box-shadow:0 4px 12px rgba(0,0,0,.1)">
@@ -4587,6 +4626,175 @@ function cbTipoChip(el){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── RESUMO POR CATEGORIA ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+let rcEstado={tipo:'',mes:'',conta:''};
+
+function abrirModalResumoCategorias(){
+  // Pré-seleccionar mês actual
+  const mesActual=document.getElementById('cb-filtro-mes').value;
+  const elMes=document.getElementById('rc-mes');
+  if(elMes)elMes.value=mesActual||'';
+  rcEstado.mes=mesActual||'';
+  // Tipo: por defeito "Todos"
+  rcEstado.tipo='';
+  document.querySelectorAll('.rc-tipo-chip').forEach(c=>{
+    c.classList.remove('active');
+    c.style.background='var(--surface)';
+    c.style.color='var(--text-muted)';
+  });
+  const chipTodos=document.querySelector('.rc-tipo-chip[data-tipo=""]');
+  if(chipTodos){
+    chipTodos.classList.add('active');
+    chipTodos.style.background='var(--accent-light)';
+    chipTodos.style.color='var(--accent-dark)';
+  }
+  // Conta: actual
+  const contaActual=document.getElementById('cb-filtro-conta')?.value||'';
+  const elConta=document.getElementById('rc-conta');
+  if(elConta)elConta.value=contaActual;
+  rcEstado.conta=contaActual;
+  document.getElementById('modal-resumo-cat').classList.add('show');
+  renderResumoCategorias();
+}
+
+function fecharModalResumoCategorias(){
+  document.getElementById('modal-resumo-cat').classList.remove('show');
+}
+
+function rcTipoChip(el){
+  document.querySelectorAll('.rc-tipo-chip').forEach(c=>{
+    c.classList.remove('active');
+    c.style.background='var(--surface)';
+    c.style.color='var(--text-muted)';
+  });
+  el.classList.add('active');
+  el.style.background='var(--accent-light)';
+  el.style.color='var(--accent-dark)';
+  rcEstado.tipo=el.dataset.tipo;
+  renderResumoCategorias();
+}
+
+function renderResumoCategorias(){
+  rcEstado.mes=document.getElementById('rc-mes').value;
+  rcEstado.conta=document.getElementById('rc-conta').value;
+  let lista=todosMovimentos.slice();
+  if(rcEstado.mes)lista=lista.filter(i=>{
+    if(!i[CB.data])return false;
+    return MESES_PT[new Date(i[CB.data]).getMonth()]===rcEstado.mes;
+  });
+  if(rcEstado.tipo)lista=lista.filter(i=>i[CB.tipo]===rcEstado.tipo);
+  if(rcEstado.conta)lista=lista.filter(i=>(i[CB.conta]||'Principal')===rcEstado.conta);
+  // Agrupar por categoria
+  const grupos={};
+  lista.forEach(i=>{
+    const cat=i[CB.categoria]||'(sem categoria)';
+    if(!grupos[cat])grupos[cat]={contagem:0,total:0,iva:0,rf:0,sub:{De:0,Pcc:0}};
+    grupos[cat].contagem++;
+    grupos[cat].total+=parseFloat(i[CB.valor]||0)||0;
+    grupos[cat].iva+=parseFloat(i[CB.iva]||0)||0;
+    grupos[cat].rf+=parseFloat(i[CB.retencaoFonte]||0)||0;
+    if(i[CB.tipo]==='Despesa empresa')grupos[cat].sub.De+=parseFloat(i[CB.valor]||0)||0;
+    else if(i[CB.tipo]==='Pagamento por conta cliente')grupos[cat].sub.Pcc+=parseFloat(i[CB.valor]||0)||0;
+  });
+  const ordenado=Object.entries(grupos).sort((a,b)=>b[1].total-a[1].total);
+  const totalGeral=ordenado.reduce((a,[,g])=>a+g.total,0);
+  const contagemGeral=ordenado.reduce((a,[,g])=>a+g.contagem,0);
+  const ivaGeral=ordenado.reduce((a,[,g])=>a+g.iva,0);
+  const rfGeral=ordenado.reduce((a,[,g])=>a+g.rf,0);
+  const wrap=document.getElementById('rc-conteudo');
+  if(!ordenado.length){
+    wrap.innerHTML='<div class="notice notice-info">Sem movimentos para o filtro selecionado.</div>';
+    return;
+  }
+  const fmtEur=v=>parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+  wrap.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.5rem;margin-bottom:.75rem">
+      <div style="padding:.6rem .9rem;border-radius:7px;background:#EDE9FE;color:#4F4580"><div style="font-size:9px;font-weight:600;text-transform:uppercase">Total</div><div style="font-size:16px;font-weight:700">${fmtEur(totalGeral)}</div></div>
+      <div style="padding:.6rem .9rem;border-radius:7px;background:#E0E7FF;color:#3730A3"><div style="font-size:9px;font-weight:600;text-transform:uppercase">Movimentos</div><div style="font-size:16px;font-weight:700">${contagemGeral}</div></div>
+      <div style="padding:.6rem .9rem;border-radius:7px;background:#DBEAFE;color:#0369A1"><div style="font-size:9px;font-weight:600;text-transform:uppercase">IVA</div><div style="font-size:16px;font-weight:700">${fmtEur(ivaGeral)}</div></div>
+      <div style="padding:.6rem .9rem;border-radius:7px;background:#FEE2E2;color:#991B1B"><div style="font-size:9px;font-weight:600;text-transform:uppercase">Retenção fonte</div><div style="font-size:16px;font-weight:700">${fmtEur(rfGeral)}</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border-radius:7px;overflow:hidden">
+      <thead style="background:var(--accent-light);color:var(--accent-dark)">
+        <tr>
+          <th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em">Categoria</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;width:80px">Nº</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;width:120px">Total</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;width:90px">IVA</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;width:90px">RF</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;width:60px">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${ordenado.map(([cat,g])=>{
+          const pct=totalGeral?(g.total*100/totalGeral).toFixed(1):'0.0';
+          const subInfo=[];
+          if(g.sub.De>0)subInfo.push(`💼 ${fmtEur(g.sub.De)}`);
+          if(g.sub.Pcc>0)subInfo.push(`💳 ${fmtEur(g.sub.Pcc)}`);
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:7px 10px">
+              <div style="font-weight:500">${escHtml(cat)}</div>
+              ${subInfo.length>1?`<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${subInfo.join(' · ')}</div>`:''}
+            </td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace">${g.contagem}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-weight:600">${fmtEur(g.total)}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;color:#0369A1">${g.iva>0?fmtEur(g.iva):'—'}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;color:#991B1B">${g.rf>0?fmtEur(g.rf):'—'}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;color:var(--text-muted)">${pct}%</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--accent-light);color:var(--accent-dark);font-weight:700">
+          <td style="padding:8px 10px">TOTAL</td>
+          <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">${contagemGeral}</td>
+          <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">${fmtEur(totalGeral)}</td>
+          <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">${fmtEur(ivaGeral)}</td>
+          <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">${fmtEur(rfGeral)}</td>
+          <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">100%</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+function exportarResumoCategoriasCSV(){
+  let lista=todosMovimentos.slice();
+  if(rcEstado.mes)lista=lista.filter(i=>{
+    if(!i[CB.data])return false;
+    return MESES_PT[new Date(i[CB.data]).getMonth()]===rcEstado.mes;
+  });
+  if(rcEstado.tipo)lista=lista.filter(i=>i[CB.tipo]===rcEstado.tipo);
+  if(rcEstado.conta)lista=lista.filter(i=>(i[CB.conta]||'Principal')===rcEstado.conta);
+  const grupos={};
+  lista.forEach(i=>{
+    const cat=i[CB.categoria]||'(sem categoria)';
+    if(!grupos[cat])grupos[cat]={contagem:0,total:0,iva:0,rf:0,De:0,Pcc:0};
+    grupos[cat].contagem++;
+    grupos[cat].total+=parseFloat(i[CB.valor]||0)||0;
+    grupos[cat].iva+=parseFloat(i[CB.iva]||0)||0;
+    grupos[cat].rf+=parseFloat(i[CB.retencaoFonte]||0)||0;
+    if(i[CB.tipo]==='Despesa empresa')grupos[cat].De+=parseFloat(i[CB.valor]||0)||0;
+    else if(i[CB.tipo]==='Pagamento por conta cliente')grupos[cat].Pcc+=parseFloat(i[CB.valor]||0)||0;
+  });
+  const ordenado=Object.entries(grupos).sort((a,b)=>b[1].total-a[1].total);
+  const sep=';';
+  const linhas=['Categoria;Nº Movimentos;Total (€);Despesa empresa (€);Por conta cliente (€);IVA (€);Retenção (€)'];
+  ordenado.forEach(([cat,g])=>{
+    linhas.push([cat,g.contagem,g.total.toFixed(2).replace('.',','),g.De.toFixed(2).replace('.',','),g.Pcc.toFixed(2).replace('.',','),g.iva.toFixed(2).replace('.',','),g.rf.toFixed(2).replace('.',',')].join(sep));
+  });
+  const blob=new Blob(['\ufeff'+linhas.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const sufixo=(rcEstado.mes||'TODOS')+'_'+(rcEstado.tipo?rcEstado.tipo.replace(/\s+/g,'_'):'TODOS')+'_'+(rcEstado.conta||'TODAS');
+  a.download=`Resumo_Categorias_${sufixo}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Resumo de categorias exportado!','success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ─── CONCILIAÇÃO BANCÁRIA ─────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 let resultadoConciliacao=null;
@@ -4604,6 +4812,19 @@ function abrirModalConciliacao(){
   // Pre-selecionar conta de filtro actual (se houver)
   const contaActual=document.getElementById('cb-filtro-conta')?.value||'Principal';
   document.getElementById('conc-conta').value=contaActual==='Secundária'?'Secundária':'Principal';
+  // Mostrar mês activo
+  const mes=document.getElementById('cb-filtro-mes').value;
+  const elInfo=document.getElementById('conc-mes-info');
+  if(elInfo){
+    if(mes){
+      elInfo.innerHTML=`📅 A conciliar movimentos de <strong>${escHtml(mes)}</strong> · Confere se o extrato é deste mês.`;
+      elInfo.style.display='block';
+    } else {
+      elInfo.innerHTML='⚠ <strong>Sem mês selecionado</strong> — selecciona um mês no filtro principal antes de conciliar (caso contrário tenta conciliar com todos os meses).';
+      elInfo.style.background='#FEF3C7';elInfo.style.color='#92400E';
+      elInfo.style.display='block';
+    }
+  }
   document.getElementById('modal-conciliacao').classList.add('show');
 }
 
@@ -4959,14 +5180,52 @@ async function processarConciliacao(){
     showToast('Carrega o ficheiro do extrato primeiro','error');return;
   }
   const movsExtrato=movsExtratoCache;
-  // Filtrar movimentos do portal pela mesma conta
-  const movsPortal=todosMovimentos.filter(m=>(m[CB.conta]||'Principal')===conta);
-  resultadoConciliacao=conciliarMovimentos(movsExtrato,movsPortal);
+  // Mês actualmente selecionado no filtro principal
+  const mesFiltro=document.getElementById('cb-filtro-mes').value;
+  const idxMesFiltro=mesFiltro?MESES_PT.indexOf(mesFiltro):-1;
+  // Detectar mês predominante no extrato
+  const mesesExtrato={};
+  movsExtrato.forEach(m=>{
+    const idx=parseInt((m.data||'').substring(5,7),10)-1;
+    if(idx>=0)mesesExtrato[idx]=(mesesExtrato[idx]||0)+1;
+  });
+  let mesExtratoIdx=-1,maxCount=0;
+  for(const k in mesesExtrato){
+    if(mesesExtrato[k]>maxCount){maxCount=mesesExtrato[k];mesExtratoIdx=parseInt(k,10);}
+  }
+  // Aviso se mês do extrato ≠ mês do filtro
+  if(idxMesFiltro>=0&&mesExtratoIdx>=0&&idxMesFiltro!==mesExtratoIdx){
+    if(!confirm(`⚠ Atenção:\n\nO filtro está em "${mesFiltro}" mas o extrato tem movimentos sobretudo de "${MESES_PT[mesExtratoIdx]}".\n\nQueres continuar mesmo assim?\n\n(OK = continuar com o mês do filtro / Cancelar = fechar e ajustar)`)){
+      return;
+    }
+  }
+  // Filtrar movimentos do portal: mesma conta + mês selecionado
+  let movsPortal=todosMovimentos.filter(m=>(m[CB.conta]||'Principal')===conta);
+  if(mesFiltro){
+    movsPortal=movsPortal.filter(m=>{
+      if(!m[CB.data])return false;
+      return MESES_PT[new Date(m[CB.data]).getMonth()]===mesFiltro;
+    });
+    // Filtrar também o extrato pelo mesmo mês
+    movsExtrato.length;
+    const movsExtratoMes=movsExtrato.filter(m=>{
+      const idx=parseInt((m.data||'').substring(5,7),10)-1;
+      return idx===idxMesFiltro;
+    });
+    if(movsExtratoMes.length===0){
+      showToast(`O extrato não contém movimentos de ${mesFiltro}`,'error');
+      return;
+    }
+    resultadoConciliacao=conciliarMovimentos(movsExtratoMes,movsPortal);
+    resultadoConciliacao.mes=mesFiltro;
+  } else {
+    resultadoConciliacao=conciliarMovimentos(movsExtrato,movsPortal);
+    resultadoConciliacao.mes='todos os meses';
+  }
   resultadoConciliacao.conta=conta;
   renderResumoConciliacao();
   document.getElementById('conc-passo1').style.display='none';
   document.getElementById('conc-passo2').style.display='block';
-  // Por defeito mostra "no extrato sem lançamento" (mais accionável)
   const tabExtSem=document.querySelector('.conc-tab[data-tab="extrato-sem-portal"]');
   if(tabExtSem)concSetTab('extrato-sem-portal',tabExtSem);
 }
@@ -4977,7 +5236,9 @@ function renderResumoConciliacao(){
   const e=r.extratoSemPortal.length;
   const p=r.portalSemExtrato.length;
   const pr=r.provaveis.length;
+  const titulo=r.mes?`📅 ${escHtml(r.mes)} · 🏦 ${escHtml(r.conta)}`:`🏦 ${escHtml(r.conta)} · todos os meses`;
   document.getElementById('conc-resumo').innerHTML=`
+    <div style="width:100%;font-size:12px;color:var(--text-muted);margin-bottom:.3rem;font-weight:500">${titulo}</div>
     <div style="padding:.6rem .9rem;border-radius:7px;background:#D4EDDA;color:#1E6E3A;font-size:11px;font-weight:500"><strong>${c}</strong> conciliados</div>
     <div style="padding:.6rem .9rem;border-radius:7px;background:#FFF3CD;color:#856404;font-size:11px;font-weight:500"><strong>${e}</strong> no extrato sem lançamento</div>
     <div style="padding:.6rem .9rem;border-radius:7px;background:#FFF3CD;color:#856404;font-size:11px;font-weight:500"><strong>${p}</strong> no portal sem extrato</div>
@@ -6389,6 +6650,334 @@ aplicar();
   a.click();
   URL.revokeObjectURL(url);
   showToast(`Mapa interactivo ${contaFiltro?'('+contaFiltro+') ':''}de ${mes} ${ano} exportado!`,'success');
+}
+
+// Mapa anual — todos os meses com filtro integrado
+async function exportarMapaAnual(contaFiltro){
+  const ano=new Date().getFullYear();
+  let lista=todosMovimentos.filter(i=>{
+    if(!i[CB.data])return false;
+    return new Date(i[CB.data]).getFullYear()===ano;
+  });
+  if(contaFiltro)lista=lista.filter(i=>(i[CB.conta]||'Principal')===contaFiltro);
+  if(!lista.length){showToast('Sem movimentos para exportar','');return;}
+  const lista_ord=[...lista].sort((a,b)=>new Date(a[CB.data]||0)-new Date(b[CB.data]||0));
+  // URLs de extratos por mês
+  const extratosPorMes={};
+  MESES_PT.forEach(mes=>{
+    const p=localStorage.getItem(`lbc_extrato_Principal_${ano}_${mes}`)||'';
+    const s=localStorage.getItem(`lbc_extrato_Secundaria_${ano}_${mes}`)||'';
+    if(p||s)extratosPorMes[mes]={p,s};
+  });
+  // Pré-calcular grupos
+  const tamGrupo={},totGrupo={};
+  todosMovimentos.forEach(m=>{
+    const r=m[CB.refConjunta];
+    if(r){tamGrupo[r]=(tamGrupo[r]||0)+1;totGrupo[r]=(totGrupo[r]||0)+(parseFloat(m[CB.valor]||0)||0);}
+  });
+  const movsJson=lista_ord.map(i=>{
+    const dt=i[CB.data]||'';
+    const mIdx=dt?new Date(dt).getMonth():-1;
+    return{
+      id:i.id,
+      data:dt,
+      mes:mIdx>=0?MESES_PT[mIdx]:'',
+      tipo:i[CB.tipo]||'',
+      categoria:i[CB.categoria]||'',
+      descricao:i[CB.descricao]||'',
+      valor:parseFloat(i[CB.valor]||0)||0,
+      iva:parseFloat(i[CB.iva]||0)||0,
+      rf:parseFloat(i[CB.retencaoFonte]||0)||0,
+      taxaRf:parseFloat(i[CB.taxaRetencao]||0)||0,
+      liquido:parseFloat(i[CB.valorLiquido]||(i[CB.valor]||0))||0,
+      meio:i[CB.meio]||'',
+      conta:i[CB.conta]||'Principal',
+      cliente:i[CB.cliente]||'',
+      fatInterna:i[CB.faturaInterna]||'',
+      estado:i[CB.estadoFatura]||'',
+      ligacaoFat:i[CB.ligacaoFatura]||'',
+      refGrupo:i[CB.refConjunta]||'',
+      qtdGrupo:i[CB.refConjunta]?(tamGrupo[i[CB.refConjunta]]||0):0,
+      totalGrupo:i[CB.refConjunta]?(totGrupo[i[CB.refConjunta]]||0):0,
+      conciliado:!!(i[CB.conciliado]===true||i[CB.conciliado]==='Sim'||i[CB.conciliado]==='true')
+    };
+  });
+
+  const tituloRel=contaFiltro?`Mapa de Contabilidade — ${contaFiltro} — ANO ${ano}`:`Mapa de Contabilidade — ANO ${ano}`;
+
+  // Construir botões de extratos por mês
+  const extratosBotoes=Object.entries(extratosPorMes).map(([mes,obj])=>{
+    const btns=[];
+    if(obj.p)btns.push(`<a href="${escHtml(obj.p)}" target="_blank" class="extrato-link">📎 ${escHtml(mes)} P</a>`);
+    if(obj.s)btns.push(`<a href="${escHtml(obj.s)}" target="_blank" class="extrato-link">📎 ${escHtml(mes)} S</a>`);
+    return btns.join('');
+  }).join('');
+
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${escHtml(tituloRel)}</title>
+<style>
+  body{font-family:Calibri,Arial,sans-serif;color:#2D2419;margin:0;padding:18px;background:#FAF7F2}
+  .header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #C8956C;padding-bottom:10px;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+  .header h1{margin:0;font-size:18px;color:#A67550;font-weight:700}
+  .header h2{margin:2px 0 0;font-size:12px;color:#7A6355;font-weight:400;font-style:italic}
+  .extratos{display:flex;gap:6px;flex-wrap:wrap;font-size:10px;max-width:60%}
+  .extrato-link{background:#E8F4FD;border:1px solid #2471A3;color:#2471A3;padding:3px 8px;border-radius:5px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:10px}
+  .extrato-link:hover{background:#D5E9F8}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+  .card{border:1.5px solid;border-radius:7px;padding:8px 12px;background:#fff}
+  .card-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;color:#7A6355}
+  .card-value{font-size:18px;font-weight:700}
+  .toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#fff;padding:8px;border-radius:7px;border:1px solid #E0D5C5;margin-bottom:10px}
+  .toolbar label{font-size:10px;color:#7A6355;font-weight:600}
+  .toolbar select,.toolbar input{padding:4px 8px;font-size:11px;border:1px solid #E0D5C5;border-radius:5px;background:#fff;font-family:inherit}
+  .chip-grp{display:flex;gap:0;border:1px solid #C8956C;border-radius:5px;overflow:hidden}
+  .chip{padding:5px 10px;font-size:10px;background:#fff;border:none;cursor:pointer;font-family:inherit;color:#7A6355;font-weight:500;border-right:1px solid #E0D5C5}
+  .chip.active{background:#C8956C;color:#fff}
+  .chip:last-child{border-right:none}
+  .btn-export{padding:5px 10px;font-size:10px;background:#A67550;color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:600}
+  .btn-export:hover{background:#8C5F3F}
+  table{width:100%;border-collapse:collapse;font-size:10px;background:#fff;border-radius:7px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  thead tr{background:#E8DDD0}
+  thead th{padding:7px 8px;font-size:9px;font-weight:700;color:#4A3728;text-align:left;border-bottom:2px solid #C8956C;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none}
+  thead th:hover{background:#DFD2C0}
+  thead th.num{text-align:right}
+  thead th.cen{text-align:center}
+  tbody tr{border-bottom:1px solid #F0EAE0}
+  tbody tr:hover{background:#FCF9F4}
+  tbody td{padding:6px 8px;font-size:10px;vertical-align:top}
+  .grp{background:#F5F3FF !important}
+  .pcc{background:#FFF7ED !important}
+  .conc-bola{font-size:13px}
+  .tipo-icon{font-size:12px}
+  .mes-tag{background:#E8DDD0;color:#7A6355;padding:1px 5px;border-radius:7px;font-size:8px;font-weight:600}
+  .tag{display:inline-block;font-size:8px;font-weight:600;padding:1px 5px;border-radius:7px}
+  .t-pri{background:#EDE9FE;color:#4F4580}
+  .t-sec{background:#DBEAFE;color:#0369A1}
+  .t-grp{background:#E9D5FF;color:#5B21B6;font-family:monospace}
+  .t-rf{background:#FEE2E2;color:#991B1B}
+  .t-fat{background:#D4EDDA;color:#1E6E3A}
+  .t-sf{background:#FEE2E2;color:#991B1B}
+  .agg{font-size:9px;color:#5B21B6;font-style:italic;margin-top:2px}
+  .num{text-align:right;font-family:'DM Mono',Consolas,monospace;font-weight:500}
+  .cen{text-align:center}
+  .neg{color:#C0392B}.po{color:#FB923C}.iv{color:#2471A3}.rf{color:#991B1B}
+  .total-row td{background:#E8DDD0;font-weight:700;font-size:10px;padding:7px 8px;border-top:2px solid #C8956C}
+  .pesq{flex:1;min-width:200px}
+  .results-info{font-size:10px;color:#7A6355;margin-bottom:6px}
+  .fat-link{color:#2471A3;text-decoration:none;font-size:9px}
+  .fat-link:hover{text-decoration:underline}
+  .sort-arrow{font-size:8px;margin-left:3px;opacity:.6}
+</style>
+</head><body>
+<div class="header">
+  <div>
+    <h1>LBC Solicitadora SP RL</h1>
+    <h2>${escHtml(tituloRel)}</h2>
+  </div>
+  <div class="extratos">${extratosBotoes||'<span style="font-size:10px;color:#888">Sem extratos disponíveis</span>'}</div>
+</div>
+
+<div class="cards">
+  <div class="card" style="border-color:#C0392B"><div class="card-label">💼 Despesas empresa</div><div class="card-value" style="color:#C0392B" id="card-de">—</div></div>
+  <div class="card" style="border-color:#FB923C"><div class="card-label">💳 Por conta cliente</div><div class="card-value" style="color:#FB923C" id="card-pcc">—</div></div>
+  <div class="card" style="border-color:#2471A3"><div class="card-label">Total IVA</div><div class="card-value" style="color:#2471A3" id="card-iva">—</div></div>
+  <div class="card" style="border-color:#991B1B"><div class="card-label">Retenção fonte</div><div class="card-value" style="color:#991B1B" id="card-rf">—</div></div>
+  <div class="card" style="border-color:#7C3AED"><div class="card-label">Por conciliar</div><div class="card-value" style="color:#7C3AED" id="card-conc">—</div></div>
+</div>
+
+<div class="toolbar">
+  <label>Mês:</label>
+  <select id="f-mes">
+    <option value="">Todos</option>
+    <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
+    <option>Abril</option><option>Maio</option><option>Junho</option>
+    <option>Julho</option><option>Agosto</option><option>Setembro</option>
+    <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+  </select>
+  <label>Tipo:</label>
+  <div class="chip-grp">
+    <button class="chip active" data-tipo="">Todos</button>
+    <button class="chip" data-tipo="Despesa empresa">💼 Despesa empresa</button>
+    <button class="chip" data-tipo="Pagamento por conta cliente">💳 Por conta cliente</button>
+  </div>
+  <label>Conta:</label>
+  <select id="f-conta">
+    <option value="">Todas</option>
+    <option value="Principal">Principal</option>
+    <option value="Secundária">Secundária</option>
+  </select>
+  <label>Conciliação:</label>
+  <select id="f-conc">
+    <option value="">Todos</option>
+    <option value="conc">Conciliados</option>
+    <option value="nao">Por conciliar</option>
+  </select>
+  <input type="text" class="pesq" id="f-pesq" placeholder="🔍 Pesquisar (descrição, cliente, valor, data)...">
+  <button class="btn-export" onclick="exportarExcel()">⬇ Excel</button>
+</div>
+
+<div class="results-info" id="resInfo">—</div>
+
+<table>
+  <thead><tr>
+    <th class="cen" style="width:30px" data-sort="conciliado">✓</th>
+    <th class="cen" style="width:30px" data-sort="tipo">Tipo</th>
+    <th data-sort="data" style="width:75px">Data</th>
+    <th data-sort="mes" style="width:60px">Mês</th>
+    <th data-sort="categoria" style="width:80px">Categoria</th>
+    <th data-sort="descricao">Descrição</th>
+    <th class="num" data-sort="valor" style="width:75px">Valor €</th>
+    <th class="num" data-sort="iva" style="width:60px">IVA €</th>
+    <th class="num" data-sort="rf" style="width:60px">RF €</th>
+    <th class="num" data-sort="liquido" style="width:75px">Líquido €</th>
+    <th data-sort="conta" style="width:75px">Conta</th>
+    <th data-sort="cliente" style="width:120px">Cliente</th>
+    <th data-sort="fatInterna" style="width:80px">Nº Fat.</th>
+    <th data-sort="estado" style="width:75px">Estado</th>
+    <th class="cen" style="width:50px">Fatura</th>
+  </tr></thead>
+  <tbody id="tbody"></tbody>
+  <tfoot><tr class="total-row" id="tfoot"></tr></tfoot>
+</table>
+
+<script>
+const movs=${JSON.stringify(movsJson)};
+const fmt=v=>parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+const fmtData=d=>{if(!d)return'—';const p=String(d).split('T')[0].split('-');return p.length===3?\`\${p[2]}/\${p[1]}/\${p[0]}\`:d;};
+const escHtml=s=>String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let estado={mes:'',tipo:'',conta:'',conc:'',pesq:'',sortKey:'data',sortAsc:true};
+
+function aplicar(){
+  let lst=movs.slice();
+  if(estado.mes)lst=lst.filter(m=>m.mes===estado.mes);
+  if(estado.tipo)lst=lst.filter(m=>m.tipo===estado.tipo);
+  if(estado.conta)lst=lst.filter(m=>m.conta===estado.conta);
+  if(estado.conc==='conc')lst=lst.filter(m=>m.conciliado);
+  if(estado.conc==='nao')lst=lst.filter(m=>!m.conciliado);
+  if(estado.pesq){
+    const q=estado.pesq.toLowerCase().trim();
+    lst=lst.filter(m=>{
+      const all=[m.descricao,m.categoria,m.cliente,m.fatInterna,m.tipo,m.refGrupo,fmtData(m.data),m.mes,String(m.valor),m.valor.toFixed(2)].join(' ').toLowerCase();
+      return all.includes(q);
+    });
+  }
+  lst.sort((a,b)=>{
+    const va=a[estado.sortKey]||'';
+    const vb=b[estado.sortKey]||'';
+    let cmp;
+    if(typeof va==='number'&&typeof vb==='number')cmp=va-vb;
+    else cmp=String(va).localeCompare(String(vb));
+    return estado.sortAsc?cmp:-cmp;
+  });
+  document.getElementById('tbody').innerHTML=lst.map(m=>{
+    const cls=m.refGrupo&&m.qtdGrupo>1?'grp':(m.tipo==='Pagamento por conta cliente'?'pcc':'');
+    const tipoIcon=m.tipo==='Despesa empresa'?'💼':'💳';
+    const fatLink=m.ligacaoFat?\`<a href="\${escHtml(m.ligacaoFat)}" class="fat-link" target="_blank">📄 Ver</a>\`:'—';
+    const grpTag=m.refGrupo?\`<span class="tag t-grp">🔗 \${escHtml(m.refGrupo)}\${m.qtdGrupo>1?' ('+m.qtdGrupo+')':''}</span>\`:'';
+    const aggLine=m.refGrupo&&m.qtdGrupo>1?\`<div class="agg">📋 Fatura agregada · \${m.qtdGrupo} faturas · total grupo \${fmt(m.totalGrupo)}</div>\`:'';
+    const rfStr=m.rf>0?\`-\${fmt(m.rf)}\`:'—';
+    const estadoTag=m.estado==='Com fatura'?'<span class="tag t-fat">✓ Com</span>':(m.estado==='Sem fatura'?'<span class="tag t-sf">⚠ Sem</span>':'—');
+    const valNeg=m.tipo==='Despesa empresa'?'neg':'po';
+    return \`<tr class="\${cls}">
+      <td class="cen"><span class="conc-bola">\${m.conciliado?'🟢':'⚪'}</span></td>
+      <td class="cen"><span class="tipo-icon" title="\${escHtml(m.tipo)}">\${tipoIcon}</span></td>
+      <td>\${fmtData(m.data)}</td>
+      <td><span class="mes-tag">\${escHtml(m.mes)}</span></td>
+      <td>\${escHtml(m.categoria)}</td>
+      <td>\${escHtml(m.descricao)} \${grpTag}\${aggLine}</td>
+      <td class="num \${valNeg}">\${fmt(m.valor)}</td>
+      <td class="num iv">\${m.iva>0?fmt(m.iva):'—'}</td>
+      <td class="num rf">\${rfStr}</td>
+      <td class="num">\${fmt(m.liquido)}</td>
+      <td><span class="tag \${m.conta==='Secundária'?'t-sec':'t-pri'}">\${escHtml(m.conta)}</span></td>
+      <td>\${escHtml(m.cliente)}</td>
+      <td>\${escHtml(m.fatInterna)}</td>
+      <td>\${estadoTag}</td>
+      <td class="cen">\${fatLink}</td>
+    </tr>\`;
+  }).join('');
+  const totDe=lst.filter(m=>m.tipo==='Despesa empresa').reduce((a,m)=>a+m.valor,0);
+  const totPcc=lst.filter(m=>m.tipo==='Pagamento por conta cliente').reduce((a,m)=>a+m.valor,0);
+  const totIva=lst.reduce((a,m)=>a+m.iva,0);
+  const totRf=lst.reduce((a,m)=>a+m.rf,0);
+  const totLiq=lst.reduce((a,m)=>a+m.liquido,0);
+  const naoConc=lst.filter(m=>!m.conciliado).length;
+  document.getElementById('card-de').textContent=fmt(totDe);
+  document.getElementById('card-pcc').textContent=fmt(totPcc);
+  document.getElementById('card-iva').textContent=fmt(totIva);
+  document.getElementById('card-rf').textContent=fmt(totRf);
+  document.getElementById('card-conc').textContent=naoConc+' / '+lst.length;
+  document.getElementById('resInfo').textContent=lst.length+' movimentos · Total: '+fmt(totDe+totPcc)+(totRf>0?' · Líquido pago: '+fmt(totLiq):'');
+  document.getElementById('tfoot').innerHTML=\`
+    <td colspan="6" style="text-align:right">TOTAL (\${lst.length} mov.)</td>
+    <td class="num neg">\${fmt(totDe+totPcc)}</td>
+    <td class="num iv">\${fmt(totIva)}</td>
+    <td class="num rf">-\${fmt(totRf)}</td>
+    <td class="num">\${fmt(totLiq)}</td>
+    <td colspan="5"></td>\`;
+}
+
+document.getElementById('f-mes').addEventListener('change',e=>{estado.mes=e.target.value;aplicar();});
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    estado.tipo=c.dataset.tipo;
+    aplicar();
+  });
+});
+document.getElementById('f-conta').addEventListener('change',e=>{estado.conta=e.target.value;aplicar();});
+document.getElementById('f-conc').addEventListener('change',e=>{estado.conc=e.target.value;aplicar();});
+document.getElementById('f-pesq').addEventListener('input',e=>{estado.pesq=e.target.value;aplicar();});
+document.querySelectorAll('thead th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.dataset.sort;
+    if(estado.sortKey===k)estado.sortAsc=!estado.sortAsc;
+    else{estado.sortKey=k;estado.sortAsc=true;}
+    document.querySelectorAll('thead th .sort-arrow').forEach(a=>a.remove());
+    const arr=document.createElement('span');arr.className='sort-arrow';arr.textContent=estado.sortAsc?'▲':'▼';
+    th.appendChild(arr);
+    aplicar();
+  });
+});
+
+function exportarExcel(){
+  let lst=movs.slice();
+  if(estado.mes)lst=lst.filter(m=>m.mes===estado.mes);
+  if(estado.tipo)lst=lst.filter(m=>m.tipo===estado.tipo);
+  if(estado.conta)lst=lst.filter(m=>m.conta===estado.conta);
+  if(estado.conc==='conc')lst=lst.filter(m=>m.conciliado);
+  if(estado.conc==='nao')lst=lst.filter(m=>!m.conciliado);
+  if(estado.pesq){const q=estado.pesq.toLowerCase().trim();lst=lst.filter(m=>{const a=[m.descricao,m.categoria,m.cliente,m.fatInterna,m.tipo,m.refGrupo,fmtData(m.data),m.mes].join(' ').toLowerCase();return a.includes(q);});}
+  const sep=';';
+  const header=['Conciliado','Tipo','Data','Mês','Categoria','Descrição','Valor','IVA','RF','Líquido','Conta','Cliente','Nº Fatura','Estado','Grupo','Fatura URL'];
+  const rows=[header.join(sep)].concat(lst.map(m=>[
+    m.conciliado?'Sim':'Não',m.tipo,fmtData(m.data),m.mes,m.categoria,
+    '"'+(m.descricao||'').replace(/"/g,'""')+'"',
+    m.valor.toFixed(2).replace('.',','),m.iva.toFixed(2).replace('.',','),
+    m.rf.toFixed(2).replace('.',','),m.liquido.toFixed(2).replace('.',','),
+    m.conta,'"'+(m.cliente||'').replace(/"/g,'""')+'"',m.fatInterna,m.estado,
+    m.refGrupo+(m.qtdGrupo>1?' ('+m.qtdGrupo+')':''),m.ligacaoFat
+  ].join(sep)));
+  const blob=new Blob(['\\ufeff'+rows.join('\\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Contabilidade_Anual_${ano}.csv';
+  a.click();
+}
+
+aplicar();
+<\/script>
+</body></html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`Contabilidade_${contaFiltro?contaFiltro+'_':''}ANO_${ano}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Mapa anual ${contaFiltro?'('+contaFiltro+') ':''}${ano} exportado!`,'success');
 }
 
 async function corrigirLinksAbrilParaMarco(){
