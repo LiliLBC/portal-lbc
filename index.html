@@ -1009,22 +1009,28 @@ tbody tr:hover td{background:#FAFAF8}
             <button class="btn btn-sm" onclick="fecharModalConciliacao()" title="Fechar">✕</button>
           </div>
 
-          <!-- PASSO 1: Cola texto do extrato -->
+          <!-- PASSO 1: Upload do extrato -->
           <div id="conc-passo1">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem">
-              <strong>1. Abre o PDF do extrato bancário</strong> (CGD, Millennium, etc). Selecciona todo o texto da página de movimentos (Ctrl+A → Ctrl+C) e cola na caixa abaixo.
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;background:#E0F2FE;padding:.6rem .75rem;border-radius:7px;border-left:3px solid #0EA5E9">
+              <strong>💡 Recomendado:</strong> exporta o extrato em <strong>CSV ou Excel</strong> da Caixa Directa Empresas (mais fiável que PDF).<br>
+              <span style="font-size:11px">Suporta: PDF, CSV, XLSX, XLS</span>
             </div>
-            <div class="field-group" style="margin-bottom:.5rem">
+            <div class="field-group" style="margin-bottom:.75rem">
               <label class="form-label" style="font-size:11px">Conta bancária *</label>
               <select class="form-select" id="conc-conta" style="font-size:12px">
                 <option value="Principal">Principal (CGD)</option>
                 <option value="Secundária">Secundária</option>
               </select>
             </div>
-            <textarea class="form-input" id="conc-texto" rows="14" placeholder="Cola aqui o texto do extrato bancário..." style="font-family:'DM Mono',monospace;font-size:11px;width:100%"></textarea>
+            <div class="field-group" style="margin-bottom:.75rem">
+              <label class="form-label" style="font-size:11px">Ficheiro do extrato *</label>
+              <input type="file" id="conc-file" accept=".pdf,.csv,.xlsx,.xls" onchange="onConcFileChange()" style="font-size:12px;padding:6px;width:100%;border:1px dashed var(--border);border-radius:7px;background:var(--surface)">
+              <div id="conc-file-info" style="font-size:11px;color:var(--text-faint);margin-top:.25rem"></div>
+            </div>
+            <div id="conc-status" style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem;display:none"></div>
             <div style="display:flex;gap:.5rem;margin-top:.75rem;justify-content:flex-end">
               <button class="btn" onclick="fecharModalConciliacao()">Cancelar</button>
-              <button class="btn btn-primary" onclick="processarConciliacao()">📋 Processar e comparar</button>
+              <button class="btn btn-primary" id="conc-btn-processar" onclick="processarConciliacao()" disabled style="opacity:.5">📋 Processar e comparar</button>
             </div>
           </div>
 
@@ -1347,6 +1353,11 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="metric-value" id="cb-sem-fatura" style="color:var(--red)">—</div>
             <div class="metric-sub">risco de multa</div>
           </div>
+          <div class="metric-card" style="background:#FFF3CD;border-color:#FFC107">
+            <div class="metric-label">📋 Por conciliar</div>
+            <div class="metric-value" id="cb-por-conciliar" style="color:#856404">—</div>
+            <div class="metric-sub" id="cb-por-conciliar-sub">extrato bancário</div>
+          </div>
         </div>
 
         <div class="section-header">
@@ -1378,6 +1389,11 @@ tbody tr:hover td{background:#FAFAF8}
               <option value="">Todas as contas</option>
               <option value="Principal">Só Principal</option>
               <option value="Secundária">Só Secundária</option>
+            </select>
+            <select class="form-select" id="cb-filtro-conciliado" onchange="filtrarContabilidade()" style="width:160px;font-size:12px">
+              <option value="">Conciliação: todos</option>
+              <option value="nao">Só não conciliados</option>
+              <option value="sim">Só conciliados</option>
             </select>
           </div>
           <div style="display:flex;gap:.5rem">
@@ -1473,6 +1489,33 @@ tbody tr:hover td{background:#FAFAF8}
                 </select>
               </div>
               <div id="cb-liquido-hint" style="font-size:10px;color:var(--text-faint);margin-top:.25rem;display:none">Líquido: <span id="cb-liquido-val">—</span></div>
+            </div>
+            <div class="field-group field-full" style="background:#FFFBF0;padding:.6rem .75rem;border-radius:7px;border:1px solid #FFE7B5">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:12px;color:var(--text-muted);margin-bottom:.4rem">
+                <input type="checkbox" id="cb-rf-checkbox" onchange="onCbRetencaoChange()">
+                <span><strong>📋 Retenção na fonte</strong> — fornecedor desconta % no valor a pagar</span>
+              </label>
+              <div id="cb-rf-detalhes" style="display:none;padding-top:.4rem;border-top:1px dashed #FFE7B5">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+                  <div>
+                    <div class="field-label">Taxa</div>
+                    <div style="display:flex;gap:.3rem">
+                      <select class="form-select" id="cb-rf-taxa" onchange="recalcularRetencao();atualizarLiquido()" style="flex:1;font-size:12px">
+                        <option value="23" selected>23%</option>
+                        <option value="25">25%</option>
+                        <option value="11.5">11,5%</option>
+                        <option value="custom">Personalizada</option>
+                      </select>
+                      <input class="form-input" id="cb-rf-taxa-custom" type="number" step="0.1" placeholder="%" style="width:70px;display:none;font-size:12px" oninput="recalcularRetencao();atualizarLiquido()">
+                    </div>
+                  </div>
+                  <div>
+                    <div class="field-label">Valor RF €</div>
+                    <input class="form-input" id="cb-rf-valor" type="number" step="0.01" placeholder="0.00" oninput="atualizarLiquido()" style="font-size:12px">
+                  </div>
+                </div>
+                <div id="cb-rf-info" style="font-size:10px;color:var(--text-muted);margin-top:.4rem;font-family:'DM Mono',monospace"></div>
+              </div>
             </div>
             <div class="field-group">
               <div class="field-label">Conta</div>
@@ -2015,7 +2058,7 @@ const LISTA_TAREFAS='Tarefas_Escritorio';
 const LISTA_CONTA='Processos_ContaCorrente';
 const LISTA_CONTAB='Contabilidade';
 const BIBLIOTECA_FATURAS='FATURAS';
-const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',iva:'IVA',meio:'Meio_Pagamento',conta:'Conta',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes'};
+const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',iva:'IVA',meio:'Meio_Pagamento',conta:'Conta',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes',pagtoConjunto:'Pagto_Conjunto',refConjunta:'Ref_Conjunta',conciliado:'Conciliado',dataConciliacao:'Data_Conciliacao',retencaoFonte:'Retencao_Fonte',taxaRetencao:'Taxa_Retencao',valorLiquido:'Valor_Liquido'};
 const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Gastos_Conta_Cliente',recebido:'Valor_Recebido',estado:'Estado',observacoes:'Observacoes',data:'Data'};
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
@@ -4461,12 +4504,25 @@ async function carregarContabilidade(){
   try{
     const sfBase='Data,TipoDespesa,Categoria,Descricao,Valor,IVA,Meio_Pagamento,Conta,Cliente_Associado,Fatura_Interna,Estado_Fatura_Externa,Ligacao_Fatura,Observacoes';
     let data;
+    // Tentar com TODOS os campos
     try{
-      const sf=sfBase+',Pagto_Conjunto,Ref_Conjunta';
+      const sf=sfBase+',Pagto_Conjunto,Ref_Conjunta,Conciliado,Data_Conciliacao,Retencao_Fonte,Taxa_Retencao,Valor_Liquido';
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
     }catch(_){
-      // Fallback: colunas Pagto_Conjunto/Ref_Conjunta ainda não criadas
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sfBase})&$top=500`);
+      try{
+        // Fallback 1: sem Retencao
+        const sf=sfBase+',Pagto_Conjunto,Ref_Conjunta,Conciliado,Data_Conciliacao';
+        data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
+      }catch(__){
+        try{
+          // Fallback 2: sem Conciliado
+          const sf=sfBase+',Pagto_Conjunto,Ref_Conjunta';
+          data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sf})&$top=500`);
+        }catch(___){
+          // Fallback final: só base
+          data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items?$expand=fields($select=${sfBase})&$top=500`);
+        }
+      }
     }
     todosMovimentos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     // Seleccionar mês actual por defeito
@@ -4482,6 +4538,7 @@ function filtrarContabilidade(){
   const tipo=document.getElementById('cb-filtro-tipo').value;
   const fatura=document.getElementById('cb-filtro-fatura').value;
   const conta=document.getElementById('cb-filtro-conta')?.value||'';
+  const conciliado=document.getElementById('cb-filtro-conciliado')?.value||'';
   let lista=todosMovimentos;
   if(mes) lista=lista.filter(i=>{
     if(!i[CB.data])return false;
@@ -4490,16 +4547,26 @@ function filtrarContabilidade(){
   if(tipo) lista=lista.filter(i=>i[CB.tipo]===tipo);
   if(fatura) lista=lista.filter(i=>i[CB.estadoFatura]===fatura);
   if(conta) lista=lista.filter(i=>(i[CB.conta]||'Principal')===conta);
+  if(conciliado==='sim') lista=lista.filter(i=>i[CB.conciliado]===true||i[CB.conciliado]==='Sim'||i[CB.conciliado]==='true');
+  if(conciliado==='nao') lista=lista.filter(i=>!(i[CB.conciliado]===true||i[CB.conciliado]==='Sim'||i[CB.conciliado]==='true'));
   // Actualizar métricas
   const despesa=lista.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const cliente=lista.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   const totalIva=lista.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
   // "Sem fatura" só conta despesas da empresa — pagamentos por conta cliente NÃO precisam fatura
   const semFatura=lista.filter(i=>i[CB.estadoFatura]==='Sem fatura'&&i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
+  // "Por conciliar" — todos os movimentos não conciliados (independentemente do tipo)
+  const naoConc=lista.filter(i=>!(i[CB.conciliado]===true||i[CB.conciliado]==='Sim'||i[CB.conciliado]==='true'));
+  const valorPorConciliar=naoConc.reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
   document.getElementById('cb-total-despesa').textContent=despesa.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-total-cliente').textContent=cliente.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-total-geral').textContent=totalIva.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
   document.getElementById('cb-sem-fatura').textContent=semFatura.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€';
+  const elPorConc=document.getElementById('cb-por-conciliar');
+  if(elPorConc){
+    elPorConc.textContent=naoConc.length;
+    document.getElementById('cb-por-conciliar-sub').textContent=valorPorConciliar?valorPorConciliar.toLocaleString('pt-PT',{minimumFractionDigits:2})+'€ por verificar':'tudo conciliado';
+  }
   document.getElementById('cb-mes-label').textContent=mes||'todos os meses';
   verificarExtratoMes();
   renderContabilidade(lista);
@@ -4523,11 +4590,17 @@ function cbTipoChip(el){
 // ─── CONCILIAÇÃO BANCÁRIA ─────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 let resultadoConciliacao=null;
+let movsExtratoCache=null;  // movimentos parseados do extrato carregado
 
 function abrirModalConciliacao(){
   document.getElementById('conc-passo1').style.display='block';
   document.getElementById('conc-passo2').style.display='none';
-  document.getElementById('conc-texto').value='';
+  const fileEl=document.getElementById('conc-file');if(fileEl)fileEl.value='';
+  document.getElementById('conc-file-info').textContent='';
+  document.getElementById('conc-status').style.display='none';
+  const btn=document.getElementById('conc-btn-processar');
+  if(btn){btn.disabled=true;btn.style.opacity='.5';}
+  movsExtratoCache=null;
   // Pre-selecionar conta de filtro actual (se houver)
   const contaActual=document.getElementById('cb-filtro-conta')?.value||'Principal';
   document.getElementById('conc-conta').value=contaActual==='Secundária'?'Secundária':'Principal';
@@ -4543,14 +4616,178 @@ function conciliacaoVoltarTexto(){
   document.getElementById('conc-passo2').style.display='none';
 }
 
-// Parser do extrato CGD/Millennium/etc — formato genérico:
-//   YYYY-MM-DD YYYY-MM-DD <descrição> -123,45 12.345,67
-//   ou DD/MM/YYYY DD/MM/YYYY <descrição> -123,45 12.345,67
+// Carrega script externo dinamicamente
+function carregarScriptUma(url){
+  return new Promise((resolve,reject)=>{
+    if(document.querySelector(`script[src="${url}"]`)){resolve();return;}
+    const s=document.createElement('script');s.src=url;
+    s.onload=()=>resolve();s.onerror=()=>reject(new Error('Falha a carregar '+url));
+    document.head.appendChild(s);
+  });
+}
+
+// Quando o utilizador escolhe um ficheiro
+async function onConcFileChange(){
+  const file=document.getElementById('conc-file').files[0];
+  const btn=document.getElementById('conc-btn-processar');
+  const status=document.getElementById('conc-status');
+  const info=document.getElementById('conc-file-info');
+  if(!file){
+    btn.disabled=true;btn.style.opacity='.5';info.textContent='';
+    return;
+  }
+  info.innerHTML=`<strong>${escHtml(file.name)}</strong> · ${(file.size/1024).toFixed(1)} KB`;
+  status.style.display='block';
+  status.style.color='var(--text-faint)';
+  status.textContent='A analisar ficheiro...';
+  try{
+    const ext=file.name.toLowerCase().split('.').pop();
+    let movs=[];
+    if(ext==='pdf'){
+      movs=await parsearPDFExtrato(file);
+    } else if(ext==='csv'){
+      movs=await parsearCSVExtrato(file);
+    } else if(ext==='xlsx'||ext==='xls'){
+      movs=await parsearXLSXExtrato(file);
+    } else {
+      throw new Error('Formato não suportado. Usa PDF, CSV ou XLSX.');
+    }
+    if(!movs.length){
+      status.style.color='var(--red)';
+      status.innerHTML='⚠ Não foi possível detectar movimentos no ficheiro. Verifica o formato.';
+      btn.disabled=true;btn.style.opacity='.5';
+      return;
+    }
+    movsExtratoCache=movs;
+    status.style.color='var(--green)';
+    status.innerHTML=`✓ ${movs.length} movimentos detectados (${movs[0].data} → ${movs[movs.length-1].data})`;
+    btn.disabled=false;btn.style.opacity='1';
+  }catch(e){
+    status.style.color='var(--red)';
+    status.innerHTML='⚠ '+escHtml(e.message);
+    btn.disabled=true;btn.style.opacity='.5';
+  }
+}
+
+// Parser PDF — extrai texto via PDF.js, depois aplica regex
+async function parsearPDFExtrato(file){
+  await carregarScriptUma('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  } else {
+    throw new Error('PDF.js não carregou');
+  }
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let textoCompleto='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent();
+    // Reconstruir linhas baseado em coordenadas Y
+    const linhas={};
+    content.items.forEach(item=>{
+      const y=Math.round(item.transform[5]);
+      if(!linhas[y])linhas[y]=[];
+      linhas[y].push({x:item.transform[4],str:item.str});
+    });
+    // Ordenar linhas Y desc (de cima para baixo) e dentro de cada linha por X
+    Object.keys(linhas).sort((a,b)=>b-a).forEach(y=>{
+      const linha=linhas[y].sort((a,b)=>a.x-b.x).map(i=>i.str).join(' ');
+      textoCompleto+=linha+'\n';
+    });
+  }
+  return parsearExtrato(textoCompleto);
+}
+
+// Parser CSV — trata o formato de exportação CGD
+async function parsearCSVExtrato(file){
+  const texto=await file.text();
+  const linhas=texto.split(/\r?\n/);
+  const movimentos=[];
+  // CSV CGD: separador ; ou , — detectar automaticamente
+  const sep=texto.includes(';')?';':',';
+  for(const linha of linhas){
+    if(!linha.trim())continue;
+    const cols=linha.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
+    // Procurar colunas que pareçam: data, descrição, valor
+    // Formato CGD típico: Data Mov;Data Valor;Descrição;Valor;Saldo
+    if(cols.length<4)continue;
+    const dataMatch=cols[0].match(/^(\d{4}-\d{2}-\d{2})$/)||cols[0].match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(!dataMatch)continue;
+    let data;
+    if(dataMatch.length===2)data=dataMatch[1];
+    else data=`${dataMatch[3]}-${dataMatch[2]}-${dataMatch[1]}`;
+    // Encontrar a coluna do valor (formato tipo -123,45 ou -123.45)
+    let valorIdx=-1,valorNum=null;
+    for(let i=cols.length-1;i>=2;i--){
+      const v=cols[i].replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+      const n=parseFloat(v);
+      if(!isNaN(n)&&Math.abs(n)<1e9&&v.match(/^-?\d+(\.\d+)?$/)){
+        if(valorIdx===-1){
+          // primeiro número da direita = saldo, segundo = valor
+          valorIdx=i;continue;
+        }
+        valorIdx=i;valorNum=n;break;
+      }
+    }
+    if(valorNum===null)continue;
+    // Descrição = cols entre data e valor
+    const desc=cols.slice(2,valorIdx).join(' ').trim();
+    movimentos.push({data,descricao:desc,valor:valorNum,linhaOriginal:linha});
+  }
+  return movimentos.sort((a,b)=>a.data.localeCompare(b.data));
+}
+
+// Parser XLSX/XLS — usa SheetJS
+async function parsearXLSXExtrato(file){
+  await carregarScriptUma('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  if(!window.XLSX)throw new Error('SheetJS não carregou');
+  const ab=await file.arrayBuffer();
+  const wb=XLSX.read(ab,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const linhas=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+  const movimentos=[];
+  for(const linha of linhas){
+    if(!linha||linha.length<3)continue;
+    // Procurar primeira célula com data
+    let dataStr='';
+    for(const c of linha){
+      const s=String(c||'').trim();
+      const m=s.match(/^(\d{4}-\d{2}-\d{2})$/)||s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if(m){
+        if(m.length===2)dataStr=m[1];
+        else dataStr=`${m[3]}-${m[2]}-${m[1]}`;
+        break;
+      }
+    }
+    if(!dataStr)continue;
+    // Procurar valor (primeiro número negativo ou positivo isolado)
+    let valorNum=null;
+    for(let i=linha.length-1;i>=0;i--){
+      const s=String(linha[i]||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+      const n=parseFloat(s);
+      if(!isNaN(n)&&s.match(/^-?\d+(\.\d+)?$/)&&Math.abs(n)<1e7){
+        // O 1º da direita é saldo. Pegar o seguinte.
+        if(valorNum===null){valorNum=n;continue;}
+        valorNum=n;break;
+      }
+    }
+    if(valorNum===null)continue;
+    // Descrição = cells de texto
+    const desc=linha.filter(c=>{
+      const s=String(c||'').trim();
+      return s.length>3&&!s.match(/^-?[\d.,]+$/)&&!s.match(/^\d{4}-\d{2}-\d{2}$/)&&!s.match(/^\d{2}\/\d{2}\/\d{4}$/);
+    }).join(' ').trim();
+    movimentos.push({data:dataStr,descricao:desc,valor:valorNum});
+  }
+  return movimentos.sort((a,b)=>a.data.localeCompare(b.data));
+}
+
+// Parser do TEXTO (usado pelo PDF) — formato CGD:
+//   2026-03-02 2026-03-02 GRENKE RENTING S A -52,58 19.581,15
 function parsearExtrato(texto){
   const linhas=texto.split(/\r?\n/);
   const movimentos=[];
-  // Regex flexível: 2 datas (com - ou /) + descrição + valor (com sinal) + saldo
-  // Aceita: "2026-03-02 2026-03-02 GRENKE RENTING S A -52,58 19.581,15"
   const re=/^(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})\s+(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/;
   for(const linha of linhas){
     const m=linha.match(re);
@@ -4564,9 +4801,8 @@ function parsearExtrato(texto){
         data=dataStr;
       }
       const desc=m[3].trim();
-      // Valor: trocar . pelo nada (separador de milhares) e , por .
       const valorNum=parseFloat(m[4].replace(/\./g,'').replace(',','.'));
-      movimentos.push({data,descricao:desc,valor:valorNum,saldo:m[5],linhaOriginal:linha.trim()});
+      movimentos.push({data,descricao:desc,valor:valorNum,linhaOriginal:linha.trim()});
     }
   }
   return movimentos;
@@ -4662,14 +4898,11 @@ function conciliarMovimentos(movsExtrato,movsPortal){
 }
 
 async function processarConciliacao(){
-  const texto=document.getElementById('conc-texto').value.trim();
   const conta=document.getElementById('conc-conta').value;
-  if(!texto){showToast('Cola o texto do extrato','error');return;}
-  const movsExtrato=parsearExtrato(texto);
-  if(!movsExtrato.length){
-    showToast('Não consegui detectar nenhum movimento no texto. Confirma o formato.','error');
-    return;
+  if(!movsExtratoCache||!movsExtratoCache.length){
+    showToast('Carrega o ficheiro do extrato primeiro','error');return;
   }
+  const movsExtrato=movsExtratoCache;
   // Filtrar movimentos do portal pela mesma conta
   const movsPortal=todosMovimentos.filter(m=>(m[CB.conta]||'Principal')===conta);
   resultadoConciliacao=conciliarMovimentos(movsExtrato,movsPortal);
@@ -4721,66 +4954,161 @@ function renderConteudoConciliacao(tab){
   if(!r){wrap.innerHTML='';return;}
   if(tab==='conciliados'){
     if(!r.conciliados.length){wrap.innerHTML='<div class="notice notice-info">Nenhum conciliado.</div>';return;}
-    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Movimentos do extrato que correspondem a lançamentos no portal.</div>'+
-      r.conciliados.map(c=>{
+    wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:.5rem">'+
+      '<div style="font-size:11px;color:var(--text-faint)">Movimentos do extrato que correspondem a lançamentos no portal.</div>'+
+      `<button class="btn btn-sm" onclick="marcarTodosConciliados()" style="background:#D4EDDA;border-color:#1E6E3A;color:#1E6E3A">✓ Marcar todos como conciliados (${r.conciliados.length})</button>`+
+      '</div>'+
+      r.conciliados.map((c,idx)=>{
         const ext=c.extrato;
         if(c.portalGrupo){
           // Pagamento conjunto
-          return `<div style="background:#E8F5E9;border:1px solid #1E6E3A;border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem">
+          const ids=c.portalGrupo.map(p=>p.id).join(',');
+          return `<div style="background:#E8F5E9;border:1px solid #1E6E3A;border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem" id="conc-row-${idx}">
             <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
               <span style="font-size:11px;font-weight:600;color:#1E6E3A">✓ Pagamento conjunto · ${escHtml(ext.data)} · ${escHtml(c.refConjunta)}</span>
               <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:#1E6E3A">${fmtEur(Math.abs(ext.valor))}</span>
+              <button class="btn btn-sm" onclick="marcarConciliadoMulti('${ids}')" style="font-size:10px;padding:2px 6px">✓ Conciliar (${c.portalGrupo.length})</button>
             </div>
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:.3rem">Extrato: ${escHtml(ext.descricao)}</div>
             <div style="font-size:11px;color:var(--text-muted)">${c.portalGrupo.length} lançamentos:</div>
             ${c.portalGrupo.map(p=>`<div style="margin-left:.6rem;font-size:11px;font-family:'DM Mono',monospace">• ${fmtData(p[CB.data])} ${escHtml(p[CB.descricao]||'—')} <strong>${fmtEur(p[CB.valor])}</strong></div>`).join('')}
           </div>`;
         }
-        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid var(--border);border-left:3px solid #1E6E3A;border-radius:7px">
+        const jaConc=c.portal[CB.conciliado]===true||c.portal[CB.conciliado]==='Sim'||c.portal[CB.conciliado]==='true';
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid var(--border);border-left:3px solid #1E6E3A;border-radius:7px" id="conc-row-${idx}">
           <span style="font-size:13px">✓</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;font-weight:500">${escHtml(ext.data)} · ${escHtml(ext.descricao.substring(0,80))}</div>
             <div style="font-size:10px;color:var(--text-faint)">→ Portal: ${fmtData(c.portal[CB.data])} · ${escHtml(c.portal[CB.descricao]||'—')}</div>
           </div>
           <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:#1E6E3A">${fmtEur(Math.abs(ext.valor))}</span>
+          ${jaConc
+            ?'<span style="font-size:10px;color:var(--green)">✓ já marcado</span>'
+            :`<button class="btn btn-sm" onclick="marcarConciliadoConc('${c.portal.id}',this)" style="font-size:10px;padding:2px 6px">✓ Conciliar</button>`}
         </div>`;
       }).join('');
   } else if(tab==='extrato-sem-portal'){
     if(!r.extratoSemPortal.length){wrap.innerHTML='<div class="notice notice-success">✓ Tudo conciliado!</div>';return;}
-    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Movimentos no extrato bancário sem lançamento correspondente. <strong>Provavelmente faltam lançar no portal</strong> (em "Despesa empresa" ou "Por conta cliente").</div>'+
-      r.extratoSemPortal.map(ext=>{
+    wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Movimentos no extrato bancário sem lançamento correspondente. <strong>Cria o lançamento</strong> em "Despesa empresa" ou "Por conta cliente".</div>'+
+      r.extratoSemPortal.map((ext,idx)=>{
         const eDespesa=ext.valor<0;
+        const safeExt=JSON.stringify({data:ext.data,descricao:ext.descricao,valor:ext.valor}).replace(/"/g,'&quot;');
         return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #FFC107;border-radius:7px">
           <span style="font-size:13px">⚠</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;font-weight:500">${escHtml(ext.data)} · ${escHtml(ext.descricao)}</div>
           </div>
           <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${eDespesa?'var(--red)':'var(--green)'}">${fmtEur(ext.valor)}</span>
+          <button class="btn btn-sm" onclick="criarLancamentoDoExtrato(${safeExt})" style="font-size:10px;padding:2px 6px;background:var(--accent-light);color:var(--accent-dark);border-color:var(--accent)">+ Criar lançamento</button>
         </div>`;
       }).join('');
   } else if(tab==='portal-sem-extrato'){
     if(!r.portalSemExtrato.length){wrap.innerHTML='<div class="notice notice-success">✓ Tudo conciliado!</div>';return;}
     wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Lançamentos no portal sem movimento correspondente no extrato. Pode ser de outro mês ou erro de data.</div>'+
-      r.portalSemExtrato.map(p=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #FFC107;border-radius:7px">
-        <span style="font-size:13px">⚠</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:500">${fmtData(p[CB.data])} · ${escHtml(p[CB.descricao]||'—')}</div>
-          <div style="font-size:10px;color:var(--text-faint)">${escHtml(p[CB.tipo]||'')}${p[CB.refConjunta]?' · 🔗 '+escHtml(p[CB.refConjunta]):''}</div>
-        </div>
-        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--red)">${fmtEur(p[CB.valor])}</span>
-      </div>`).join('');
+      r.portalSemExtrato.map(p=>{
+        const jaConc=p[CB.conciliado]===true||p[CB.conciliado]==='Sim'||p[CB.conciliado]==='true';
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #FFC107;border-radius:7px">
+          <span style="font-size:13px">⚠</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:500">${fmtData(p[CB.data])} · ${escHtml(p[CB.descricao]||'—')}</div>
+            <div style="font-size:10px;color:var(--text-faint)">${escHtml(p[CB.tipo]||'')}${p[CB.refConjunta]?' · 🔗 '+escHtml(p[CB.refConjunta]):''}</div>
+          </div>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--red)">${fmtEur(p[CB.valor])}</span>
+          ${jaConc
+            ?'<span style="font-size:10px;color:var(--green)">✓ já marcado</span>'
+            :`<button class="btn btn-sm" onclick="marcarConciliadoConc('${p.id}',this)" style="font-size:10px;padding:2px 6px">✓ Conciliar</button>`}
+        </div>`;
+      }).join('');
   } else if(tab==='provaveis'){
     if(!r.provaveis.length){wrap.innerHTML='<div class="notice notice-info">Sem prováveis matches.</div>';return;}
     wrap.innerHTML='<div style="font-size:11px;color:var(--text-faint);margin-bottom:.5rem">Mesmo valor encontrado mas com data diferente — pode ser erro a corrigir.</div>'+
-      r.provaveis.map(c=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #6366F1;border-radius:7px">
-        <span style="font-size:13px">💡</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:500">${escHtml(c.extrato.data)} extrato: ${escHtml(c.extrato.descricao.substring(0,60))}</div>
-          <div style="font-size:10px;color:var(--text-faint)">↔ Portal: ${fmtData(c.portal[CB.data])} · ${escHtml(c.portal[CB.descricao]||'—')} <em>(${escHtml(c.motivo)})</em></div>
-        </div>
-        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${fmtEur(Math.abs(c.extrato.valor))}</span>
-      </div>`).join('');
+      r.provaveis.map(c=>{
+        const jaConc=c.portal[CB.conciliado]===true||c.portal[CB.conciliado]==='Sim'||c.portal[CB.conciliado]==='true';
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;margin-bottom:.3rem;background:var(--surface);border:1px solid #6366F1;border-radius:7px">
+          <span style="font-size:13px">💡</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:500">${escHtml(c.extrato.data)} extrato: ${escHtml(c.extrato.descricao.substring(0,60))}</div>
+            <div style="font-size:10px;color:var(--text-faint)">↔ Portal: ${fmtData(c.portal[CB.data])} · ${escHtml(c.portal[CB.descricao]||'—')} <em>(${escHtml(c.motivo)})</em></div>
+          </div>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${fmtEur(Math.abs(c.extrato.valor))}</span>
+          ${jaConc
+            ?'<span style="font-size:10px;color:var(--green)">✓ já marcado</span>'
+            :`<button class="btn btn-sm" onclick="marcarConciliadoConc('${c.portal.id}',this)" style="font-size:10px;padding:2px 6px">✓ Conciliar</button>`}
+        </div>`;
+      }).join('');
   }
+}
+
+// Marca um movimento como conciliado a partir do modal
+async function marcarConciliadoConc(itemId,btn){
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  await toggleConciliado(itemId);
+  if(btn){
+    btn.outerHTML='<span style="font-size:10px;color:var(--green)">✓ marcado</span>';
+  }
+}
+
+// Marca todos os conciliados (que ainda não estavam) — útil após upload
+async function marcarTodosConciliados(){
+  const r=resultadoConciliacao;
+  if(!r||!r.conciliados.length)return;
+  const idsParaMarcar=[];
+  r.conciliados.forEach(c=>{
+    if(c.portalGrupo){
+      c.portalGrupo.forEach(p=>{
+        const conc=p[CB.conciliado]===true||p[CB.conciliado]==='Sim'||p[CB.conciliado]==='true';
+        if(!conc)idsParaMarcar.push(p.id);
+      });
+    } else if(c.portal){
+      const conc=c.portal[CB.conciliado]===true||c.portal[CB.conciliado]==='Sim'||c.portal[CB.conciliado]==='true';
+      if(!conc)idsParaMarcar.push(c.portal.id);
+    }
+  });
+  if(!idsParaMarcar.length){showToast('Todos já estão conciliados','');return;}
+  if(!confirm(`Marcar ${idsParaMarcar.length} movimento${idsParaMarcar.length===1?'':'s'} como conciliado?`))return;
+  showToast(`A marcar ${idsParaMarcar.length} movimentos...`,'');
+  let ok=0,fail=0;
+  for(const id of idsParaMarcar){
+    try{
+      await renovarToken();
+      const body={[CB.conciliado]:true,[CB.dataConciliacao]:new Date().toISOString()};
+      try{
+        await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${id}/fields`,body);
+      }catch(e){
+        if(/Data_Conciliacao|400|column|invalid/i.test(e.message)){
+          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${id}/fields`,{[CB.conciliado]:true});
+        } else throw e;
+      }
+      const idx=todosMovimentos.findIndex(m=>m.id===id);
+      if(idx>-1)Object.assign(todosMovimentos[idx],body);
+      ok++;
+    }catch(e){console.warn('Falhou:',id,e);fail++;}
+  }
+  showToast(`✓ ${ok} marcado${ok===1?'':'s'}${fail?` (${fail} falhas)`:''}`,'success');
+  filtrarContabilidade();
+  renderResumoConciliacao();
+  renderConteudoConciliacao('conciliados');
+}
+
+// Cria lançamento pré-preenchido com dados do movimento bancário
+function criarLancamentoDoExtrato(ext){
+  fecharModalConciliacao();
+  // Abre painel novo na contabilidade
+  cbAbrirNovo();
+  setTimeout(()=>{
+    document.getElementById('cb-data').value=ext.data;
+    // Se valor é negativo (pagamento) → assumir despesa empresa por defeito
+    document.getElementById('cb-tipo').value=ext.valor<0?'Despesa empresa':'Despesa empresa';
+    onCbTipoChange();
+    document.getElementById('cb-descricao').value=ext.descricao.substring(0,200);
+    document.getElementById('cb-valor').value=Math.abs(ext.valor).toFixed(2);
+    document.getElementById('cb-conta').value=resultadoConciliacao.conta;
+    // Marcar como conciliado automaticamente
+    // (vai-se marcar quando guardar)
+    document.getElementById('cb-pagto-conjunto').checked=false;
+    showToast('Lançamento pré-preenchido. Confere os dados e guarda.','');
+    document.getElementById('cb-categoria').focus();
+  },100);
 }
 
 function conciliacaoExportarHTML(){
@@ -4839,11 +5167,15 @@ function renderContabilidade(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhum movimento encontrado.</div>';el.style.display='block';return;}
   // Ordenar por data desc
   lista=[...lista].sort((a,b)=>new Date(b[CB.data]||0)-new Date(a[CB.data]||0));
-  // Pré-calcular tamanho dos grupos para mostrar contador na etiqueta
+  // Pré-calcular tamanho e total dos grupos
   const tamanhoGrupo={};
+  const totalGrupo={};
   todosMovimentos.forEach(m=>{
     const r=m[CB.refConjunta];
-    if(r)tamanhoGrupo[r]=(tamanhoGrupo[r]||0)+1;
+    if(r){
+      tamanhoGrupo[r]=(tamanhoGrupo[r]||0)+1;
+      totalGrupo[r]=(totalGrupo[r]||0)+(parseFloat(m[CB.valor]||0)||0);
+    }
   });
   el.innerHTML=lista.map(i=>{
     const isDespesa=i[CB.tipo]==='Despesa empresa';
@@ -4852,24 +5184,76 @@ function renderContabilidade(lista){
     const contaTag=conta==='Secundária'
       ? '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#DBEAFE;color:#0369A1;margin-right:4px">Secundária</span>'
       : '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#EDE9FE;color:#4F4580;margin-right:4px">Principal</span>';
+    // Ícone do tipo
+    const tipoIcon=isDespesa
+      ? '<span title="Despesa empresa" style="font-size:13px;margin-right:2px" aria-label="Despesa empresa">💼</span>'
+      : '<span title="Por conta cliente" style="font-size:13px;margin-right:2px" aria-label="Por conta cliente">💳</span>';
     const ref=i[CB.refConjunta]||'';
     const refTag=ref
-      ? `<span onclick="event.stopPropagation();filtrarPorRef('${escHtml(ref).replace(/'/g,'')}')" style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#FEF3C7;color:#92400E;margin-left:4px;cursor:pointer" title="Clica para ver os ${tamanhoGrupo[ref]||1} movimentos deste pagamento conjunto">🔗 ${escHtml(ref)}${tamanhoGrupo[ref]>1?` (${tamanhoGrupo[ref]})`:''}</span>`
+      ? `<span onclick="event.stopPropagation();filtrarPorRef('${escHtml(ref).replace(/'/g,'')}')" style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#E9D5FF;color:#5B21B6;margin-left:4px;cursor:pointer" title="Clica para ver os ${tamanhoGrupo[ref]||1} movimentos deste grupo (total ${(totalGrupo[ref]||0).toFixed(2)}€)">🔗 ${escHtml(ref)}${tamanhoGrupo[ref]>1?` (${tamanhoGrupo[ref]})`:''}</span>`
       : '';
-    return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')">
+    // Linha "fatura agregada" — quando faz parte de grupo
+    const aggInfo=ref&&tamanhoGrupo[ref]>1
+      ? `<div style="font-size:10px;color:#5B21B6;font-weight:500">📋 Fatura agregada · ${tamanhoGrupo[ref]} faturas · total grupo: <strong>${(totalGrupo[ref]||0).toLocaleString('pt-PT',{minimumFractionDigits:2})}€</strong></div>`
+      : '';
+    // Retenção
+    const rfVal=parseFloat(i[CB.retencaoFonte]||0);
+    const rfTag=rfVal>0
+      ? `<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#FEE2E2;color:#991B1B;margin-left:4px" title="Retenção na fonte aplicada">RF -${rfVal.toFixed(2)}€</span>`
+      : '';
+    // Bola de conciliação
+    const conc=i[CB.conciliado]===true||i[CB.conciliado]==='Sim'||i[CB.conciliado]==='true';
+    const dataConc=i[CB.dataConciliacao]?` (${fmtData(i[CB.dataConciliacao])})`:'';
+    const bola=conc
+      ? `<button onclick="event.stopPropagation();toggleConciliado('${i.id}')" title="Conciliado${dataConc} — clica para desmarcar" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px">🟢</button>`
+      : `<button onclick="event.stopPropagation();toggleConciliado('${i.id}')" title="Por conciliar — clica para marcar" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;opacity:.5">⚪</button>`;
+    // Fundo da linha conforme tipo / agregada
+    const bgStyle=ref&&tamanhoGrupo[ref]>1
+      ? 'background:#F5F3FF;border-left:3px solid #7C3AED;'
+      : (!isDespesa?'background:#FFF7ED;border-left:3px solid #FB923C;':'');
+    return`<div class="reg-list-item" onclick="abrirContabEditar('${i.id}')" style="${bgStyle}${conc?'opacity:.75;':''}">
+      ${bola}
+      ${tipoIcon}
       <div class="reg-list-main">
-        <div class="reg-list-nome">${contaTag}${escHtml(i[CB.descricao]||'—')}${refTag}</div>
+        <div class="reg-list-nome">${contaTag}${escHtml(i[CB.descricao]||'—')}${refTag}${rfTag}</div>
         <div class="reg-list-meta">${fmtData(i[CB.data])} · ${escHtml(i[CB.tipo]||'—')}${i[CB.categoria]?' · '+escHtml(i[CB.categoria]):''}${i[CB.cliente]?' · '+escHtml(i[CB.cliente]):''}</div>
-        ${i[CB.estadoFatura]==='Sem fatura'?'<div style="font-size:10px;color:var(--amber)">⚠ Sem fatura</div>':''}
+        ${aggInfo}
+        ${i[CB.estadoFatura]==='Sem fatura'&&isDespesa?'<div style="font-size:10px;color:var(--amber)">⚠ Sem fatura</div>':''}
       </div>
       <div class="reg-list-right">
-        <span style="font-family:\'DM Mono\',monospace;font-size:12px;font-weight:500;color:${isDespesa?'var(--red)':'var(--amber)'}">${val.toLocaleString('pt-PT',{minimumFractionDigits:2})}€</span>
+        <span style="font-family:\'DM Mono\',monospace;font-size:12px;font-weight:500;color:${isDespesa?'var(--red)':'#FB923C'}">${val.toLocaleString('pt-PT',{minimumFractionDigits:2})}€</span>
         ${i[CB.ligacaoFatura]?`<a href="${escHtml(i[CB.ligacaoFatura])}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" title="Ver fatura">📄</a>`:''}
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
       </div>
     </div>`;
   }).join('');
   el.style.display='block';
+}
+
+// Marca / desmarca movimento como conciliado
+async function toggleConciliado(itemId){
+  const idx=todosMovimentos.findIndex(m=>m.id===itemId);
+  if(idx===-1)return;
+  const item=todosMovimentos[idx];
+  const conc=item[CB.conciliado]===true||item[CB.conciliado]==='Sim'||item[CB.conciliado]==='true';
+  const novo=!conc;
+  try{
+    await renovarToken();
+    const body={[CB.conciliado]:novo};
+    if(novo)body[CB.dataConciliacao]=new Date().toISOString();
+    else body[CB.dataConciliacao]='';
+    try{
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${itemId}/fields`,body);
+    }catch(e){
+      // Fallback: se Data_Conciliacao não existe, tenta só Conciliado
+      if(/Data_Conciliacao|400|column|invalid/i.test(e.message)){
+        await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${itemId}/fields`,{[CB.conciliado]:novo});
+      } else throw e;
+    }
+    Object.assign(todosMovimentos[idx],body);
+    showToast(novo?'✓ Marcado conciliado':'✗ Desmarcado','success');
+    filtrarContabilidade();
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 // Filtrar listagem para mostrar só os movimentos com a mesma referência conjunta
@@ -5030,6 +5414,21 @@ function abrirContabNovo(){
     const cbRefInfo=document.getElementById('cb-ref-info');
     if(cbRefInfo)cbRefInfo.textContent='';
   }catch(err){console.warn('[Contab] reset pagto conjunto:',err);}
+  // Retenção na fonte (defensivo)
+  try{
+    const rfCb=document.getElementById('cb-rf-checkbox');
+    if(rfCb)rfCb.checked=false;
+    const rfDet=document.getElementById('cb-rf-detalhes');
+    if(rfDet)rfDet.style.display='none';
+    const rfTaxa=document.getElementById('cb-rf-taxa');
+    if(rfTaxa)rfTaxa.value='23';
+    const rfCustom=document.getElementById('cb-rf-taxa-custom');
+    if(rfCustom){rfCustom.style.display='none';rfCustom.value='';}
+    const rfVal=document.getElementById('cb-rf-valor');
+    if(rfVal)rfVal.value='';
+    const rfInfo=document.getElementById('cb-rf-info');
+    if(rfInfo)rfInfo.textContent='';
+  }catch(err){console.warn('[Contab] reset RF:',err);}
   // Taxa IVA desactivada até Estado Fatura = Com fatura
   document.getElementById('cb-iva-taxa').disabled=true;
   document.getElementById('cb-iva-hint').textContent='(só se com fatura)';
@@ -5097,6 +5496,32 @@ function abrirContabEditar(itemId){
     if(ehConjunto){atualizarRefsExistentes();atualizarInfoRef();}
     else if(cbRefInfo)cbRefInfo.textContent='';
   }catch(err){console.warn('[Contab] pagto conjunto:',err);}
+  // Retenção na fonte (defensivo)
+  try{
+    const rfVal=parseFloat(i[CB.retencaoFonte]||0);
+    const rfTaxa=parseFloat(i[CB.taxaRetencao]||0);
+    const ativa=rfVal>0;
+    const rfCb=document.getElementById('cb-rf-checkbox');
+    const rfDet=document.getElementById('cb-rf-detalhes');
+    const rfTaxaSel=document.getElementById('cb-rf-taxa');
+    const rfTaxaCustom=document.getElementById('cb-rf-taxa-custom');
+    const rfValEl=document.getElementById('cb-rf-valor');
+    if(rfCb)rfCb.checked=ativa;
+    if(rfDet)rfDet.style.display=ativa?'block':'none';
+    if(ativa&&rfTaxaSel){
+      // taxa nas opções comuns?
+      const opcoes=['23','25','11.5'];
+      if(opcoes.includes(rfTaxa.toString())){
+        rfTaxaSel.value=rfTaxa.toString();
+        if(rfTaxaCustom)rfTaxaCustom.style.display='none';
+      } else if(rfTaxa>0){
+        rfTaxaSel.value='custom';
+        if(rfTaxaCustom){rfTaxaCustom.style.display='block';rfTaxaCustom.value=rfTaxa;}
+      }
+    }
+    if(rfValEl)rfValEl.value=ativa?rfVal.toFixed(2):'';
+    atualizarLiquido();
+  }catch(err){console.warn('[Contab] restauro RF:',err);}
   onCbTipoChange();
   // Ajustar só o estado visual (disabled/hint) sem recalcular o IVA já gravado
   (function(){
@@ -5282,10 +5707,27 @@ async function guardarContab(){
   const refConjunta=(ehConjunto&&cbRefEl)?cbRefEl.value.trim():'';
   body[CB.pagtoConjunto]=ehConjunto;
   body[CB.refConjunta]=refConjunta;
-  // Versão sem campos novos (caso colunas Pagto_Conjunto / Ref_Conjunta não existam no SP)
-  const bodySemConjunto={...body};
-  delete bodySemConjunto[CB.pagtoConjunto];
-  delete bodySemConjunto[CB.refConjunta];
+  // Retenção na fonte (defensivo)
+  const rfCb=document.getElementById('cb-rf-checkbox');
+  const rfTaxaSel=document.getElementById('cb-rf-taxa');
+  const rfTaxaCustomEl=document.getElementById('cb-rf-taxa-custom');
+  const rfValEl=document.getElementById('cb-rf-valor');
+  const rfActiva=rfCb?rfCb.checked:false;
+  const rfValor=(rfActiva&&rfValEl)?(parseFloat(rfValEl.value||0)||0):0;
+  let rfTaxa=0;
+  if(rfActiva&&rfTaxaSel){
+    rfTaxa=rfTaxaSel.value==='custom'?(parseFloat(rfTaxaCustomEl?.value||0)||0):(parseFloat(rfTaxaSel.value||0)||0);
+  }
+  body[CB.retencaoFonte]=rfValor;
+  body[CB.taxaRetencao]=rfTaxa;
+  // Valor líquido a pagar (utilidade para a contabilidade)
+  const valorTotal=parseFloat(document.getElementById('cb-valor').value||0)||0;
+  body[CB.valorLiquido]=rfValor>0?(valorTotal-rfValor):valorTotal;
+  // Versões sem campos novos (caso colunas não existam no SP)
+  const bodySemRF={...body};
+  delete bodySemRF[CB.retencaoFonte];delete bodySemRF[CB.taxaRetencao];delete bodySemRF[CB.valorLiquido];
+  const bodySemConjunto={...bodySemRF};
+  delete bodySemConjunto[CB.pagtoConjunto];delete bodySemConjunto[CB.refConjunta];
 
   const tentar=async b=>{
     if(cbItemId){
@@ -5303,9 +5745,21 @@ async function guardarContab(){
       showToast(cbItemId?'Guardado!':'Movimento criado!','success');
     }catch(e){
       const msg=(e&&e.message)||'';
-      if(/Pagto_Conjunto|Ref_Conjunta|400|invalid|not.*found|column/i.test(msg)){
+      if(/Retencao_Fonte|Taxa_Retencao|Valor_Liquido/i.test(msg)){
+        // Tentar sem RF
+        try{
+          await tentar(bodySemRF);
+          showToast('Guardado (campos de Retenção Fonte não existem na lista SP — adiciona Retencao_Fonte, Taxa_Retencao, Valor_Liquido para guardar)','');
+        }catch(e2){
+          // Tentar sem conjunto também
+          if(/Pagto_Conjunto|Ref_Conjunta/i.test(e2.message)){
+            await tentar(bodySemConjunto);
+            showToast('Guardado (faltam colunas SP — verifica os campos novos na lista)','');
+          } else throw e2;
+        }
+      } else if(/Pagto_Conjunto|Ref_Conjunta|400|invalid|not.*found|column/i.test(msg)){
         await tentar(bodySemConjunto);
-        showToast('Guardado (campos Pagto_Conjunto/Ref_Conjunta não existem na lista SP — adiciona-os para guardar)','');
+        showToast('Guardado (campos Pagto_Conjunto/Ref_Conjunta/RF não existem na lista SP)','');
       } else throw e;
     }
     fecharContabPainel();
@@ -5423,12 +5877,75 @@ function atualizarLiquido(){
   const hint=document.getElementById('cb-liquido-hint');
   const spanVal=document.getElementById('cb-liquido-val');
   if(!hint||!spanVal)return;
-  if(iva>0&&valor>0){
-    const liquido=valor-iva;
-    spanVal.textContent=liquido.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
-    hint.style.display='block';
+  // Retenção (se aplicada)
+  const rfCheck=document.getElementById('cb-rf-checkbox');
+  const rfActiva=rfCheck&&rfCheck.checked;
+  const rfValor=rfActiva?parseFloat(document.getElementById('cb-rf-valor').value||0):0;
+  // Líquido = valor - IVA (base) — mas com retenção, o que sai é (valor - RF)
+  if(valor>0){
+    const baseS=(valor-iva).toFixed(2);
+    let txt='';
+    if(iva>0)txt+=`Base: ${baseS}€`;
+    if(rfActiva&&rfValor>0){
+      const liquidoPagar=(valor-rfValor).toFixed(2);
+      txt+=(txt?' · ':'')+`A pagar (- RF ${rfValor.toFixed(2)}€): ${liquidoPagar}€`;
+    } else if(iva>0){
+      // Mostrar só o líquido normal
+    }
+    if(txt){
+      spanVal.innerHTML=txt;
+      hint.style.display='block';
+    } else {
+      hint.style.display='none';
+    }
   }else{
     hint.style.display='none';
+  }
+  // Atualizar info da retenção
+  const info=document.getElementById('cb-rf-info');
+  if(info&&rfActiva){
+    const baseRF=valor-iva; // base sem IVA
+    if(baseRF>0&&rfValor>0){
+      info.innerHTML=`Cálculo: <strong>${baseRF.toFixed(2)}€</strong> (base s/IVA) → RF <strong>${rfValor.toFixed(2)}€</strong> · A pagar: <strong>${(valor-rfValor).toFixed(2)}€</strong>`;
+    } else {
+      info.textContent='Preenche o valor da fatura para calcular automaticamente';
+    }
+  }
+}
+
+function onCbRetencaoChange(){
+  const cb=document.getElementById('cb-rf-checkbox');
+  const det=document.getElementById('cb-rf-detalhes');
+  if(cb.checked){
+    det.style.display='block';
+    recalcularRetencao();
+    atualizarLiquido();
+  } else {
+    det.style.display='none';
+    document.getElementById('cb-rf-valor').value='';
+    atualizarLiquido();
+  }
+}
+
+// Recalcula valor RF baseado na taxa escolhida sobre a base (valor - IVA)
+function recalcularRetencao(){
+  const taxaSel=document.getElementById('cb-rf-taxa');
+  const taxaCustom=document.getElementById('cb-rf-taxa-custom');
+  const campoVal=document.getElementById('cb-rf-valor');
+  if(!taxaSel||!campoVal)return;
+  // Se "Personalizada" → mostrar o input
+  if(taxaSel.value==='custom'){
+    taxaCustom.style.display='block';
+  } else {
+    taxaCustom.style.display='none';
+  }
+  const taxa=taxaSel.value==='custom'?parseFloat(taxaCustom.value||0):parseFloat(taxaSel.value||0);
+  const valor=parseFloat(document.getElementById('cb-valor').value||0);
+  const iva=parseFloat(document.getElementById('cb-iva').value||0);
+  const baseRF=valor-iva;
+  if(baseRF>0&&taxa>0){
+    const rf=baseRF*taxa/100;
+    campoVal.value=rf.toFixed(2);
   }
 }
 
@@ -5515,107 +6032,296 @@ async function exportarMapaMensal(contaFiltro){
   const lista_ord=[...lista].sort((a,b)=>new Date(a[CB.data]||0)-new Date(b[CB.data]||0));
   const extratoUrlP=localStorage.getItem(`lbc_extrato_Principal_${ano}_${mes}`)||'';
   const extratoUrlS=localStorage.getItem(`lbc_extrato_Secundaria_${ano}_${mes}`)||'';
-  const totalDespesa=lista_ord.filter(i=>i[CB.tipo]==='Despesa empresa').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
-  const totalCliente=lista_ord.filter(i=>i[CB.tipo]==='Pagamento por conta cliente').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
-  const totalIva=lista_ord.reduce((a,i)=>a+parseFloat(i[CB.iva]||0),0);
-  const totalSemFat=lista_ord.filter(i=>i[CB.estadoFatura]==='Sem fatura').reduce((a,i)=>a+parseFloat(i[CB.valor]||0),0);
-  const fmt=v=>parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+  // Pré-calcular grupos
+  const tamGrupo={},totGrupo={};
+  todosMovimentos.forEach(m=>{
+    const r=m[CB.refConjunta];
+    if(r){tamGrupo[r]=(tamGrupo[r]||0)+1;totGrupo[r]=(totGrupo[r]||0)+(parseFloat(m[CB.valor]||0)||0);}
+  });
 
-  const linhasTabela=lista_ord.map((i,idx)=>{
-    const isDespesa=i[CB.tipo]==='Despesa empresa';
-    const corV=isDespesa?'#C0392B':'#B7800A';
-    const corE=i[CB.estadoFatura]==='Sem fatura'?'#C0392B':i[CB.estadoFatura]==='Com fatura'?'#2D7D4F':'#888';
-    const link=i[CB.ligacaoFatura]?`<a href="${escHtml(i[CB.ligacaoFatura])}" style="color:#2471A3;font-size:9px">📄 Ver</a>`:'—';
-    const conta=i[CB.conta]||'Principal';
-    return`<tr style="background:${idx%2===0?'#F2ECE6':'#fff'}">
-      <td style="padding:4px 6px;font-size:9px;color:#7A6355;text-align:center">${fmtData(i[CB.data])}</td>
-      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.tipo]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.categoria]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.descricao]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px;text-align:right;color:${corV};font-weight:600">${fmt(i[CB.valor])}</td>
-      <td style="padding:4px 6px;font-size:9px;text-align:right;color:#2471A3">${parseFloat(i[CB.iva]||0)>0?fmt(i[CB.iva]):'—'}</td>
-      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.meio]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px;font-weight:600;color:${conta==='Principal'?'#4F4580':'#0369A1'}">${conta}</td>
-      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.cliente]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px">${escHtml(i[CB.faturaInterna]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px;text-align:center;color:${corE};font-weight:600">${escHtml(i[CB.estadoFatura]||'')}</td>
-      <td style="padding:4px 6px;font-size:9px;text-align:center">${link}</td>
-    </tr>`;
-  }).join('');
+  // Serializar movimentos como JSON (vai ser usado dinamicamente pelo HTML)
+  const movsJson=lista_ord.map(i=>({
+    id:i.id,
+    data:i[CB.data]||'',
+    tipo:i[CB.tipo]||'',
+    categoria:i[CB.categoria]||'',
+    descricao:i[CB.descricao]||'',
+    valor:parseFloat(i[CB.valor]||0)||0,
+    iva:parseFloat(i[CB.iva]||0)||0,
+    rf:parseFloat(i[CB.retencaoFonte]||0)||0,
+    taxaRf:parseFloat(i[CB.taxaRetencao]||0)||0,
+    liquido:parseFloat(i[CB.valorLiquido]||(i[CB.valor]||0))||0,
+    meio:i[CB.meio]||'',
+    conta:i[CB.conta]||'Principal',
+    cliente:i[CB.cliente]||'',
+    fatInterna:i[CB.faturaInterna]||'',
+    estado:i[CB.estadoFatura]||'',
+    ligacaoFat:i[CB.ligacaoFatura]||'',
+    refGrupo:i[CB.refConjunta]||'',
+    qtdGrupo:i[CB.refConjunta]?(tamGrupo[i[CB.refConjunta]]||0):0,
+    totalGrupo:i[CB.refConjunta]?(totGrupo[i[CB.refConjunta]]||0):0,
+    conciliado:!!(i[CB.conciliado]===true||i[CB.conciliado]==='Sim'||i[CB.conciliado]==='true')
+  }));
 
   const tituloRelatorio=contaFiltro?`Mapa de Contabilidade — ${contaFiltro} — ${mes} ${ano}`:`Mapa de Contabilidade — ${mes} ${ano}`;
 
   const html=`<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
+<html><head><meta charset="UTF-8"><title>${escHtml(tituloRelatorio)}</title>
 <style>
-  @page{size:A4 landscape;margin:10mm}
-  body{font-family:Calibri,Arial,sans-serif;color:#4A3728;margin:0;padding:0}
-  .header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #C8956C;padding-bottom:12px;margin-bottom:12px}
-  .header-text h1{margin:0;font-size:18px;color:#A67550;font-weight:700}
-  .header-text h2{margin:2px 0 0;font-size:12px;color:#7A6355;font-weight:400;font-style:italic}
-  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-  .card{border:1.5px solid;border-radius:6px;padding:8px 10px}
-  .card-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-  .card-value{font-size:16px;font-weight:700}
-  .extrato{font-size:9px;color:#2471A3;margin-bottom:6px}
-  table{width:100%;border-collapse:collapse;font-size:9px}
+  body{font-family:Calibri,Arial,sans-serif;color:#2D2419;margin:0;padding:18px;background:#FAF7F2}
+  .header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #C8956C;padding-bottom:10px;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+  .header h1{margin:0;font-size:18px;color:#A67550;font-weight:700}
+  .header h2{margin:2px 0 0;font-size:12px;color:#7A6355;font-weight:400;font-style:italic}
+  .extratos{display:flex;gap:8px;flex-wrap:wrap;font-size:10px}
+  .extrato-link{background:#E8F4FD;border:1px solid #2471A3;color:#2471A3;padding:4px 10px;border-radius:5px;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+  .card{border:1.5px solid;border-radius:7px;padding:8px 12px;background:#fff}
+  .card-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;color:#7A6355}
+  .card-value{font-size:18px;font-weight:700}
+  .toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#fff;padding:8px;border-radius:7px;border:1px solid #E0D5C5;margin-bottom:10px}
+  .toolbar label{font-size:10px;color:#7A6355;font-weight:600}
+  .toolbar select,.toolbar input{padding:4px 8px;font-size:11px;border:1px solid #E0D5C5;border-radius:5px;background:#fff;font-family:inherit}
+  .chip-grp{display:flex;gap:0;border:1px solid #C8956C;border-radius:5px;overflow:hidden}
+  .chip{padding:5px 10px;font-size:10px;background:#fff;border:none;cursor:pointer;font-family:inherit;color:#7A6355;font-weight:500;border-right:1px solid #E0D5C5}
+  .chip.active{background:#C8956C;color:#fff}
+  .chip:last-child{border-right:none}
+  .btn-export{padding:5px 10px;font-size:10px;background:#A67550;color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:600}
+  .btn-export:hover{background:#8C5F3F}
+  table{width:100%;border-collapse:collapse;font-size:10px;background:#fff;border-radius:7px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   thead tr{background:#E8DDD0}
-  thead th{padding:5px 6px;font-size:8px;font-weight:700;color:#4A3728;text-align:left;border-bottom:2px solid #C8956C}
+  thead th{padding:7px 8px;font-size:9px;font-weight:700;color:#4A3728;text-align:left;border-bottom:2px solid #C8956C;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none}
+  thead th:hover{background:#DFD2C0}
   thead th.num{text-align:right}
-  tbody tr td{border-bottom:0.5px solid #DDD5CC}
-  .total-row td{background:#E8DDD0;font-weight:700;font-size:9px;padding:5px 6px;border-top:2px solid #C8956C}
-  @media print{a{color:#2471A3!important;text-decoration:underline!important}}
+  thead th.cen{text-align:center}
+  tbody tr{border-bottom:1px solid #F0EAE0}
+  tbody tr:hover{background:#FCF9F4}
+  tbody td{padding:6px 8px;font-size:10px;vertical-align:top}
+  .grp{background:#F5F3FF !important}
+  .pcc{background:#FFF7ED !important}
+  .conc-bola{font-size:13px}
+  .tipo-icon{font-size:12px}
+  .tag{display:inline-block;font-size:8px;font-weight:600;padding:1px 5px;border-radius:7px}
+  .t-pri{background:#EDE9FE;color:#4F4580}
+  .t-sec{background:#DBEAFE;color:#0369A1}
+  .t-grp{background:#E9D5FF;color:#5B21B6;font-family:monospace}
+  .t-rf{background:#FEE2E2;color:#991B1B}
+  .t-fat{background:#D4EDDA;color:#1E6E3A}
+  .t-sf{background:#FEE2E2;color:#991B1B}
+  .agg{font-size:9px;color:#5B21B6;font-style:italic;margin-top:2px}
+  .num{text-align:right;font-family:'DM Mono',Consolas,monospace;font-weight:500}
+  .cen{text-align:center}
+  .neg{color:#C0392B}.po{color:#FB923C}.iv{color:#2471A3}.rf{color:#991B1B}
+  .total-row td{background:#E8DDD0;font-weight:700;font-size:10px;padding:7px 8px;border-top:2px solid #C8956C}
+  .pesq{flex:1;min-width:200px}
+  .results-info{font-size:10px;color:#7A6355;margin-bottom:6px}
+  .fat-link{color:#2471A3;text-decoration:none;font-size:9px}
+  .fat-link:hover{text-decoration:underline}
+  .sort-arrow{font-size:8px;margin-left:3px;opacity:.6}
 </style>
 </head><body>
 <div class="header">
-  <div class="header-text">
+  <div>
     <h1>LBC Solicitadora SP RL</h1>
-    <h2>${tituloRelatorio}</h2>
+    <h2>${escHtml(tituloRelatorio)}</h2>
+  </div>
+  <div class="extratos">
+    ${extratoUrlP?`<a href="${escHtml(extratoUrlP)}" target="_blank" class="extrato-link">📎 Extrato Principal</a>`:''}
+    ${extratoUrlS?`<a href="${escHtml(extratoUrlS)}" target="_blank" class="extrato-link">📎 Extrato Secundária</a>`:''}
   </div>
 </div>
+
 <div class="cards">
-  <div class="card" style="border-color:#C0392B;color:#C0392B">
-    <div class="card-label">Despesas empresa</div>
-    <div class="card-value">${fmt(totalDespesa)}</div>
-  </div>
-  <div class="card" style="border-color:#B7800A;color:#B7800A">
-    <div class="card-label">Pag. conta cliente</div>
-    <div class="card-value">${fmt(totalCliente)}</div>
-  </div>
-  <div class="card" style="border-color:#2471A3;color:#2471A3">
-    <div class="card-label">Total IVA</div>
-    <div class="card-value">${fmt(totalIva)}</div>
-  </div>
-  <div class="card" style="border-color:#C0392B;color:#C0392B">
-    <div class="card-label">⚠ Sem fatura</div>
-    <div class="card-value">${fmt(totalSemFat)}</div>
-  </div>
+  <div class="card" style="border-color:#C0392B"><div class="card-label">💼 Despesas empresa</div><div class="card-value" style="color:#C0392B" id="card-de">—</div></div>
+  <div class="card" style="border-color:#FB923C"><div class="card-label">💳 Por conta cliente</div><div class="card-value" style="color:#FB923C" id="card-pcc">—</div></div>
+  <div class="card" style="border-color:#2471A3"><div class="card-label">Total IVA</div><div class="card-value" style="color:#2471A3" id="card-iva">—</div></div>
+  <div class="card" style="border-color:#991B1B"><div class="card-label">Retenção fonte</div><div class="card-value" style="color:#991B1B" id="card-rf">—</div></div>
+  <div class="card" style="border-color:#7C3AED"><div class="card-label">Por conciliar</div><div class="card-value" style="color:#7C3AED" id="card-conc">—</div></div>
 </div>
-${extratoUrlP?`<div class="extrato">📄 Extrato Conta Principal: <a href="${extratoUrlP}">${extratoUrlP}</a></div>`:''}
-${extratoUrlS?`<div class="extrato">📄 Extrato Conta Secundária: <a href="${extratoUrlS}">${extratoUrlS}</a></div>`:''}
+
+<div class="toolbar">
+  <label>Tipo:</label>
+  <div class="chip-grp">
+    <button class="chip active" data-tipo="">Todos</button>
+    <button class="chip" data-tipo="Despesa empresa">💼 Despesa empresa</button>
+    <button class="chip" data-tipo="Pagamento por conta cliente">💳 Por conta cliente</button>
+  </div>
+  <label style="margin-left:.5rem">Conta:</label>
+  <select id="f-conta">
+    <option value="">Todas</option>
+    <option value="Principal">Principal</option>
+    <option value="Secundária">Secundária</option>
+  </select>
+  <label>Conciliação:</label>
+  <select id="f-conc">
+    <option value="">Todos</option>
+    <option value="conc">Conciliados</option>
+    <option value="nao">Por conciliar</option>
+  </select>
+  <input type="text" class="pesq" id="f-pesq" placeholder="🔍 Pesquisar (descrição, cliente, valor, data)...">
+  <button class="btn-export" onclick="exportarExcel()">⬇ Excel</button>
+</div>
+
+<div class="results-info" id="resInfo">—</div>
+
 <table>
   <thead><tr>
-    <th style="width:7%">Data</th>
-    <th style="width:12%">Tipo</th>
-    <th style="width:8%">Categoria</th>
-    <th style="width:16%">Descrição</th>
-    <th class="num" style="width:6%">Valor €</th>
-    <th class="num" style="width:5%">IVA €</th>
-    <th style="width:7%">Meio Pag.</th>
-    <th style="width:7%">Conta</th>
-    <th style="width:10%">Cliente</th>
-    <th style="width:8%">Nº Fatura</th>
-    <th style="width:7%">Estado</th>
-    <th style="width:5%">Fatura</th>
+    <th class="cen" style="width:30px" data-sort="conciliado">✓</th>
+    <th class="cen" style="width:30px" data-sort="tipoIcon">Tipo</th>
+    <th data-sort="data" style="width:75px">Data</th>
+    <th data-sort="categoria" style="width:80px">Categoria</th>
+    <th data-sort="descricao">Descrição</th>
+    <th class="num" data-sort="valor" style="width:75px">Valor €</th>
+    <th class="num" data-sort="iva" style="width:60px">IVA €</th>
+    <th class="num" data-sort="rf" style="width:60px">RF €</th>
+    <th class="num" data-sort="liquido" style="width:75px">Líquido €</th>
+    <th data-sort="conta" style="width:75px">Conta</th>
+    <th data-sort="cliente" style="width:120px">Cliente</th>
+    <th data-sort="fatInterna" style="width:80px">Nº Fat.</th>
+    <th data-sort="estado" style="width:75px">Estado</th>
+    <th class="cen" style="width:50px">Fatura</th>
   </tr></thead>
-  <tbody>${linhasTabela}</tbody>
-  <tfoot><tr class="total-row">
-    <td colspan="4" style="text-align:right">TOTAL</td>
-    <td style="text-align:right;color:#C0392B">${fmt(totalDespesa+totalCliente)}</td>
-    <td style="text-align:right;color:#2471A3">${fmt(totalIva)}</td>
-    <td colspan="6"></td>
-  </tr></tfoot>
+  <tbody id="tbody"></tbody>
+  <tfoot><tr class="total-row" id="tfoot"></tr></tfoot>
 </table>
+
+<script>
+const movs=${JSON.stringify(movsJson)};
+const fmt=v=>parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+const fmtData=d=>{if(!d)return'—';const p=String(d).split('T')[0].split('-');return p.length===3?\`\${p[2]}/\${p[1]}/\${p[0]}\`:d;};
+const escHtml=s=>String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let estado={tipo:'',conta:'',conc:'',pesq:'',sortKey:'data',sortAsc:true};
+
+function aplicar(){
+  let lst=movs.slice();
+  if(estado.tipo)lst=lst.filter(m=>m.tipo===estado.tipo);
+  if(estado.conta)lst=lst.filter(m=>m.conta===estado.conta);
+  if(estado.conc==='conc')lst=lst.filter(m=>m.conciliado);
+  if(estado.conc==='nao')lst=lst.filter(m=>!m.conciliado);
+  if(estado.pesq){
+    const q=estado.pesq.toLowerCase().trim();
+    lst=lst.filter(m=>{
+      const all=[m.descricao,m.categoria,m.cliente,m.fatInterna,m.tipo,m.refGrupo,fmtData(m.data),String(m.valor),m.valor.toFixed(2)].join(' ').toLowerCase();
+      return all.includes(q);
+    });
+  }
+  // Sort
+  lst.sort((a,b)=>{
+    const va=a[estado.sortKey]||'';
+    const vb=b[estado.sortKey]||'';
+    let cmp;
+    if(typeof va==='number'&&typeof vb==='number')cmp=va-vb;
+    else cmp=String(va).localeCompare(String(vb));
+    return estado.sortAsc?cmp:-cmp;
+  });
+  // Render
+  document.getElementById('tbody').innerHTML=lst.map(m=>{
+    const cls=m.refGrupo&&m.qtdGrupo>1?'grp':(m.tipo==='Pagamento por conta cliente'?'pcc':'');
+    const tipoIcon=m.tipo==='Despesa empresa'?'💼':'💳';
+    const fatLink=m.ligacaoFat?\`<a href="\${escHtml(m.ligacaoFat)}" class="fat-link" target="_blank">📄 Ver</a>\`:'—';
+    const grpTag=m.refGrupo?\`<span class="tag t-grp">🔗 \${escHtml(m.refGrupo)}\${m.qtdGrupo>1?' ('+m.qtdGrupo+')':''}</span>\`:'';
+    const aggLine=m.refGrupo&&m.qtdGrupo>1?\`<div class="agg">📋 Fatura agregada · \${m.qtdGrupo} faturas · total grupo \${fmt(m.totalGrupo)}</div>\`:'';
+    const rfStr=m.rf>0?\`-\${fmt(m.rf).replace('€','€')}\`:'—';
+    const estadoTag=m.estado==='Com fatura'?'<span class="tag t-fat">✓ Com</span>':(m.estado==='Sem fatura'?'<span class="tag t-sf">⚠ Sem</span>':'—');
+    const valNeg=m.tipo==='Despesa empresa'?'neg':'po';
+    return \`<tr class="\${cls}">
+      <td class="cen"><span class="conc-bola">\${m.conciliado?'🟢':'⚪'}</span></td>
+      <td class="cen"><span class="tipo-icon" title="\${escHtml(m.tipo)}">\${tipoIcon}</span></td>
+      <td>\${fmtData(m.data)}</td>
+      <td>\${escHtml(m.categoria)}</td>
+      <td>\${escHtml(m.descricao)} \${grpTag}\${aggLine}</td>
+      <td class="num \${valNeg}">\${fmt(m.valor)}</td>
+      <td class="num iv">\${m.iva>0?fmt(m.iva):'—'}</td>
+      <td class="num rf">\${rfStr}</td>
+      <td class="num">\${fmt(m.liquido)}</td>
+      <td><span class="tag \${m.conta==='Secundária'?'t-sec':'t-pri'}">\${escHtml(m.conta)}</span></td>
+      <td>\${escHtml(m.cliente)}</td>
+      <td>\${escHtml(m.fatInterna)}</td>
+      <td>\${estadoTag}</td>
+      <td class="cen">\${fatLink}</td>
+    </tr>\`;
+  }).join('');
+  // Totais
+  const totDe=lst.filter(m=>m.tipo==='Despesa empresa').reduce((a,m)=>a+m.valor,0);
+  const totPcc=lst.filter(m=>m.tipo==='Pagamento por conta cliente').reduce((a,m)=>a+m.valor,0);
+  const totIva=lst.reduce((a,m)=>a+m.iva,0);
+  const totRf=lst.reduce((a,m)=>a+m.rf,0);
+  const totLiq=lst.reduce((a,m)=>a+m.liquido,0);
+  const naoConc=lst.filter(m=>!m.conciliado).length;
+  document.getElementById('card-de').textContent=fmt(totDe);
+  document.getElementById('card-pcc').textContent=fmt(totPcc);
+  document.getElementById('card-iva').textContent=fmt(totIva);
+  document.getElementById('card-rf').textContent=fmt(totRf);
+  document.getElementById('card-conc').textContent=naoConc+' / '+lst.length;
+  document.getElementById('resInfo').textContent=lst.length+' movimentos · Total: '+fmt(totDe+totPcc)+(totRf>0?' · Líquido pago: '+fmt(totLiq):'');
+  document.getElementById('tfoot').innerHTML=\`
+    <td colspan="5" style="text-align:right">TOTAL (\${lst.length} mov.)</td>
+    <td class="num neg">\${fmt(totDe+totPcc)}</td>
+    <td class="num iv">\${fmt(totIva)}</td>
+    <td class="num rf">-\${fmt(totRf)}</td>
+    <td class="num">\${fmt(totLiq)}</td>
+    <td colspan="5"></td>\`;
+}
+
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    estado.tipo=c.dataset.tipo;
+    aplicar();
+  });
+});
+document.getElementById('f-conta').addEventListener('change',e=>{estado.conta=e.target.value;aplicar();});
+document.getElementById('f-conc').addEventListener('change',e=>{estado.conc=e.target.value;aplicar();});
+document.getElementById('f-pesq').addEventListener('input',e=>{estado.pesq=e.target.value;aplicar();});
+document.querySelectorAll('thead th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.dataset.sort;
+    if(estado.sortKey===k)estado.sortAsc=!estado.sortAsc;
+    else{estado.sortKey=k;estado.sortAsc=true;}
+    document.querySelectorAll('thead th .sort-arrow').forEach(a=>a.remove());
+    const arr=document.createElement('span');arr.className='sort-arrow';arr.textContent=estado.sortAsc?'▲':'▼';
+    th.appendChild(arr);
+    aplicar();
+  });
+});
+
+function exportarExcel(){
+  let lst=movs.slice();
+  if(estado.tipo)lst=lst.filter(m=>m.tipo===estado.tipo);
+  if(estado.conta)lst=lst.filter(m=>m.conta===estado.conta);
+  if(estado.conc==='conc')lst=lst.filter(m=>m.conciliado);
+  if(estado.conc==='nao')lst=lst.filter(m=>!m.conciliado);
+  if(estado.pesq){const q=estado.pesq.toLowerCase().trim();lst=lst.filter(m=>{const a=[m.descricao,m.categoria,m.cliente,m.fatInterna,m.tipo,m.refGrupo,fmtData(m.data),String(m.valor)].join(' ').toLowerCase();return a.includes(q);});}
+  // Construir CSV
+  const sep=';';
+  const header=['Conciliado','Tipo','Data','Categoria','Descrição','Valor','IVA','RF','Líquido','Conta','Cliente','Nº Fatura','Estado','Grupo','Fatura URL'];
+  const rows=[header.join(sep)].concat(lst.map(m=>[
+    m.conciliado?'Sim':'Não',
+    m.tipo,
+    fmtData(m.data),
+    m.categoria,
+    '"'+(m.descricao||'').replace(/"/g,'""')+'"',
+    m.valor.toFixed(2).replace('.',','),
+    m.iva.toFixed(2).replace('.',','),
+    m.rf.toFixed(2).replace('.',','),
+    m.liquido.toFixed(2).replace('.',','),
+    m.conta,
+    '"'+(m.cliente||'').replace(/"/g,'""')+'"',
+    m.fatInterna,
+    m.estado,
+    m.refGrupo+(m.qtdGrupo>1?' ('+m.qtdGrupo+')':''),
+    m.ligacaoFat
+  ].join(sep)));
+  const blob=new Blob(['\\ufeff'+rows.join('\\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Contabilidade_${escHtml(mes)}_${ano}.csv';
+  a.click();
+}
+
+// Inicial
+aplicar();
+<\/script>
 </body></html>`;
 
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
@@ -5625,7 +6331,7 @@ ${extratoUrlS?`<div class="extrato">📄 Extrato Conta Secundária: <a href="${e
   a.download=`Contabilidade_${contaFiltro?contaFiltro+'_':''}${mes}_${ano}.html`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast(`Mapa ${contaFiltro?'('+contaFiltro+') ':''}de ${mes} ${ano} exportado!`,'success');
+  showToast(`Mapa interactivo ${contaFiltro?'('+contaFiltro+') ':''}de ${mes} ${ano} exportado!`,'success');
 }
 
 async function corrigirLinksAbrilParaMarco(){
