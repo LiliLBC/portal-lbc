@@ -1432,9 +1432,16 @@ function recolherDadosContrato(){
       :'A PARTE COMPRADORA declara que prescinde da declaração de condomínio do art.º 1424-Aº do Cód. Civil e foi por mim informada, para efeitos do disposto no art.º54 do Código do Notariado, que em consequência admite qualquer responsabilidade de dívidas ou encargos que possam existir até à data de hoje.';
   }
 
-  // Empresa
-  const Verificacao_Empresa_V=chk('toggle-emp-v')?'--- Verifiquei os poderes de representação da parte vendedora através da certidão de registo comercial em vigor.':'';
-  const Verificacao_Empresa_C=chk('toggle-emp-c')?'--- Verifiquei os poderes de representação da parte compradora através da certidão de registo comercial em vigor.':'';
+  // Empresa — código CRC e RCBE (Lei 89/2017)
+  // Procura o primeiro outorgante empresa em cada lado para extrair o código CRC
+  const empVend=recolherOutorgantes('vendedores').find(o=>o.tipo==='empresa');
+  const empComp=recolherOutorgantes('compradores').find(o=>o.tipo==='empresa');
+  const Verificacao_Empresa_V=chk('toggle-emp-v')&&empVend
+    ? `--- Verifiquei a qualidade e poderes de representação da PARTE VENDEDORA através da Certidão de Registo Comercial${empVend.empCrc?` com o código de acesso ${empVend.empCrc}`:''}, disponível em www.eportugal.gov.pt em vigor, e o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto.`
+    : (chk('toggle-emp-v')?'--- Verifiquei os poderes de representação da parte vendedora através da certidão de registo comercial em vigor.':'');
+  const Verificacao_Empresa_C=chk('toggle-emp-c')&&empComp
+    ? `--- Verifiquei a qualidade e poderes de representação da PARTE COMPRADORA através da Certidão de Registo Comercial${empComp.empCrc?` com o código de acesso ${empComp.empCrc}`:''}, disponível em www.eportugal.gov.pt em vigor, e o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto.`
+    : (chk('toggle-emp-c')?'--- Verifiquei os poderes de representação da parte compradora através da certidão de registo comercial em vigor.':'');
 
   // Licença de utilização
   const tipoLU=v('tipo-lu');
