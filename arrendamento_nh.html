@@ -236,8 +236,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <input type="date" class="form-input" id="prazo-inicio" onchange="atualizarDataTermo()">
       </div>
       <div class="form-group">
-        <label class="form-label">Duração (anos) <span>*</span></label>
-        <input type="number" class="form-input" id="prazo-anos" value="1" min="1" max="30" onchange="atualizarDataTermo()">
+        <label class="form-label">Duração <span>*</span></label>
+        <div style="display:flex;gap:.4rem">
+          <input type="number" class="form-input" id="prazo-num" value="1" min="1" max="360" onchange="atualizarDataTermo()" style="flex:1">
+          <select class="form-select" id="prazo-unidade" onchange="atualizarDataTermo()" style="width:90px;flex-shrink:0">
+            <option value="anos" selected>anos</option>
+            <option value="meses">meses</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Data de termo (calculada)</label>
@@ -574,7 +580,6 @@ function addOutorgante(tipo,soSingular){
       </div>
     </div>`;
   container.appendChild(div);
-  updateAtuacaoVisibility();
 }
 
 function setTipoPessoa(id,tipo){
@@ -588,7 +593,6 @@ function setTipoPessoa(id,tipo){
 }
 function removeOutorgante(id,tipo){
   document.getElementById(id).remove();
-  updateAtuacaoVisibility();
 }
 function onEstadoCivil(id){
   const ec=document.getElementById(`${id}-estado-civil`)?.value;
@@ -603,12 +607,9 @@ function onConjugeOutorgante(id){
   if(extra){extra.style.display=val==='sim'?'block':'none';}
 }
 
-function updateAtuacaoVisibility(){
-  const arrCount=document.getElementById('arrendatarios-container').querySelectorAll('.outorgante-block').length;
-  document.getElementById('atuacao-conjunta-block').style.display=arrCount>1?'block':'none';
-}
-
 // Pré-preenche um bloco de mandatária com dados de uma solicitadora fixa
+let templateBuffer=null; // ArrayBuffer do template carregado
+
 function openTemplateDB(){
   return new Promise((res,rej)=>{
     const req=indexedDB.open('lbc-arr-nh-template',1);
@@ -804,6 +805,12 @@ function textoOutorgante(o){
 // ═══════════════════════════════════════════════════════════════════════════════
 // ARRENDAMENTO — Helpers de formulário
 // ═══════════════════════════════════════════════════════════════════════════════
+function updateDataOutorgaExtenso(){
+  const d=document.getElementById('data-outorga').value;
+  const ext=document.getElementById('data-outorga-extenso');
+  if(ext)ext.textContent=d?fmtDataExtenso(d):'';
+}
+
 function onFiadorToggle(){
   const cb=document.getElementById('toggle-fiador');
   const block=document.getElementById('fiador-block');
@@ -825,15 +832,22 @@ function onDiaPagamentoChange(){
 
 function atualizarDataTermo(){
   const inicio=document.getElementById('prazo-inicio').value;
-  const anos=parseInt(document.getElementById('prazo-anos').value||1,10);
-  if(!inicio||!anos)return;
+  const num=parseInt(document.getElementById('prazo-num').value||1,10);
+  const unidade=document.getElementById('prazo-unidade').value||'anos';
+  if(!inicio||!num)return;
   const d=new Date(inicio);
-  d.setFullYear(d.getFullYear()+anos);
-  d.setDate(d.getDate()-1); // termo é dia anterior à data de início + N anos
+  if(unidade==='meses'){
+    d.setMonth(d.getMonth()+num);
+  } else {
+    d.setFullYear(d.getFullYear()+num);
+  }
+  d.setDate(d.getDate()-1); // termo é dia anterior à data de início + N
   const termo=d.toISOString().slice(0,10);
   document.getElementById('prazo-termo').value=termo;
-  const ext=numExtensoInt(anos);
-  document.getElementById('prazo-extenso').textContent=`${anos} (${ext}) ano${anos>1?'s':''}`;
+  const ext=numExtensoInt(num);
+  const palavraSingular=unidade==='meses'?'mês':'ano';
+  const palavraPlural=unidade==='meses'?'meses':'anos';
+  document.getElementById('prazo-extenso').textContent=`${num} (${ext}) ${num>1?palavraPlural:palavraSingular}`;
 }
 
 function atualizarRendaExtenso(){
@@ -1044,8 +1058,11 @@ async function gerarContratoArrendamento(){
     const TXT_Imovel=montarTextoImovel();
 
     // Cláusula 1 — Prazo
-    const anos=parseInt(v('prazo-anos')||1,10);
-    const Prazo_Anos=`${anos} (${numExtenso(anos)}) ano${anos>1?'s':''}`;
+    const num=parseInt(v('prazo-num')||1,10);
+    const unidade=v('prazo-unidade')||'anos';
+    const _palSing=unidade==='meses'?'mês':'ano';
+    const _palPlur=unidade==='meses'?'meses':'anos';
+    const Prazo_Anos=`${num} (${numExtenso(num)}) ${num>1?_palPlur:_palSing}`;
     const Data_Inicio=fmtDataPT(v('prazo-inicio'));
     const Data_Termo=fmtDataPT(v('prazo-termo'));
 
