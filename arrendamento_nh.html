@@ -251,6 +251,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <div class="form-hint" id="prazo-extenso"></div>
       </div>
     </div>
+    <div class="toggle-row" style="margin-top:.9rem">
+      <div class="toggle-label">Contrato renovável automaticamente por iguais períodos</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-renovacao" checked><span class="toggle-slider"></span></label>
+    </div>
   </div>
 
   <!-- 7. RENDA -->
@@ -300,18 +304,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section-card">
     <div class="section-card-header">
       <div class="section-num">8</div>
-      <div><div class="section-name">Caução</div><div class="section-desc">Valor de garantia</div></div>
+      <div><div class="section-name">Caução</div><div class="section-desc">Valor de garantia (opcional)</div></div>
     </div>
-    <div class="form-grid form-grid-2">
-      <div class="form-group">
-        <label class="form-label">Valor da caução (€) <span>*</span></label>
-        <input type="number" class="form-input" id="caucao-valor" placeholder="650.00" step="0.01" min="0" onchange="atualizarCaucaoExtenso()">
-        <div class="form-hint" id="caucao-extenso-hint"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Equivale a quantas rendas <span>*</span></label>
-        <input type="text" class="form-input" id="caucao-num-rendas" value="duas" placeholder="duas">
-        <div class="form-hint">Por extenso (uma, duas, três...)</div>
+    <div class="toggle-row">
+      <div class="toggle-label">Incluir caução no contrato</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-caucao" checked onchange="onCaucaoToggle()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="caucao-block" style="margin-top:.9rem">
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Valor da caução (€) <span>*</span></label>
+          <input type="number" class="form-input" id="caucao-valor" placeholder="650.00" step="0.01" min="0" onchange="atualizarCaucaoExtenso()">
+          <div class="form-hint" id="caucao-extenso-hint"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Equivale a quantas rendas <span>*</span></label>
+          <input type="text" class="form-input" id="caucao-num-rendas" value="duas" placeholder="duas">
+          <div class="form-hint">Por extenso (uma, duas, três...)</div>
+        </div>
       </div>
     </div>
   </div>
@@ -669,7 +679,7 @@ async function carregarTemplateSP(){
     const docsDrive=drives.value.find(d=>d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos'));
     if(!docsDrive)return false;
     const templateRes=await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_ARR_NH_NAO_HABITACIONAL.docx:/content`,
+      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_ARR_NAO_HABITACIONAL.docx:/content`,
       {headers:{Authorization:'Bearer '+token}}
     );
     if(!templateRes.ok)return false;
@@ -864,6 +874,29 @@ function atualizarCaucaoExtenso(){
   hint.textContent=valorPorExtenso(v);
 }
 
+function onCaucaoToggle(){
+  const cb=document.getElementById('toggle-caucao');
+  const block=document.getElementById('caucao-block');
+  block.style.display=cb.checked?'block':'none';
+}
+
+// Texto do ponto 1 da cláusula 1.ª — Renovacao_Texto
+function textoRenovacao(prazoStr,dataInicio,dataTermo){
+  const renovavel=document.getElementById('toggle-renovacao').checked;
+  if(renovavel){
+    return `1. O prazo de arrendamento é de ${prazoStr}, com início em ${dataInicio} e termo em ${dataTermo}, sendo as suas prorrogações de igual duração, no caso de não ser denunciado no seu termo.`;
+  }
+  return `1. O prazo de arrendamento é de ${prazoStr}, com início em ${dataInicio} e termo em ${dataTermo}. Findo o prazo inicial, o contrato não se renovará automaticamente, caducando na data do seu termo, salvo acordo escrito em contrário das partes.`;
+}
+
+// Texto da cláusula 3.ª — Bloco_Caucao
+function montarBlocoCaucao(temCaucao,valor,extenso,numRendas){
+  if(!temCaucao){
+    return 'As partes acordam que não será prestada caução no âmbito do presente contrato.';
+  }
+  return `1. O arrendatário fica obrigado a pagar uma caução de ${valor} (${extenso}), a qual representa o pagamento de ${numRendas} rendas, destinada a garantir o pagamento de encargos e eventuais danos no locado, a qual deverá ser entregue na data da celebração do presente contrato e devolvida no seu término.`;
+}
+
 // Converte um número (ex: 650,00) para texto por extenso "seiscentos e cinquenta euros"
 function valorPorExtenso(valor){
   const inteiro=Math.floor(valor);
@@ -932,48 +965,42 @@ function montarBlocoCondominio(){
   return todos.map((t,i)=>`${i+1}. ${t}`).join('\n');
 }
 
-// Texto da cláusula final — Bloco_Final_Contrato
-// Corresponde às cláusulas 13ª-17ª (e 13ª de fiança quando aplicável)
-function montarBlocoFinalContrato(temFiador,domLoc,domArr){
-  const clausulas=[];
-  let n=12;
-  
-  // Fiança (só se houver fiador)
-  if(temFiador){
-    n++;
-    clausulas.push({num:n,titulo:'Fiança',texto:[
-      'O(s) Fiador(es) declara(m) constituir-se fiador(es) e principal(is) pagador(es) solidário(s) com o arrendatário, de todas e quaisquer obrigações resultantes do presente contrato, incluindo as suas eventuais renovações ou prorrogações.',
-      'A fiança subsiste até efetiva entrega do locado e cumprimento integral de todas as obrigações resultantes do presente contrato, designadamente o pagamento das rendas, encargos, indemnizações e demais responsabilidades imputáveis ao arrendatário.',
-      'Os fiadores renunciam expressamente ao benefício da excussão prévia, nos termos do artigo 640.º do Código Civil.'
-    ].map((t,i)=>`${i+1}. ${t}`).join('\n')});
-  }
+// Bloco da fiança (cláusula 13ª opcional) — texto inteiro com numeração centrada via \n
+// O bloco devolve "" se não houver fiador
+function montarBlocoFianca(temFiador){
+  if(!temFiador)return '';
+  // \n usado para criar parágrafos separados via linebreaks:true
+  // O título "13.ª" tem que ficar centrado, mas neste bloco é texto contínuo justificado
+  // Por isso a numeração da fiança vai à esquerda mesmo (compromisso)
+  const pontos=[
+    'O(s) Fiador(es) declara(m) constituir-se fiador(es) e principal(is) pagador(es) solidário(s) com o arrendatário, de todas e quaisquer obrigações resultantes do presente contrato, incluindo as suas eventuais renovações ou prorrogações.',
+    'A fiança subsiste até efetiva entrega do locado e cumprimento integral de todas as obrigações resultantes do presente contrato, designadamente o pagamento das rendas, encargos, indemnizações e demais responsabilidades imputáveis ao arrendatário.',
+    'Os fiadores renunciam expressamente ao benefício da excussão prévia, nos termos do artigo 640.º do Código Civil.'
+  ];
+  return '13.ª\n'+pontos.map((t,i)=>`${i+1}. ${t}`).join('\n');
+}
 
-  // Cláusula 13ª (ou 14ª) — Domicílios
-  n++;
-  clausulas.push({num:n,titulo:null,texto:`Fica acordado pelas partes os domicílios convencionados para efeitos de comunicações e/ou notificações a serem efetuadas no âmbito do presente contrato de arrendamento:\n- Do locador: ${domLoc};\n- Do arrendatário: ${domArr}`});
-
-  // Cláusula 14ª (ou 15ª) — Eficácia
-  n++;
-  clausulas.push({num:n,titulo:null,texto:'Considera-se eficaz e realizada a comunicação enviada para as moradas referidas, mesmo que o respetivo aviso de receção seja assinado por pessoa diferente do destinatário.'});
-
-  // Cláusula 15ª (ou 16ª) — Resolução conflitos
-  n++;
-  clausulas.push({num:n,titulo:null,texto:'As dúvidas suscitadas pela aplicação das regras do presente contrato, serão esclarecidas e interpretadas de comum acordo, dentro dos princípios gerais de boa-fé e da interpretação mais favorável à prossecução da finalidade a que se destina.\n\nPara resolução de quaisquer conflitos emergentes da interpretação, execução ou cessação do presente contrato, as partes acordam, sempre que possível, em recorrer a meios extrajudiciais de resolução de litígios, nomeadamente a mediação ou Julgados de Paz, nos termos da Lei 78/2001, de 13 de julho.'});
-
-  // Cláusula 16ª (ou 17ª) — Disposições gerais
-  n++;
-  clausulas.push({num:n,titulo:null,texto:[
-    'Os contratantes declaram estar perfeitamente conscientes do conteúdo do presente contrato e respetivos direitos e obrigações que deste resultam.',
-    'Toda e qualquer alteração ao presente contrato, apenas será válida se resultante de documento escrito e assinado por ambas as partes.',
-    'As partes estabelecem como domicílio convencionado para efeitos de comunicações a morada que consta da sua identificação e inscritas no presente contrato.'
-  ].map((t,i)=>`${i+1}. ${t}`).join('\n')});
-
-  // Cláusula 17ª (ou 18ª) — Lei aplicável
-  n++;
-  clausulas.push({num:n,titulo:null,texto:'Em todos os aspetos omissos das cláusulas constantes do presente contrato, reger-se-ão pelas disposições legais aplicáveis, designadamente as resultantes do Código Civil e do NRAU aprovado pela Lei nº 6/2006, de 27 de fevereiro, na sua atual redação, bem como da restante legislação aplicável.'});
-
-  // Montar texto final
-  return clausulas.map(c=>`${c.num}.ª${c.titulo?' — '+c.titulo:''}\n${c.texto}`).join('\n\n');
+// Devolve um objeto com TODOS os placeholders das cláusulas finais
+function montarBlocoFinal(temFiador,domLoc,domArr){
+  // Numeração arranca em 13 (sem fiador) ou 14 (com fiador)
+  const offset=temFiador?1:0;
+  return {
+    Bloco_Fianca:montarBlocoFianca(temFiador),
+    N_Domicilios:13+offset,
+    TXT_Domicilios:`Fica acordado pelas partes os domicílios convencionados para efeitos de comunicações e/ou notificações a serem efetuadas no âmbito do presente contrato de arrendamento:\n- Do locador: ${domLoc};\n- Do arrendatário: ${domArr}`,
+    N_Eficacia:14+offset,
+    TXT_Eficacia:'Considera-se eficaz e realizada a comunicação enviada para as moradas referidas, mesmo que o respetivo aviso de receção seja assinado por pessoa diferente do destinatário.',
+    N_ResolucaoConflitos:15+offset,
+    TXT_ResolucaoConflitos:'As dúvidas suscitadas pela aplicação das regras do presente contrato, serão esclarecidas e interpretadas de comum acordo, dentro dos princípios gerais de boa-fé e da interpretação mais favorável à prossecução da finalidade a que se destina.\n\nPara resolução de quaisquer conflitos emergentes da interpretação, execução ou cessação do presente contrato, as partes acordam, sempre que possível, em recorrer a meios extrajudiciais de resolução de litígios, nomeadamente a mediação ou Julgados de Paz, nos termos da Lei 78/2001, de 13 de julho.',
+    N_DispGerais:16+offset,
+    TXT_DispGerais:[
+      'Os contratantes declaram estar perfeitamente conscientes do conteúdo do presente contrato e respetivos direitos e obrigações que deste resultam.',
+      'Toda e qualquer alteração ao presente contrato, apenas será válida se resultante de documento escrito e assinado por ambas as partes.',
+      'As partes estabelecem como domicílio convencionado para efeitos de comunicações a morada que consta da sua identificação e inscritas no presente contrato.'
+    ].map((t,i)=>`${i+1}. ${t}`).join('\n'),
+    N_LeiAplicavel:17+offset,
+    TXT_LeiAplicavel:'Em todos os aspetos omissos das cláusulas constantes do presente contrato, reger-se-ão pelas disposições legais aplicáveis, designadamente as resultantes do Código Civil e do NRAU aprovado pela Lei nº 6/2006, de 27 de fevereiro, na sua atual redação, bem como da restante legislação aplicável.'
+  };
 }
 
 // Texto do Dia_Pagamento conforme escolha
@@ -1036,13 +1063,14 @@ async function gerarContratoArrendamento(){
     if(!v('imovel-artigo-matriz'))throw new Error('Preenche o artigo matricial.');
     if(!v('renda-valor'))throw new Error('Preenche o valor da renda.');
     if(!v('renda-iban'))throw new Error('Preenche o IBAN do locador.');
-    if(!v('caucao-valor'))throw new Error('Preenche o valor da caução.');
+    const temCaucao=document.getElementById('toggle-caucao').checked;
+    if(temCaucao && !v('caucao-valor'))throw new Error('Preenche o valor da caução (ou desliga a opção de caução).');
     if(!v('prazo-inicio'))throw new Error('Preenche a data de início.');
     if(!v('dom-locador'))throw new Error('Preenche o domicílio do locador.');
     if(!v('dom-arrendatario'))throw new Error('Preenche o domicílio do arrendatário.');
 
     if(!templateBuffer){
-      showToast('Selecciona primeiro o template TEMPLATE_ARR_NH_NAO_HABITACIONAL.docx','');
+      showToast('Selecciona primeiro o template TEMPLATE_ARR_NAO_HABITACIONAL.docx','');
       await selecionarTemplate();
       if(!templateBuffer)return;
     }
@@ -1065,6 +1093,7 @@ async function gerarContratoArrendamento(){
     const Prazo_Anos=`${num} (${numExtenso(num)}) ${num>1?_palPlur:_palSing}`;
     const Data_Inicio=fmtDataPT(v('prazo-inicio'));
     const Data_Termo=fmtDataPT(v('prazo-termo'));
+    const Renovacao_Texto=textoRenovacao(Prazo_Anos,Data_Inicio,Data_Termo);
 
     // Cláusula 2 — Renda
     const rendaVal=parseFloat(v('renda-valor'));
@@ -1075,11 +1104,14 @@ async function gerarContratoArrendamento(){
     const Dia_Pagamento=textoDiaPagamento();
     const Tipo_Recibo=textoTipoRecibo();
 
-    // Cláusula 3 — Caução
-    const caucaoVal=parseFloat(v('caucao-valor'));
-    const Caucao_Valor=fmtEur(caucaoVal);
-    const Caucao_Extenso=valorPorExtenso(caucaoVal);
-    const Caucao_Num_Rendas=v('caucao-num-rendas');
+    // Cláusula 3 — Caução (opcional)
+    let Bloco_Caucao;
+    if(temCaucao){
+      const caucaoVal=parseFloat(v('caucao-valor'));
+      Bloco_Caucao=montarBlocoCaucao(true,fmtEur(caucaoVal),valorPorExtenso(caucaoVal),v('caucao-num-rendas'));
+    } else {
+      Bloco_Caucao=montarBlocoCaucao(false);
+    }
 
     // Cláusula 8 — Despesas
     const Responsavel_Despesas=textoResponsavelDespesas();
@@ -1092,7 +1124,7 @@ async function gerarContratoArrendamento(){
     const Bloco_Condominio=montarBlocoCondominio();
 
     // Cláusulas 13-17 (e 13 de fiança opcional)
-    const Bloco_Final_Contrato=montarBlocoFinalContrato(temFiador,v('dom-locador'),v('dom-arrendatario'));
+    const blocoFinal=montarBlocoFinal(temFiador,v('dom-locador'),v('dom-arrendatario'));
 
     // Local e data outorga
     const Local_Outorga=v('local-outorga')||'Évora';
@@ -1103,11 +1135,12 @@ async function gerarContratoArrendamento(){
 
     const data={
       TXT_Locadores,TXT_Arrendatarios,TXT_Fiadores,TXT_Imovel,
-      Prazo_Anos,Data_Inicio,Data_Termo,
+      Prazo_Anos,Data_Inicio,Data_Termo,Renovacao_Texto,
       Renda_Valor,Renda_Extenso,IBAN_Locador,Mes_Inicio_Pagamento,Dia_Pagamento,Tipo_Recibo,
-      Caucao_Valor,Caucao_Extenso,Caucao_Num_Rendas,
+      Bloco_Caucao,
       Atividade,Responsavel_Despesas,
-      Bloco_Condominio,Bloco_Final_Contrato,
+      Bloco_Condominio,
+      ...blocoFinal,
       Local_Outorga,Data_Outorga_Extenso,
       TXT_Assinatura_Fiadores
     };
