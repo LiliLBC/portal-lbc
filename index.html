@@ -456,6 +456,12 @@ tbody tr:hover td{background:#FAFAF8}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
               Não Habitacional
             </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item-label">Cartas</div>
+            <div class="dropdown-item" onclick="abrirContrato('carta_confinante')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v8H2zM2 4l6 5 6-5"/></svg>
+              Confinantes (preferência)
+            </div>
           </div>
         </div>
       </div>
@@ -1859,6 +1865,7 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-group field-full">
                 <div class="field-label">Título / Descrição *</div>
                 <input class="form-input" id="av-p-titulo" placeholder="Ex: João Silva — CPCV">
+                <div class="form-hint" id="av-p-titulo-hint" style="display:none;color:#f59e0b;font-weight:500;margin-top:4px"></div>
               </div>
               <div class="field-group">
                 <div class="field-label">Fornecedor *</div>
@@ -1870,7 +1877,7 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
               <div class="field-group">
                 <div class="field-label">Tipo de serviço *</div>
-                <select class="form-select" id="av-p-servico" disabled>
+                <select class="form-select" id="av-p-servico" onchange="avPainelServicoChange()" disabled>
                   <option value="">Selecionar fornecedor primeiro...</option>
                 </select>
               </div>
@@ -2439,7 +2446,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html',procuracao:'procuracao.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html'};
+  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html',procuracao:'procuracao.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
@@ -7384,8 +7391,11 @@ async function cliApagar(){
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
 const AVENCAS_FORNECEDORES={
-  'REMAX':['CPCV','ARRENDAMENTO','ANÁLISE','PARECER','CADASTRO','OUTRO'],
+  'REMAX':['CPCV','ARRENDAMENTO','CARTAS CONFINANTES','ANÁLISE','PARECER','CADASTRO','OUTRO'],
   'CM MONFORTE':['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']
+};
+const AVENCAS_HINTS={
+  'REMAX|CARTAS CONFINANTES':'Indica a localização do prédio (ex: "Rua do Pinheiro, Carapuções, Coruche")'
 };
 const AP={titulo:'Title',fornecedor:'Fornecedor',servico:'Servico',inicio:'Data_Inicio',conclusao:'Data_Conclusao',estado:'Estado',urgente:'Urgente',responsavel:'Responsavel',notas:'Notas',pasta:'Ligacao_Pasta'};
 let todosProcessosAv=[],filtroEstadoAv='activos',avPainelItemId=null;
@@ -7496,6 +7506,23 @@ function avPainelFornecedorChange(){
     AVENCAS_FORNECEDORES[forn].forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
     sel.disabled=false;
   }else{sel.disabled=true;}
+  avPainelServicoChange();
+}
+
+function avPainelServicoChange(){
+  const forn=document.getElementById('av-p-fornecedor').value;
+  const serv=document.getElementById('av-p-servico').value;
+  const hint=document.getElementById('av-p-titulo-hint');
+  const titulo=document.getElementById('av-p-titulo');
+  const chave=`${forn}|${serv}`;
+  if(AVENCAS_HINTS[chave]){
+    hint.textContent='⚠ '+AVENCAS_HINTS[chave];
+    hint.style.display='block';
+    if(serv==='CARTAS CONFINANTES')titulo.placeholder='Ex: Rua do Pinheiro, Carapuções, Coruche';
+  }else{
+    hint.style.display='none';
+    titulo.placeholder='Ex: João Silva — CPCV';
+  }
 }
 
 function abrirPainelAvencaNovo(){
@@ -7509,6 +7536,8 @@ function abrirPainelAvencaNovo(){
   document.getElementById('av-p-conclusao').value='';
   document.getElementById('av-p-urgente').checked=false;
   document.getElementById('av-p-pasta-wrap').style.display='none';
+  document.getElementById('av-p-titulo-hint').style.display='none';
+  document.getElementById('av-p-titulo').placeholder='Ex: João Silva — CPCV';
   document.getElementById('av-overlay').style.display='block';
   document.getElementById('av-painel').classList.add('open');
 }
@@ -7522,6 +7551,7 @@ function abrirPainelAvenca(itemId){
   document.getElementById('av-p-fornecedor').value=i[AP.fornecedor]||'';
   avPainelFornecedorChange();
   document.getElementById('av-p-servico').value=i[AP.servico]||'';
+  avPainelServicoChange();
   document.getElementById('av-p-inicio').value=i[AP.inicio]?i[AP.inicio].substring(0,10):'';
   document.getElementById('av-p-conclusao').value=i[AP.conclusao]?i[AP.conclusao].substring(0,10):'';
   document.getElementById('av-p-estado').value=i[AP.estado]||'Em curso';
