@@ -118,6 +118,8 @@ tbody tr:hover td{background:#FAFAF8}
 .filter-chip{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
 .filter-chip:hover{border-color:var(--border-strong);color:var(--text)}
 .filter-chip.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.btn-limpar-filtros{display:none;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;border:1px solid #f59e0b;background:#fff7ed;color:#d97706;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.btn-limpar-filtros:hover{background:#fed7aa;border-color:#d97706}
 .sup-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:9px;padding:.85rem 1.1rem;margin-bottom:.4rem;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .sup-card-title{font-size:13px;font-weight:500}
 .sup-card-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
@@ -504,6 +506,7 @@ tbody tr:hover td{background:#FAFAF8}
             <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
             <input class="search-input" id="search-pastas" placeholder="Pesquisar por nome do cliente..." oninput="filtrarPastas()">
           </div>
+          <button class="btn-limpar-filtros" data-limpar-filtros="search-pastas|" onclick="limparFiltrosPastas()">✕ Limpar</button>
           <button class="btn btn-primary" onclick="carregarPastas()">↺ Atualizar</button>
         </div>
         <div id="pastas-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar pastas...</div></div>
@@ -553,6 +556,7 @@ tbody tr:hover td{background:#FAFAF8}
               <button class="filter-chip" onclick="filtrarRegistos('Concluido',this)">Concluídas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
               <button class="filter-chip" style="color:var(--red);border-color:var(--red)" onclick="filtrarRegistosPagamento('Não pago',this)">Não pago</button>
+              <button class="btn-limpar-filtros" data-limpar-filtros="reg-search,reg-f-predio,reg-f-conserv,reg-f-apregisto,reg-f-numpedido,reg-f-numprocesso,reg-f-estado|#screen-registo .filter-row .filter-chip" onclick="limparFiltrosRegistos()">✕ Limpar filtros</button>
             </div>
             <div id="reg-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
             <div id="reg-list" style="display:none;overflow-y:auto;flex:1"></div>
@@ -868,6 +872,7 @@ tbody tr:hover td{background:#FAFAF8}
           <button class="filter-chip" onclick="filtrarTarefas('Por fazer',this)">Por fazer</button>
           <button class="filter-chip" onclick="filtrarTarefas('Em curso',this)">Em curso</button>
           <button class="filter-chip" onclick="filtrarTarefas('Concluída',this)">Concluídas</button>
+          <button class="btn-limpar-filtros" data-limpar-filtros="|#screen-tarefas .filter-row .filter-chip" onclick="limparFiltrosTarefas()">✕ Limpar</button>
         </div>
         <div id="tar-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar tarefas...</div></div>
         <div id="tar-list" style="display:none"></div>
@@ -1300,6 +1305,7 @@ tbody tr:hover td{background:#FAFAF8}
             <svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
             <input class="reg-search-input" id="cc-search" placeholder="Pesquisar por cliente ou processo..." oninput="filtrarCC()">
           </div>
+          <button class="btn-limpar-filtros" data-limpar-filtros="cc-search|" onclick="limparFiltrosCC()">✕ Limpar</button>
         </div>
         <div id="cc-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
         <div id="cc-list" style="display:none"></div>
@@ -1450,6 +1456,7 @@ tbody tr:hover td{background:#FAFAF8}
               <option value="nao">Só não conciliados</option>
               <option value="sim">Só conciliados</option>
             </select>
+            <button class="btn-limpar-filtros" data-limpar-filtros="cb-filtro-mes,cb-filtro-fatura,cb-filtro-conta,cb-filtro-conciliado|.cb-tipo-chip" onclick="limparFiltrosContabilidade()">✕ Limpar filtros</button>
           </div>
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" onclick="carregarContabilidade()">↺ Atualizar</button>
@@ -1821,6 +1828,7 @@ tbody tr:hover td{background:#FAFAF8}
               <option value="">Tipo de serviço...</option>
               <option>CPCV</option>
               <option>ARRENDAMENTO</option>
+              <option>CARTAS CONFINANTES</option>
               <option>ANÁLISE</option>
               <option>PARECER</option>
               <option>CADASTRO</option>
@@ -1833,6 +1841,7 @@ tbody tr:hover td{background:#FAFAF8}
               <option>Liliana Cardoso</option>
               <option>Andreia Cabanas</option>
             </select>
+            <button class="btn-limpar-filtros" data-limpar-filtros="av-search,av-f-fornecedor,av-f-servico,av-f-responsavel|#screen-avencas .filter-row .filter-chip" onclick="limparFiltrosAvencas()">✕ Limpar filtros</button>
           </div>
           <button class="btn btn-primary btn-sm" onclick="abrirPainelAvencaNovo()">+ Novo processo</button>
         </div>
@@ -1970,6 +1979,7 @@ tbody tr:hover td{background:#FAFAF8}
             <option value="Avenças">Avenças</option>
             <option value="Tarefas">Tarefas</option>
           </select>
+          <button class="btn-limpar-filtros" data-limpar-filtros="cli-pesquisa,cli-filtro-tipo,cli-filtro-rel|" onclick="limparFiltrosClientes()">✕ Limpar filtros</button>
         </div>
 
         <!-- LISTA -->
@@ -2557,6 +2567,7 @@ function renderPastas(lista){
   el.style.display='block';
 }
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
+function limparFiltrosPastas(){document.getElementById('search-pastas').value='';filtrarPastas();setTimeout(atualizarBotoesLimparFiltros,50);}
 
 async function editarNomePasta(pastaId,nomeAtual){
   const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
@@ -2666,6 +2677,23 @@ function filtrarRegistosPagamento(pago,el){
   document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));if(el)el.classList.add('active');
   const sel=document.getElementById('reg-f-estado');if(sel)sel.value='';
   pesquisarRegistos();
+}
+
+function limparFiltrosRegistos(){
+  ['reg-search','reg-f-predio','reg-f-conserv','reg-f-apregisto','reg-f-numpedido','reg-f-numprocesso','reg-f-estado'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(el.tagName==='SELECT')el.selectedIndex=0;
+    else el.value='';
+  });
+  filtroEstadoAtual='';
+  filtroPagamentoAtual='';
+  // Repor "Todas" como activa
+  const chips=document.querySelectorAll('#screen-registo .filter-row .filter-chip');
+  chips.forEach(c=>c.classList.remove('active'));
+  if(chips[0])chips[0].classList.add('active');
+  pesquisarRegistos();
+  setTimeout(atualizarBotoesLimparFiltros,50);
 }
 
 function renderRegistos(lista,q=''){
@@ -3188,6 +3216,15 @@ function filtrarTarefas(filtro,el){
   if(filtro==='Urgente'){renderTarefas(todasTarefas.filter(i=>i[T.prioridade]==='Urgente'&&i[T.estado]!=='Concluída'));return;}
   if(filtro==='Concluída'){renderTarefas(todasTarefas.filter(i=>i[T.estado]==='Concluída'));return;}
   renderTarefas(todasTarefas.filter(i=>i[T.estado]===filtro));
+}
+
+function limparFiltrosTarefas(){
+  // Activar a 1ª chip "Todas"
+  const chips=document.querySelectorAll('#screen-tarefas .filter-chip');
+  chips.forEach(c=>c.classList.remove('active'));
+  if(chips[0])chips[0].classList.add('active');
+  filtrarTarefas('',chips[0]);
+  setTimeout(atualizarBotoesLimparFiltros,50);
 }
 
 function renderTarefas(lista){
@@ -4386,6 +4423,12 @@ function filtrarCC(){
   renderCC(q?todosCC.filter(i=>(i[CC.cliente]||'').toLowerCase().includes(q)||(i[CC.titulo]||'').toLowerCase().includes(q)):todosCC);
 }
 
+function limparFiltrosCC(){
+  document.getElementById('cc-search').value='';
+  filtrarCC();
+  setTimeout(atualizarBotoesLimparFiltros,50);
+}
+
 function calcularCC(){
   const hon=parseFloat(document.getElementById('cc-honorarios').value||0);
   const gas=parseFloat(document.getElementById('cc-gastos').value||0);
@@ -4593,6 +4636,27 @@ async function carregarContabilidade(){
     if(!sel.value)sel.value=mesActual;
     filtrarContabilidade();
   }catch(e){document.getElementById('cb-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
+}
+
+function limparFiltrosContabilidade(){
+  ['cb-filtro-mes','cb-filtro-fatura','cb-filtro-conta','cb-filtro-conciliado'].forEach(id=>{
+    document.getElementById(id).selectedIndex=0;
+  });
+  // Repor chip "Despesa empresa" como activo (default)
+  document.querySelectorAll('.cb-tipo-chip').forEach(c=>{
+    c.classList.remove('active');
+    c.style.background='var(--surface)';
+    c.style.color='var(--text-muted)';
+  });
+  const chipDefault=document.querySelector('.cb-tipo-chip[data-tipo="Despesa empresa"]');
+  if(chipDefault){
+    chipDefault.classList.add('active');
+    chipDefault.style.background='var(--accent-light)';
+    chipDefault.style.color='var(--accent-dark)';
+  }
+  document.getElementById('cb-filtro-tipo').value='Despesa empresa';
+  filtrarContabilidade();
+  setTimeout(atualizarBotoesLimparFiltros,50);
 }
 
 function filtrarContabilidade(){
@@ -7298,6 +7362,14 @@ function cliFiltrar(){
   cliRenderLista(filtrado);
 }
 
+function limparFiltrosClientes(){
+  document.getElementById('cli-pesquisa').value='';
+  document.getElementById('cli-filtro-tipo').selectedIndex=0;
+  document.getElementById('cli-filtro-rel').selectedIndex=0;
+  cliFiltrar();
+  setTimeout(atualizarBotoesLimparFiltros,50);
+}
+
 function cliNovoCliente(){
   cliItemId=null;
   document.getElementById('cli-painel-titulo').textContent='Novo cliente';
@@ -7389,6 +7461,80 @@ async function cliApagar(){
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
+// ─── HELPER: BOTÃO LIMPAR FILTROS ─────────────────────────────────────────────
+// Limpa filtros de uma secção e re-aplica a função de filtragem
+function limparFiltrosSeccao(idsCampos, fnFiltrar, idsChips, valoresDefault){
+  // idsCampos: array de IDs de inputs/selects a limpar
+  // fnFiltrar: função (string com nome) a chamar depois para re-filtrar
+  // idsChips: array de selectors CSS de chips a desactivar (passar primeiro como activo)
+  // valoresDefault: { idCampo: valorDefault } para repor valores específicos
+  idsCampos.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(valoresDefault && valoresDefault[id]!==undefined){
+      el.value=valoresDefault[id];
+    } else if(el.tagName==='SELECT'){
+      el.selectedIndex=0;
+    } else {
+      el.value='';
+    }
+  });
+  // Resetar chips: o primeiro de cada grupo fica activo
+  if(idsChips){
+    idsChips.forEach(sel=>{
+      const grupo=document.querySelectorAll(sel);
+      grupo.forEach((c,i)=>{
+        if(i===0)c.classList.add('active');
+        else c.classList.remove('active');
+      });
+    });
+  }
+  // Chamar função de filtrar
+  if(typeof fnFiltrar==='function')fnFiltrar();
+  else if(typeof window[fnFiltrar]==='function')window[fnFiltrar]();
+  // Atualizar visibilidade do próprio botão
+  setTimeout(atualizarBotoesLimparFiltros,50);
+}
+
+// Verifica se filtro está activo e mostra/esconde botão
+function atualizarBotoesLimparFiltros(){
+  document.querySelectorAll('[data-limpar-filtros]').forEach(btn=>{
+    const config=btn.getAttribute('data-limpar-filtros').split('|');
+    const ids=(config[0]||'').split(',').filter(Boolean);
+    const chipsSel=(config[1]||'').split(',').filter(Boolean);
+    const defaults={};
+    if(config[2]){
+      config[2].split(';').forEach(p=>{
+        const [k,v]=p.split('=');
+        defaults[k]=v;
+      });
+    }
+    let activo=false;
+    ids.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      const valDefault=defaults[id]!==undefined?defaults[id]:'';
+      const val=(el.value||'').trim();
+      if(val!==valDefault)activo=true;
+    });
+    // Verificar chips: se algum chip que não seja o 1º está activo
+    chipsSel.forEach(sel=>{
+      const grupo=document.querySelectorAll(sel);
+      grupo.forEach((c,i)=>{
+        if(i>0 && c.classList.contains('active'))activo=true;
+      });
+    });
+    btn.style.display=activo?'inline-flex':'none';
+  });
+}
+
+// Atualiza ao mudar qualquer filtro
+document.addEventListener('input',atualizarBotoesLimparFiltros);
+document.addEventListener('change',atualizarBotoesLimparFiltros);
+document.addEventListener('click',(e)=>{
+  if(e.target.closest('.filter-chip'))setTimeout(atualizarBotoesLimparFiltros,50);
+});
+
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
 const AVENCAS_FORNECEDORES={
   'REMAX':['CPCV','ARRENDAMENTO','CARTAS CONFINANTES','ANÁLISE','PARECER','CADASTRO','OUTRO'],
@@ -7434,6 +7580,22 @@ function avFiltrar(){
   if(resp) lista=lista.filter(i=>i[AP.responsavel]===resp);
   if(q) lista=lista.filter(i=>(i[AP.titulo]||'').toLowerCase().includes(q)||(i[AP.servico]||'').toLowerCase().includes(q));
   avRenderLista(lista);
+}
+
+function limparFiltrosAvencas(){
+  ['av-search','av-f-fornecedor','av-f-servico','av-f-responsavel'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(el.tagName==='SELECT')el.selectedIndex=0;
+    else el.value='';
+  });
+  // Resetar chip estado para "Em curso" (activos)
+  filtroEstadoAv='activos';
+  document.querySelectorAll('#screen-avencas .filter-chip').forEach(c=>c.classList.remove('active'));
+  const chipEmCurso=document.querySelectorAll('#screen-avencas .filter-chip')[1];
+  if(chipEmCurso)chipEmCurso.classList.add('active');
+  avFiltrar();
+  setTimeout(atualizarBotoesLimparFiltros,50);
 }
 
 function avFiltrarEstado(estado,el){
