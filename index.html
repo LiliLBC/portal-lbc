@@ -5562,9 +5562,16 @@ async function toggleConciliado(itemId){
     try{
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${itemId}/fields`,body);
     }catch(e){
-      // Fallback: se Data_Conciliacao não existe, tenta só Conciliado
-      if(/Data_Conciliacao|400|column|invalid/i.test(e.message)){
-        await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${itemId}/fields`,{[CB.conciliado]:novo});
+      const msg=(e&&e.message)||'';
+      // Tentar fallback só se for erro de coluna em falta
+      if(/Data_Conciliacao|Conciliado|column|invalid|not.*found/i.test(msg)){
+        try{
+          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContab}/items/${itemId}/fields`,{[CB.conciliado]:novo});
+        }catch(e2){
+          // Mesmo só Conciliado falhou — coluna não existe
+          showToast('⚠ As colunas "Conciliado" e "Data_Conciliacao" precisam ser criadas no SharePoint primeiro. Vê instruções na ajuda.','error');
+          return;
+        }
       } else throw e;
     }
     Object.assign(todosMovimentos[idx],body);
