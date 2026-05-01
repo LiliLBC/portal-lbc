@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrato de Arrendamento Não Habitacional — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);transition:all .15s;text-decoration:none}
+.back-btn:hover{background:var(--surface2);color:var(--text)}
+.page-title{font-size:14px;font-weight:600}
+.page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
+.topbar-actions{display:flex;gap:.5rem;align-items:center}
+.container{max-width:1080px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.section-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600}
+.section-desc{font-size:11px;color:var(--text-faint);margin-top:1px}
+.form-grid{display:grid;gap:.9rem}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%236B6860' d='M8 10L3 5h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.form-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-textarea{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s;resize:vertical;min-height:80px}
+.form-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+.toggle-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)}
+.toggle-label{font-size:12px;font-weight:500;flex:1}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border-strong);border-radius:20px;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+.outorgante-block{border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-bottom:.75rem;position:relative;background:var(--surface2)}
+.outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.outorgante-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.outorgante-type{display:flex;gap:.4rem}
+.type-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.type-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.remove-btn{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.remove-btn:hover{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.add-outorgante-btn{width:100%;padding:.6rem;border:1px dashed var(--border-strong);border-radius:8px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.add-outorgante-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+.casado-fields{background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.casado-fields-title{font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.cond-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.cond-block-amber{background:var(--amber-light);border-color:#FAC775}
+.cond-block-title{font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.poderes-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.5rem}
+@media(max-width:640px){.poderes-grid{grid-template-columns:1fr}}
+.poder-toggle{display:flex;align-items:flex-start;gap:.6rem;padding:.7rem .9rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.poder-toggle:hover{border-color:var(--accent)}
+.poder-toggle.active{background:var(--accent-light);border-color:var(--accent)}
+.poder-toggle input{margin-top:2px;accent-color:var(--accent)}
+.poder-toggle-label{flex:1;font-size:12px;line-height:1.4}
+.poder-toggle-title{font-weight:600;color:var(--text);margin-bottom:2px}
+.poder-toggle-desc{font-size:10px;color:var(--text-muted)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#236040}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-lg{padding:10px 20px;font-size:13px}
+.divider{border:none;border-top:1px solid var(--border);margin:.5rem 0}
+.rascunho-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:var(--amber-light);border:1px solid #FAC775;color:var(--amber);font-size:11px;font-weight:500}
+.toast{position:fixed;bottom:5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.sticky-footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;z-index:99;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.footer-info{font-size:11px;color:var(--text-faint)}
+.footer-actions{display:flex;gap:.5rem}
+@media(max-width:640px){.form-grid-2,.form-grid-3{grid-template-columns:1fr}.container{padding:1rem 1rem 5rem}#arrendatarios-container+div{grid-template-columns:1fr !important}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:window.close()" class="back-btn">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+      Fechar
+    </a>
+    <div>
+      <span class="page-title">Arrendamento Não Habitacional</span>
+      <span class="page-sub" id="page-sub">Novo contrato</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-sm" onclick="selecionarTemplate()" id="btn-template" title="Carregar template Word">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4"/></svg>
+      <span id="btn-template-label">Selecionar template</span>
+    </button>
+    <button class="btn btn-success btn-lg" onclick="gerarContratoArrendamento()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
+      Gerar contrato Word
+    </button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 1. TIPO DE IMÓVEL E DATA -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">1</div>
+      <div><div class="section-name">Outorga</div><div class="section-desc">Data, local e tipo de imóvel</div></div>
+    </div>
+    <div class="form-grid form-grid-3">
+      <div class="form-group">
+        <label class="form-label">Data de outorga <span>*</span></label>
+        <input type="date" class="form-input" id="data-outorga" onchange="updateDataOutorgaExtenso()">
+        <div class="form-hint" id="data-outorga-extenso"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Local de outorga <span>*</span></label>
+        <input type="text" class="form-input" id="local-outorga" value="Évora" placeholder="Ex: Évora">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de imóvel <span>*</span></label>
+        <select class="form-select" id="tipo-imovel">
+          <option value="fracao">Fração autónoma (com condomínio)</option>
+          <option value="urbano">Prédio urbano (sem condomínio)</option>
+        </select>
+        <div class="form-hint">Define a cláusula 11ª (Condomínio)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. LOCADORES -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">2</div>
+      <div><div class="section-name">Locador(es)</div><div class="section-desc">Proprietário(s) que arrendam o imóvel</div></div>
+    </div>
+    <div id="locadores-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('locadores')">+ Adicionar locador</button>
+  </div>
+
+  <!-- 3. ARRENDATÁRIOS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">3</div>
+      <div><div class="section-name">Arrendatário(s)</div><div class="section-desc">Quem arrenda o imóvel</div></div>
+    </div>
+    <div id="arrendatarios-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('arrendatarios')">+ Adicionar arrendatário</button>
+  </div>
+
+  <!-- 4. FIADORES (opcional) -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">4</div>
+      <div><div class="section-name">Fiador(es)</div><div class="section-desc">Opcional — adiciona-se uma cláusula de fiança</div></div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">Incluir fiador no contrato</div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-fiador" onchange="onFiadorToggle()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="fiador-block" style="display:none;margin-top:.9rem">
+      <div id="fiadores-container"></div>
+      <button class="add-outorgante-btn" onclick="addOutorgante('fiadores',true)">+ Adicionar fiador</button>
+    </div>
+  </div>
+
+  <!-- 5. IMÓVEL ARRENDADO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">5</div>
+      <div><div class="section-name">Imóvel arrendado</div><div class="section-desc">Identificação do imóvel objeto do contrato</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full" id="grupo-fracao-letra" style="display:block">
+        <label class="form-label">Letra da fração</label>
+        <input type="text" class="form-input" id="imovel-fracao-letra" placeholder="Ex: N" style="text-transform:uppercase;max-width:120px">
+      </div>
+      <div class="form-group form-full">
+        <label class="form-label">Composição do imóvel <span>*</span></label>
+        <textarea class="form-textarea" id="imovel-composicao" rows="2" placeholder="Ex: correspondente ao primeiro andar frente, com entrada pela Rua Escritor Julião Quintinha, n.º 31, composto de hall, corredor, três divisões, cozinha, casa de banho e despensa"></textarea>
+        <div class="form-hint">Inicia em minúscula. Ex: "correspondente ao primeiro andar frente, com entrada pela Rua... composto de..."</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conservatória do Registo Predial <span>*</span></label>
+        <input type="text" class="form-input" id="imovel-conservatoria" placeholder="Ex: Évora">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Número de descrição <span>*</span></label>
+        <input type="text" class="form-input" id="imovel-num-descricao" placeholder="Ex: 46">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Freguesia da matriz <span>*</span></label>
+        <input type="text" class="form-input" id="imovel-freguesia-matriz" placeholder="Ex: Évora (Sé e São Pedro)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Artigo matricial <span>*</span></label>
+        <input type="text" class="form-input" id="imovel-artigo-matriz" placeholder="Ex: 1835">
+      </div>
+      <div class="form-group form-full">
+        <label class="form-label">Atividade a desenvolver no locado <span>*</span></label>
+        <input type="text" class="form-input" id="atividade" placeholder="Ex: comércio a retalho de vestuário, prestação de serviços de contabilidade, restauração">
+        <div class="form-hint">Será inserida na cláusula 4ª (Destino do arrendado). Em minúsculas, sem ponto final.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. PRAZO E DATAS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">6</div>
+      <div><div class="section-name">Prazo do contrato</div><div class="section-desc">Início, duração e termo</div></div>
+    </div>
+    <div class="form-grid form-grid-3">
+      <div class="form-group">
+        <label class="form-label">Data de início <span>*</span></label>
+        <input type="date" class="form-input" id="prazo-inicio" onchange="atualizarDataTermo()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Duração (anos) <span>*</span></label>
+        <input type="number" class="form-input" id="prazo-anos" value="1" min="1" max="30" onchange="atualizarDataTermo()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data de termo (calculada)</label>
+        <input type="date" class="form-input" id="prazo-termo" readonly style="background:var(--surface2)">
+        <div class="form-hint" id="prazo-extenso"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. RENDA -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">7</div>
+      <div><div class="section-name">Renda</div><div class="section-desc">Valor, pagamento e recibos</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Valor da renda mensal (€) <span>*</span></label>
+        <input type="number" class="form-input" id="renda-valor" placeholder="650.00" step="0.01" min="0" onchange="atualizarRendaExtenso()">
+        <div class="form-hint" id="renda-extenso-hint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">IBAN do locador <span>*</span></label>
+        <input type="text" class="form-input" id="renda-iban" placeholder="PT50 0018 0003 3563 5572 0200 9">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mês de início dos pagamentos <span>*</span></label>
+        <input type="text" class="form-input" id="renda-mes-inicio" placeholder="Ex: fevereiro 2026">
+        <div class="form-hint">Por extenso, em minúsculas</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dia de pagamento <span>*</span></label>
+        <select class="form-select" id="dia-pagamento-tipo" onchange="onDiaPagamentoChange()">
+          <option value="dia8" selected>Até ao dia 8 do mês</option>
+          <option value="dia-util">No primeiro dia útil do mês</option>
+          <option value="data-especifica">Até a um dia específico</option>
+        </select>
+      </div>
+      <div class="form-group" id="dia-pag-especifico-group" style="display:none">
+        <label class="form-label">Dia específico (1-31)</label>
+        <input type="number" class="form-input" id="dia-pag-especifico" min="1" max="31" value="1">
+      </div>
+      <div class="form-group form-full">
+        <label class="form-label">Tipo de recibo <span>*</span></label>
+        <select class="form-select" id="tipo-recibo">
+          <option value="fisico" selected>Físico (papel)</option>
+          <option value="eletronico">Eletrónico (online via AT)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. CAUÇÃO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">8</div>
+      <div><div class="section-name">Caução</div><div class="section-desc">Valor de garantia</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Valor da caução (€) <span>*</span></label>
+        <input type="number" class="form-input" id="caucao-valor" placeholder="650.00" step="0.01" min="0" onchange="atualizarCaucaoExtenso()">
+        <div class="form-hint" id="caucao-extenso-hint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Equivale a quantas rendas <span>*</span></label>
+        <input type="text" class="form-input" id="caucao-num-rendas" value="duas" placeholder="duas">
+        <div class="form-hint">Por extenso (uma, duas, três...)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. DESPESAS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">9</div>
+      <div><div class="section-name">Despesas de consumo</div><div class="section-desc">Quem paga água, luz, telecomunicações</div></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Responsável pelas despesas <span>*</span></label>
+      <select class="form-select" id="responsavel-despesas">
+        <option value="arrendatario" selected>Arrendatário</option>
+        <option value="senhorio">Senhorio</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 10. DOMICÍLIOS -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">10</div>
+      <div><div class="section-name">Domicílios convencionados</div><div class="section-desc">Para comunicações (cláusula 13ª)</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Domicílio do locador <span>*</span></label>
+        <input type="text" class="form-input" id="dom-locador" placeholder="Ex: Rua X, n.º Y, código postal, localidade">
+      </div>
+      <div class="form-group form-full">
+        <label class="form-label">Domicílio do arrendatário <span>*</span></label>
+        <input type="text" class="form-input" id="dom-arrendatario" placeholder="Ex: Rua X, n.º Y, código postal, localidade">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="sticky-footer">
+  <div class="footer-info" id="footer-info">Preenche os campos e clica em Gerar contrato</div>
+  <div class="footer-actions">
+    <button class="btn" onclick="limparFormulario()">Limpar</button>
+    <button class="btn btn-success" onclick="gerarContratoArrendamento()">Gerar contrato</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DADOS FIXOS — Solicitadoras LBC
+// ═══════════════════════════════════════════════════════════════════════════════
+const SOLICITADORAS={
+  liliana:{
+    tratamento:'Dra.',
+    nome:'LILIANA ISABEL PACHECO BURRICA CARDOSO',
+    genero:'F',
+    cedula:'08733',
+    nif:'219126658',
+    cc:'11841008 3ZU4',
+    ccVal:'2035-05-09',
+    estadoCivil:'casado',
+    naturalidade:'Évora (Sé)',
+    morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  },
+  andreia:{
+    tratamento:'Dra.',
+    nome:'ANDREIA PESSEGUEIRO CABANAS',
+    genero:'F',
+    cedula:'10126',
+    nif:'249651378',
+    cc:'30756227 1ZX4',
+    ccVal:'2027-08-16',
+    estadoCivil:'solteiro',
+    naturalidade:'Évora (Sé)',
+    morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS — extenso, datas, utilitários
+// ═══════════════════════════════════════════════════════════════════════════════
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function fmtDataPT(d){if(!d)return'';const p=d.split('-');if(p.length!==3)return d;return`${p[2]}/${p[1]}/${p[0]}`;}
+function fmtDataExtenso(d){if(!d)return'';const p=d.split('-');if(p.length!==3)return d;const dia=parseInt(p[2],10),mes=parseInt(p[1],10),ano=parseInt(p[0],10);return`${dia} de ${MESES[mes-1]} de ${ano}`;}
+function fmtDataAAAAMMDD(d){if(!d)return'';return d.replace(/-/g,'');}
+function numExtensoInt(n){
+  if(n===0)return'zero';
+  const un=['','um','dois','três','quatro','cinco','seis','sete','oito','nove'];
+  const dez=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const espc=['dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+  const cen=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function ate999(n){
+    if(n===0)return'';
+    if(n===100)return'cem';
+    const c=Math.floor(n/100),d=Math.floor((n%100)/10),u=n%10;
+    const p=[];
+    if(c)p.push(cen[c]);
+    if(d===1){p.push(espc[u]);}else{if(d)p.push(dez[d]);if(u)p.push(un[u]);}
+    return p.join(' e ');
+  }
+  if(n<0)return'menos '+numExtensoInt(-n);
+  if(n<1000)return ate999(n);
+  if(n<1000000){
+    const m=Math.floor(n/1000),r=n%1000;
+    const mTxt=m===1?'mil':ate999(m)+' mil';
+    if(r===0)return mTxt;
+    return mTxt+(r<100||r%100===0?' e ':', ')+ate999(r);
+  }
+  const m=Math.floor(n/1000000),r=n%1000000;
+  const mTxt=m===1?'um milhão':ate999(m)+' milhões';
+  if(r===0)return mTxt;
+  return mTxt+', '+numExtensoInt(r);
+}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500);}
+
+function estadoCivilTexto(ec,genero){
+  const f=genero==='F';
+  return{solteiro:f?'solteira, maior':'solteiro, maior',casado:f?'casada':'casado',divorciado:f?'divorciada':'divorciado',viuvo:f?'viúva':'viúvo'}[ec]||ec;
+}
+function regimenTexto(regime){
+  return{'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','separacao-total':'separação total de bens','comunhao-geral':'comunhão geral'}[regime]||regime;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OUTORGANTES (mandantes + mandatários) — adaptado do CPCV
+// ═══════════════════════════════════════════════════════════════════════════════
+let locadoresCount=0,arrendatariosCount=0,fiadoresCount=0;
+
+function addOutorgante(tipo,soSingular){
+  // tipo: 'locadores' | 'arrendatarios' | 'fiadores'
+  // soSingular: se true, esconde o botão "Empresa" (usado para fiadores)
+  const labels={locadores:'Locador',arrendatarios:'Arrendatário',fiadores:'Fiador'};
+  const prefixos={locadores:'l',arrendatarios:'a',fiadores:'f'};
+  let idx;
+  if(tipo==='locadores')idx=++locadoresCount;
+  else if(tipo==='arrendatarios')idx=++arrendatariosCount;
+  else idx=++fiadoresCount;
+  const label=labels[tipo]||'Outorgante';
+  const id=`${prefixos[tipo]||'o'}-${idx}`;
+  const container=document.getElementById(`${tipo}-container`);
+  const div=document.createElement('div');
+  div.className='outorgante-block';div.id=id;
+  div.dataset.tipo=tipo;
+  // Terceiros e mandantes têm apenas "Pessoa singular" e "Empresa".
+  // O tipo "Profissional" é reservado às Dras. Liliana e Andreia, adicionadas via botão rápido.
+  const tipoBtns=soSingular
+    ? `<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>`
+    : `<button class="type-btn active" onclick="setTipoPessoa('${id}','singular')" type="button">Pessoa singular</button>
+       <button class="type-btn" onclick="setTipoPessoa('${id}','empresa')" type="button">Empresa</button>`;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title">${label} ${idx}</span>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="outorgante-type">
+          ${tipoBtns}
+        </div>
+        ${idx>1?`<button class="remove-btn" onclick="removeOutorgante('${id}','${tipo}')" title="Remover">×</button>`:''}
+      </div>
+    </div>
+
+    <!-- SINGULAR -->
+    <div id="${id}-singular">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome completo <span>*</span></label><input type="text" class="form-input" id="${id}-nome" placeholder="NOME COMPLETO" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+        <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-naturalidade" placeholder="Ex: Évora, Sé"></div>
+        <div class="form-group"><label class="form-label">N.º Cartão de Cidadão <span>*</span></label><input type="text" class="form-input" id="${id}-cc" placeholder="Ex: 12345678 0ZZ9"></div>
+        <div class="form-group"><label class="form-label">Válido até <span>*</span></label><input type="date" class="form-input" id="${id}-cc-val"></div>
+        <div class="form-group"><label class="form-label">NIF <span>*</span></label><input type="text" class="form-input" id="${id}-nif" placeholder="Ex: 123456789"></div>
+        <div class="form-group"><label class="form-label">Estado civil <span>*</span></label>
+          <select class="form-select" id="${id}-estado-civil" onchange="onEstadoCivil('${id}')">
+            <option value="solteiro">Solteiro(a)</option>
+            <option value="casado">Casado(a)</option>
+            <option value="divorciado">Divorciado(a)</option>
+            <option value="viuvo">Viúvo(a)</option>
+          </select>
+        </div>
+        <div class="form-group form-full"><label class="form-label">Morada <span>*</span></label><input type="text" class="form-input" id="${id}-morada" placeholder="Rua, n.º, localidade"></div>
+      </div>
+
+      <!-- Dados do casamento -->
+      <div class="casado-fields" id="${id}-casado-fields" style="display:none">
+        <div class="casado-fields-title">Dados do casamento</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Regime <span>*</span></label>
+            <select class="form-select" id="${id}-regime">
+              <option value="comunhao-adquiridos">Comunhão de adquiridos</option>
+              <option value="separacao-bens">Separação de bens</option>
+              <option value="separacao-total">Separação total de bens</option>
+              <option value="comunhao-geral">Comunhão geral</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Cônjuge também outorga?</label>
+            <select class="form-select" id="${id}-conjuge-outorgante" onchange="onConjugeOutorgante('${id}')">
+              <option value="nao">Não</option>
+              <option value="sim">Sim — ambos outorgam</option>
+            </select>
+          </div>
+          <div class="form-group form-full" id="${id}-nome-conjuge-group">
+            <label class="form-label">Nome do cônjuge <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-conjuge-nome" placeholder="NOME COMPLETO" style="text-transform:uppercase">
+          </div>
+          <div id="${id}-conjuge-extra" style="display:none;grid-column:1/-1">
+            <div class="form-grid form-grid-2">
+              <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-conjuge-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+              <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-conjuge-naturalidade"></div>
+              <div class="form-group"><label class="form-label">N.º CC</label><input type="text" class="form-input" id="${id}-conjuge-cc"></div>
+              <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-conjuge-cc-val"></div>
+              <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-conjuge-nif"></div>
+              <div class="form-group form-full"><label class="form-label">Morada partilhada <span>*</span></label><input type="text" class="form-input" id="${id}-morada-conjunta" placeholder="Rua, n.º, localidade"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESA -->
+    <div id="${id}-empresa" style="display:none">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Denominação social <span>*</span></label><input type="text" class="form-input" id="${id}-emp-nome" placeholder="NOME DA EMPRESA, LDA" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">NIPC <span>*</span></label><input type="text" class="form-input" id="${id}-emp-nif"></div>
+        <div class="form-group"><label class="form-label">Capital social (€)</label><input type="text" class="form-input" id="${id}-emp-capital" placeholder="Ex: 5000,00"></div>
+        <div class="form-group form-full"><label class="form-label">Sede <span>*</span></label><input type="text" class="form-input" id="${id}-emp-sede" placeholder="Rua, n.º, localidade"></div>
+        <div class="form-group"><label class="form-label">Matrícula na CRC de</label><input type="text" class="form-input" id="${id}-emp-crc" placeholder="Ex: Évora"></div>
+        <div class="form-group"><label class="form-label">Código da certidão permanente</label><input type="text" class="form-input" id="${id}-crc-cod"></div>
+        <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-crc-val"></div>
+      </div>
+      <div class="cond-block" style="margin-top:.9rem">
+        <div class="cond-block-title">Representante (gerente / administrador)</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-full"><label class="form-label">Nome <span>*</span></label><input type="text" class="form-input" id="${id}-ger-nome" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">Qualidade</label><select class="form-select" id="${id}-ger-qualidade"><option value="gerente">Gerente</option><option value="administrador">Administrador</option><option value="procurador">Procurador</option><option value="socio-gerente">Sócio-gerente</option></select></div>
+          <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-ger-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-ger-naturalidade"></div>
+          <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-ger-estado-civil"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+          <div class="form-group"><label class="form-label">N.º CC</label><input type="text" class="form-input" id="${id}-ger-cc"></div>
+          <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-ger-cc-val"></div>
+          <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-ger-nif"></div>
+          <div class="form-group form-full"><label class="form-label">Morada</label><input type="text" class="form-input" id="${id}-ger-morada"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFISSIONAL (Solicitador/Advogado) -->
+    <div id="${id}-profissional" style="display:none">
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Profissão <span>*</span></label>
+          <select class="form-select" id="${id}-prof-tipo">
+            <option value="solicitador">Solicitador(a)</option>
+            <option value="advogado">Advogado(a)</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">N.º de cédula profissional <span>*</span></label><input type="text" class="form-input" id="${id}-prof-cedula"></div>
+        <div class="form-group form-full"><label class="form-label">Nome completo <span>*</span></label><input type="text" class="form-input" id="${id}-prof-nome" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-prof-genero"><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+        <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-prof-estado-civil"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+        <div class="form-group form-full"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-prof-naturalidade"></div>
+        <div class="form-group"><label class="form-label">N.º CC <span>*</span></label><input type="text" class="form-input" id="${id}-prof-cc"></div>
+        <div class="form-group"><label class="form-label">Válido até <span>*</span></label><input type="date" class="form-input" id="${id}-prof-cc-val"></div>
+        <div class="form-group"><label class="form-label">NIF <span>*</span></label><input type="text" class="form-input" id="${id}-prof-nif"></div>
+        <div class="form-group form-full"><label class="form-label">Domicílio profissional <span>*</span></label><input type="text" class="form-input" id="${id}-prof-morada"></div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+  updateAtuacaoVisibility();
+}
+
+function setTipoPessoa(id,tipo){
+  const bloco=document.getElementById(id);
+  bloco.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  bloco.querySelector(`[onclick*="'${tipo}'"]`).classList.add('active');
+  document.getElementById(`${id}-singular`).style.display=tipo==='singular'?'block':'none';
+  document.getElementById(`${id}-empresa`).style.display=tipo==='empresa'?'block':'none';
+  const profDiv=document.getElementById(`${id}-profissional`);
+  if(profDiv)profDiv.style.display=tipo==='profissional'?'block':'none';
+}
+function removeOutorgante(id,tipo){
+  document.getElementById(id).remove();
+  updateAtuacaoVisibility();
+}
+function onEstadoCivil(id){
+  const ec=document.getElementById(`${id}-estado-civil`)?.value;
+  const cf=document.getElementById(`${id}-casado-fields`);
+  if(!cf)return;
+  if(ec==='casado'){cf.style.display='block';onConjugeOutorgante(id);}
+  else{cf.style.display='none';}
+}
+function onConjugeOutorgante(id){
+  const val=document.getElementById(`${id}-conjuge-outorgante`)?.value;
+  const extra=document.getElementById(`${id}-conjuge-extra`);
+  if(extra){extra.style.display=val==='sim'?'block':'none';}
+}
+
+function updateAtuacaoVisibility(){
+  const arrCount=document.getElementById('arrendatarios-container').querySelectorAll('.outorgante-block').length;
+  document.getElementById('atuacao-conjunta-block').style.display=arrCount>1?'block':'none';
+}
+
+// Pré-preenche um bloco de mandatária com dados de uma solicitadora fixa
+function openTemplateDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('lbc-arr-nh-template',1);
+    req.onupgradeneeded=()=>{req.result.createObjectStore('templates');};
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function guardarTemplateDB(buf){
+  const db=await openTemplateDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('templates','readwrite');
+    tx.objectStore('templates').put(buf,'TEMPLATE_ARR_NH');
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
+  });
+}
+async function carregarTemplateDB(){
+  try{
+    const db=await openTemplateDB();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction('templates','readonly');
+      const req=tx.objectStore('templates').get('TEMPLATE_ARR_NH');
+      req.onsuccess=()=>res(req.result||null);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){return null;}
+}
+
+async function selecionarTemplate(){
+  const buf=await new Promise((resolve,reject)=>{
+    const inp=document.createElement('input');inp.type='file';inp.accept='.docx';
+    inp.onchange=async e=>{const f=e.target.files[0];if(!f)reject(new Error('Cancelado'));else resolve(await f.arrayBuffer());};
+    inp.click();
+  }).catch(()=>null);
+  if(!buf)return;
+  templateBuffer=buf;
+  try{await guardarTemplateDB(buf);}catch(e){console.warn('Não foi possível gravar template localmente:',e);}
+  atualizarEstadoTemplate(true);
+  showToast('Template carregado e guardado localmente','success');
+}
+
+// Tenta carregar o template do SharePoint automaticamente, usando o token do portal pai
+async function carregarTemplateSP(){
+  // 1) Token do portal pai (abertura via index.html)
+  let token=window.opener&&window.opener.graphToken;
+  // 2) Fallback — token guardado no localStorage pelo portal
+  if(!token){try{token=localStorage.getItem('lbc_graph_token');}catch(e){}}
+  if(!token)return false;
+  try{
+    const drivesRes=await fetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives',
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!drivesRes.ok)return false;
+    const drives=await drivesRes.json();
+    const docsDrive=drives.value.find(d=>d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos'));
+    if(!docsDrive)return false;
+    const templateRes=await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_ARR_NH_NAO_HABITACIONAL.docx:/content`,
+      {headers:{Authorization:'Bearer '+token}}
+    );
+    if(!templateRes.ok)return false;
+    templateBuffer=await templateRes.arrayBuffer();
+    // Guarda localmente como cache — se um dia abrir sem internet, ainda funciona
+    try{await guardarTemplateDB(templateBuffer);}catch(e){}
+    atualizarEstadoTemplate(true);
+    return true;
+  }catch(e){
+    console.warn('Falha ao carregar template do SP:',e.message);
+    return false;
+  }
+}
+
+function atualizarEstadoTemplate(ok){
+  const btn=document.getElementById('btn-template');
+  const lbl=document.getElementById('btn-template-label');
+  if(ok){
+    lbl.textContent='Template OK (trocar)';
+    btn.style.borderColor='var(--green)';
+    btn.style.color='var(--green)';
+  }else{
+    lbl.textContent='Selecionar template';
+    btn.style.borderColor='';
+    btn.style.color='';
+  }
+}
+
+function limparFormulario(){if(!confirm('Tens a certeza?'))return;location.reload();}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEXTO — identificação dos outorgantes
+// ═══════════════════════════════════════════════════════════════════════════════
+function recolherOutorgantes(tipo){
+  const container=document.getElementById(`${tipo}-container`);
+  const blocos=container.querySelectorAll('.outorgante-block');
+  return [...blocos].map(bloco=>{
+    const id=bloco.id;
+    const tipoAtivo=bloco.querySelector('.type-btn.active')?.textContent||'';
+    const isEmpresa=tipoAtivo.includes('Empresa');
+    const isProfissional=tipoAtivo.includes('Solicitador')||tipoAtivo.includes('Advogado');
+    const g=i=>document.getElementById(`${id}-${i}`)?.value||'';
+    if(isProfissional){
+      return{
+        tipo:'profissional',
+        profTipo:g('prof-tipo')||'solicitador',
+        cedula:g('prof-cedula'),
+        nome:g('prof-nome'),genero:g('prof-genero')||'F',
+        estadoCivil:g('prof-estado-civil')||'solteiro',
+        naturalidade:g('prof-naturalidade'),
+        cc:g('prof-cc'),ccVal:g('prof-cc-val'),nif:g('prof-nif'),
+        morada:g('prof-morada')
+      };
+    }
+    if(isEmpresa){
+      return{
+        tipo:'empresa',
+        empNome:g('emp-nome'),empNIF:g('emp-nif'),empCapital:g('emp-capital'),empSede:g('emp-sede'),
+        empCRC:g('emp-crc'),crcCod:g('crc-cod'),crcVal:g('crc-val'),
+        gerNome:g('ger-nome'),gerQualidade:g('ger-qualidade')||'gerente',gerGenero:g('ger-genero')||'M',
+        gerNatal:g('ger-naturalidade'),gerEC:g('ger-estado-civil')||'solteiro',
+        gerCC:g('ger-cc'),gerCCVal:g('ger-cc-val'),gerNIF:g('ger-nif'),gerMorada:g('ger-morada')
+      };
+    }
+    const ec=g('estado-civil')||'solteiro';
+    const cojOut=g('conjuge-outorgante')||'nao';
+    const moradaConjunta=g('morada-conjunta');
+    const moradaSingular=g('morada');
+    const moradaFinal=ec==='casado'&&cojOut==='sim'&&moradaConjunta?moradaConjunta:moradaSingular;
+    return{
+      tipo:'singular',
+      nome:g('nome'),genero:g('genero')||'M',naturalidade:g('naturalidade'),
+      cc:g('cc'),ccVal:g('cc-val'),nif:g('nif'),
+      estadoCivil:ec,regime:g('regime'),morada:moradaFinal,
+      conjuge:ec==='casado'&&cojOut==='sim'?{
+        nome:g('conjuge-nome'),genero:g('conjuge-genero')||'M',naturalidade:g('conjuge-naturalidade'),
+        cc:g('conjuge-cc'),ccVal:g('conjuge-cc-val'),nif:g('conjuge-nif')
+      }:null
+    };
+  });
+}
+
+function textoOutorgante(o){
+  if(o.tipo==='profissional'){
+    // Ex: LILIANA..., casada, natural de Évora (Sé), Solicitadora com a cédula profissional
+    // número 08733 e portadora do cartão de cidadão emitido pela República Portuguesa com
+    // o número 11841008 3ZU4, válido até 09/05/2035 e número de identificação fiscal
+    // 219.126.658, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora
+    const isMasc=o.genero==='M';
+    const ec=estadoCivilTexto(o.estadoCivil,o.genero);
+    const profissao=o.profTipo==='advogado'?(isMasc?'Advogado':'Advogada'):(isMasc?'Solicitador':'Solicitadora');
+    const nat=o.naturalidade?`, natural de ${o.naturalidade}`:'';
+    const nifFormatado=o.nif?o.nif.replace(/^(\d{3})(\d{3})(\d{3})$/,'$1.$2.$3'):'';
+    return `${o.nome}, ${ec}${nat}, ${profissao} com a cédula profissional número ${o.cedula} e portador${isMasc?'':'a'} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)} e número de identificação fiscal ${nifFormatado||o.nif}, com domicílio profissional ${/^(na|no|em) /i.test(o.morada)?o.morada:'na '+o.morada}`;
+  }
+  if(o.tipo==='empresa'){
+    const capital=o.empCapital?`, com o capital social de ${o.empCapital} euros`:'';
+    const matricula=o.empCRC?`, matriculada na Conservatória do Registo Comercial de ${o.empCRC}`:'';
+    const certPerm=o.crcCod?` (certidão permanente com o código ${o.crcCod}${o.crcVal?`, válido até ${fmtDataPT(o.crcVal)}`:''})`:'';
+    const qualidade={gerente:'seu gerente','socio-gerente':'seu sócio-gerente',administrador:'seu administrador',procurador:'seu procurador'}[o.gerQualidade]||'seu gerente';
+    const gerIsMasc=o.gerGenero==='M';
+    const gerEC=o.gerEC?`, ${estadoCivilTexto(o.gerEC,o.gerGenero)}`:'';
+    const gerNat=o.gerNatal?`, natural de ${o.gerNatal}`:'';
+    const gerCC=o.gerCC?`, portador${gerIsMasc?'':'a'} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}${o.gerCCVal?`, válido até ${fmtDataPT(o.gerCCVal)}`:''}`:'';
+    const gerNIF=o.gerNIF?`, e número de identificação fiscal ${o.gerNIF}`:'';
+    const gerMor=o.gerMorada?`, residente em ${o.gerMorada}`:'';
+    return `${o.empNome}, pessoa coletiva número ${o.empNIF}, com sede em ${o.empSede}${capital}${matricula}${certPerm}, aqui representada pelo ${qualidade} ${o.gerNome}${gerEC}${gerNat}${gerCC}${gerNIF}${gerMor}`;
+  }
+  // Singular
+  const isMasc=o.genero==='M';
+  const casadoComRegime=o.estadoCivil==='casado'&&o.regime;
+  const ecInicial=casadoComRegime?'':`, ${estadoCivilTexto(o.estadoCivil,o.genero)}`;
+  const moradaPartilhada=casadoComRegime&&o.conjuge;
+  const moradaInicial=moradaPartilhada?'':(o.morada?`, residente em ${o.morada}`:'');
+  const nat=o.naturalidade?`, natural de ${o.naturalidade}`:'';
+  let txt=`${o.nome}${ecInicial}${nat}, portador${!isMasc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccVal)}, e número de identificação fiscal ${o.nif}${moradaInicial}`;
+  if(casadoComRegime){
+    txt+=`, ${isMasc?'casado':'casada'} no regime de ${regimenTexto(o.regime)}`;
+    if(o.conjuge){
+      const cg=o.conjuge;const cgF=cg.genero==='F';
+      const cgNat=cg.naturalidade?`, natural de ${cg.naturalidade}`:'';
+      txt+=` com ${cg.nome}${cgNat}, portador${cgF?'a':''} do cartão de cidadão com o número ${cg.cc}, válido até ${fmtDataPT(cg.ccVal)}, e NIF ${cg.nif}, residentes em ${o.morada}`;
+    }
+  }
+  return txt;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEXTO — poderes, validade, atuação, encerramento
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Converte índice 0,1,2... em a), b), c)...
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARRENDAMENTO — Helpers de formulário
+// ═══════════════════════════════════════════════════════════════════════════════
+function onFiadorToggle(){
+  const cb=document.getElementById('toggle-fiador');
+  const block=document.getElementById('fiador-block');
+  block.style.display=cb.checked?'block':'none';
+  // Se ligar e não há fiador adicionar primeiro automaticamente
+  if(cb.checked){
+    const cont=document.getElementById('fiadores-container');
+    if(!cont.querySelector('.outorgante-block')){
+      addOutorgante('fiadores',true);  // segundo argumento força singular only
+    }
+  }
+}
+
+function onDiaPagamentoChange(){
+  const sel=document.getElementById('dia-pagamento-tipo').value;
+  document.getElementById('dia-pag-especifico-group').style.display=
+    sel==='data-especifica'?'block':'none';
+}
+
+function atualizarDataTermo(){
+  const inicio=document.getElementById('prazo-inicio').value;
+  const anos=parseInt(document.getElementById('prazo-anos').value||1,10);
+  if(!inicio||!anos)return;
+  const d=new Date(inicio);
+  d.setFullYear(d.getFullYear()+anos);
+  d.setDate(d.getDate()-1); // termo é dia anterior à data de início + N anos
+  const termo=d.toISOString().slice(0,10);
+  document.getElementById('prazo-termo').value=termo;
+  const ext=numExtensoInt(anos);
+  document.getElementById('prazo-extenso').textContent=`${anos} (${ext}) ano${anos>1?'s':''}`;
+}
+
+function atualizarRendaExtenso(){
+  const v=parseFloat(document.getElementById('renda-valor').value||0);
+  const hint=document.getElementById('renda-extenso-hint');
+  if(!v){hint.textContent='';return;}
+  hint.textContent=valorPorExtenso(v);
+}
+
+function atualizarCaucaoExtenso(){
+  const v=parseFloat(document.getElementById('caucao-valor').value||0);
+  const hint=document.getElementById('caucao-extenso-hint');
+  if(!v){hint.textContent='';return;}
+  hint.textContent=valorPorExtenso(v);
+}
+
+// Converte um número (ex: 650,00) para texto por extenso "seiscentos e cinquenta euros"
+function valorPorExtenso(valor){
+  const inteiro=Math.floor(valor);
+  const cent=Math.round((valor-inteiro)*100);
+  let txt=numExtensoInt(inteiro)+' euros';
+  if(cent>0)txt+=' e '+numExtensoInt(cent)+' cêntimos';
+  return txt;
+}
+
+function fmtEur(v){
+  return parseFloat(v||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+}
+
+function numExtenso(n){
+  return numExtensoInt(parseInt(n,10));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARRENDAMENTO — Geração dos blocos de texto
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Texto de identificação dos locadores/arrendatários/fiadores
+function montarBlocoOutorgantes(lista,sufixo){
+  if(!lista.length)return '';
+  return lista.map(textoOutorgante).join(';\n\n')+'.';
+}
+
+// Texto descritivo do imóvel (vai para {TXT_Imovel})
+function montarTextoImovel(){
+  const tipo=document.getElementById('tipo-imovel').value;
+  const composicao=document.getElementById('imovel-composicao').value.trim();
+  const cons=document.getElementById('imovel-conservatoria').value.trim();
+  const numDesc=document.getElementById('imovel-num-descricao').value.trim();
+  const fregMatriz=document.getElementById('imovel-freguesia-matriz').value.trim();
+  const artigo=document.getElementById('imovel-artigo-matriz').value.trim();
+  let prefixo='';
+  if(tipo==='fracao'){
+    const letra=(document.getElementById('imovel-fracao-letra').value||'').trim().toUpperCase();
+    prefixo=`à fração autónoma designada pela letra "${letra}", ${composicao}`;
+  } else {
+    prefixo=`ao prédio urbano ${composicao}`;
+  }
+  return `${prefixo}, descrito na Conservatória do Registo Predial de ${cons} sob o número ${numDesc} e inscrito na matriz predial urbana da freguesia de ${fregMatriz} sob o artigo ${artigo}`;
+}
+
+// Texto da cláusula 11.ª — Bloco_Condominio
+function montarBlocoCondominio(){
+  const tipo=document.getElementById('tipo-imovel').value;
+  // Pontos sempre presentes (renumerados 1, 2, 3)
+  const fixos=[
+    'O arrendatário será integralmente responsável por quaisquer coimas, taxas ou encargos adicionais ou danos causados no condomínio, direta ou indiretamente, por si, seus colaboradores ou quaisquer pessoas que frequentem o imóvel, obrigando-se ao respetivo pagamento ou reparação no prazo que for definido.',
+    'O incumprimento das normas referidas poderá constituir fundamento bastante para a resolução do presente contrato, nos termos legais aplicáveis.',
+    'A utilização da quantia entregue a título de garantia para os fins acima referidos, não prejudica o direito de o locador exigir o pagamento de eventuais saldos em divida, nem dispensa o arrendatário da obrigação de repor o valor garantido no prazo de 10 (dez) dias úteis, caso esta seja total ou parcialmente utilizada durante a vigência do contrato.'
+  ];
+  // Pontos extra só se fração autónoma (passam a ser 4-9)
+  const extras=tipo==='fracao'?[
+    'O arrendatário obriga-se a cumprir integralmente o Regulamento do Condomínio do Prédio onde se insere o locado e que é parte integrante do presente contrato, bem como todas as deliberações da Assembleia de Condóminos e demais normas legais e regulamentares aplicáveis ao edifício.',
+    'O arrendatário compromete-se ainda a zelar pela boa convivência com os restantes vizinhos, abstendo-se de praticar atos que possam causar incómodo, prejuízo ou colocar em causa a segurança, salubridade ou tranquilidade dos restantes condóminos.',
+    'As quotas do condomínio correspondentes às despesas ordinárias e extraordinárias necessárias à conservação, manutenção e funcionamento das partes comuns do edifício, são da responsabilidade do locador, cabendo-lhe assegurar o seu pagamento pontual à respetiva administração.',
+    'O arrendatário não poderá ser responsabilizado por quaisquer montantes referentes a tais quotas, salvo se se tratar de encargos diretamente relacionados com o seu uso exclusivo do imóvel, como serviços individualizados ou penalizações por conduta própria ou de terceiros a si ligados.',
+    'O locador obriga-se a comunicar por escrito tais taxas ou encargos abrangidos no número 1 e que sejam imputáveis ao arrendatário, mediante carta registada com aviso de receção.',
+    'As partes reconhecem que, caso o arrendatário não regularize os valores em divida no prazo de 15 (quinze) dias após a notificação em caso de taxas ou encargos, o locador reserva-se ao direito de deduzir o respetivo montante da quantia entregue a título de caução.'
+  ]:[];
+  const todos=[...fixos,...extras];
+  return todos.map((t,i)=>`${i+1}. ${t}`).join('\n');
+}
+
+// Texto da cláusula final — Bloco_Final_Contrato
+// Corresponde às cláusulas 13ª-17ª (e 13ª de fiança quando aplicável)
+function montarBlocoFinalContrato(temFiador,domLoc,domArr){
+  const clausulas=[];
+  let n=12;
+  
+  // Fiança (só se houver fiador)
+  if(temFiador){
+    n++;
+    clausulas.push({num:n,titulo:'Fiança',texto:[
+      'O(s) Fiador(es) declara(m) constituir-se fiador(es) e principal(is) pagador(es) solidário(s) com o arrendatário, de todas e quaisquer obrigações resultantes do presente contrato, incluindo as suas eventuais renovações ou prorrogações.',
+      'A fiança subsiste até efetiva entrega do locado e cumprimento integral de todas as obrigações resultantes do presente contrato, designadamente o pagamento das rendas, encargos, indemnizações e demais responsabilidades imputáveis ao arrendatário.',
+      'Os fiadores renunciam expressamente ao benefício da excussão prévia, nos termos do artigo 640.º do Código Civil.'
+    ].map((t,i)=>`${i+1}. ${t}`).join('\n')});
+  }
+
+  // Cláusula 13ª (ou 14ª) — Domicílios
+  n++;
+  clausulas.push({num:n,titulo:null,texto:`Fica acordado pelas partes os domicílios convencionados para efeitos de comunicações e/ou notificações a serem efetuadas no âmbito do presente contrato de arrendamento:\n- Do locador: ${domLoc};\n- Do arrendatário: ${domArr}`});
+
+  // Cláusula 14ª (ou 15ª) — Eficácia
+  n++;
+  clausulas.push({num:n,titulo:null,texto:'Considera-se eficaz e realizada a comunicação enviada para as moradas referidas, mesmo que o respetivo aviso de receção seja assinado por pessoa diferente do destinatário.'});
+
+  // Cláusula 15ª (ou 16ª) — Resolução conflitos
+  n++;
+  clausulas.push({num:n,titulo:null,texto:'As dúvidas suscitadas pela aplicação das regras do presente contrato, serão esclarecidas e interpretadas de comum acordo, dentro dos princípios gerais de boa-fé e da interpretação mais favorável à prossecução da finalidade a que se destina.\n\nPara resolução de quaisquer conflitos emergentes da interpretação, execução ou cessação do presente contrato, as partes acordam, sempre que possível, em recorrer a meios extrajudiciais de resolução de litígios, nomeadamente a mediação ou Julgados de Paz, nos termos da Lei 78/2001, de 13 de julho.'});
+
+  // Cláusula 16ª (ou 17ª) — Disposições gerais
+  n++;
+  clausulas.push({num:n,titulo:null,texto:[
+    'Os contratantes declaram estar perfeitamente conscientes do conteúdo do presente contrato e respetivos direitos e obrigações que deste resultam.',
+    'Toda e qualquer alteração ao presente contrato, apenas será válida se resultante de documento escrito e assinado por ambas as partes.',
+    'As partes estabelecem como domicílio convencionado para efeitos de comunicações a morada que consta da sua identificação e inscritas no presente contrato.'
+  ].map((t,i)=>`${i+1}. ${t}`).join('\n')});
+
+  // Cláusula 17ª (ou 18ª) — Lei aplicável
+  n++;
+  clausulas.push({num:n,titulo:null,texto:'Em todos os aspetos omissos das cláusulas constantes do presente contrato, reger-se-ão pelas disposições legais aplicáveis, designadamente as resultantes do Código Civil e do NRAU aprovado pela Lei nº 6/2006, de 27 de fevereiro, na sua atual redação, bem como da restante legislação aplicável.'});
+
+  // Montar texto final
+  return clausulas.map(c=>`${c.num}.ª${c.titulo?' — '+c.titulo:''}\n${c.texto}`).join('\n\n');
+}
+
+// Texto do Dia_Pagamento conforme escolha
+function textoDiaPagamento(){
+  const tipo=document.getElementById('dia-pagamento-tipo').value;
+  if(tipo==='dia-util')return 'no primeiro dia útil do mês a que respeitar';
+  if(tipo==='dia8')return 'até ao dia 8 (oito) do mês a que respeitar';
+  // data-especifica
+  const dia=parseInt(document.getElementById('dia-pag-especifico').value||1,10);
+  const ext=numExtenso(dia);
+  return `até ao dia ${dia} (${ext}) do mês a que respeitar`;
+}
+
+// Texto do Tipo_Recibo conforme escolha
+function textoTipoRecibo(){
+  const tipo=document.getElementById('tipo-recibo').value;
+  if(tipo==='eletronico')return 'o qual ficará disponível online no site da Administração Tributária, dispensando assim o seu envio em papel via correio';
+  return 'o qual será entregue ao arrendatário em formato físico';
+}
+
+// Texto do Responsavel_Despesas conforme escolha
+function textoResponsavelDespesas(){
+  return document.getElementById('responsavel-despesas').value==='senhorio'
+    ?'exclusiva responsabilidade do senhorio'
+    :'exclusiva responsabilidade do arrendatário';
+}
+
+// Texto da assinatura dos fiadores (vazio se não há fiadores)
+function textoAssinaturaFiadores(temFiador){
+  if(!temFiador)return '';
+  return '\nO(S) FIADOR(ES)\n\n________________________________________\n\n________________________________________';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GERAR CONTRATO DE ARRENDAMENTO
+// ═══════════════════════════════════════════════════════════════════════════════
+async function gerarContratoArrendamento(){
+  try{
+    if(!window.PizZip){await loadScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');}
+    if(!window.Docxtemplater&&!window.docxtemplater){await loadScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');}
+    const DocxClass=window.Docxtemplater||window.docxtemplater;
+    if(!DocxClass)throw new Error('docxtemplater não carregou.');
+
+    const v=id=>document.getElementById(id)?.value||'';
+
+    const locadores=recolherOutorgantes('locadores');
+    const arrendatarios=recolherOutorgantes('arrendatarios');
+    const temFiador=document.getElementById('toggle-fiador').checked;
+    const fiadores=temFiador?recolherOutorgantes('fiadores'):[];
+    
+    if(!locadores.length)throw new Error('Tens de adicionar pelo menos um locador.');
+    if(!arrendatarios.length)throw new Error('Tens de adicionar pelo menos um arrendatário.');
+    if(temFiador&&!fiadores.length)throw new Error('Ligaste a opção de fiador mas não preencheste nenhum.');
+
+    // Validar campos obrigatórios mínimos
+    if(!v('imovel-composicao'))throw new Error('Preenche a composição do imóvel.');
+    if(!v('imovel-conservatoria'))throw new Error('Preenche a conservatória.');
+    if(!v('imovel-num-descricao'))throw new Error('Preenche o número de descrição.');
+    if(!v('imovel-artigo-matriz'))throw new Error('Preenche o artigo matricial.');
+    if(!v('renda-valor'))throw new Error('Preenche o valor da renda.');
+    if(!v('renda-iban'))throw new Error('Preenche o IBAN do locador.');
+    if(!v('caucao-valor'))throw new Error('Preenche o valor da caução.');
+    if(!v('prazo-inicio'))throw new Error('Preenche a data de início.');
+    if(!v('dom-locador'))throw new Error('Preenche o domicílio do locador.');
+    if(!v('dom-arrendatario'))throw new Error('Preenche o domicílio do arrendatário.');
+
+    if(!templateBuffer){
+      showToast('Selecciona primeiro o template TEMPLATE_ARR_NH_NAO_HABITACIONAL.docx','');
+      await selecionarTemplate();
+      if(!templateBuffer)return;
+    }
+
+    showToast('A gerar contrato...','');
+
+    // Outorgantes
+    const TXT_Locadores=montarBlocoOutorgantes(locadores)+'\nAdiante designado(s) como Locador(es).';
+    const TXT_Arrendatarios=montarBlocoOutorgantes(arrendatarios)+'\nAdiante designado(s) como Arrendatário(s).';
+    const TXT_Fiadores=temFiador?(montarBlocoOutorgantes(fiadores)+'\nAdiante designado(s) como Fiador(es).'):'';
+
+    // Imóvel
+    const TXT_Imovel=montarTextoImovel();
+
+    // Cláusula 1 — Prazo
+    const anos=parseInt(v('prazo-anos')||1,10);
+    const Prazo_Anos=`${anos} (${numExtenso(anos)}) ano${anos>1?'s':''}`;
+    const Data_Inicio=fmtDataPT(v('prazo-inicio'));
+    const Data_Termo=fmtDataPT(v('prazo-termo'));
+
+    // Cláusula 2 — Renda
+    const rendaVal=parseFloat(v('renda-valor'));
+    const Renda_Valor=fmtEur(rendaVal);
+    const Renda_Extenso=valorPorExtenso(rendaVal);
+    const IBAN_Locador=v('renda-iban');
+    const Mes_Inicio_Pagamento=v('renda-mes-inicio');
+    const Dia_Pagamento=textoDiaPagamento();
+    const Tipo_Recibo=textoTipoRecibo();
+
+    // Cláusula 3 — Caução
+    const caucaoVal=parseFloat(v('caucao-valor'));
+    const Caucao_Valor=fmtEur(caucaoVal);
+    const Caucao_Extenso=valorPorExtenso(caucaoVal);
+    const Caucao_Num_Rendas=v('caucao-num-rendas');
+
+    // Cláusula 8 — Despesas
+    const Responsavel_Despesas=textoResponsavelDespesas();
+
+    // Cláusula 4 — Atividade (destino do arrendado)
+    const Atividade=v('atividade').trim();
+    if(!Atividade)throw new Error('Preenche a atividade a desenvolver no locado.');
+
+    // Cláusula 11 — Condomínio
+    const Bloco_Condominio=montarBlocoCondominio();
+
+    // Cláusulas 13-17 (e 13 de fiança opcional)
+    const Bloco_Final_Contrato=montarBlocoFinalContrato(temFiador,v('dom-locador'),v('dom-arrendatario'));
+
+    // Local e data outorga
+    const Local_Outorga=v('local-outorga')||'Évora';
+    const Data_Outorga_Extenso=fmtDataExtenso(v('data-outorga'));
+
+    // Assinatura dos fiadores
+    const TXT_Assinatura_Fiadores=textoAssinaturaFiadores(temFiador);
+
+    const data={
+      TXT_Locadores,TXT_Arrendatarios,TXT_Fiadores,TXT_Imovel,
+      Prazo_Anos,Data_Inicio,Data_Termo,
+      Renda_Valor,Renda_Extenso,IBAN_Locador,Mes_Inicio_Pagamento,Dia_Pagamento,Tipo_Recibo,
+      Caucao_Valor,Caucao_Extenso,Caucao_Num_Rendas,
+      Atividade,Responsavel_Despesas,
+      Bloco_Condominio,Bloco_Final_Contrato,
+      Local_Outorga,Data_Outorga_Extenso,
+      TXT_Assinatura_Fiadores
+    };
+
+    // Render
+    const bufClone=templateBuffer.slice(0);
+    const zip=new PizZip(bufClone);
+    const dt=new DocxClass(zip,{paragraphLoop:true,linebreaks:true});
+    dt.render(data);
+    const out=dt.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+
+    // Nome ficheiro
+    const dataOut=v('data-outorga');
+    const ymd=dataOut?fmtDataAAAAMMDD(dataOut):new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const primeiroLoc=locadores[0];
+    const nomeLoc=(primeiroLoc.tipo==='empresa'?primeiroLoc.empNome:primeiroLoc.nome)||'ARR';
+    const nomeDoc=`ARRENDAMENTO_NH_${ymd}_${nomeLoc.substring(0,60).trim()}.docx`;
+
+    const url=URL.createObjectURL(out);
+    const a=document.createElement('a');a.href=url;a.download=nomeDoc;a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Contrato gerado!','success');
+  }catch(err){
+    console.error(err);
+    showToast('Erro: '+err.message,'error');
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',async ()=>{
+  addOutorgante('locadores');
+  addOutorgante('arrendatarios');
+  // Data de hoje + datas pré-preenchidas
+  document.getElementById('data-outorga').value=new Date().toISOString().slice(0,10);
+  updateDataOutorgaExtenso();
+  // 1) Tentar carregar template do SharePoint
+  let ok=await carregarTemplateSP();
+  if(!ok){
+    try{
+      const buf=await carregarTemplateDB();
+      if(buf){templateBuffer=buf;atualizarEstadoTemplate(true);}
+    }catch(e){}
+  }
+});
+</script>
+
+</body>
+</html>
