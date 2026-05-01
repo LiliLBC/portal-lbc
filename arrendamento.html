@@ -201,6 +201,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <input type="text" class="form-input" id="imovel-conservatoria" placeholder="Ex: Évora">
       </div>
       <div class="form-group">
+        <label class="form-label">Freguesia da Conservatória <span>*</span></label>
+        <input type="text" class="form-input" id="imovel-freguesia-conservatoria" placeholder="Ex: Évora (Sé e São Pedro)">
+      </div>
+      <div class="form-group">
         <label class="form-label">Número de descrição <span>*</span></label>
         <input type="text" class="form-input" id="imovel-num-descricao" placeholder="Ex: 46">
       </div>
@@ -873,6 +877,7 @@ function montarTextoImovel(){
   const tipo=document.getElementById('tipo-imovel').value;
   const composicao=document.getElementById('imovel-composicao').value.trim();
   const cons=document.getElementById('imovel-conservatoria').value.trim();
+  const fregCons=document.getElementById('imovel-freguesia-conservatoria').value.trim();
   const numDesc=document.getElementById('imovel-num-descricao').value.trim();
   const fregMatriz=document.getElementById('imovel-freguesia-matriz').value.trim();
   const artigo=document.getElementById('imovel-artigo-matriz').value.trim();
@@ -883,7 +888,7 @@ function montarTextoImovel(){
   } else {
     prefixo=`ao prédio urbano ${composicao}`;
   }
-  return `${prefixo}, descrito na Conservatória do Registo Predial de ${cons} sob o número ${numDesc} e inscrito na matriz predial urbana da freguesia de ${fregMatriz} sob o artigo ${artigo}`;
+  return `${prefixo}, descrito na Conservatória do Registo Predial de ${cons}, freguesia de ${fregCons}, sob o número ${numDesc} e inscrito na matriz predial urbana da freguesia de ${fregMatriz} sob o artigo ${artigo}`;
 }
 
 // Texto da cláusula 11.ª — Bloco_Condominio
@@ -1007,6 +1012,7 @@ async function gerarContratoArrendamento(){
     // Validar campos obrigatórios mínimos
     if(!v('imovel-composicao'))throw new Error('Preenche a composição do imóvel.');
     if(!v('imovel-conservatoria'))throw new Error('Preenche a conservatória.');
+    if(!v('imovel-freguesia-conservatoria'))throw new Error('Preenche a freguesia da conservatória.');
     if(!v('imovel-num-descricao'))throw new Error('Preenche o número de descrição.');
     if(!v('imovel-artigo-matriz'))throw new Error('Preenche o artigo matricial.');
     if(!v('renda-valor'))throw new Error('Preenche o valor da renda.');
