@@ -2097,6 +2097,73 @@ tbody tr:hover td{background:#FAFAF8}
       </div>
 
       <div class="screen" id="screen-financeiro">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+          <div style="font-size:13px;color:var(--text-muted)">Análise de escrituras por entidade, estado e suprimentos</div>
+          <button class="btn btn-sm" onclick="dashSincronizarFiltros()" title="Aplicar mesmo ano/mês a todos os cards">⟳ Sincronizar filtros</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem">
+
+          <!-- CARD 1: ESCRITURAS POR ENTIDADE -->
+          <div class="metric-card" style="padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+              <div class="metric-label" style="margin:0">Escrituras por entidade</div>
+              <div style="display:flex;gap:.3rem">
+                <select class="form-select" id="dash-c1-ano" onchange="dashRenderCard1()" style="font-size:11px;padding:3px 6px;width:80px"></select>
+                <select class="form-select" id="dash-c1-mes" onchange="dashRenderCard1()" style="font-size:11px;padding:3px 6px;width:90px">
+                  <option value="">Todo o ano</option>
+                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+              </div>
+            </div>
+            <div class="metric-value" id="dash-c1-total" style="font-size:28px;color:var(--accent);margin-bottom:.4rem">—</div>
+            <canvas id="dash-c1-chart" height="140"></canvas>
+          </div>
+
+          <!-- CARD 2: ESCRITURAS POR ESTADO -->
+          <div class="metric-card" style="padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+              <div class="metric-label" style="margin:0">Escrituras por estado</div>
+              <div style="display:flex;gap:.3rem">
+                <select class="form-select" id="dash-c2-ano" onchange="dashRenderCard2()" style="font-size:11px;padding:3px 6px;width:80px"></select>
+                <select class="form-select" id="dash-c2-mes" onchange="dashRenderCard2()" style="font-size:11px;padding:3px 6px;width:90px">
+                  <option value="">Todo o ano</option>
+                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+              </div>
+            </div>
+            <div class="metric-value" id="dash-c2-total" style="font-size:28px;color:var(--blue);margin-bottom:.4rem">—</div>
+            <canvas id="dash-c2-chart" height="140"></canvas>
+          </div>
+
+          <!-- CARD 3: SUPRIMENTOS -->
+          <div class="metric-card" style="padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+              <div class="metric-label" style="margin:0">Entraram em suprimento</div>
+              <div style="display:flex;gap:.3rem">
+                <select class="form-select" id="dash-c3-ano" onchange="dashRenderCard3()" style="font-size:11px;padding:3px 6px;width:80px"></select>
+                <select class="form-select" id="dash-c3-mes" onchange="dashRenderCard3()" style="font-size:11px;padding:3px 6px;width:90px">
+                  <option value="">Todo o ano</option>
+                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+              </div>
+            </div>
+            <div class="metric-value" id="dash-c3-total" style="font-size:28px;color:var(--red);margin-bottom:.4rem">—</div>
+            <canvas id="dash-c3-chart" height="140"></canvas>
+          </div>
+
+        </div>
+
+        <!-- CARDS RESUMO ANTIGOS (mantidos em baixo) -->
         <div class="metrics-row">
           <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
           <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
@@ -2106,9 +2173,6 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="metric-value" style="color:var(--red);font-size:20px;letter-spacing:-0.5px" id="m-suprimentos">—</div>
             <div class="metric-sub" id="m-suprimentos-sub" style="line-height:1.7">A carregar...</div>
           </div>
-        </div>
-        <div style="margin-top:1rem" id="financeiro-detalhe">
-          <div class="construcao-screen" style="padding:2rem"><div class="construcao-icon">📊</div><div class="construcao-title">Dashboard Financeiro</div><div class="construcao-sub">Vais completar esta secção em breve com mais informação relevante.</div></div>
         </div>
       </div>
 
@@ -2145,6 +2209,7 @@ const F={
   codDeposito:'Cod_Dep_x00f3_sito',observacoes:'Observa_x00e7__x00f5_es',
   numPedido:'Num_Pedido',ligacaoPasta:'Ligacao_Pasta',margemLiq:'Margem_Liquida',
   custoSup:'Custo_Suprimento',dataResolSup:'Data_Resolucao_Suprimento',
+  foiSuprimento:'Foi_Suprimento',dataFoiSup:'Data_Foi_Suprimento',
   numProcesso:'N_x00fa_mero_Processo',
   pago:'Pago',
   codCRP:'CERT_PERMANENTE',
@@ -2513,6 +2578,9 @@ async function carregarDashboard(){
     // Badge de suprimentos no menu lateral
     const supBadge=document.getElementById('sup-badge');
     if(supBadge&&sups>0){supBadge.textContent=sups;supBadge.style.display='inline-block';}
+    
+    // Renderizar dashboard financeiro (3 cards com gráficos)
+    if(typeof dashRenderTudo==='function')setTimeout(dashRenderTudo,100);
   }catch(e){console.warn('Erro registos:',e);}
 
   // Tarefas para o painel direito do Calendário
@@ -2606,7 +2674,7 @@ async function carregarRegistos(){
   document.getElementById('reg-list') && (document.getElementById('reg-list').style.display='none');
   const rc=document.getElementById('reg-result-count');if(rc)rc.style.display='none';
   try{
-    const baseFields=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.ligacaoPasta,F.pago,F.codCRP];
+    const baseFields=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.foiSuprimento,F.dataFoiSup,F.ligacaoPasta,F.pago,F.codCRP];
     let data;
     try{
       const sf=[...baseFields,F.contactos].join(',');
@@ -3102,6 +3170,16 @@ async function guardarPainel(){
   const entidade=svChoice('p-entidade'); if(entidade) body[F.entidade]=entidade;
   const procurador=svChoice('p-procurador'); if(procurador) body[F.procurador]=procurador;
   const estado=svChoice('p-estado'); if(estado) body[F.estado]=estado;
+  // Se estado passa a Suprimento, marcar Foi_Suprimento (mantém-se mesmo após mudar estado depois)
+  if(estado==='Suprimento'){
+    // Verificar se já estava marcado nos registos atuais
+    const itemAtual=todosRegistosReg.find(i=>i.id===painelItemId);
+    const jaMarcado=itemAtual&&(itemAtual[F.foiSuprimento]===true||itemAtual[F.foiSuprimento]==='Sim'||itemAtual[F.foiSuprimento]==='sim');
+    if(!jaMarcado){
+      body[F.foiSuprimento]=true;
+      body[F.dataFoiSup]=new Date().toISOString();
+    }
+  }
   const pago=svChoice('p-pago'); if(pago) body[F.pago]=pago;
   const predio=svText('p-predio'); if(predio) body[F.predio]=predio;
   const freguesia=svText('p-freguesia'); if(freguesia) body[F.freguesia]=freguesia;
@@ -7534,6 +7612,185 @@ document.addEventListener('change',atualizarBotoesLimparFiltros);
 document.addEventListener('click',(e)=>{
   if(e.target.closest('.filter-chip'))setTimeout(atualizarBotoesLimparFiltros,50);
 });
+
+// ─── DASHBOARD FINANCEIRO ─────────────────────────────────────────────────────
+const DASH_ENTIDADES=['CGD','CTT','REMAX','CENTURY','PARTICULARES'];
+const DASH_ESTADOS=['Em curso','Apresentado','Depositado','Concluido','Suprimento','Desistência'];
+const DASH_CORES_ENTIDADE={
+  'CGD':'#3b82f6','CTT':'#f59e0b','REMAX':'#dc2626','CENTURY':'#7c3aed','PARTICULARES':'#10b981'
+};
+const DASH_CORES_ESTADO={
+  'Em curso':'#3b82f6','Apresentado':'#8b5cf6','Depositado':'#06b6d4',
+  'Concluido':'#10b981','Suprimento':'#ef4444','Desistência':'#9ca3af'
+};
+let dashCharts={c1:null,c2:null,c3:null};
+
+function dashPopularAnos(){
+  const anosUnicos=new Set();
+  todosRegistos.forEach(i=>{
+    if(i[F.data]){const a=new Date(i[F.data]).getFullYear();if(a>2020)anosUnicos.add(a);}
+    if(i[F.dataFoiSup]){const a=new Date(i[F.dataFoiSup]).getFullYear();if(a>2020)anosUnicos.add(a);}
+  });
+  const anos=[...anosUnicos].sort((a,b)=>b-a);
+  if(anos.length===0)anos.push(new Date().getFullYear());
+  const anoCorrente=new Date().getFullYear();
+  ['dash-c1-ano','dash-c2-ano','dash-c3-ano'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    sel.innerHTML='';
+    anos.forEach(a=>{
+      const o=document.createElement('option');o.value=a;o.textContent=a;
+      if(a===anoCorrente)o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+}
+
+function dashFiltrarRegistos(ano,mes,colData){
+  return todosRegistos.filter(i=>{
+    if(!i[colData])return false;
+    const d=new Date(i[colData]);
+    if(d.getFullYear()!==parseInt(ano,10))return false;
+    if(mes!==''&&mes!==null&&mes!==undefined&&d.getMonth()!==parseInt(mes,10))return false;
+    return true;
+  });
+}
+
+function dashDesenharGraficoBarras(canvasId,labels,valores,cores){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  // Destruir gráfico anterior
+  if(dashCharts[canvasId.split('-')[1]]){dashCharts[canvasId.split('-')[1]].destroy?.();}
+  const ctx=canvas.getContext('2d');
+  const w=canvas.width=canvas.offsetWidth*2;
+  const h=canvas.height=140*2;
+  ctx.scale(1,1);
+  ctx.clearRect(0,0,w,h);
+  if(valores.length===0||valores.every(v=>v===0)){
+    ctx.fillStyle='#9ca3af';
+    ctx.font='12px DM Sans';
+    ctx.textAlign='center';
+    ctx.fillText('Sem dados para o período',w/2,h/2);
+    return;
+  }
+  const max=Math.max(...valores,1);
+  const padX=20,padTop=20,padBot=40;
+  const barW=(w-padX*2)/labels.length*0.6;
+  const gap=(w-padX*2)/labels.length;
+  // Barras
+  labels.forEach((label,i)=>{
+    const x=padX+gap*i+(gap-barW)/2;
+    const barH=(valores[i]/max)*(h-padTop-padBot);
+    const y=h-padBot-barH;
+    ctx.fillStyle=cores[i]||'#6366f1';
+    ctx.fillRect(x,y,barW,barH);
+    // Valor por cima
+    if(valores[i]>0){
+      ctx.fillStyle='#1f2937';
+      ctx.font='bold 18px DM Sans';
+      ctx.textAlign='center';
+      ctx.fillText(valores[i],x+barW/2,y-6);
+    }
+    // Label por baixo
+    ctx.fillStyle='#6b7280';
+    ctx.font='14px DM Sans';
+    ctx.textAlign='center';
+    let lblShort=label;
+    if(label.length>10)lblShort=label.substring(0,9)+'…';
+    ctx.fillText(lblShort,x+barW/2,h-padBot+18);
+  });
+}
+
+function dashRenderCard1(){
+  const ano=document.getElementById('dash-c1-ano').value;
+  const mes=document.getElementById('dash-c1-mes').value;
+  if(!ano)return;
+  const lista=dashFiltrarRegistos(ano,mes,F.data);
+  // Contar por entidade
+  const cont={};
+  DASH_ENTIDADES.forEach(e=>cont[e]=0);
+  let outros=0;
+  lista.forEach(i=>{
+    const ent=(i[F.entidade]||'').trim();
+    if(DASH_ENTIDADES.includes(ent))cont[ent]++;
+    else if(ent)outros++;
+  });
+  const total=lista.length;
+  document.getElementById('dash-c1-total').textContent=total;
+  const labels=DASH_ENTIDADES.slice();
+  const valores=DASH_ENTIDADES.map(e=>cont[e]);
+  const cores=DASH_ENTIDADES.map(e=>DASH_CORES_ENTIDADE[e]);
+  if(outros>0){labels.push('OUTROS');valores.push(outros);cores.push('#9ca3af');}
+  dashDesenharGraficoBarras('dash-c1-chart',labels,valores,cores);
+}
+
+function dashRenderCard2(){
+  const ano=document.getElementById('dash-c2-ano').value;
+  const mes=document.getElementById('dash-c2-mes').value;
+  if(!ano)return;
+  const lista=dashFiltrarRegistos(ano,mes,F.data);
+  const cont={};
+  DASH_ESTADOS.forEach(e=>cont[e]=0);
+  lista.forEach(i=>{
+    const est=(i[F.estado]||'').trim();
+    if(DASH_ESTADOS.includes(est))cont[est]++;
+  });
+  const total=lista.length;
+  document.getElementById('dash-c2-total').textContent=total;
+  const labels=DASH_ESTADOS.slice();
+  const valores=DASH_ESTADOS.map(e=>cont[e]);
+  const cores=DASH_ESTADOS.map(e=>DASH_CORES_ESTADO[e]);
+  dashDesenharGraficoBarras('dash-c2-chart',labels,valores,cores);
+}
+
+function dashRenderCard3(){
+  const ano=document.getElementById('dash-c3-ano').value;
+  const mes=document.getElementById('dash-c3-mes').value;
+  if(!ano)return;
+  // Filtrar por Data_Foi_Suprimento
+  const lista=todosRegistos.filter(i=>{
+    if(!i[F.dataFoiSup])return false;
+    if(i[F.foiSuprimento]!==true&&i[F.foiSuprimento]!=='Sim'&&i[F.foiSuprimento]!=='sim')return false;
+    const d=new Date(i[F.dataFoiSup]);
+    if(d.getFullYear()!==parseInt(ano,10))return false;
+    if(mes!==''&&mes!==null&&mes!==undefined&&d.getMonth()!==parseInt(mes,10))return false;
+    return true;
+  });
+  // Agrupar por entidade
+  const cont={};
+  DASH_ENTIDADES.forEach(e=>cont[e]=0);
+  let outros=0;
+  lista.forEach(i=>{
+    const ent=(i[F.entidade]||'').trim();
+    if(DASH_ENTIDADES.includes(ent))cont[ent]++;
+    else if(ent)outros++;
+  });
+  document.getElementById('dash-c3-total').textContent=lista.length;
+  const labels=DASH_ENTIDADES.slice();
+  const valores=DASH_ENTIDADES.map(e=>cont[e]);
+  const cores=DASH_ENTIDADES.map(e=>DASH_CORES_ENTIDADE[e]);
+  if(outros>0){labels.push('OUTROS');valores.push(outros);cores.push('#9ca3af');}
+  dashDesenharGraficoBarras('dash-c3-chart',labels,valores,cores);
+}
+
+function dashSincronizarFiltros(){
+  // Pegar nos filtros do card 1 e aplicar aos outros
+  const ano=document.getElementById('dash-c1-ano').value;
+  const mes=document.getElementById('dash-c1-mes').value;
+  document.getElementById('dash-c2-ano').value=ano;
+  document.getElementById('dash-c2-mes').value=mes;
+  document.getElementById('dash-c3-ano').value=ano;
+  document.getElementById('dash-c3-mes').value=mes;
+  dashRenderCard1();dashRenderCard2();dashRenderCard3();
+}
+
+function dashRenderTudo(){
+  if(!todosRegistos||!todosRegistos.length)return;
+  dashPopularAnos();
+  dashRenderCard1();
+  dashRenderCard2();
+  dashRenderCard3();
+}
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
 const AVENCAS_FORNECEDORES={
