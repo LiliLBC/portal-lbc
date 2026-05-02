@@ -2537,7 +2537,7 @@ async function carregarDashboard(){
   // 1) carregar tarefas (usadas no painel direito do Calendário)
   // 2) carregar registos para alimentar o Dashboard Financeiro (separado)
   try{
-    const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico}`;
+    const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.entidade},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico},${F.foiSuprimento},${F.dataFoiSup}`;
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
     todosRegistos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
 
@@ -7715,7 +7715,10 @@ function dashRenderCard1(){
   DASH_ENTIDADES.forEach(e=>cont[e]=0);
   let outros=0;
   lista.forEach(i=>{
-    const ent=(i[F.entidade]||'').trim();
+    // Entidade pode vir como string OU array (campo Choice no Graph)
+    let raw=i[F.entidade];
+    if(Array.isArray(raw))raw=raw[0]||'';
+    const ent=(raw||'').toString().trim().toUpperCase();
     if(DASH_ENTIDADES.includes(ent))cont[ent]++;
     else outros++; // inclui sem entidade preenchida
   });
