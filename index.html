@@ -2102,15 +2102,15 @@ tbody tr:hover td{background:#FAFAF8}
           <button class="btn btn-sm" onclick="dashSincronizarFiltros()" title="Aplicar mesmo ano/mês a todos os cards" style="font-size:11px;padding:4px 10px">⟳ Sincronizar filtros</button>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:.75rem">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:.75rem">
 
           <!-- CARD 1: ESCRITURAS POR ENTIDADE -->
           <div class="metric-card" style="padding:.7rem">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
               <div class="metric-label" style="margin:0;font-size:10px">Por entidade</div>
               <div style="display:flex;gap:.2rem">
-                <select class="form-select" id="dash-c1-ano" onchange="dashRenderCard1()" style="font-size:10px;padding:2px 4px;width:62px"></select>
-                <select class="form-select" id="dash-c1-mes" onchange="dashRenderCard1()" style="font-size:10px;padding:2px 4px;width:78px">
+                <select class="form-select" id="dash-c1-ano" onchange="dashRenderCard1()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+                <select class="form-select" id="dash-c1-mes" onchange="dashRenderCard1()" style="font-size:10px;padding:2px 4px;width:74px">
                   <option value="">Ano todo</option>
                   <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
                   <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
@@ -2120,7 +2120,8 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
             <div class="metric-value" id="dash-c1-total" style="font-size:22px;color:var(--accent);margin-bottom:.3rem;line-height:1">—</div>
-            <canvas id="dash-c1-chart" style="width:100%;height:110px;display:block"></canvas>
+            <canvas id="dash-c1-chart" style="width:100%;height:100px;display:block"></canvas>
+            <div id="dash-c1-breakdown" style="margin-top:.4rem;font-size:10px"></div>
           </div>
 
           <!-- CARD 2: ESCRITURAS POR ESTADO -->
@@ -2128,8 +2129,8 @@ tbody tr:hover td{background:#FAFAF8}
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
               <div class="metric-label" style="margin:0;font-size:10px">Por estado</div>
               <div style="display:flex;gap:.2rem">
-                <select class="form-select" id="dash-c2-ano" onchange="dashRenderCard2()" style="font-size:10px;padding:2px 4px;width:62px"></select>
-                <select class="form-select" id="dash-c2-mes" onchange="dashRenderCard2()" style="font-size:10px;padding:2px 4px;width:78px">
+                <select class="form-select" id="dash-c2-ano" onchange="dashRenderCard2()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+                <select class="form-select" id="dash-c2-mes" onchange="dashRenderCard2()" style="font-size:10px;padding:2px 4px;width:74px">
                   <option value="">Ano todo</option>
                   <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
                   <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
@@ -2139,16 +2140,17 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
             <div class="metric-value" id="dash-c2-total" style="font-size:22px;color:var(--blue);margin-bottom:.3rem;line-height:1">—</div>
-            <canvas id="dash-c2-chart" style="width:100%;height:110px;display:block"></canvas>
+            <canvas id="dash-c2-chart" style="width:100%;height:100px;display:block"></canvas>
+            <div id="dash-c2-breakdown" style="margin-top:.4rem;font-size:10px"></div>
           </div>
 
-          <!-- CARD 3: SUPRIMENTOS -->
+          <!-- CARD 3: SUPRIMENTOS (contagem) -->
           <div class="metric-card" style="padding:.7rem">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
-              <div class="metric-label" style="margin:0;font-size:10px">Em suprimento</div>
+              <div class="metric-label" style="margin:0;font-size:10px">Em suprimento (nº)</div>
               <div style="display:flex;gap:.2rem">
-                <select class="form-select" id="dash-c3-ano" onchange="dashRenderCard3()" style="font-size:10px;padding:2px 4px;width:62px"></select>
-                <select class="form-select" id="dash-c3-mes" onchange="dashRenderCard3()" style="font-size:10px;padding:2px 4px;width:78px">
+                <select class="form-select" id="dash-c3-ano" onchange="dashRenderCard3()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+                <select class="form-select" id="dash-c3-mes" onchange="dashRenderCard3()" style="font-size:10px;padding:2px 4px;width:74px">
                   <option value="">Ano todo</option>
                   <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
                   <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
@@ -2158,21 +2160,29 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
             <div class="metric-value" id="dash-c3-total" style="font-size:22px;color:var(--red);margin-bottom:.3rem;line-height:1">—</div>
-            <canvas id="dash-c3-chart" style="width:100%;height:110px;display:block"></canvas>
+            <canvas id="dash-c3-chart" style="width:100%;height:100px;display:block"></canvas>
+            <div id="dash-c3-breakdown" style="margin-top:.4rem;font-size:10px"></div>
           </div>
 
-        </div>
-
-        <!-- CARDS RESUMO ANTIGOS (mantidos em baixo) -->
-        <div class="metrics-row">
-          <div class="metric-card"><div class="metric-label">Processos no ano</div><div class="metric-value" style="color:var(--accent)" id="m-total">—</div><div class="metric-sub" id="m-total-sub">A carregar...</div></div>
-          <div class="metric-card"><div class="metric-label">Concluídos</div><div class="metric-value" style="color:var(--green)" id="m-concluidos">—</div><div class="metric-sub" id="m-concluidos-sub"></div></div>
-          <div class="metric-card"><div class="metric-label">Em curso</div><div class="metric-value" style="color:var(--blue)" id="m-emcurso">—</div><div class="metric-sub" id="m-emcurso-sub"></div></div>
-          <div class="metric-card" style="cursor:pointer" onclick="nav('suprimentos',document.querySelector('[onclick*=suprimentos]'))" title="Ver suprimentos pendentes">
-            <div class="metric-label">Suprimentos — Custo acumulado</div>
-            <div class="metric-value" style="color:var(--red);font-size:20px;letter-spacing:-0.5px" id="m-suprimentos">—</div>
-            <div class="metric-sub" id="m-suprimentos-sub" style="line-height:1.7">A carregar...</div>
+          <!-- CARD 4: CUSTO SUPRIMENTOS -->
+          <div class="metric-card" style="padding:.7rem;cursor:pointer" onclick="nav('suprimentos',document.querySelector('[onclick*=suprimentos]'))" title="Ver suprimentos pendentes">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
+              <div class="metric-label" style="margin:0;font-size:10px">Custo suprimentos €</div>
+              <div style="display:flex;gap:.2rem" onclick="event.stopPropagation()">
+                <select class="form-select" id="dash-c4-ano" onchange="event.stopPropagation();dashRenderCard4()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+                <select class="form-select" id="dash-c4-mes" onchange="event.stopPropagation();dashRenderCard4()" style="font-size:10px;padding:2px 4px;width:74px">
+                  <option value="">Ano todo</option>
+                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+              </div>
+            </div>
+            <div class="metric-value" id="dash-c4-total" style="font-size:18px;color:var(--red);margin-bottom:.3rem;line-height:1;letter-spacing:-0.5px">—</div>
+            <div id="dash-c4-breakdown" style="font-size:10px;line-height:1.6"></div>
           </div>
+
         </div>
       </div>
 
@@ -2537,7 +2547,7 @@ async function carregarDashboard(){
   // 1) carregar tarefas (usadas no painel direito do Calendário)
   // 2) carregar registos para alimentar o Dashboard Financeiro (separado)
   try{
-    const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.entidade},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico},${F.foiSuprimento},${F.dataFoiSup}`;
+    const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.entidade},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico},${F.margemLiq},${F.foiSuprimento},${F.dataFoiSup}`;
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
     todosRegistos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
 
@@ -7625,6 +7635,22 @@ const DASH_CORES_ESTADO={
 };
 let dashCharts={c1:null,c2:null,c3:null};
 
+function dashFmtEur(n){
+  if(!n||n===0)return '0€';
+  return n.toLocaleString('pt-PT',{minimumFractionDigits:0,maximumFractionDigits:0})+'€';
+}
+
+function dashFmtEur2(n){
+  if(!n||n===0)return '0,00€';
+  return n.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+}
+
+function dashGetEntidade(i){
+  let raw=i[F.entidade];
+  if(Array.isArray(raw))raw=raw[0]||'';
+  return (raw||'').toString().trim().toUpperCase();
+}
+
 function dashPopularAnos(){
   const anosUnicos=new Set();
   todosRegistos.forEach(i=>{
@@ -7634,7 +7660,7 @@ function dashPopularAnos(){
   const anos=[...anosUnicos].sort((a,b)=>b-a);
   if(anos.length===0)anos.push(new Date().getFullYear());
   const anoCorrente=new Date().getFullYear();
-  ['dash-c1-ano','dash-c2-ano','dash-c3-ano'].forEach(id=>{
+  ['dash-c1-ano','dash-c2-ano','dash-c3-ano','dash-c4-ano'].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel)return;
     sel.innerHTML='';
@@ -7662,7 +7688,7 @@ function dashDesenharGraficoBarras(canvasId,labels,valores,cores){
   // Forçar tamanho real
   const dpr=window.devicePixelRatio||1;
   const cssW=canvas.offsetWidth||300;
-  const cssH=110;
+  const cssH=100;
   canvas.width=cssW*dpr;
   canvas.height=cssH*dpr;
   canvas.style.width=cssW+'px';
@@ -7688,14 +7714,12 @@ function dashDesenharGraficoBarras(canvasId,labels,valores,cores){
     const y=cssH-padBot-barH;
     ctx.fillStyle=cores[i]||'#6366f1';
     ctx.fillRect(x,y,barW,barH);
-    // Valor por cima
     if(valores[i]>0){
       ctx.fillStyle='#1f2937';
       ctx.font='bold 10px DM Sans';
       ctx.textAlign='center';
       ctx.fillText(valores[i],x+barW/2,y-3);
     }
-    // Label por baixo (truncado)
     ctx.fillStyle='#6b7280';
     ctx.font='9px DM Sans';
     ctx.textAlign='center';
@@ -7705,30 +7729,48 @@ function dashDesenharGraficoBarras(canvasId,labels,valores,cores){
   });
 }
 
+function dashRenderBreakdown(elId,categorias,totaisEur,totalGeral,cores){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const linhas=categorias.map((cat,i)=>{
+    if(!totaisEur[i])return null;
+    return `<div style="display:flex;justify-content:space-between;padding:1px 0;border-top:1px solid var(--border)">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:${cores[i]||'#9ca3af'};display:inline-block"></span>${cat}</span>
+      <span style="font-weight:500;color:var(--text)">${dashFmtEur(totaisEur[i])}</span>
+    </div>`;
+  }).filter(Boolean).join('');
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-weight:600;color:var(--text);padding-bottom:2px">
+      <span>Margem líquida</span>
+      <span>${dashFmtEur(totalGeral)}</span>
+    </div>
+    ${linhas}
+  `;
+}
+
 function dashRenderCard1(){
   const ano=document.getElementById('dash-c1-ano').value;
   const mes=document.getElementById('dash-c1-mes').value;
   if(!ano)return;
   const lista=dashFiltrarRegistos(ano,mes,F.data);
-  // Contar por entidade (sem entidade conta como OUTROS)
-  const cont={};
-  DASH_ENTIDADES.forEach(e=>cont[e]=0);
-  let outros=0;
+  const cont={},margens={};
+  DASH_ENTIDADES.forEach(e=>{cont[e]=0;margens[e]=0;});
+  let outrosCnt=0,outrosMargem=0;
   lista.forEach(i=>{
-    // Entidade pode vir como string OU array (campo Choice no Graph)
-    let raw=i[F.entidade];
-    if(Array.isArray(raw))raw=raw[0]||'';
-    const ent=(raw||'').toString().trim().toUpperCase();
-    if(DASH_ENTIDADES.includes(ent))cont[ent]++;
-    else outros++; // inclui sem entidade preenchida
+    const ent=dashGetEntidade(i);
+    const margem=parseFloat(i[F.margemLiq])||0;
+    if(DASH_ENTIDADES.includes(ent)){cont[ent]++;margens[ent]+=margem;}
+    else {outrosCnt++;outrosMargem+=margem;}
   });
-  const total=lista.length;
-  document.getElementById('dash-c1-total').textContent=total;
+  document.getElementById('dash-c1-total').textContent=lista.length;
   const labels=DASH_ENTIDADES.slice();
   const valores=DASH_ENTIDADES.map(e=>cont[e]);
   const cores=DASH_ENTIDADES.map(e=>DASH_CORES_ENTIDADE[e]);
-  if(outros>0){labels.push('OUTROS');valores.push(outros);cores.push('#9ca3af');}
+  const eurs=DASH_ENTIDADES.map(e=>margens[e]);
+  if(outrosCnt>0){labels.push('OUTROS');valores.push(outrosCnt);cores.push('#9ca3af');eurs.push(outrosMargem);}
   dashDesenharGraficoBarras('dash-c1-chart',labels,valores,cores);
+  const totalMargem=Object.values(margens).reduce((a,b)=>a+b,0)+outrosMargem;
+  dashRenderBreakdown('dash-c1-breakdown',labels,eurs,totalMargem,cores);
 }
 
 function dashRenderCard2(){
@@ -7736,25 +7778,27 @@ function dashRenderCard2(){
   const mes=document.getElementById('dash-c2-mes').value;
   if(!ano)return;
   const lista=dashFiltrarRegistos(ano,mes,F.data);
-  const cont={};
-  DASH_ESTADOS.forEach(e=>cont[e]=0);
+  const cont={},margens={};
+  DASH_ESTADOS.forEach(e=>{cont[e]=0;margens[e]=0;});
   lista.forEach(i=>{
     const est=(i[F.estado]||'').trim();
-    if(DASH_ESTADOS.includes(est))cont[est]++;
+    const margem=parseFloat(i[F.margemLiq])||0;
+    if(DASH_ESTADOS.includes(est)){cont[est]++;margens[est]+=margem;}
   });
-  const total=lista.length;
-  document.getElementById('dash-c2-total').textContent=total;
+  document.getElementById('dash-c2-total').textContent=lista.length;
   const labels=DASH_ESTADOS.slice();
   const valores=DASH_ESTADOS.map(e=>cont[e]);
   const cores=DASH_ESTADOS.map(e=>DASH_CORES_ESTADO[e]);
+  const eurs=DASH_ESTADOS.map(e=>margens[e]);
   dashDesenharGraficoBarras('dash-c2-chart',labels,valores,cores);
+  const totalMargem=Object.values(margens).reduce((a,b)=>a+b,0);
+  dashRenderBreakdown('dash-c2-breakdown',labels,eurs,totalMargem,cores);
 }
 
 function dashRenderCard3(){
   const ano=document.getElementById('dash-c3-ano').value;
   const mes=document.getElementById('dash-c3-mes').value;
   if(!ano)return;
-  // Filtrar por Data_Foi_Suprimento
   const lista=todosRegistos.filter(i=>{
     if(!i[F.dataFoiSup])return false;
     if(i[F.foiSuprimento]!==true&&i[F.foiSuprimento]!=='Sim'&&i[F.foiSuprimento]!=='sim')return false;
@@ -7763,32 +7807,84 @@ function dashRenderCard3(){
     if(mes!==''&&mes!==null&&mes!==undefined&&d.getMonth()!==parseInt(mes,10))return false;
     return true;
   });
-  // Agrupar por entidade
-  const cont={};
-  DASH_ENTIDADES.forEach(e=>cont[e]=0);
-  let outros=0;
+  const cont={},margens={};
+  DASH_ENTIDADES.forEach(e=>{cont[e]=0;margens[e]=0;});
+  let outrosCnt=0,outrosMargem=0;
   lista.forEach(i=>{
-    const ent=(i[F.entidade]||'').trim();
-    if(DASH_ENTIDADES.includes(ent))cont[ent]++;
-    else outros++;
+    const ent=dashGetEntidade(i);
+    const margem=parseFloat(i[F.margemLiq])||0;
+    if(DASH_ENTIDADES.includes(ent)){cont[ent]++;margens[ent]+=margem;}
+    else {outrosCnt++;outrosMargem+=margem;}
   });
   document.getElementById('dash-c3-total').textContent=lista.length;
   const labels=DASH_ENTIDADES.slice();
   const valores=DASH_ENTIDADES.map(e=>cont[e]);
   const cores=DASH_ENTIDADES.map(e=>DASH_CORES_ENTIDADE[e]);
-  if(outros>0){labels.push('OUTROS');valores.push(outros);cores.push('#9ca3af');}
+  const eurs=DASH_ENTIDADES.map(e=>margens[e]);
+  if(outrosCnt>0){labels.push('OUTROS');valores.push(outrosCnt);cores.push('#9ca3af');eurs.push(outrosMargem);}
   dashDesenharGraficoBarras('dash-c3-chart',labels,valores,cores);
+  const totalMargem=Object.values(margens).reduce((a,b)=>a+b,0)+outrosMargem;
+  dashRenderBreakdown('dash-c3-breakdown',labels,eurs,totalMargem,cores);
+}
+
+function dashRenderCard4(){
+  const ano=document.getElementById('dash-c4-ano').value;
+  const mes=document.getElementById('dash-c4-mes').value;
+  if(!ano)return;
+  // Filtrar por DataEscritura no período E onde Custo_Suprimento > 0
+  const lista=todosRegistos.filter(i=>{
+    if(!i[F.data])return false;
+    const d=new Date(i[F.data]);
+    if(d.getFullYear()!==parseInt(ano,10))return false;
+    if(mes!==''&&mes!==null&&mes!==undefined&&d.getMonth()!==parseInt(mes,10))return false;
+    const custo=parseFloat(i[F.custoSup])||0;
+    return custo>0;
+  });
+  const custos={};
+  DASH_ENTIDADES.forEach(e=>{custos[e]=0;});
+  let outros=0;
+  let total=0;
+  lista.forEach(i=>{
+    const ent=dashGetEntidade(i);
+    const custo=parseFloat(i[F.custoSup])||0;
+    total+=custo;
+    if(DASH_ENTIDADES.includes(ent))custos[ent]+=custo;
+    else outros+=custo;
+  });
+  document.getElementById('dash-c4-total').textContent=dashFmtEur2(total);
+  // Breakdown
+  const linhas=[];
+  DASH_ENTIDADES.forEach(e=>{
+    if(custos[e]>0){
+      const cor=DASH_CORES_ENTIDADE[e];
+      linhas.push(`<div style="display:flex;justify-content:space-between;padding:1px 0;border-top:1px solid var(--border)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:${cor};display:inline-block"></span>${e}</span>
+        <span style="font-weight:500">${dashFmtEur(custos[e])}</span>
+      </div>`);
+    }
+  });
+  if(outros>0){
+    linhas.push(`<div style="display:flex;justify-content:space-between;padding:1px 0;border-top:1px solid var(--border)">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:#9ca3af;display:inline-block"></span>OUTROS</span>
+      <span style="font-weight:500">${dashFmtEur(outros)}</span>
+    </div>`);
+  }
+  const sub=document.getElementById('dash-c4-breakdown');
+  if(sub){
+    sub.innerHTML=linhas.length?
+      `<div style="font-size:9px;color:var(--text-faint);margin-bottom:2px">${lista.length} escrituras</div>${linhas.join('')}`:
+      '<div style="color:var(--text-faint);text-align:center;padding:8px 0;font-size:10px">Sem suprimentos no período</div>';
+  }
 }
 
 function dashSincronizarFiltros(){
-  // Pegar nos filtros do card 1 e aplicar aos outros
   const ano=document.getElementById('dash-c1-ano').value;
   const mes=document.getElementById('dash-c1-mes').value;
-  document.getElementById('dash-c2-ano').value=ano;
-  document.getElementById('dash-c2-mes').value=mes;
-  document.getElementById('dash-c3-ano').value=ano;
-  document.getElementById('dash-c3-mes').value=mes;
-  dashRenderCard1();dashRenderCard2();dashRenderCard3();
+  ['dash-c2','dash-c3','dash-c4'].forEach(c=>{
+    document.getElementById(c+'-ano').value=ano;
+    document.getElementById(c+'-mes').value=mes;
+  });
+  dashRenderCard1();dashRenderCard2();dashRenderCard3();dashRenderCard4();
 }
 
 function dashRenderTudo(){
@@ -7797,6 +7893,7 @@ function dashRenderTudo(){
   dashRenderCard1();
   dashRenderCard2();
   dashRenderCard3();
+  dashRenderCard4();
 }
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
