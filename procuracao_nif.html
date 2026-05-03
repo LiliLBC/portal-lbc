@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Procuração NIF Português — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);transition:all .15s;text-decoration:none}
+.back-btn:hover{background:var(--surface2);color:var(--text)}
+.page-title{font-size:14px;font-weight:600}
+.page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
+.topbar-actions{display:flex;gap:.5rem;align-items:center}
+.container{max-width:1080px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.section-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600}
+.section-desc{font-size:11px;color:var(--text-faint);margin-top:1px}
+.form-grid{display:grid;gap:.9rem}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%236B6860' d='M8 10L3 5h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.form-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-textarea{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s;resize:vertical;min-height:80px}
+.form-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+.toggle-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)}
+.toggle-label{font-size:12px;font-weight:500;flex:1}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border-strong);border-radius:20px;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+.outorgante-block{border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-bottom:.75rem;position:relative;background:var(--surface2)}
+.outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.outorgante-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.outorgante-type{display:flex;gap:.4rem}
+.type-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.type-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.remove-btn{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.remove-btn:hover{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.add-outorgante-btn{width:100%;padding:.6rem;border:1px dashed var(--border-strong);border-radius:8px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.add-outorgante-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+.casado-fields{background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.casado-fields-title{font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.cond-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.cond-block-amber{background:var(--amber-light);border-color:#FAC775}
+.cond-block-title{font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.poderes-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.5rem}
+@media(max-width:640px){.poderes-grid{grid-template-columns:1fr}}
+.poder-toggle{display:flex;align-items:flex-start;gap:.6rem;padding:.7rem .9rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.poder-toggle:hover{border-color:var(--accent)}
+.poder-toggle.active{background:var(--accent-light);border-color:var(--accent)}
+.poder-toggle input{margin-top:2px;accent-color:var(--accent)}
+.poder-toggle-label{flex:1;font-size:12px;line-height:1.4}
+.poder-toggle-title{font-weight:600;color:var(--text);margin-bottom:2px}
+.poder-toggle-desc{font-size:10px;color:var(--text-muted)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#236040}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-lg{padding:10px 20px;font-size:13px}
+.divider{border:none;border-top:1px solid var(--border);margin:.5rem 0}
+.rascunho-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:var(--amber-light);border:1px solid #FAC775;color:var(--amber);font-size:11px;font-weight:500}
+.toast{position:fixed;bottom:5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.sticky-footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;z-index:99;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.footer-info{font-size:11px;color:var(--text-faint)}
+.footer-actions{display:flex;gap:.5rem}
+@media(max-width:640px){.form-grid-2,.form-grid-3{grid-template-columns:1fr}.container{padding:1rem 1rem 5rem}#arrendatarios-container+div{grid-template-columns:1fr !important}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:window.close()" class="back-btn">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+      Fechar
+    </a>
+    <div>
+      <span class="page-title">Procuração NIF Português</span>
+      <span class="page-sub" id="page-sub">Procuração + Declaração de Representação Fiscal</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-sm" onclick="selecionarTemplate()" id="btn-template" title="Carregar template Word">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4"/></svg>
+      <span id="btn-template-label">Selecionar template</span>
+    </button>
+    <button class="btn btn-success btn-lg" onclick="gerarDocs()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
+      Gerar documentos (ZIP)
+    </button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 1. CLIENTE -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">1</div>
+      <div><div class="section-name">Cliente (mandante)</div><div class="section-desc">Os dados serão usados na procuração e na declaração</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Nome completo (MAIÚSCULAS) <span>*</span></label>
+        <input type="text" class="form-input" id="cli-nome" placeholder="Ex: MARTIN BRADLEY TREZZA" oninput="this.value=this.value.toUpperCase()">
+        <div class="form-hint">Como aparece no documento de identificação</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Género <span>*</span></label>
+        <select class="form-select" id="cli-genero">
+          <option value="M" selected>Masculino</option>
+          <option value="F">Feminino</option>
+        </select>
+        <div class="form-hint">Afeta concordâncias (divorciado/divorciada, portador/portadora)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado civil <span>*</span></label>
+        <select class="form-select" id="cli-estado-civil">
+          <option value="solteiro">Solteiro(a)</option>
+          <option value="casado">Casado(a)</option>
+          <option value="divorciado">Divorciado(a)</option>
+          <option value="viuvo">Viúvo(a)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data de nascimento <span>*</span></label>
+        <input type="date" class="form-input" id="cli-nascimento">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Naturalidade <span>*</span></label>
+        <input type="text" class="form-input" id="cli-naturalidade" placeholder="Ex: New Jersey USA">
+        <div class="form-hint">Cidade/Estado e País</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nacionalidade (PT) <span>*</span></label>
+        <input type="text" class="form-input" id="cli-nacionalidade" placeholder="Ex: americana, brasileira, francesa...">
+        <div class="form-hint">Adjetivo gentílico em minúsculas (americana, ucraniana, etc.)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. DOCUMENTO DE IDENTIFICAÇÃO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">2</div>
+      <div><div class="section-name">Documento de identificação</div><div class="section-desc">Passaporte ou Cartão de Cidadão estrangeiro</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Tipo de documento <span>*</span></label>
+        <select class="form-select" id="cli-tipo-doc" onchange="onTipoDocChange()">
+          <option value="passaporte" selected>Passaporte</option>
+          <option value="cc">Cartão de Cidadão (estrangeiro)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Número do documento <span>*</span></label>
+        <input type="text" class="form-input" id="cli-numero-doc" placeholder="Ex: A535592461">
+      </div>
+      <div class="form-group">
+        <label class="form-label">País emissor (em PT) <span>*</span></label>
+        <input type="text" class="form-input" id="cli-pais-emissor" placeholder="Ex: Estados Unidos da América">
+        <div class="form-hint">Será usado em "emitido pelos [país]"</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">País emissor (em EN) <span>*</span></label>
+        <input type="text" class="form-input" id="cli-pais-emissor-en" placeholder="Ex: United States of America">
+        <div class="form-hint">Will be used in "issued by the [country]"</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Validade do documento <span>*</span></label>
+        <input type="date" class="form-input" id="cli-validade-doc">
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. MORADA -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">3</div>
+      <div><div class="section-name">Morada de residência</div><div class="section-desc">Será usada nos dois documentos</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Morada completa <span>*</span></label>
+        <textarea class="form-textarea" id="cli-morada" rows="2" placeholder="Ex: 131 Holston View Dr. Apt 308 - Weaverville, NC 28787 - 0779"></textarea>
+        <div class="form-hint">Inclui rua, número, código postal, cidade e país</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. DATA DA PROCURAÇÃO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">4</div>
+      <div><div class="section-name">Local e data</div><div class="section-desc">Da outorga da procuração</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Local de outorga <span>*</span></label>
+        <input type="text" class="form-input" id="local-outorga" value="Évora">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data de outorga <span>*</span></label>
+        <input type="date" class="form-input" id="data-outorga">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="sticky-footer">
+  <div class="footer-info" id="footer-info">Preenche os campos e clica em Gerar documentos</div>
+  <div class="footer-actions">
+    <button class="btn" onclick="limparFormulario()">Limpar</button>
+    <button class="btn btn-success" onclick="gerarDocs()">Gerar documentos</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOADER
+// ═══════════════════════════════════════════════════════════════════════════════
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function v(id){const el=document.getElementById(id);return el?(el.value||'').trim():'';}
+function showToast(msg,type){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:20px;right:20px;padding:.8rem 1.2rem;border-radius:8px;background:'+(type==='error'?'#ef4444':'#10b981')+';color:white;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px';
+  t.textContent=msg;document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+function fmtDataPT(iso){
+  if(!iso)return '';
+  const [y,m,d]=iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function fmtDataExtensoPT(iso){
+  if(!iso)return '';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [y,m,d]=iso.split('-');
+  return `${parseInt(d,10)} de ${meses[parseInt(m,10)-1]} de ${y}`;
+}
+function fmtDataExtensoEN(iso){
+  if(!iso)return '';
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const [y,m,d]=iso.split('-');
+  const day=parseInt(d,10);
+  // Formato EN: "the 6th of February of 2025"
+  const suffix=(day===1||day===21||day===31)?'st':(day===2||day===22)?'nd':(day===3||day===23)?'rd':'th';
+  return `the ${day}${suffix} of ${months[parseInt(m,10)-1]} of ${y}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCUMENTO DE IDENTIFICAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════════
+function onTipoDocChange(){
+  // Apenas para hint visual; o tipo é gravado no momento de gerar
+}
+
+function textoTipoDoc(genero){
+  const tipo=v('cli-tipo-doc');
+  if(tipo==='passaporte'){
+    return {
+      pt:'passaporte',
+      en:'passport'
+    };
+  }
+  return {
+    pt:'cartão de cidadão',
+    en:'citizen card'
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONCORDÂNCIAS PT
+// ═══════════════════════════════════════════════════════════════════════════════
+function estadoCivilPT(genero){
+  const ec=v('cli-estado-civil');
+  const f=genero==='F';
+  switch(ec){
+    case 'solteiro': return f?'solteira':'solteiro';
+    case 'casado': return f?'casada':'casado';
+    case 'divorciado': return f?'divorciada':'divorciado';
+    case 'viuvo': return f?'viúva':'viúvo';
+  }
+  return '';
+}
+
+function estadoCivilEN(genero){
+  const ec=v('cli-estado-civil');
+  switch(ec){
+    case 'solteiro': return 'single';
+    case 'casado': return 'married';
+    case 'divorciado': return 'divorced';
+    case 'viuvo': return genero==='F'?'widow':'widower';
+  }
+  return '';
+}
+
+function portadorDo(genero){
+  return genero==='F'?'portadora do':'portador do';
+}
+
+function nascidoEm(genero){
+  return genero==='F'?'nascida':'nascido';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEMPLATE LOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+let templateProcBuffer=null;
+let templateDeclBuffer=null;
+
+function openTemplateDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('lbc-procuracao-nif-template',1);
+    req.onupgradeneeded=()=>{req.result.createObjectStore('templates');};
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function carregarTemplateDB(key){
+  try{
+    const db=await openTemplateDB();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction('templates','readonly');
+      const req=tx.objectStore('templates').get(key);
+      req.onsuccess=()=>res(req.result||null);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){return null;}
+}
+async function guardarTemplateDB(key,buf){
+  try{
+    const db=await openTemplateDB();
+    const tx=db.transaction('templates','readwrite');
+    tx.objectStore('templates').put(buf,key);
+  }catch(e){}
+}
+
+async function carregarTemplate(){
+  // Tentar IndexedDB primeiro
+  const cachedProc=await carregarTemplateDB('TEMPLATE_PROCURACAO_NIF');
+  const cachedDecl=await carregarTemplateDB('TEMPLATE_DECL_REP_FISCAL');
+  if(cachedProc)templateProcBuffer=cachedProc;
+  if(cachedDecl)templateDeclBuffer=cachedDecl;
+  if(cachedProc&&cachedDecl){
+    atualizarEstadoTemplate(true);
+    return;
+  }
+  // Tentar Graph
+  try{
+    if(!window.opener||!window.opener.graphToken)throw new Error('sem token');
+    const token=window.opener.graphToken;
+    const sitesRes=await fetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2',{headers:{'Authorization':'Bearer '+token}});
+    if(!sitesRes.ok)throw new Error('sites');
+    const site=await sitesRes.json();
+    const drivesRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:{'Authorization':'Bearer '+token}});
+    const drives=(await drivesRes.json()).value;
+    const docsDrive=drives.find(d=>d.name==='Documents'||d.name==='Documentos'||d.name==='Documentos Partilhados');
+    if(!docsDrive)throw new Error('drive');
+    
+    if(!templateProcBuffer){
+      const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_PROCURACAO_NIF.docx:/content`,{headers:{'Authorization':'Bearer '+token}});
+      if(r.ok){
+        templateProcBuffer=await r.arrayBuffer();
+        await guardarTemplateDB('TEMPLATE_PROCURACAO_NIF',templateProcBuffer);
+      }
+    }
+    if(!templateDeclBuffer){
+      const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_DECL_REP_FISCAL.docx:/content`,{headers:{'Authorization':'Bearer '+token}});
+      if(r.ok){
+        templateDeclBuffer=await r.arrayBuffer();
+        await guardarTemplateDB('TEMPLATE_DECL_REP_FISCAL',templateDeclBuffer);
+      }
+    }
+    atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
+  }catch(e){
+    atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
+  }
+}
+
+function atualizarEstadoTemplate(ok){
+  const el=document.getElementById('template-status');
+  if(!el)return;
+  if(ok){
+    el.textContent='✓ Templates carregados';
+    el.style.color='#10b981';
+  }else{
+    el.textContent='⚠ Templates não carregados — selecciona manualmente';
+    el.style.color='#f59e0b';
+  }
+}
+
+document.getElementById('template-file').addEventListener('change',async(e)=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const buf=await file.arrayBuffer();
+  // Detectar qual é
+  if(file.name.toLowerCase().includes('procura')||file.name.toLowerCase().includes('poa')){
+    templateProcBuffer=buf;
+    await guardarTemplateDB('TEMPLATE_PROCURACAO_NIF',buf);
+    showToast('Template procuração carregado','ok');
+  }else if(file.name.toLowerCase().includes('decl')){
+    templateDeclBuffer=buf;
+    await guardarTemplateDB('TEMPLATE_DECL_REP_FISCAL',buf);
+    showToast('Template declaração carregado','ok');
+  }else{
+    showToast('Nome do ficheiro não reconhecido (deve incluir "procura" ou "decl")','error');
+    return;
+  }
+  atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GERAR DOCS (zip)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function gerarDocs(){
+  try{
+    if(!window.PizZip){await loadScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');}
+    if(!window.Docxtemplater&&!window.docxtemplater){await loadScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');}
+    if(!window.JSZip){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');}
+    
+    if(!templateProcBuffer||!templateDeclBuffer){
+      showToast('Templates não carregados — selecciona manualmente','error');
+      return;
+    }
+    
+    // Validar e recolher dados
+    const nome=v('cli-nome');
+    if(!nome)throw new Error('Preenche o nome do cliente.');
+    const genero=v('cli-genero')||'M';
+    const naturalidade=v('cli-naturalidade');
+    if(!naturalidade)throw new Error('Preenche a naturalidade.');
+    const nacionalidade=v('cli-nacionalidade');
+    if(!nacionalidade)throw new Error('Preenche a nacionalidade.');
+    const nascimento=v('cli-nascimento');
+    if(!nascimento)throw new Error('Preenche a data de nascimento.');
+    const numeroDoc=v('cli-numero-doc');
+    if(!numeroDoc)throw new Error('Preenche o número do documento.');
+    const paisEmissor=v('cli-pais-emissor');
+    if(!paisEmissor)throw new Error('Preenche o país emissor (PT).');
+    const paisEmissorEN=v('cli-pais-emissor-en');
+    if(!paisEmissorEN)throw new Error('Preenche o país emissor (EN).');
+    const validadeDoc=v('cli-validade-doc');
+    if(!validadeDoc)throw new Error('Preenche a validade do documento.');
+    const morada=v('cli-morada');
+    if(!morada)throw new Error('Preenche a morada.');
+    const localOutorga=v('local-outorga')||'Évora';
+    const dataOutorga=v('data-outorga');
+    if(!dataOutorga)throw new Error('Preenche a data de outorga.');
+    
+    const tipoDoc=textoTipoDoc(genero);
+    
+    // ═══════ DADOS PARA A PROCURAÇÃO ═══════
+    const dataProc={
+      Nome_Maiusculas:nome,
+      Estado_Civil:estadoCivilPT(genero),
+      Estado_Civil_EN:estadoCivilEN(genero),
+      Naturalidade:naturalidade,
+      Tipo_Doc_PT:tipoDoc.pt,
+      Tipo_Doc_EN:tipoDoc.en,
+      Numero_Doc:numeroDoc,
+      Pais_Emissor:paisEmissor,
+      Pais_Emissor_EN:paisEmissorEN,
+      Validade_Doc:fmtDataPT(validadeDoc),
+      Morada:morada,
+      Portador_Do:portadorDo(genero),
+      Local_Outorga:localOutorga,
+      Data_Outorga:fmtDataExtensoPT(dataOutorga),
+      Data_Outorga_EN:fmtDataExtensoEN(dataOutorga)
+    };
+    
+    // ═══════ DADOS PARA A DECLARAÇÃO ═══════
+    const dataDecl={
+      Nome_Maiusculas:nome,
+      Estado_Civil:estadoCivilPT(genero),
+      Naturalidade:naturalidade,
+      Nacionalidade:nacionalidade,
+      Data_Nascimento:fmtDataPT(nascimento),
+      Nascido_Em:nascidoEm(genero),
+      Portador_Do:portadorDo(genero),
+      Tipo_Doc:tipoDoc.pt.charAt(0).toUpperCase()+tipoDoc.pt.slice(1),
+      Numero_Doc:numeroDoc,
+      Pais_Emissor:paisEmissorEN, // declaração tem em itálico nome em EN
+      Validade_Doc:fmtDataPT(validadeDoc),
+      Residente_Em:'residente em',
+      Morada:morada
+    };
+    
+    // ═══════ GERAR PROCURAÇÃO ═══════
+    const procBuf=templateProcBuffer.slice(0);
+    const procZip=new PizZip(procBuf);
+    const procDoc=new window.docxtemplater(procZip,{
+      paragraphLoop:true,
+      linebreaks:true,
+      delimiters:{start:'{',end:'}'}
+    });
+    procDoc.render(dataProc);
+    const procOut=procDoc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    
+    // ═══════ GERAR DECLARAÇÃO ═══════
+    const declBuf=templateDeclBuffer.slice(0);
+    const declZip=new PizZip(declBuf);
+    const declDoc=new window.docxtemplater(declZip,{
+      paragraphLoop:true,
+      linebreaks:true,
+      delimiters:{start:'{',end:'}'}
+    });
+    declDoc.render(dataDecl);
+    const declOut=declDoc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    
+    // ═══════ ZIP ═══════
+    const zip=new JSZip();
+    const nomeBase=nome.replace(/[^a-zA-Z0-9 áéíóúàèìòùâêîôûãõçÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÃÕÇ]/g,'').trim().substring(0,60);
+    zip.file(`Procuracao_${nomeBase}.docx`,procOut);
+    zip.file(`Declaracao_Repr_Fiscal_${nomeBase}.docx`,declOut);
+    
+    const zipBlob=await zip.generateAsync({type:'blob'});
+    const ymd=dataOutorga.replace(/-/g,'');
+    const url=URL.createObjectURL(zipBlob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`Procuracao_NIF_${ymd}_${nomeBase}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showToast('Procuração + Declaração geradas em ZIP!','ok');
+  }catch(e){
+    console.error(e);
+    showToast(e.message||String(e),'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LIMPAR
+// ═══════════════════════════════════════════════════════════════════════════════
+function limparFormulario(){
+  if(!confirm('Apagar todos os campos preenchidos?'))return;
+  document.querySelectorAll('input[type=text],input[type=number],input[type=date],input[type=time],textarea').forEach(el=>el.value='');
+  document.getElementById('cli-genero').value='M';
+  document.getElementById('cli-estado-civil').selectedIndex=0;
+  document.getElementById('cli-tipo-doc').value='passaporte';
+  document.getElementById('local-outorga').value='Évora';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+window.addEventListener('load',async()=>{
+  // Pré-preencher data de outorga com hoje
+  document.getElementById('data-outorga').value=new Date().toISOString().slice(0,10);
+  // Carregar templates
+  await carregarTemplate();
+});
+
+</script>
+
+</body>
+</html>
