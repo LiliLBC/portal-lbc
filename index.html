@@ -2691,7 +2691,7 @@ function renderPastas(lista){
       <div class="pasta-actions">
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir pasta</a>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
     </div>`).join('');
@@ -3216,7 +3216,20 @@ function abrirCRP(){
   }
   setTimeout(()=>window.open('https://www.predialonline.pt/PredialOnline/FRM005RPOLCP_input.action','_blank'),300);
 }
-function abrirPastaSP(){if(painelPastaUrl)window.open(painelPastaUrl,'_blank');}
+// Adiciona ?env=Embedded ao URL do SharePoint para esconder o menu lateral
+// Resultado: ao abrir uma pasta, o utilizador vê só o conteúdo daquela pasta,
+// não o menu lateral com Contabilidade/FATURAS/etc.
+function embedSP(url){
+  if(!url)return url;
+  try{
+    // Se já tem env=Embedded, devolve como está
+    if(url.includes('env=Embedded'))return url;
+    // Adicionar parâmetro
+    const sep=url.includes('?')?'&':'?';
+    return url+sep+'env=Embedded';
+  }catch(e){return url;}
+}
+function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
 
 async function guardarPainel(){
   const btn=document.getElementById('painel-btn-guardar');
@@ -4116,7 +4129,7 @@ async function procEscolherClienteExistente(pasta){
     } else {
       procs.innerHTML=`<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">${subPastas.length} ${subPastas.length===1?'processo':'processos'}</div>`+
         subPastas.map(s=>`
-          <a href="${escHtml(s.webUrl||'#')}" target="_blank" class="reg-list-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;margin-bottom:.3rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
+          <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" class="reg-list-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;margin-bottom:.3rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
             <span style="flex:1;font-size:11px;font-family:'DM Mono',monospace;font-weight:500">${escHtml(s.name)}</span>
             <span style="font-size:9px;color:var(--text-faint)">${s.lastModifiedDateTime?fmtData(s.lastModifiedDateTime):''}</span>
@@ -4200,7 +4213,7 @@ function renderProcessos(lista){
         <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
         <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
         <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${p.webUrl}" target="_blank" class="btn btn-sm">Abrir</a>
+        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir</a>
         <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.nome||'')}','${escHtml(p.id||'')}')">+ Processo</button>
       </div>
     </div>
@@ -4287,7 +4300,7 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
         const safeNomeProc=escHtml(s.name||'').replace(/'/g,'&#39;');
         return `<div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .55rem;margin-bottom:.3rem;background:var(--surface);border-radius:6px;border:1px solid var(--border)">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
-          <a href="${escHtml(s.webUrl||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)}</a>
+          <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)}</a>
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
         </div>`;
@@ -8414,7 +8427,7 @@ async function avCriarPasta(){
     const pasta=await pastaRes.json();
     showToast(`Pasta "${nomePastaAv}" criada em ${forn}!`,'success');
     // Abrir no SharePoint
-    if(pasta.webUrl)setTimeout(()=>{if(confirm('Pasta criada! Queres abrir no SharePoint?'))window.open(pasta.webUrl,'_blank');},500);
+    if(pasta.webUrl)setTimeout(()=>{if(confirm('Pasta criada! Queres abrir no SharePoint?'))window.open(embedSP(pasta.webUrl),'_blank');},500);
     avLimpar();
   }catch(e){showToast('Erro: '+e.message,'error');}
   btn.disabled=false;btn.textContent='Criar pasta';
