@@ -2304,7 +2304,7 @@ async function fazerLogin(){
   }
 }
 async function renovarToken(){
-  try{const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:contaAtual});graphToken=r.accessToken;}
+  try{const r=await msalApp.acquireTokenSilent({scopes:GRAPH_SCOPES,account:contaAtual});graphToken=r.accessToken;window.graphToken=graphToken;}
   catch(e){await msalApp.acquireTokenRedirect({scopes:GRAPH_SCOPES});}
 }
 function fazerLogout(){msalApp.logoutRedirect();}
@@ -8833,7 +8833,7 @@ async function init(){
     });
     await msalApp.initialize();
     const resp=await msalApp.handleRedirectPromise().catch(()=>null);
-    if(resp){contaAtual=resp.account;graphToken=resp.accessToken;await mostrarApp();return;}
+    if(resp){contaAtual=resp.account;graphToken=resp.accessToken;window.graphToken=graphToken;await mostrarApp();return;}
     const contas=msalApp.getAllAccounts();
     if(contas.length>0){contaAtual=contas[0];await renovarToken();await mostrarApp();}
   };
