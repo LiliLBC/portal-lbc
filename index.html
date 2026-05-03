@@ -2184,6 +2184,55 @@ tbody tr:hover td{background:#FAFAF8}
           </div>
 
         </div>
+
+        <!-- LINHA 2: AVENÇAS POR FORNECEDOR -->
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:.75rem">
+
+          <!-- CARD 5: AVENÇAS REMAX -->
+          <div class="metric-card" style="padding:.7rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
+              <div class="metric-label" style="margin:0;font-size:10px">Avenças REMAX</div>
+              <div style="display:flex;gap:.2rem">
+                <select class="form-select" id="dash-c5-ano" onchange="dashRenderCard5()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+                <select class="form-select" id="dash-c5-mes" onchange="dashRenderCard5()" style="font-size:10px;padding:2px 4px;width:74px">
+                  <option value="">Ano todo</option>
+                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:.6rem;align-items:baseline;margin-bottom:.3rem">
+              <div class="metric-value" id="dash-c5-total" style="font-size:22px;color:#dc2626;line-height:1">—</div>
+              <div id="dash-c5-subtotais" style="font-size:11px;color:var(--text-muted)"></div>
+            </div>
+            <canvas id="dash-c5-chart" style="width:100%;height:120px;display:block"></canvas>
+          </div>
+
+          <!-- CARD 6: AVENÇAS CM MONFORTE -->
+          <div class="metric-card" style="padding:.7rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
+              <div class="metric-label" style="margin:0;font-size:10px">Avenças CM Monforte</div>
+              <div style="display:flex;gap:.2rem">
+                <select class="form-select" id="dash-c6-ano" onchange="dashRenderCard6()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+                <select class="form-select" id="dash-c6-mes" onchange="dashRenderCard6()" style="font-size:10px;padding:2px 4px;width:74px">
+                  <option value="">Ano todo</option>
+                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:.6rem;align-items:baseline;margin-bottom:.3rem">
+              <div class="metric-value" id="dash-c6-total" style="font-size:22px;color:#7c3aed;line-height:1">—</div>
+              <div id="dash-c6-subtotais" style="font-size:11px;color:var(--text-muted)"></div>
+            </div>
+            <canvas id="dash-c6-chart" style="width:100%;height:120px;display:block"></canvas>
+          </div>
+
+        </div>
       </div>
 
     </div>
@@ -7657,10 +7706,16 @@ function dashPopularAnos(){
     if(i[F.data]){const a=new Date(i[F.data]).getFullYear();if(a>2020)anosUnicos.add(a);}
     if(i[F.dataFoiSup]){const a=new Date(i[F.dataFoiSup]).getFullYear();if(a>2020)anosUnicos.add(a);}
   });
+  // Adicionar anos das avenças
+  if(todosProcessosAv){
+    todosProcessosAv.forEach(i=>{
+      if(i[AP.inicio]){const a=new Date(i[AP.inicio]).getFullYear();if(a>2020)anosUnicos.add(a);}
+    });
+  }
   const anos=[...anosUnicos].sort((a,b)=>b-a);
   if(anos.length===0)anos.push(new Date().getFullYear());
   const anoCorrente=new Date().getFullYear();
-  ['dash-c1-ano','dash-c2-ano','dash-c3-ano','dash-c4-ano'].forEach(id=>{
+  ['dash-c1-ano','dash-c2-ano','dash-c3-ano','dash-c4-ano','dash-c5-ano','dash-c6-ano'].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel)return;
     sel.innerHTML='';
@@ -7826,6 +7881,54 @@ function dashRenderCard3(){
   dashRenderBreakdown('dash-c3-breakdown',labels,eurs,totalMargem,cores);
 }
 
+function dashRenderCard5(){return dashRenderAvencas('REMAX',5,'#dc2626',['CPCV','ARRENDAMENTO','CARTAS CONFINANTES','ANÁLISE','PARECER','CADASTRO','OUTRO']);}
+function dashRenderCard6(){return dashRenderAvencas('CM MONFORTE',6,'#7c3aed',['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']);}
+
+function dashRenderAvencas(fornecedor,cardIdx,corBase,tiposServico){
+  const ano=document.getElementById(`dash-c${cardIdx}-ano`).value;
+  const mes=document.getElementById(`dash-c${cardIdx}-mes`).value;
+  if(!ano)return;
+  if(!todosProcessosAv||!todosProcessosAv.length){
+    document.getElementById(`dash-c${cardIdx}-total`).textContent='0';
+    document.getElementById(`dash-c${cardIdx}-subtotais`).textContent='avenças não carregadas';
+    dashDesenharGraficoBarras(`dash-c${cardIdx}-chart`,[],[],[]);
+    return;
+  }
+  // Filtrar por fornecedor + ano/mês de inicio
+  const lista=todosProcessosAv.filter(i=>{
+    if((i[AP.fornecedor]||'').toString().trim().toUpperCase()!==fornecedor)return false;
+    if(!i[AP.inicio])return false;
+    const d=new Date(i[AP.inicio]);
+    if(d.getFullYear()!==parseInt(ano,10))return false;
+    if(mes!==''&&mes!==null&&mes!==undefined&&d.getMonth()!==parseInt(mes,10))return false;
+    return true;
+  });
+  // Contar por tipo
+  const cont={};
+  tiposServico.forEach(t=>cont[t]=0);
+  lista.forEach(i=>{
+    const t=(i[AP.servico]||'').toString().trim().toUpperCase();
+    const match=tiposServico.find(s=>s.toUpperCase()===t);
+    if(match)cont[match]++;
+    else if(cont['OUTRO']!==undefined)cont['OUTRO']++;
+  });
+  // Sub-totais por estado
+  const emCurso=lista.filter(i=>{
+    const e=i[AP.estado]||'';
+    return e!=='Concluído'&&e!=='Cancelado';
+  }).length;
+  const concluidos=lista.filter(i=>i[AP.estado]==='Concluído').length;
+  // Renderizar
+  document.getElementById(`dash-c${cardIdx}-total`).textContent=lista.length;
+  document.getElementById(`dash-c${cardIdx}-subtotais`).innerHTML=
+    `<span style="color:#3b82f6">● ${emCurso} em curso</span> · <span style="color:#10b981">● ${concluidos} concluídos</span>`;
+  // Gráfico
+  const labels=tiposServico.slice();
+  const valores=tiposServico.map(t=>cont[t]);
+  const cores=tiposServico.map(()=>corBase);
+  dashDesenharGraficoBarras(`dash-c${cardIdx}-chart`,labels,valores,cores);
+}
+
 function dashRenderCard4(){
   const ano=document.getElementById('dash-c4-ano').value;
   const mes=document.getElementById('dash-c4-mes').value;
@@ -7879,20 +7982,28 @@ function dashRenderCard4(){
 function dashSincronizarFiltros(){
   const ano=document.getElementById('dash-c1-ano').value;
   const mes=document.getElementById('dash-c1-mes').value;
-  ['dash-c2','dash-c3','dash-c4'].forEach(c=>{
-    document.getElementById(c+'-ano').value=ano;
-    document.getElementById(c+'-mes').value=mes;
+  ['dash-c2','dash-c3','dash-c4','dash-c5','dash-c6'].forEach(c=>{
+    const a=document.getElementById(c+'-ano'),m=document.getElementById(c+'-mes');
+    if(a)a.value=ano;
+    if(m)m.value=mes;
   });
   dashRenderCard1();dashRenderCard2();dashRenderCard3();dashRenderCard4();
+  dashRenderCard5();dashRenderCard6();
 }
 
-function dashRenderTudo(){
+async function dashRenderTudo(){
   if(!todosRegistos||!todosRegistos.length)return;
+  // Carregar avenças se ainda não carregadas
+  if(!todosProcessosAv||!todosProcessosAv.length){
+    try{await carregarAvencas();}catch(e){console.warn('Erro ao carregar avenças no dashboard:',e);}
+  }
   dashPopularAnos();
   dashRenderCard1();
   dashRenderCard2();
   dashRenderCard3();
   dashRenderCard4();
+  dashRenderCard5();
+  dashRenderCard6();
 }
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
