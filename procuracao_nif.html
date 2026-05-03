@@ -368,43 +368,66 @@ async function guardarTemplateDB(key,buf){
 }
 
 async function carregarTemplate(){
+  console.log('[procuracao_nif] A iniciar carregamento de templates');
   // Tentar IndexedDB primeiro
   const cachedProc=await carregarTemplateDB('TEMPLATE_PROCURACAO_NIF');
   const cachedDecl=await carregarTemplateDB('TEMPLATE_DECL_REP_FISCAL');
-  if(cachedProc)templateProcBuffer=cachedProc;
-  if(cachedDecl)templateDeclBuffer=cachedDecl;
+  if(cachedProc){templateProcBuffer=cachedProc;console.log('[procuracao_nif] Procuração carregada da cache');}
+  if(cachedDecl){templateDeclBuffer=cachedDecl;console.log('[procuracao_nif] Declaração carregada da cache');}
   if(cachedProc&&cachedDecl){
     atualizarEstadoTemplate(true);
     return;
   }
   // Tentar Graph
   try{
-    if(!window.opener||!window.opener.graphToken)throw new Error('sem token');
+    if(!window.opener||!window.opener.graphToken){
+      console.warn('[procuracao_nif] Sem token graph (window.opener.graphToken)');
+      throw new Error('sem token');
+    }
     const token=window.opener.graphToken;
+    console.log('[procuracao_nif] Token obtido, a procurar site...');
     const sitesRes=await fetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2',{headers:{'Authorization':'Bearer '+token}});
-    if(!sitesRes.ok)throw new Error('sites');
+    if(!sitesRes.ok){
+      console.error('[procuracao_nif] Erro a obter site:',sitesRes.status);
+      throw new Error('sites');
+    }
     const site=await sitesRes.json();
+    console.log('[procuracao_nif] Site encontrado:',site.id);
     const drivesRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:{'Authorization':'Bearer '+token}});
     const drives=(await drivesRes.json()).value;
+    console.log('[procuracao_nif] Drives:',drives.map(d=>d.name));
     const docsDrive=drives.find(d=>d.name==='Documents'||d.name==='Documentos'||d.name==='Documentos Partilhados');
-    if(!docsDrive)throw new Error('drive');
+    if(!docsDrive){
+      console.error('[procuracao_nif] Drive Documentos não encontrado');
+      throw new Error('drive');
+    }
+    console.log('[procuracao_nif] Drive Documentos:',docsDrive.id);
     
     if(!templateProcBuffer){
+      console.log('[procuracao_nif] A carregar TEMPLATE_PROCURACAO_NIF.docx...');
       const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_PROCURACAO_NIF.docx:/content`,{headers:{'Authorization':'Bearer '+token}});
       if(r.ok){
         templateProcBuffer=await r.arrayBuffer();
         await guardarTemplateDB('TEMPLATE_PROCURACAO_NIF',templateProcBuffer);
+        console.log('[procuracao_nif] ✓ Procuração carregada do SP');
+      }else{
+        console.error('[procuracao_nif] Erro a carregar procuração:',r.status,await r.text());
       }
     }
     if(!templateDeclBuffer){
+      console.log('[procuracao_nif] A carregar TEMPLATE_DECL_REP_FISCAL.docx...');
       const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_DECL_REP_FISCAL.docx:/content`,{headers:{'Authorization':'Bearer '+token}});
       if(r.ok){
         templateDeclBuffer=await r.arrayBuffer();
         await guardarTemplateDB('TEMPLATE_DECL_REP_FISCAL',templateDeclBuffer);
+        console.log('[procuracao_nif] ✓ Declaração carregada do SP');
+      }else{
+        console.error('[procuracao_nif] Erro a carregar declaração:',r.status,await r.text());
       }
     }
     atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
   }catch(e){
+    console.error('[procuracao_nif] Erro geral:',e);
     atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
   }
 }
@@ -421,25 +444,28 @@ function atualizarEstadoTemplate(ok){
   }
 }
 
-document.getElementById('template-file').addEventListener('change',async(e)=>{
-  const file=e.target.files[0];
-  if(!file)return;
-  const buf=await file.arrayBuffer();
-  // Detectar qual é
-  if(file.name.toLowerCase().includes('procura')||file.name.toLowerCase().includes('poa')){
-    templateProcBuffer=buf;
-    await guardarTemplateDB('TEMPLATE_PROCURACAO_NIF',buf);
-    showToast('Template procuração carregado','ok');
-  }else if(file.name.toLowerCase().includes('decl')){
-    templateDeclBuffer=buf;
-    await guardarTemplateDB('TEMPLATE_DECL_REP_FISCAL',buf);
-    showToast('Template declaração carregado','ok');
-  }else{
-    showToast('Nome do ficheiro não reconhecido (deve incluir "procura" ou "decl")','error');
-    return;
-  }
-  atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
-});
+// Listener opcional para input file de templates (se existir no HTML)
+const tplFileInput=document.getElementById('template-file');
+if(tplFileInput){
+  tplFileInput.addEventListener('change',async(e)=>{
+    const file=e.target.files[0];
+    if(!file)return;
+    const buf=await file.arrayBuffer();
+    if(file.name.toLowerCase().includes('procura')||file.name.toLowerCase().includes('poa')){
+      templateProcBuffer=buf;
+      await guardarTemplateDB('TEMPLATE_PROCURACAO_NIF',buf);
+      showToast('Template procuração carregado','ok');
+    }else if(file.name.toLowerCase().includes('decl')){
+      templateDeclBuffer=buf;
+      await guardarTemplateDB('TEMPLATE_DECL_REP_FISCAL',buf);
+      showToast('Template declaração carregado','ok');
+    }else{
+      showToast('Nome do ficheiro não reconhecido (deve incluir "procura" ou "decl")','error');
+      return;
+    }
+    atualizarEstadoTemplate(templateProcBuffer&&templateDeclBuffer);
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GERAR DOCS (zip)
