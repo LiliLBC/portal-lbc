@@ -831,33 +831,53 @@ async function guardarTemplateDB(buf){
 }
 
 async function carregarTemplate(){
+  console.log('[carta_confinante] A iniciar carregamento de template');
   // Tentar IndexedDB primeiro
   const cached=await carregarTemplateDB();
   if(cached){
     templateBuffer=cached;
     atualizarEstadoTemplate(true);
+    console.log('[carta_confinante] Template carregado da cache');
     return;
   }
   // Tentar Graph
   try{
-    if(!window.opener||!window.opener.graphToken)throw new Error('sem token');
+    if(!window.opener||!window.opener.graphToken){
+      console.warn('[carta_confinante] Sem token graph (window.opener.graphToken)');
+      throw new Error('sem token');
+    }
     const token=window.opener.graphToken;
+    console.log('[carta_confinante] Token obtido, a procurar site...');
     const sitesRes=await fetch('https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2',{headers:{'Authorization':'Bearer '+token}});
-    if(!sitesRes.ok)throw new Error('sites');
+    if(!sitesRes.ok){
+      console.error('[carta_confinante] Erro a obter site:',sitesRes.status);
+      throw new Error('sites');
+    }
     const site=await sitesRes.json();
+    console.log('[carta_confinante] Site encontrado:',site.id);
     const drivesRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:{'Authorization':'Bearer '+token}});
     const drives=(await drivesRes.json()).value;
+    console.log('[carta_confinante] Drives:',drives.map(d=>d.name));
     const docsDrive=drives.find(d=>d.name==='Documents'||d.name==='Documentos'||d.name==='Documentos Partilhados');
-    if(!docsDrive)throw new Error('drive');
+    if(!docsDrive){
+      console.error('[carta_confinante] Drive Documentos não encontrado');
+      throw new Error('drive');
+    }
+    console.log('[carta_confinante] Drive Documentos:',docsDrive.id,'-> a carregar template');
     const templateRes=await fetch(
       `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPLATE_CARTA_CONFINANTE.docx:/content`,
       {headers:{'Authorization':'Bearer '+token}}
     );
-    if(!templateRes.ok)throw new Error('template');
+    if(!templateRes.ok){
+      console.error('[carta_confinante] Erro a carregar template:',templateRes.status,await templateRes.text());
+      throw new Error('template');
+    }
     templateBuffer=await templateRes.arrayBuffer();
     atualizarEstadoTemplate(true);
+    console.log('[carta_confinante] ✓ Template carregado do SP');
     try{await guardarTemplateDB(templateBuffer);}catch(e){}
   }catch(e){
+    console.error('[carta_confinante] Erro geral:',e);
     atualizarEstadoTemplate(false);
   }
 }
@@ -874,13 +894,16 @@ function atualizarEstadoTemplate(ok){
   }
 }
 
-document.getElementById('template-file').addEventListener('change',async(e)=>{
-  const file=e.target.files[0];
-  if(!file)return;
-  templateBuffer=await file.arrayBuffer();
-  await guardarTemplateDB(templateBuffer);
-  atualizarEstadoTemplate(true);
-});
+const tplFileInputCarta=document.getElementById('template-file');
+if(tplFileInputCarta){
+  tplFileInputCarta.addEventListener('change',async(e)=>{
+    const file=e.target.files[0];
+    if(!file)return;
+    templateBuffer=await file.arrayBuffer();
+    await guardarTemplateDB(templateBuffer);
+    atualizarEstadoTemplate(true);
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GERAR CARTAS (zip)
