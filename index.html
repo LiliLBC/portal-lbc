@@ -7778,21 +7778,20 @@ function dashRenderCard2(){
   const mes=document.getElementById('dash-c2-mes').value;
   if(!ano)return;
   const lista=dashFiltrarRegistos(ano,mes,F.data);
-  const cont={},margens={};
-  DASH_ESTADOS.forEach(e=>{cont[e]=0;margens[e]=0;});
+  const cont={};
+  DASH_ESTADOS.forEach(e=>cont[e]=0);
   lista.forEach(i=>{
     const est=(i[F.estado]||'').trim();
-    const margem=parseFloat(i[F.margemLiq])||0;
-    if(DASH_ESTADOS.includes(est)){cont[est]++;margens[est]+=margem;}
+    if(DASH_ESTADOS.includes(est))cont[est]++;
   });
   document.getElementById('dash-c2-total').textContent=lista.length;
   const labels=DASH_ESTADOS.slice();
   const valores=DASH_ESTADOS.map(e=>cont[e]);
   const cores=DASH_ESTADOS.map(e=>DASH_CORES_ESTADO[e]);
-  const eurs=DASH_ESTADOS.map(e=>margens[e]);
   dashDesenharGraficoBarras('dash-c2-chart',labels,valores,cores);
-  const totalMargem=Object.values(margens).reduce((a,b)=>a+b,0);
-  dashRenderBreakdown('dash-c2-breakdown',labels,eurs,totalMargem,cores);
+  // Limpar breakdown (só contagens neste card)
+  const el=document.getElementById('dash-c2-breakdown');
+  if(el)el.innerHTML='';
 }
 
 function dashRenderCard3(){
