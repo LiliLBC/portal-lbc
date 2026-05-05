@@ -1112,19 +1112,14 @@ async function gerarContrato(){
     if(pastaSeleccionada){
       const ab=await out.arrayBuffer();
       const upRes=await graphFetch(
-        `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content?@microsoft.graph.conflictBehavior=rename`,
+        `https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${nomeDoc}:/content`,
         {method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab}
       );
       if(!upRes.ok){
         console.error('[CPCV] Upload falhou:',upRes.status);
         showToast(`Contrato gerado mas não foi guardado na pasta (erro ${upRes.status}). Faz upload manual.`,'error');
       } else {
-        const uploaded=await upRes.json().catch(()=>({}));
-        const nomeFinal=uploaded.name||nomeDoc;
-        const renomeado=nomeFinal!==nomeDoc;
-        showToast(renomeado
-          ?`Guardado como "${nomeFinal}" (já existia ficheiro com mesmo nome)`
-          :`Guardado em ${pastaSeleccionada.nome}`,'success');
+        showToast(`Guardado em ${pastaSeleccionada.nome}`,'success');
       }
     }
 
@@ -1189,6 +1184,7 @@ function gerarTextoImovel(){
   const freg=v('freguesia-conservatoria');
   const ap=v('ap-aquisicao');
   const desc=v('descricao-predio');
+  const local=v('localizacao-predio');
 
   // Matrizes urbanas
   const musEl=document.querySelectorAll('[id^="mu-"][id$="-artigo"]');
@@ -1212,13 +1208,13 @@ function gerarTextoImovel(){
   let txt='';
   if(tipo==='fracao'){
     const letra=v('fracao-letra');const apph=v('ap-ph');
-    txt=`da fração autónoma designada pela letra "${letra}", do prédio em regime de propriedade horizontal constituído pela ${apph}, ${desc?'composta por '+desc+', ':''}descrita na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`da fração autónoma designada pela letra "${letra}", do prédio em regime de propriedade horizontal constituído pela ${apph}, ${local?'sito em '+local+', ':''}${desc?'composta por '+desc+', ':''}descrita na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }else if(tipo==='rustico'){
-    txt=`do prédio rústico, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`do prédio rústico, ${local?'sito em '+local+', ':''}${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }else if(tipo==='misto'){
-    txt=`do prédio misto, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`do prédio misto, ${local?'sito em '+local+', ':''}${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }else{
-    txt=`do prédio urbano, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`do prédio urbano, ${local?'sito em '+local+', ':''}${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }
 
   if(mus.length) txt+=`, inscrito na matriz predial urbana sob o ${mus.join(' e o ')}`;
