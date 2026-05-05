@@ -3251,14 +3251,11 @@ function abrirCRP(){
 // Resultado: ao abrir uma pasta, o utilizador vê só o conteúdo daquela pasta,
 // não o menu lateral com Contabilidade/FATURAS/etc.
 function embedSP(url){
-  if(!url)return url;
-  try{
-    // Se já tem env=Embedded, devolve como está
-    if(url.includes('env=Embedded'))return url;
-    // Adicionar parâmetro
-    const sep=url.includes('?')?'&':'?';
-    return url+sep+'env=Embedded';
-  }catch(e){return url;}
+  // Devolve a URL do SharePoint inalterada para abrir no SP normal
+  // (com barra lateral, cabeçalho e navegação completos).
+  // Anteriormente acrescentava env=Embedded, mas esse modo é destinado
+  // a iframes incorporados — em nova aba esconde toda a chrome do SP.
+  return url;
 }
 function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
 
