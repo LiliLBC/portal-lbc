@@ -6457,14 +6457,14 @@ let extratoContaAtual='Principal';
 const contaKey=c=>(c==='Secundária'||c==='Secundaria')?'Secundaria':'Principal';
 
 function toggleDropConta(id){
-  ['drop-exportar','drop-extrato-p','drop-extrato-s','drop-ferramentas'].forEach(d=>{
+  ['drop-exportar','drop-extrato-p','drop-extrato-s','drop-ferramentas','drop-conciliacao'].forEach(d=>{
     const el=document.getElementById(d);
     if(el)el.style.display=(d===id&&el.style.display==='none')?'block':'none';
   });
 }
 document.addEventListener('click',e=>{
-  if(!e.target.closest('[onclick*="toggleDropConta"]')&&!e.target.closest('[onclick*="extratoBtnClick"]'))
-    ['drop-exportar','drop-extrato-p','drop-extrato-s','drop-ferramentas'].forEach(d=>{const el=document.getElementById(d);if(el)el.style.display='none';});
+  if(!e.target.closest('[onclick*="toggleDropConta"]')&&!e.target.closest('[onclick*="extratoBtnClick"]')&&!e.target.closest('[onclick*="conciliacaoBtnClick"]'))
+    ['drop-exportar','drop-extrato-p','drop-extrato-s','drop-ferramentas','drop-conciliacao'].forEach(d=>{const el=document.getElementById(d);if(el)el.style.display='none';});
 });
 
 // Cache em memória dos extratos do mês corrente (key: "ano-mes" → {Principal:url, Secundaria:url})
