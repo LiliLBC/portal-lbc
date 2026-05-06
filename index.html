@@ -3260,15 +3260,16 @@ function abrirCRP(){
   }
   setTimeout(()=>window.open('https://www.predialonline.pt/PredialOnline/FRM005RPOLCP_input.action','_blank'),300);
 }
-// Adiciona ?env=Embedded ao URL do SharePoint para esconder o menu lateral
-// Resultado: ao abrir uma pasta, o utilizador vê só o conteúdo daquela pasta,
-// não o menu lateral com Contabilidade/FATURAS/etc.
+
 function embedSP(url){
-  // Devolve a URL do SharePoint inalterada para abrir no SP normal
-  // (com barra lateral, cabeçalho e navegação completos).
-  // Anteriormente acrescentava env=Embedded, mas esse modo é destinado
-  // a iframes incorporados — em nova aba esconde toda a chrome do SP.
-  return url;
+  // Adiciona ?env=WebView ao URL para abrir a pasta SharePoint sem
+  // a barra lateral nem o header do site — mantém apenas a lista
+  // de ficheiros, o breadcrumb e os controlos da biblioteca
+  // (Partilhar, Copiar ligação, Carregar, etc.).
+  if(!url) return url;
+  // Não duplicar se já tiver env= no URL
+  if(/[?&]env=/.test(url)) return url;
+  return url + (url.indexOf('?')>=0 ? '&' : '?') + 'env=WebView';
 }
 function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
 
