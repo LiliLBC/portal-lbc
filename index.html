@@ -2934,14 +2934,21 @@ function atualizarMetricas(lista){
   const century=anuais.filter(i=>(i[F.entidade]||'').toUpperCase()==='CENTURY');
   const part=anuais.filter(i=>(i[F.entidade]||'').toUpperCase()==='PARTICULARES');
   const grupos={CGD:cgd,REMAX:remax,Particulares:[...century,...part]};
-  const media=arr=>{
-    const vals=arr.map(i=>{const v=i[F.valorServico];return typeof v==='number'?v:parseFloat(String(v||'0').replace(',','.'));}).filter(v=>v>0);
-    return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
-  };
+  // Contagem por estado (Em curso, Depositadas, Concluídas, Suprimentos) — acumulado anual
+  const contarEstado=(arr,estado)=>arr.filter(i=>(i[F.estado]||'').toLowerCase()===estado.toLowerCase()).length;
   [['cgd','CGD'],['remax','REMAX'],['part','Particulares']].forEach(([k,g])=>{
-    const n=grupos[g].length, m=media(grupos[g]);
+    const arr=grupos[g];
+    const n=arr.length;
+    const ec=contarEstado(arr,'Em curso');
+    const dep=contarEstado(arr,'Depositado');
+    const con=contarEstado(arr,'Concluido');
+    const sup=contarEstado(arr,'Suprimento');
     document.getElementById(`mv-${k}`).textContent=n;
-    document.getElementById(`ms-${k}`).textContent=`escrituras · média ${m?m+'€':'—'}`;
+    document.getElementById(`ms-${k}`).innerHTML=
+      `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Em curso</span><span style="font-weight:500">${ec}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Depositadas</span><span style="font-weight:500">${dep}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Concluídas</span><span style="font-weight:500">${con}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Suprimentos</span><span style="font-weight:500">${sup}</span></div>`;
   });
 
 }
