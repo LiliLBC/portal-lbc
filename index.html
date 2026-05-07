@@ -3286,7 +3286,10 @@ async function guardarPainel(){
   const sv=id=>document.getElementById(id)?.value||'';
   const svChoice=id=>{const v=document.getElementById(id)?.value;return v||undefined;};
   const svNum=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v)||0:undefined;};
-  const svDate=id=>{const v=document.getElementById(id)?.value;return v?new Date(v).toISOString():undefined;};
+  // Gravar datas como meia-dia UTC (T12:00:00Z) para o dia nunca mudar por causa do fuso.
+  // O input <input type="date"> dá YYYY-MM-DD; concatenamos diretamente em vez de
+  // usar new Date(...).toISOString() (que aplicaria conversão de fuso e podia mover o dia).
+  const svDate=id=>{const v=document.getElementById(id)?.value;return v?(v+'T12:00:00Z'):undefined;};
   const svText=id=>{const v=document.getElementById(id)?.value;return v||undefined;};
   const body={};
   const nome=sv('p-nome'); if(nome) body[F.nome]=nome;
@@ -3539,7 +3542,7 @@ async function criarTarefaDash(){
   const prio=document.getElementById('dash-tar-prioridade').value;
   const obs=document.getElementById('dash-tar-obs').value;
   if(resp) body[T.responsavel]=resp;
-  if(prazo) body[T.prazo]=new Date(prazo).toISOString();
+  if(prazo) body[T.prazo]=prazo+'T12:00:00Z';
   if(prio) body[T.prioridade]=prio;
   if(obs) body[T.observacoes]=obs;
   body[T.estado]='Por fazer';
@@ -4011,9 +4014,14 @@ async function guardarEvento(){
   if(!horaFim){showToast('Define a hora de fim.','error');return;}
   if(horaFim<=hora){showToast('A hora de fim tem de ser depois da hora de início.','error');return;}
   const observacoes=document.getElementById('ev-observacoes').value||'';
+  // IMPORTANTE: gravar a data como MEIA-DIA UTC (T12:00:00Z) para garantir que
+  // o dia nunca muda independentemente do fuso horário. A hora real do evento
+  // está guardada nas colunas separadas Hora e Hora_Fim (texto).
+  const dataStr=document.getElementById('ev-data').value; // YYYY-MM-DD
+  const dataParaSP=dataStr+'T12:00:00Z';
   const bodyBase={
     [A.titulo]:titulo,
-    [A.data]:document.getElementById('ev-data').value+'T'+hora+':00',
+    [A.data]:dataParaSP,
     [A.hora]:hora,
     [A.horaFim]:horaFim,
     [A.tipo]:document.getElementById('ev-tipo').value,
@@ -6377,7 +6385,7 @@ async function guardarContab(){
 
   const body={
     [CB.titulo]:descricao.substring(0,255),
-    [CB.data]:dataVal?new Date(dataVal).toISOString():null,
+    [CB.data]:dataVal?(dataVal+'T12:00:00Z'):null,
     [CB.tipo]:tipo,
     [CB.categoria]:document.getElementById('cb-categoria').value||'',
     [CB.descricao]:descricao,
@@ -7714,7 +7722,7 @@ async function servGuardar(){
   const fields={
     [T.titulo]:document.getElementById('serv-p-titulo').value,
     [T.responsavel]:document.getElementById('serv-p-resp').value,
-    [T.prazo]:prazoVal?new Date(prazoVal).toISOString():null,
+    [T.prazo]:prazoVal?(prazoVal+'T12:00:00Z'):null,
     [T.prioridade]:document.getElementById('serv-p-prio').value,
     [T.estado]:document.getElementById('serv-p-estado').value,
     [T.observacoes]:document.getElementById('serv-p-obs').value,
@@ -8604,8 +8612,8 @@ async function guardarProcessoAvenca(){
   body[AP.titulo]=titulo;
   if(forn)body[AP.fornecedor]=forn;
   if(serv)body[AP.servico]=serv;
-  const ini=document.getElementById('av-p-inicio').value;if(ini)body[AP.inicio]=new Date(ini).toISOString();
-  const conc=document.getElementById('av-p-conclusao').value;if(conc)body[AP.conclusao]=new Date(conc).toISOString();
+  const ini=document.getElementById('av-p-inicio').value;if(ini)body[AP.inicio]=ini+'T12:00:00Z';
+  const conc=document.getElementById('av-p-conclusao').value;if(conc)body[AP.conclusao]=conc+'T12:00:00Z';
   body[AP.estado]=document.getElementById('av-p-estado').value;
   const resp=document.getElementById('av-p-responsavel').value;if(resp)body[AP.responsavel]=resp;
   body[AP.urgente]=document.getElementById('av-p-urgente').checked;
