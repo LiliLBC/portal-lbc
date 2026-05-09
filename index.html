@@ -1966,9 +1966,109 @@ tbody tr:hover td{background:#FAFAF8}
 
       </div>
 
-      <!-- EM CONSTRUÇÃO -->
+      <!-- CONTRATOS -->
       <div class="screen" id="screen-contratos">
-        <div class="construcao-screen"><div class="construcao-icon">📄</div><div class="construcao-title">Módulo de Contratos</div><div class="construcao-sub">Geração automática de CVMH CGD, MH CGD e Procurações com docxtemplater. Em desenvolvimento — Fase 2.</div></div>
+        <!-- HEADER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="font-weight:600;font-size:15px">Contratos e Declarações</div>
+            <div style="font-size:11px;color:var(--text-muted)">Geração automática a partir de templates</div>
+          </div>
+        </div>
+
+        <!-- CARDS -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin-bottom:1.25rem">
+          <a href="mh.html" target="_blank" style="text-decoration:none">
+            <div class="contract-card" style="padding:1rem;background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);cursor:pointer;transition:all .15s">
+              <div style="font-size:24px;margin-bottom:.4rem">📋</div>
+              <div style="font-weight:600;font-size:14px;color:var(--text-strong);margin-bottom:.2rem">Mútuo com Hipoteca (MH)</div>
+              <div style="font-size:11px;color:var(--text-muted)">CGD — abre nova aba</div>
+            </div>
+          </a>
+          <a href="cvmh.html" target="_blank" style="text-decoration:none">
+            <div class="contract-card" style="padding:1rem;background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);cursor:pointer;transition:all .15s">
+              <div style="font-size:24px;margin-bottom:.4rem">🏠</div>
+              <div style="font-weight:600;font-size:14px;color:var(--text-strong);margin-bottom:.2rem">Compra e Venda + MH</div>
+              <div style="font-size:11px;color:var(--text-muted)">CVMH CGD — abre nova aba</div>
+            </div>
+          </a>
+          <div class="contract-card" onclick="abrirJustificacao()" style="padding:1rem;background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);cursor:pointer;transition:all .15s">
+            <div style="font-size:24px;margin-bottom:.4rem">✍️</div>
+            <div style="font-weight:600;font-size:14px;color:var(--text-strong);margin-bottom:.2rem">Justificação de Presença</div>
+            <div style="font-size:11px;color:var(--text-muted)">Em lote — gera Word(s) num zip</div>
+          </div>
+        </div>
+
+        <!-- ÁREA DE GERAÇÃO DE JUSTIFICAÇÃO (escondida por defeito) -->
+        <div id="justif-area" style="display:none">
+          <!-- secção 1: dados do ato -->
+          <div class="section-card" style="background:var(--bg-primary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:.75rem">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem">
+              <span style="font-size:11px;color:var(--text-muted);background:var(--bg-secondary);padding:3px 9px;border-radius:6px">1</span>
+              <span style="font-size:14px;font-weight:500;color:var(--text-strong)">Dados do ato</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:.9rem">Comuns a todas as declarações deste lote.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label style="font-size:11px;color:var(--text-muted)">Tipo de ato *</label>
+                <select id="justif-tipo" class="form-select" style="font-size:12px">
+                  <option value="Compra e Venda de Imóvel">Compra e Venda de Imóvel</option>
+                  <option value="Mútuo com Hipoteca">Mútuo com Hipoteca</option>
+                  <option value="Compra e Venda de Imóvel e Mútuo com Hipoteca">Compra e Venda + Mútuo com Hipoteca</option>
+                  <option value="Procuração">Procuração</option>
+                  <option value="__custom__">Outro (escrever)</option>
+                </select>
+                <input id="justif-tipo-custom" class="form-input" placeholder="Outro tipo de ato..." style="font-size:12px;margin-top:4px;display:none"/>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted)">Data do ato *</label>
+                <input id="justif-data" type="date" class="form-input" style="font-size:12px"/>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.5rem">
+              <div>
+                <label style="font-size:11px;color:var(--text-muted)">Hora início *</label>
+                <input id="justif-hora-ini" type="time" class="form-input" style="font-size:12px" value="14:30"/>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted)">Hora fim *</label>
+                <input id="justif-hora-fim" type="time" class="form-input" style="font-size:12px" value="15:30"/>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.5rem">
+              <div>
+                <label style="font-size:11px;color:var(--text-muted)">Local *</label>
+                <select id="justif-local" class="form-select" style="font-size:12px" onchange="onLocalChange()">
+                  <option value="Rua Domingos Franco de Oliveira nº 16, em Évora">Escritório (Évora)</option>
+                  <option value="__custom__">Outro local</option>
+                </select>
+                <input id="justif-local-custom" class="form-input" placeholder="Indica o local..." style="font-size:12px;margin-top:4px;display:none"/>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted)">Data da declaração</label>
+                <input id="justif-data-decl" type="date" class="form-input" style="font-size:12px"/>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:2px">(se vazio, usa data do ato)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- secção 2: pessoas -->
+          <div class="section-card" style="background:var(--bg-primary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:.75rem">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem">
+              <span style="font-size:11px;color:var(--text-muted);background:var(--bg-secondary);padding:3px 9px;border-radius:6px">2</span>
+              <span style="font-size:14px;font-weight:500;color:var(--text-strong)">Pessoas a justificar</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:.9rem">Cada pessoa terá a sua própria declaração no zip.</div>
+            <div id="justif-pessoas-container"></div>
+            <button class="btn btn-secondary btn-sm" onclick="justifAdicionarPessoa()" type="button" style="width:100%;margin-top:.5rem">+ Adicionar pessoa</button>
+          </div>
+
+          <!-- botões finais -->
+          <div style="display:flex;gap:.5rem;justify-content:flex-end">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('justif-area').style.display='none'" type="button">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="gerarJustificacoes()" type="button">📄 Gerar declarações (zip)</button>
+          </div>
+        </div>
       </div>
       <div class="screen" id="screen-clientes">
 
@@ -9144,6 +9244,248 @@ async function init(){
     if(contas.length>0){contaAtual=contas[0];await renovarToken();await mostrarApp();}
   };
 }
+// ═══ JUSTIFICAÇÃO DE PRESENÇA ═══════════════════════════════════════════════
+let justifPessoaCount = 0;
+
+function abrirJustificacao(){
+  const area = document.getElementById('justif-area');
+  area.style.display = 'block';
+  // Inicializar
+  const dataAto = document.getElementById('justif-data');
+  if (!dataAto.value) dataAto.value = new Date().toISOString().slice(0,10);
+  // Limpar lista de pessoas
+  document.getElementById('justif-pessoas-container').innerHTML = '';
+  justifPessoaCount = 0;
+  justifAdicionarPessoa();
+  // Listener para tipo custom
+  document.getElementById('justif-tipo').onchange = function(){
+    const c = document.getElementById('justif-tipo-custom');
+    c.style.display = this.value === '__custom__' ? 'block' : 'none';
+  };
+  // Scroll
+  area.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function onLocalChange(){
+  const sel = document.getElementById('justif-local').value;
+  document.getElementById('justif-local-custom').style.display = sel === '__custom__' ? 'block' : 'none';
+}
+
+function justifAdicionarPessoa(){
+  justifPessoaCount++;
+  const idx = justifPessoaCount;
+  const id = `justif-p-${idx}`;
+  const div = document.createElement('div');
+  div.className = 'justif-pessoa';
+  div.id = id;
+  div.style.cssText = 'border:0.5px solid var(--border-soft);border-radius:var(--radius-md);padding:.75rem;margin-bottom:.5rem;background:var(--bg-primary)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <span style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Pessoa ${idx}</span>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div style="display:inline-flex;gap:4px;background:var(--bg-secondary);padding:3px;border-radius:6px">
+          <button type="button" class="justif-tab justif-tab-on" data-papel="principal" onclick="justifSetPapel('${id}','principal',this)" style="padding:3px 9px;font-size:11px;border-radius:4px;cursor:pointer;border:none;background:var(--bg-primary);color:var(--text-strong);font-weight:500">Cliente principal</button>
+          <button type="button" class="justif-tab" data-papel="acompanhante" onclick="justifSetPapel('${id}','acompanhante',this)" style="padding:3px 9px;font-size:11px;border-radius:4px;cursor:pointer;border:none;background:transparent;color:var(--text-muted)">Acompanhante</button>
+        </div>
+        ${idx > 1 ? `<button type="button" onclick="document.getElementById('${id}').remove()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1;padding:0 4px">×</button>` : ''}
+      </div>
+    </div>
+    <input id="${id}-nome" class="form-input" placeholder="Nome completo *" style="font-size:12px;margin-bottom:6px"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+      <input id="${id}-nif" class="form-input" placeholder="NIF *" style="font-size:12px"/>
+      <select id="${id}-genero" class="form-select" style="font-size:12px">
+        <option value="F">Feminino</option>
+        <option value="M">Masculino</option>
+      </select>
+    </div>
+    <input id="${id}-morada" class="form-input" placeholder="Morada completa *" style="font-size:12px"/>
+    <div id="${id}-acompanhante-de" style="margin-top:6px;display:none">
+      <label style="font-size:11px;color:var(--text-muted)">Acompanhante de *</label>
+      <input id="${id}-principal-nome" class="form-input" placeholder="Nome do cliente principal" style="font-size:12px"/>
+    </div>
+    <input type="hidden" id="${id}-papel" value="principal"/>
+  `;
+  document.getElementById('justif-pessoas-container').appendChild(div);
+}
+
+function justifSetPapel(id, papel, btn){
+  document.getElementById(`${id}-papel`).value = papel;
+  // Atualizar tabs visualmente
+  const container = btn.parentElement;
+  container.querySelectorAll('.justif-tab').forEach(t => {
+    t.classList.remove('justif-tab-on');
+    t.style.background = 'transparent';
+    t.style.color = 'var(--text-muted)';
+    t.style.fontWeight = '400';
+  });
+  btn.classList.add('justif-tab-on');
+  btn.style.background = 'var(--bg-primary)';
+  btn.style.color = 'var(--text-strong)';
+  btn.style.fontWeight = '500';
+  // Mostrar/esconder campo "Acompanhante de"
+  document.getElementById(`${id}-acompanhante-de`).style.display = papel === 'acompanhante' ? 'block' : 'none';
+}
+
+function justifRecolherDados(){
+  const tipoSel = document.getElementById('justif-tipo').value;
+  const tipo = tipoSel === '__custom__' ? document.getElementById('justif-tipo-custom').value.trim() : tipoSel;
+  const localSel = document.getElementById('justif-local').value;
+  const local = localSel === '__custom__' ? document.getElementById('justif-local-custom').value.trim() : localSel;
+  const dataAto = document.getElementById('justif-data').value;
+  const dataDecl = document.getElementById('justif-data-decl').value || dataAto;
+  const horaIni = document.getElementById('justif-hora-ini').value;
+  const horaFim = document.getElementById('justif-hora-fim').value;
+
+  const errs = [];
+  if (!tipo) errs.push('Tipo de ato');
+  if (!dataAto) errs.push('Data do ato');
+  if (!horaIni) errs.push('Hora início');
+  if (!horaFim) errs.push('Hora fim');
+  if (!local) errs.push('Local');
+
+  const pessoas = [];
+  document.querySelectorAll('.justif-pessoa').forEach(div => {
+    const id = div.id;
+    const papel = document.getElementById(`${id}-papel`).value;
+    const p = {
+      papel,
+      nome: (document.getElementById(`${id}-nome`).value || '').trim(),
+      nif: (document.getElementById(`${id}-nif`).value || '').trim(),
+      genero: document.getElementById(`${id}-genero`).value,
+      morada: (document.getElementById(`${id}-morada`).value || '').trim(),
+      principalNome: (document.getElementById(`${id}-principal-nome`)?.value || '').trim(),
+    };
+    pessoas.push(p);
+  });
+
+  if (!pessoas.length) errs.push('Pelo menos 1 pessoa');
+  pessoas.forEach((p,i) => {
+    if (!p.nome) errs.push(`Pessoa ${i+1}: nome`);
+    if (!p.nif) errs.push(`Pessoa ${i+1}: NIF`);
+    if (!p.morada) errs.push(`Pessoa ${i+1}: morada`);
+    if (p.papel === 'acompanhante' && !p.principalNome) errs.push(`Pessoa ${i+1}: nome do principal`);
+  });
+
+  return {tipo, dataAto, dataDecl, horaIni, horaFim, local, pessoas, errs};
+}
+
+function justifFmtData(iso){
+  // 2026-05-15 → "15 de maio de 2026"
+  if (!iso) return '';
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(d,10)} de ${meses[parseInt(m,10)-1]} de ${y}`;
+}
+
+// Sanitizar nome para nome de ficheiro
+function justifSanitize(nome){
+  return (nome || 'pessoa').replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g,'_').slice(0,60) || 'pessoa';
+}
+
+async function gerarJustificacoes(){
+  const dados = justifRecolherDados();
+  if (dados.errs.length){
+    showToast('Faltam campos: ' + dados.errs.join(', '), 'error');
+    return;
+  }
+
+  showToast('A gerar declarações...', 'info');
+
+  // Carregar bibliotecas
+  try {
+    if (!window.PizZip) await carregarScriptJustif('https://unpkg.com/pizzip@3.1.4/dist/pizzip.js');
+    if (!window.Docxtemplater && !window.docxtemplater) await carregarScriptJustif('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js');
+    if (!window.JSZip) await carregarScriptJustif('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js');
+    if (!window.saveAs) await carregarScriptJustif('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');
+  } catch(e){
+    showToast('Erro a carregar bibliotecas: ' + e.message, 'error');
+    return;
+  }
+
+  const DocxClass = window.Docxtemplater || window.docxtemplater;
+  if (!DocxClass) { showToast('docxtemplater não carregou', 'error'); return; }
+
+  // Buscar template do SharePoint (pasta Templates/)
+  let templateBuffer;
+  try {
+    const ficheiro = 'TEMPL_JUSTIFICACAO_PRESENCA.docx';
+    // Procurar item 'Templates' no drive principal (FATURAS) ou drive específico
+    // Estratégia: procurar pelo path direto
+    const url = `${GRAPH_BASE}/sites/${siteIdDados}/drive/root:/Templates/${encodeURIComponent(ficheiro)}:/content`;
+    const r = await fetch(url, {headers:{'Authorization':'Bearer '+graphToken}});
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    templateBuffer = await r.arrayBuffer();
+  } catch(e){
+    showToast('Erro ao baixar template: ' + e.message, 'error');
+    return;
+  }
+
+  // Gerar zip com 1 docx por pessoa
+  const zip = new JSZip();
+  const dataAtoExt = justifFmtData(dados.dataAto);
+  const dataDeclExt = justifFmtData(dados.dataDecl);
+
+  for (const p of dados.pessoas){
+    // Construir os 2 placeholders condicionais
+    const oA = p.genero === 'F' ? 'a' : 'o';
+    let qualidade = '';
+    let paragrafo = '';
+    if (p.papel === 'principal'){
+      qualidade = '';
+      paragrafo = `${p.genero === 'F' ? 'A' : 'O'} referid${oA} interveio no ato, sendo a sua presença necessária e imprescindível para a plena validade e eficácia do ato.`;
+    } else {
+      qualidade = `, na qualidade de acompanhante de ${p.principalNome}`;
+      paragrafo = `A presença d${oA} referid${oA}, na qualidade de acompanhante, justifica-se para o devido apoio e suporte d${oA} interveniente principal durante o ato.`;
+    }
+
+    const dados_doc = {
+      Nome: p.nome,
+      NIF: p.nif,
+      Morada: p.morada,
+      Tipo_Ato: dados.tipo,
+      Data_Ato: dataAtoExt,
+      Hora_Inicio: dados.horaIni,
+      Hora_Fim: dados.horaFim,
+      Local: dados.local,
+      Data_Declaracao: `Évora, ${dataDeclExt}`,
+      Qualidade_Acompanhante: qualidade,
+      Paragrafo_Justificacao: paragrafo,
+    };
+
+    try {
+      const pizZip = new PizZip(templateBuffer.slice(0));
+      const doc = new DocxClass(pizZip, {paragraphLoop:true, linebreaks:true, nullGetter: () => ''});
+      doc.render(dados_doc);
+      const out = doc.getZip().generate({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const fname = `Justificacao_${justifSanitize(p.nome)}.docx`;
+      const buf = await out.arrayBuffer();
+      zip.file(fname, buf);
+    } catch(e){
+      console.error('Erro ao gerar docx para', p.nome, e);
+      showToast(`Erro a gerar docx para ${p.nome}: ${e.message}`, 'error');
+      return;
+    }
+  }
+
+  // Gerar zip e fazer download
+  try {
+    const blob = await zip.generateAsync({type:'blob'});
+    const dataStr = (dados.dataAto || '').replace(/-/g,'');
+    saveAs(blob, `Justificacoes_${dataStr}.zip`);
+    showToast(`✅ ${dados.pessoas.length} declaraç${dados.pessoas.length>1?'ões':'ão'} gerada${dados.pessoas.length>1?'s':''}!`, 'success');
+  } catch(e){
+    showToast('Erro a gerar zip: ' + e.message, 'error');
+  }
+}
+
+function carregarScriptJustif(src){
+  return new Promise((resolve,reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
 init();
 </script>
 </body>
