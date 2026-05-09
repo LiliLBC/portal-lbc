@@ -9409,11 +9409,23 @@ async function gerarJustificacoes(){
   let templateBuffer;
   try {
     const ficheiro = 'TEMPL_JUSTIFICACAO_PRESENCA.docx';
-    // Procurar item 'Templates' no drive principal (FATURAS) ou drive específico
-    // Estratégia: procurar pelo path direto
-    const url = `${GRAPH_BASE}/sites/${siteIdDados}/drive/root:/Templates/${encodeURIComponent(ficheiro)}:/content`;
-    const r = await fetch(url, {headers:{'Authorization':'Bearer '+graphToken}});
-    if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    // Estratégia: tentar primeiro via /drives/{driveId}/root:/Templates (padrão dos outros)
+    // Se falhar, fallback via /sites/{id}/drive/root:/Templates
+    let r;
+    try {
+      // 1ª tentativa: drive principal de Documentos
+      const drives = await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
+      const docsDrive = drives.value.find(d => d.name === 'Documentos' || d.name === 'Documents' || d.driveType === 'documentLibrary');
+      if (!docsDrive) throw new Error('Drive Documentos não encontrado');
+      const url1 = `${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/${encodeURIComponent(ficheiro)}:/content`;
+      r = await fetch(url1, {headers:{'Authorization':'Bearer '+graphToken}});
+      if (!r.ok && r.status === 404) throw new Error('not found in Documentos');
+    } catch(e1){
+      // 2ª tentativa: drive padrão do site
+      const url2 = `${GRAPH_BASE}/sites/${siteIdDados}/drive/root:/Templates/${encodeURIComponent(ficheiro)}:/content`;
+      r = await fetch(url2, {headers:{'Authorization':'Bearer '+graphToken}});
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status} — confirma que '${ficheiro}' existe em Templates/`);
     templateBuffer = await r.arrayBuffer();
   } catch(e){
     showToast('Erro ao baixar template: ' + e.message, 'error');
