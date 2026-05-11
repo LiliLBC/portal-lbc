@@ -1148,6 +1148,35 @@ tbody tr:hover td{background:#FAFAF8}
                 <option>Andreia Cabanas</option>
               </select>
             </div>
+
+            <!-- Entidade / Nº Processo / Data Pedido -->
+            <div class="form-group"><label class="form-label">Entidade</label>
+              <select class="form-select" id="ev-entidade" onchange="onEvEntidadeChange()">
+                <option value="">Nenhuma</option>
+                <option value="CGD">CGD</option>
+                <option value="REMAX">REMAX</option>
+                <option value="Outra">Outra</option>
+              </select>
+            </div>
+            <div class="form-group" id="ev-data-pedido-wrap" style="display:none">
+              <label class="form-label">Data do pedido</label>
+              <input class="form-input" id="ev-data-pedido" type="date">
+              <div style="font-size:10px;color:var(--text-faint);margin-top:2px">Data em que recebeste o pedido (≠ data da escritura)</div>
+            </div>
+            <div class="form-group" id="ev-estado-cgd-wrap" style="display:none">
+              <label class="form-label">Estado</label>
+              <select class="form-select" id="ev-estado-cgd">
+                <option value="Pendente">Pendente</option>
+                <option value="Confirmado">Confirmado</option>
+                <option value="Concluído">Concluído</option>
+              </select>
+            </div>
+            <div class="form-group form-full" id="ev-num-processo-wrap" style="display:none">
+              <label class="form-label">Nº processo</label>
+              <input class="form-input" id="ev-num-processo" type="text" placeholder="Ex: 1234/26.OYRPRD">
+              <div id="ev-aviso-num-processo" style="display:none;font-size:11px;color:#92400E;background:#FEF3C7;border-left:3px solid #F59E0B;padding:.4rem .6rem;border-radius:6px;margin-top:.4rem">⚠️ Atenção — Sem nº de processo. O mapa CGD só é atualizado quando preencheres este campo.</div>
+            </div>
+
             <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
           </div>
           <div class="modal-actions" style="justify-content:space-between">
@@ -1647,6 +1676,21 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
               <div id="cb-fatura-substituir" style="font-size:10px;color:#856404;margin-top:3px;display:none;background:#FFF3CD;padding:4px 8px;border-radius:4px">
                 Vai substituir o ficheiro existente com o novo (mantém a ligação ao movimento)
+              </div>
+            </div>
+
+            <div class="section-divider">Pagamento conjunto</div>
+            <div class="field-group field-full">
+              <label style="display:flex;align-items:center;gap:.5rem;font-size:12px;cursor:pointer">
+                <input type="checkbox" id="cb-pagto-conjunto" onchange="onCbPagtoConjuntoChange()" style="cursor:pointer">
+                <span>Esta despesa foi paga em <strong>conjunto</strong> com outras (ex: 2 conservatórias num só pagamento)</span>
+              </label>
+              <div id="cb-ref-conjunta-wrap" style="display:none;margin-top:.5rem">
+                <div class="field-label">Referência do pagamento conjunto</div>
+                <input class="form-input" id="cb-ref-conjunta" placeholder="Ex: CONS-EVR-08-05-2026" list="cb-ref-existentes-list">
+                <datalist id="cb-ref-existentes-list"></datalist>
+                <div id="cb-ref-info" style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4"></div>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:4px;font-style:italic">Lança cada despesa separadamente (uma por cliente) com a <strong>mesma referência</strong>. Na conciliação o portal soma todas e bate com a saída única do extrato.</div>
               </div>
             </div>
 
@@ -2392,7 +2436,7 @@ const F={
   contactos:'Contactos',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
-const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes'};
+const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'EstadoCGD'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
@@ -3781,18 +3825,23 @@ async function carregarCalendario(){
   renderCalendario();
   try{
     if(listaIdAgenda){
+      const selComCGD=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD}`;
       const selComObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes}`;
       const selSemObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel}`;
       const selSemFim=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
       let data;
       try{
-        data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
-      }catch(_){
+        data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
+      }catch(_cgd){
         try{
-          data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
-        }catch(__){
-          // Coluna Hora_Fim não existe ainda na lista SP
-          data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemFim})&$top=500`);
+          data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
+        }catch(_){
+          try{
+            data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
+          }catch(__){
+            // Coluna Hora_Fim não existe ainda na lista SP
+            data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemFim})&$top=500`);
+          }
         }
       }
       todosEventos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
@@ -3877,8 +3926,16 @@ function renderEvt(e){
   }
   const hora=e._hora?`<span style="font-weight:600">${e._hora}</span> `:'';
   const titulo=escHtml(e[A.titulo]||'—');
-  const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}`.trim();
-  return `<div class="cal-event ${cls}" title="${escHtml(titleAttr)}" onclick="abrirEventoExistente('${e.id}',event)">${hora}${titulo}</div>`;
+  // Aviso visual: entidade CGD sem nº processo
+  const ent=e[A.entidade]||'';
+  const num=(e[A.numProcesso]||'').trim();
+  const avisoCGD=(ent==='CGD'&&!num)
+    ?`<span title="⚠️ Atenção - Sem nº de Processo" style="display:inline-block;margin-right:3px;color:#92400E;font-weight:700">⚠</span>`
+    :'';
+  const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}${(ent==='CGD'&&!num)?' — ⚠️ Sem nº de Processo':''}`.trim();
+  // Estilo extra para o caso de CGD sem nº (border destacado)
+  const styleExtra=(ent==='CGD'&&!num)?' style="border-left:3px solid #F59E0B"':'';
+  return `<div class="cal-event ${cls}"${styleExtra} title="${escHtml(titleAttr)}" onclick="abrirEventoExistente('${e.id}',event)">${avisoCGD}${hora}${titulo}</div>`;
 }
 
 function abrirTarefaDoCalendario(tarefaId,ev){
@@ -4064,6 +4121,108 @@ function renderDia(wrap){
 // ─── MODAL EVENTO ─────────────────────────────────────────────────────────────
 let evItemId=null;
 
+// Mostrar/esconder campos consoante a entidade selecionada
+function onEvEntidadeChange(){
+  const ent=document.getElementById('ev-entidade')?.value||'';
+  const wrapData=document.getElementById('ev-data-pedido-wrap');
+  const wrapNum=document.getElementById('ev-num-processo-wrap');
+  const wrapEst=document.getElementById('ev-estado-cgd-wrap');
+  const aviso=document.getElementById('ev-aviso-num-processo');
+  const visivel=!!ent; // qualquer entidade mostra os campos
+  if(wrapData)wrapData.style.display=visivel?'block':'none';
+  if(wrapNum)wrapNum.style.display=visivel?'block':'none';
+  // EstadoCGD só faz sentido para CGD (é a única que vai para o mapa)
+  if(wrapEst)wrapEst.style.display=(ent==='CGD')?'block':'none';
+  // Aviso de "Sem nº processo" só para CGD sem número preenchido
+  const num=(document.getElementById('ev-num-processo')?.value||'').trim();
+  if(aviso)aviso.style.display=(ent==='CGD'&&!num)?'block':'none';
+}
+
+// Sincronização com mapa Excel — chamada após gravar evento CGD com nº processo
+async function sincronizarMapaCGD(dados){
+  // dados: {numProcesso, dataPedido, dataPretendida, estado}
+  // Localização: site lbcsolicitadora2, Documentos/CGD/agendamentos_dpa_pro.xlsx
+  const ficheiro='agendamentos_dpa_pro.xlsx';
+  // 1) Encontrar drive e item do ficheiro
+  const drives=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
+  const docsDrive=drives.value.find(d=>d.name==='Documentos'||d.name==='Documents'||d.driveType==='documentLibrary');
+  if(!docsDrive) throw new Error('Drive Documentos não encontrado');
+  const itemPath=`/CGD/${encodeURIComponent(ficheiro)}`;
+  const itemUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:${itemPath}`;
+  const itemRes=await fetch(itemUrl,{headers:{'Authorization':'Bearer '+graphToken}});
+  if(!itemRes.ok) throw new Error(`Mapa Excel não encontrado em Documentos/CGD/ (HTTP ${itemRes.status})`);
+  const item=await itemRes.json();
+  const itemId=item.id;
+  // 2) Sheet "Agendamentos DPA" — descobrir linhas já existentes via tabela usada
+  // Estratégia: ler range A2:G500 para procurar linha com Ref Processo = numProcesso
+  const sheetName=encodeURIComponent('Agendamentos DPA');
+  const rangeUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A2:G500')`;
+  const rangeRes=await fetch(rangeUrl,{headers:{'Authorization':'Bearer '+graphToken}});
+  if(!rangeRes.ok) throw new Error(`Erro ao ler sheet (${rangeRes.status})`);
+  const range=await rangeRes.json();
+  const valores=range.values||[];
+  // Procurar linha onde col B (índice 1) === numProcesso
+  let linhaExistente=-1;
+  for(let i=0;i<valores.length;i++){
+    const ref=String(valores[i][1]||'').trim();
+    if(ref&&ref===dados.numProcesso){linhaExistente=i;break;}
+  }
+  // Datas no formato dd-mm-aaaa (formato pt) ou ISO; manter ISO simples
+  const dataPed=dados.dataPedido; // 2026-05-15
+  const dataPret=dados.dataPretendida;
+  // Formato pt: dd-mm-aaaa
+  const fmtPt=iso=>{if(!iso)return '';const [y,m,d]=iso.split('-');return `${d}-${m}-${y}`;};
+  const escritorio='Évora II - Liliana Burrica Cardoso';
+  const linhaDados=[
+    fmtPt(dataPed),       // A - Data pedido Pré
+    dados.numProcesso,    // B - Ref Processo
+    fmtPt(dataPret),      // C - Data Pretendida
+    escritorio,           // D - Escritório
+    dados.estado||'Pendente', // E - Estado
+    '',                   // F - Prioridade (vazio)
+    '',                   // G - Nr Intervenções CTT (vazio)
+  ];
+  if(linhaExistente>=0){
+    // Atualizar linha existente — mas NÃO mexer no Estado (col E) se já tem valor diferente de "Pendente"
+    const linhaAtual=valores[linhaExistente];
+    const estadoAtual=String(linhaAtual[4]||'').trim();
+    const novaLinha=[...linhaDados];
+    // Preservar estado se já foi alterado manualmente
+    if(estadoAtual&&estadoAtual!=='Pendente')novaLinha[4]=estadoAtual;
+    // Preservar Prioridade e Nr CTT se já preenchidos manualmente
+    if(linhaAtual[5])novaLinha[5]=linhaAtual[5];
+    if(linhaAtual[6])novaLinha[6]=linhaAtual[6];
+    const rowNum=linhaExistente+2; // +1 para header, +1 para 1-indexed
+    const updRangeUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A${rowNum}:G${rowNum}')`;
+    const upd=await fetch(updRangeUrl,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({values:[novaLinha]})
+    });
+    if(!upd.ok) throw new Error(`Erro ao atualizar linha ${rowNum}: ${upd.status}`);
+  } else {
+    // Adicionar linha nova — procurar primeira linha vazia
+    let primeiraVazia=valores.length;
+    for(let i=0;i<valores.length;i++){
+      if(!valores[i][1]||!String(valores[i][1]).trim()){primeiraVazia=i;break;}
+    }
+    const rowNum=primeiraVazia+2;
+    const addRangeUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A${rowNum}:G${rowNum}')`;
+    const add=await fetch(addRangeUrl,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({values:[linhaDados]})
+    });
+    if(!add.ok) throw new Error(`Erro ao adicionar linha ${rowNum}: ${add.status}`);
+  }
+}
+
+// Listener para o input do nº processo (atualiza aviso em tempo real)
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('ev-num-processo');
+  if(inp)inp.addEventListener('input',onEvEntidadeChange);
+});
+
 function abrirModalEvento(dateStr){
   evItemId=null;
   document.getElementById('ev-data').value=dateStr;
@@ -4073,6 +4232,12 @@ function abrirModalEvento(dateStr){
   document.getElementById('ev-tipo').value='Escritura';
   document.getElementById('ev-responsavel').value='';
   document.getElementById('ev-observacoes').value='';
+  // Campos novos
+  const elEnt=document.getElementById('ev-entidade');if(elEnt)elEnt.value='';
+  const elNum=document.getElementById('ev-num-processo');if(elNum)elNum.value='';
+  const elDP=document.getElementById('ev-data-pedido');if(elDP)elDP.value='';
+  const elEst=document.getElementById('ev-estado-cgd');if(elEst)elEst.value='Pendente';
+  onEvEntidadeChange();
   document.getElementById('ev-btn-eliminar').style.display='none';
   document.getElementById('modal-evento-titulo').textContent=`Novo evento — ${fmtData(dateStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
@@ -4098,6 +4263,16 @@ function abrirEventoExistente(eventoId,ev){
   document.getElementById('ev-tipo').value=e[A.tipo]||'Escritura';
   document.getElementById('ev-responsavel').value=e[A.responsavel]||'';
   document.getElementById('ev-observacoes').value=e[A.observacoes]||'';
+  // Campos novos: Entidade, NumProcesso, DataPedido, EstadoCGD
+  const elEnt=document.getElementById('ev-entidade');
+  if(elEnt)elEnt.value=e[A.entidade]||'';
+  const elNum=document.getElementById('ev-num-processo');
+  if(elNum)elNum.value=e[A.numProcesso]||'';
+  const elDP=document.getElementById('ev-data-pedido');
+  if(elDP)elDP.value=e[A.dataPedido]?e[A.dataPedido].substring(0,10):'';
+  const elEst=document.getElementById('ev-estado-cgd');
+  if(elEst)elEst.value=e[A.estadoCGD]||'Pendente';
+  onEvEntidadeChange();
   document.getElementById('ev-btn-eliminar').style.display='inline-flex';
   document.getElementById('modal-evento-titulo').textContent=`Editar evento — ${fmtData(dataStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
@@ -4119,6 +4294,11 @@ async function guardarEvento(){
   // está guardada nas colunas separadas Hora e Hora_Fim (texto).
   const dataStr=document.getElementById('ev-data').value; // YYYY-MM-DD
   const dataParaSP=dataStr+'T12:00:00Z';
+  // Campos novos: Entidade, NumProcesso, DataPedido, EstadoCGD
+  const entidade=document.getElementById('ev-entidade')?.value||'';
+  const numProcesso=(document.getElementById('ev-num-processo')?.value||'').trim();
+  const dataPedidoStr=document.getElementById('ev-data-pedido')?.value||'';
+  const estadoCGD=document.getElementById('ev-estado-cgd')?.value||'Pendente';
   const bodyBase={
     [A.titulo]:titulo,
     [A.data]:dataParaSP,
@@ -4126,6 +4306,10 @@ async function guardarEvento(){
     [A.horaFim]:horaFim,
     [A.tipo]:document.getElementById('ev-tipo').value,
     [A.responsavel]:document.getElementById('ev-responsavel').value,
+    [A.entidade]:entidade,
+    [A.numProcesso]:numProcesso,
+    [A.dataPedido]:dataPedidoStr?dataPedidoStr+'T12:00:00Z':null,
+    [A.estadoCGD]:entidade==='CGD'?estadoCGD:'',
   };
   const body={...bodyBase,[A.observacoes]:observacoes};
   // Versão sem Hora_Fim (caso a coluna ainda não exista na lista SP)
@@ -4136,17 +4320,53 @@ async function guardarEvento(){
     if(evItemId){
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items/${evItemId}/fields`,b);
     }else{
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items`,{fields:b});
+      const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items`,{fields:b});
+      // Capturar o id do item criado para sync com Excel
+      if(r&&r.id)evItemId=r.id;
+    }
+  };
+
+  // Pós-gravação: se entidade=CGD e tem nº processo + data pedido, sincronizar Excel
+  const sincronizarSeCGD=async ()=>{
+    if(entidade==='CGD'&&numProcesso&&dataPedidoStr){
+      try{
+        await sincronizarMapaCGD({
+          numProcesso,
+          dataPedido:dataPedidoStr,
+          dataPretendida:dataStr,
+          estado:estadoCGD,
+        });
+        showToast('✓ Mapa CGD atualizado','success');
+      }catch(e){
+        console.warn('Falha na sincronização do mapa CGD:',e);
+        showToast('Evento gravado, mas falha ao atualizar mapa CGD: '+e.message,'');
+      }
     }
   };
 
   try{
     await tentar(body);
     showToast(evItemId?'Evento actualizado!':'Evento criado!','success');
+    await sincronizarSeCGD();
     fecharModalEvento();
     carregarCalendario();
   }catch(e){
     const msg=(e&&e.message)||'';
+    // Se as colunas novas não existirem, tentar sem elas
+    if(/Entidade|NumProcesso|DataPedido|EstadoCGD/i.test(msg)){
+      try{
+        const bodySemNovos={...body};
+        delete bodySemNovos[A.entidade];delete bodySemNovos[A.numProcesso];
+        delete bodySemNovos[A.dataPedido];delete bodySemNovos[A.estadoCGD];
+        await tentar(bodySemNovos);
+        showToast('Evento gravado (colunas novas Entidade/NumProcesso/DataPedido/EstadoCGD ainda não existem na lista SP — cria-as)','');
+        fecharModalEvento();
+        carregarCalendario();
+        return;
+      }catch(eNovas){
+        console.error('Falha mesmo sem colunas novas:',eNovas);
+      }
+    }
     // Tentar sem Hora_Fim (coluna pode não existir)
     if(/Hora_Fim|400|invalid|not.*found|column/i.test(msg)){
       try{
