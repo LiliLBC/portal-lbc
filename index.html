@@ -896,6 +896,8 @@ tbody tr:hover td{background:#FAFAF8}
                 <button class="btn btn-sm" onclick="calNav(1)">›</button>
                 <button class="btn btn-sm" onclick="calHoje()">Hoje</button>
                 <button class="btn btn-sm" onclick="exportarMapaCGD()" title="Descarregar agendamentos_dpa_pro.xlsx" style="margin-left:.5rem">📤 Exportar mapa CGD</button>
+                <button class="btn btn-sm" onclick="sincronizarTodosCGD()" title="Sincronizar todos os eventos CGD do calendário com o mapa Excel">🔄 Sincronizar mapa</button>
+                <div id="cal-badge-cgd-sem-num" style="display:none;margin-left:.5rem;padding:6px 12px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="filtrarCGDSemNum()" title="Clica para ver os eventos CGD sem nº de processo">⚠️ <span id="cal-badge-cgd-count">0</span> sem nº processo</div>
               </div>
               <div class="cal-view-btns">
                 <button class="cal-view-btn" onclick="calSetView('dia',this)">Dia</button>
@@ -1151,16 +1153,24 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
 
             <!-- Entidade / Nº Processo / Data Pedido -->
-            <div class="form-group"><label class="form-label">Entidade</label>
-              <select class="form-select" id="ev-entidade" onchange="onEvEntidadeChange()">
+            <div class="form-group form-full">
+              <label class="form-label">É evento CGD?</label>
+              <div style="display:flex;gap:.5rem;background:var(--bg-secondary);padding:4px;border-radius:8px;width:fit-content">
+                <button type="button" id="ev-cgd-sim" class="ev-cgd-tab" onclick="setEvIsCGD(true)" style="padding:6px 14px;font-size:12px;border-radius:6px;cursor:pointer;border:none;background:transparent;color:var(--text-muted)">Sim</button>
+                <button type="button" id="ev-cgd-nao" class="ev-cgd-tab" onclick="setEvIsCGD(false)" style="padding:6px 14px;font-size:12px;border-radius:6px;cursor:pointer;border:none;background:var(--bg-primary);color:var(--text-strong);font-weight:500">Não</button>
+              </div>
+              <input type="hidden" id="ev-entidade" value="">
+            </div>
+            <div class="form-group" id="ev-entidade-outra-wrap" style="display:none">
+              <label class="form-label">Entidade</label>
+              <select class="form-select" id="ev-entidade-outra" onchange="onEvEntidadeOutraChange()">
                 <option value="">Nenhuma</option>
-                <option value="CGD">CGD</option>
                 <option value="REMAX">REMAX</option>
                 <option value="Outra">Outra</option>
               </select>
             </div>
             <div class="form-group" id="ev-data-pedido-wrap" style="display:none">
-              <label class="form-label">Data do pedido</label>
+              <label class="form-label">Data do pedido <span id="ev-data-pedido-req" style="color:var(--red);display:none">*</span></label>
               <input class="form-input" id="ev-data-pedido" type="date">
               <div style="font-size:10px;color:var(--text-faint);margin-top:2px">Data em que recebeste o pedido (≠ data da escritura)</div>
             </div>
@@ -1173,9 +1183,9 @@ tbody tr:hover td{background:#FAFAF8}
               </select>
             </div>
             <div class="form-group form-full" id="ev-num-processo-wrap" style="display:none">
-              <label class="form-label">Nº processo</label>
+              <label class="form-label">Nº processo <span id="ev-num-processo-req" style="color:var(--red);display:none">*</span></label>
               <input class="form-input" id="ev-num-processo" type="text" placeholder="Ex: 1234/26.OYRPRD">
-              <div id="ev-aviso-num-processo" style="display:none;font-size:11px;color:#92400E;background:#FEF3C7;border-left:3px solid #F59E0B;padding:.4rem .6rem;border-radius:6px;margin-top:.4rem">⚠️ Atenção — Sem nº de processo. O mapa CGD só é atualizado quando preencheres este campo.</div>
+              <div id="ev-aviso-num-processo" style="display:none;font-size:11px;color:#92400E;background:#FEF3C7;border-left:3px solid #F59E0B;padding:.4rem .6rem;border-radius:6px;margin-top:.4rem">⚠️ Sem nº de processo o evento <strong>aparece a laranja</strong> no calendário e <strong>NÃO é gravado no mapa Excel</strong>.</div>
             </div>
 
             <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
@@ -3886,6 +3896,8 @@ function renderCalendario(){
   if(calView==='mes')renderMes(wrap);
   else if(calView==='semana')renderSemana(wrap);
   else renderDia(wrap);
+  // Atualizar badge de CGD sem nº processo no topo
+  try{atualizarBadgeCGDSemNum();}catch(_){}
 }
 
 // Devolve eventos do dia ordenados por hora de início
@@ -3927,15 +3939,18 @@ function renderEvt(e){
   }
   const hora=e._hora?`<span style="font-weight:600">${e._hora}</span> `:'';
   const titulo=escHtml(e[A.titulo]||'—');
-  // Aviso visual: entidade CGD sem nº processo
+  // Aviso visual: entidade CGD sem nº processo (fica TODO laranja)
   const ent=e[A.entidade]||'';
   const num=(e[A.numProcesso]||'').trim();
-  const avisoCGD=(ent==='CGD'&&!num)
-    ?`<span title="⚠️ Atenção - Sem nº de Processo" style="display:inline-block;margin-right:3px;color:#92400E;font-weight:700">⚠</span>`
+  const cgdSemNum=(ent==='CGD'&&!num);
+  const avisoCGD=cgdSemNum
+    ?`<span style="display:inline-block;margin-right:3px;font-weight:700">⚠</span>`
     :'';
-  const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}${(ent==='CGD'&&!num)?' — ⚠️ Sem nº de Processo':''}`.trim();
-  // Estilo extra para o caso de CGD sem nº (border destacado)
-  const styleExtra=(ent==='CGD'&&!num)?' style="border-left:3px solid #F59E0B"':'';
+  const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}${cgdSemNum?' — ⚠️ Sem nº de Processo (não gravado no mapa Excel)':''}`.trim();
+  // Estilo: fundo laranja completo se for CGD sem nº processo (sobrepõe-se à classe normal)
+  const styleExtra=cgdSemNum
+    ?' style="background:#FEF3C7;color:#92400E;border-left:3px solid #F59E0B;font-weight:500"'
+    :'';
   return `<div class="cal-event ${cls}"${styleExtra} title="${escHtml(titleAttr)}" onclick="abrirEventoExistente('${e.id}',event)">${avisoCGD}${hora}${titulo}</div>`;
 }
 
@@ -4122,21 +4137,101 @@ function renderDia(wrap){
 // ─── MODAL EVENTO ─────────────────────────────────────────────────────────────
 let evItemId=null;
 
+// Toggle CGD Sim/Não — define entidade e mostra campos correspondentes
+function setEvIsCGD(isCGD){
+  const tabSim=document.getElementById('ev-cgd-sim');
+  const tabNao=document.getElementById('ev-cgd-nao');
+  const hidden=document.getElementById('ev-entidade');
+  if(isCGD){
+    tabSim.style.background='var(--bg-primary)';
+    tabSim.style.color='var(--text-strong)';
+    tabSim.style.fontWeight='500';
+    tabNao.style.background='transparent';
+    tabNao.style.color='var(--text-muted)';
+    tabNao.style.fontWeight='400';
+    hidden.value='CGD';
+    // Reset dropdown de outras entidades
+    const outra=document.getElementById('ev-entidade-outra');
+    if(outra) outra.value='';
+  }else{
+    tabSim.style.background='transparent';
+    tabSim.style.color='var(--text-muted)';
+    tabSim.style.fontWeight='400';
+    tabNao.style.background='var(--bg-primary)';
+    tabNao.style.color='var(--text-strong)';
+    tabNao.style.fontWeight='500';
+    // A entidade vai depender do dropdown secundário
+    const outra=document.getElementById('ev-entidade-outra');
+    hidden.value=(outra&&outra.value)?outra.value:'';
+  }
+  onEvEntidadeChange();
+}
+
+function onEvEntidadeOutraChange(){
+  const outra=document.getElementById('ev-entidade-outra')?.value||'';
+  document.getElementById('ev-entidade').value=outra;
+  onEvEntidadeChange();
+}
+
 // Mostrar/esconder campos consoante a entidade selecionada
 function onEvEntidadeChange(){
   const ent=document.getElementById('ev-entidade')?.value||'';
+  const isCGD=(ent==='CGD');
+  // Toggle "É CGD?" controla o dropdown secundário (escondido se for CGD)
+  const wrapOutra=document.getElementById('ev-entidade-outra-wrap');
+  if(wrapOutra)wrapOutra.style.display=isCGD?'none':'block';
+  // Campos dependentes
   const wrapData=document.getElementById('ev-data-pedido-wrap');
   const wrapNum=document.getElementById('ev-num-processo-wrap');
   const wrapEst=document.getElementById('ev-estado-cgd-wrap');
   const aviso=document.getElementById('ev-aviso-num-processo');
-  const visivel=!!ent; // qualquer entidade mostra os campos
+  const reqData=document.getElementById('ev-data-pedido-req');
+  const reqNum=document.getElementById('ev-num-processo-req');
+  const visivel=!!ent;
   if(wrapData)wrapData.style.display=visivel?'block':'none';
   if(wrapNum)wrapNum.style.display=visivel?'block':'none';
-  // EstadoCGD só faz sentido para CGD (é a única que vai para o mapa)
-  if(wrapEst)wrapEst.style.display=(ent==='CGD')?'block':'none';
+  if(wrapEst)wrapEst.style.display=isCGD?'block':'none';
+  // Marcas de obrigatório só para CGD
+  if(reqData)reqData.style.display=isCGD?'inline':'none';
+  if(reqNum)reqNum.style.display=isCGD?'inline':'none';
   // Aviso de "Sem nº processo" só para CGD sem número preenchido
   const num=(document.getElementById('ev-num-processo')?.value||'').trim();
-  if(aviso)aviso.style.display=(ent==='CGD'&&!num)?'block':'none';
+  if(aviso)aviso.style.display=(isCGD&&!num)?'block':'none';
+}
+
+// Atualizar badge no topo: contagem de eventos CGD sem nº processo
+function atualizarBadgeCGDSemNum(){
+  const badge=document.getElementById('cal-badge-cgd-sem-num');
+  const count=document.getElementById('cal-badge-cgd-count');
+  if(!badge||!count||!todosEventos)return;
+  const semNum=todosEventos.filter(e=>{
+    const ent=e[A.entidade]||'';
+    const num=(e[A.numProcesso]||'').trim();
+    return ent==='CGD'&&!num;
+  });
+  if(semNum.length>0){
+    count.textContent=semNum.length;
+    badge.style.display='inline-block';
+  }else{
+    badge.style.display='none';
+  }
+}
+
+// Filtrar/destacar os CGD sem nº processo (alerta ao utilizador)
+function filtrarCGDSemNum(){
+  if(!todosEventos)return;
+  const semNum=todosEventos.filter(e=>{
+    const ent=e[A.entidade]||'';
+    const num=(e[A.numProcesso]||'').trim();
+    return ent==='CGD'&&!num;
+  });
+  if(!semNum.length){showToast('Não há eventos CGD sem nº processo','success');return;}
+  // Listar nos próximos toasts (até 5)
+  const lista=semNum.slice(0,10).map(e=>{
+    const data=(e[A.data]||'').substring(0,10);
+    return `• ${data} — ${e[A.titulo]||'(sem título)'}`;
+  }).join('\n');
+  alert(`${semNum.length} evento(s) CGD sem nº processo:\n\n${lista}${semNum.length>10?`\n\n... e mais ${semNum.length-10}`:''}\n\nAbre cada um, preenche o nº processo e grava — assim o mapa Excel atualiza automaticamente.`);
 }
 
 // Helper: encontrar o drive "Documentos" / "Shared Documents" do site principal
@@ -4150,6 +4245,63 @@ async function _getDocsDrive(){
   if(!docsDrive) docsDrive=drives.value.find(d=>d.driveType==='documentLibrary');
   if(!docsDrive) throw new Error('Nenhuma biblioteca de Documentos encontrada no site');
   return docsDrive;
+}
+
+// Sincronização em massa: percorre todos os eventos CGD do calendário e re-cria/atualiza linhas no mapa Excel
+async function sincronizarTodosCGD(){
+  if(!confirm('Vai percorrer TODOS os eventos do calendário com entidade=CGD e atualizar o mapa Excel.\n\nIsto pode demorar alguns segundos. Continuar?'))return;
+  showToast('A sincronizar mapa CGD...','info');
+  try{
+    // 1) Buscar eventos do calendário (todos)
+    const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD}`;
+    let data;
+    try{
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
+    }catch(_){
+      // Fallback se Estado_CGD ainda for x005f
+      const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD`;
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selAlt})&$top=500`);
+    }
+    const itens=(data.value||[]).map(i=>i.fields);
+    // 2) Filtrar só os que têm entidade=CGD + nº processo + data pedido
+    const validos=itens.filter(f=>{
+      const ent=f[A.entidade]||'';
+      const num=(f[A.numProcesso]||'').trim();
+      const dp=f[A.dataPedido]||'';
+      return ent==='CGD'&&num&&dp;
+    });
+    const ignorados=itens.filter(f=>{
+      const ent=f[A.entidade]||'';
+      return ent==='CGD'&&!(f[A.numProcesso]&&f[A.dataPedido]);
+    });
+    if(!validos.length){
+      showToast(`Nenhum evento CGD com nº processo e data de pedido encontrado. ${ignorados.length>0?`(${ignorados.length} CGD sem nº processo ou data de pedido)`:''}`,'');
+      return;
+    }
+    // 3) Sincronizar um a um (em série, para evitar conflitos de escrita)
+    let ok=0,fail=0;
+    for(const f of validos){
+      const numProc=(f[A.numProcesso]||'').trim();
+      const dataPed=(f[A.dataPedido]||'').substring(0,10);
+      const dataPret=(f[A.data]||'').substring(0,10);
+      const est=f[A.estadoCGD]||f['Estado_x005f_CGD']||'Pendente';
+      try{
+        await sincronizarMapaCGD({numProcesso:numProc,dataPedido:dataPed,dataPretendida:dataPret,estado:est});
+        ok++;
+      }catch(e){
+        console.warn('Falha a sincronizar processo',numProc,':',e.message);
+        fail++;
+      }
+    }
+    const ignTxt=ignorados.length>0?` (${ignorados.length} eventos CGD ignorados por faltar nº processo ou data pedido)`:'';
+    if(fail===0){
+      showToast(`✓ Mapa CGD atualizado: ${ok} processos${ignTxt}`,'success');
+    }else{
+      showToast(`Sincronização parcial: ${ok} OK, ${fail} falhas${ignTxt}. Vê a consola para detalhes.`,'');
+    }
+  }catch(e){
+    showToast('Erro a sincronizar: '+e.message,'error');
+  }
 }
 
 // Descarregar o ficheiro Excel agendamentos_dpa_pro.xlsx
@@ -4207,17 +4359,24 @@ async function sincronizarMapaCGD(dados){
   // Datas no formato dd-mm-aaaa (formato pt) ou ISO; manter ISO simples
   const dataPed=dados.dataPedido; // 2026-05-15
   const dataPret=dados.dataPretendida;
-  // Formato pt: dd-mm-aaaa
-  const fmtPt=iso=>{if(!iso)return '';const [y,m,d]=iso.split('-');return `${d}-${m}-${y}`;};
+  // Converter ISO (YYYY-MM-DD) para serial Excel (nº de dias desde 1900-01-01, com bug do ano 1900)
+  // Excel: dia 1 = 1900-01-01. Há um bug histórico que conta o ano 1900 como bissexto.
+  const isoParaSerialExcel=iso=>{
+    if(!iso) return '';
+    const [y,m,d]=iso.split('-').map(Number);
+    const dt=Date.UTC(y,m-1,d);
+    const epoch=Date.UTC(1899,11,30); // 30 dez 1899, para compensar o bug do Excel
+    return Math.round((dt-epoch)/86400000);
+  };
   const escritorio='Évora II - Liliana Burrica Cardoso';
   const linhaDados=[
-    fmtPt(dataPed),       // A - Data pedido Pré
-    dados.numProcesso,    // B - Ref Processo
-    fmtPt(dataPret),      // C - Data Pretendida
-    escritorio,           // D - Escritório
-    dados.estado||'Pendente', // E - Estado
-    '',                   // F - Prioridade (vazio)
-    '',                   // G - Nr Intervenções CTT (vazio)
+    isoParaSerialExcel(dataPed),  // A - Data pedido Pré (serial Excel)
+    dados.numProcesso,            // B - Ref Processo
+    isoParaSerialExcel(dataPret), // C - Data Pretendida (serial Excel)
+    escritorio,                   // D - Escritório
+    dados.estado||'Pendente',     // E - Estado
+    '',                           // F - Prioridade (vazio)
+    '',                           // G - Nr Intervenções CTT (vazio)
   ];
   if(linhaExistente>=0){
     // Atualizar linha existente — mas NÃO mexer no Estado (col E) se já tem valor diferente de "Pendente"
@@ -4237,6 +4396,8 @@ async function sincronizarMapaCGD(dados){
       body:JSON.stringify({values:[novaLinha]})
     });
     if(!upd.ok) throw new Error(`Erro ao atualizar linha ${rowNum}: ${upd.status}`);
+    // Forçar formato dd-mm-yyyy nas colunas A e C
+    await _formatarColunasData(docsDrive.id,itemId,sheetName,rowNum);
   } else {
     // Adicionar linha nova — procurar primeira linha vazia
     let primeiraVazia=valores.length;
@@ -4251,6 +4412,28 @@ async function sincronizarMapaCGD(dados){
       body:JSON.stringify({values:[linhaDados]})
     });
     if(!add.ok) throw new Error(`Erro ao adicionar linha ${rowNum}: ${add.status}`);
+    // Forçar formato dd-mm-yyyy nas colunas A e C
+    await _formatarColunasData(docsDrive.id,itemId,sheetName,rowNum);
+  }
+}
+
+// Helper: aplicar formato dd-mm-yyyy às colunas A e C de uma linha
+async function _formatarColunasData(driveId,itemId,sheetName,rowNum){
+  try{
+    // Coluna A
+    await fetch(`${GRAPH_BASE}/drives/${driveId}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A${rowNum}')`,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({numberFormat:[['dd-mm-yyyy']]})
+    });
+    // Coluna C
+    await fetch(`${GRAPH_BASE}/drives/${driveId}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='C${rowNum}')`,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({numberFormat:[['dd-mm-yyyy']]})
+    });
+  }catch(e){
+    console.warn('Falha ao aplicar formato dd-mm-yyyy:',e.message);
   }
 }
 
@@ -4271,10 +4454,12 @@ function abrirModalEvento(dateStr){
   document.getElementById('ev-observacoes').value='';
   // Campos novos
   const elEnt=document.getElementById('ev-entidade');if(elEnt)elEnt.value='';
+  const elOutra=document.getElementById('ev-entidade-outra');if(elOutra)elOutra.value='';
   const elNum=document.getElementById('ev-num-processo');if(elNum)elNum.value='';
   const elDP=document.getElementById('ev-data-pedido');if(elDP)elDP.value='';
   const elEst=document.getElementById('ev-estado-cgd');if(elEst)elEst.value='Pendente';
-  onEvEntidadeChange();
+  // Toggle CGD começa em "Não" (estado default seguro)
+  setEvIsCGD(false);
   document.getElementById('ev-btn-eliminar').style.display='none';
   document.getElementById('modal-evento-titulo').textContent=`Novo evento — ${fmtData(dateStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
@@ -4301,15 +4486,23 @@ function abrirEventoExistente(eventoId,ev){
   document.getElementById('ev-responsavel').value=e[A.responsavel]||'';
   document.getElementById('ev-observacoes').value=e[A.observacoes]||'';
   // Campos novos: Entidade, NumProcesso, DataPedido, EstadoCGD
-  const elEnt=document.getElementById('ev-entidade');
-  if(elEnt)elEnt.value=e[A.entidade]||'';
+  const entidadeAtual=e[A.entidade]||e['Entidade']||'';
   const elNum=document.getElementById('ev-num-processo');
   if(elNum)elNum.value=e[A.numProcesso]||'';
   const elDP=document.getElementById('ev-data-pedido');
   if(elDP)elDP.value=e[A.dataPedido]?e[A.dataPedido].substring(0,10):'';
   const elEst=document.getElementById('ev-estado-cgd');
-  if(elEst)elEst.value=e[A.estadoCGD]||'Pendente';
-  onEvEntidadeChange();
+  if(elEst)elEst.value=e[A.estadoCGD]||e['Estado_x005f_CGD']||'Pendente';
+  // Posicionar toggle e dropdown secundário consoante a entidade
+  const elOutra=document.getElementById('ev-entidade-outra');
+  if(entidadeAtual==='CGD'){
+    setEvIsCGD(true);
+  }else{
+    // Não é CGD: pode ser REMAX, Outra ou Nenhuma
+    if(elOutra)elOutra.value=entidadeAtual||'';
+    setEvIsCGD(false);
+    if(elOutra)onEvEntidadeOutraChange();
+  }
   document.getElementById('ev-btn-eliminar').style.display='inline-flex';
   document.getElementById('modal-evento-titulo').textContent=`Editar evento — ${fmtData(dataStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
