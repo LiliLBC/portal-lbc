@@ -4379,7 +4379,9 @@ async function guardarEvento(){
 
   // Pós-gravação: se entidade=CGD e tem nº processo + data pedido, sincronizar Excel
   const sincronizarSeCGD=async ()=>{
+    console.log('[CGD] Pós-gravação. Entidade:',entidade,'| Nº Processo:',numProcesso,'| Data Pedido:',dataPedidoStr);
     if(entidade==='CGD'&&numProcesso&&dataPedidoStr){
+      console.log('[CGD] A iniciar sincronização do mapa...');
       try{
         await sincronizarMapaCGD({
           numProcesso,
@@ -4392,6 +4394,13 @@ async function guardarEvento(){
         console.warn('Falha na sincronização do mapa CGD:',e);
         showToast('Evento gravado, mas falha ao atualizar mapa CGD: '+e.message,'');
       }
+    } else {
+      // Avisar quais campos estão em falta
+      const faltam=[];
+      if(entidade!=='CGD') faltam.push(`entidade=CGD (atual: "${entidade||'vazio'}")`);
+      if(!numProcesso) faltam.push('Nº processo');
+      if(!dataPedidoStr) faltam.push('Data do pedido');
+      console.log('[CGD] Sincronização não tentada. Faltam:',faltam.join(', '));
     }
   };
 
