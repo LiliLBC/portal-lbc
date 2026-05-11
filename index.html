@@ -4139,17 +4139,30 @@ function onEvEntidadeChange(){
   if(aviso)aviso.style.display=(ent==='CGD'&&!num)?'block':'none';
 }
 
+// Helper: encontrar o drive "Documentos" / "Shared Documents" do site principal
+async function _getDocsDrive(){
+  const drives=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
+  console.log('Drives encontrados no site:', drives.value.map(d=>({name:d.name,id:d.id,type:d.driveType,webUrl:d.webUrl})));
+  // 1ª preferência: o driveType=documentLibrary que tem "Documents" no webUrl (é o principal)
+  let docsDrive=drives.value.find(d=>d.driveType==='documentLibrary'&&/\/Shared%20Documents$|\/Documentos$/i.test(d.webUrl||''));
+  // 2ª: por nome
+  if(!docsDrive) docsDrive=drives.value.find(d=>['Documentos','Documents','Shared Documents'].includes(d.name));
+  // 3ª: qualquer biblioteca de documentos
+  if(!docsDrive) docsDrive=drives.value.find(d=>d.driveType==='documentLibrary');
+  if(!docsDrive) throw new Error('Nenhuma biblioteca de Documentos encontrada no site');
+  console.log('Drive escolhido:', docsDrive.name, docsDrive.id);
+  return docsDrive;
+}
+
 // Descarregar o ficheiro Excel agendamentos_dpa_pro.xlsx
 async function exportarMapaCGD(){
   showToast('A descarregar mapa CGD...','info');
   try{
-    const drives=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
-    const docsDrive=drives.value.find(d=>d.name==='Documentos'||d.name==='Documents'||d.driveType==='documentLibrary');
-    if(!docsDrive) throw new Error('Drive Documentos não encontrado');
+    const docsDrive=await _getDocsDrive();
     const itemPath=`/CGD/${encodeURIComponent('agendamentos_dpa_pro.xlsx')}`;
     const contentUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:${itemPath}:/content`;
     const r=await fetch(contentUrl,{headers:{'Authorization':'Bearer '+graphToken}});
-    if(!r.ok) throw new Error(`HTTP ${r.status} — confirma que o ficheiro existe em Documentos/CGD/`);
+    if(!r.ok) throw new Error(`HTTP ${r.status} — confirma que o ficheiro existe em ${docsDrive.name}/CGD/`);
     const blob=await r.blob();
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -4169,14 +4182,26 @@ async function sincronizarMapaCGD(dados){
   // dados: {numProcesso, dataPedido, dataPretendida, estado}
   // Localização: site lbcsolicitadora2, Documentos/CGD/agendamentos_dpa_pro.xlsx
   const ficheiro='agendamentos_dpa_pro.xlsx';
-  // 1) Encontrar drive e item do ficheiro
-  const drives=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
-  const docsDrive=drives.value.find(d=>d.name==='Documentos'||d.name==='Documents'||d.driveType==='documentLibrary');
-  if(!docsDrive) throw new Error('Drive Documentos não encontrado');
+  // 1) Encontrar drive e item do ficheiro (com debug)
+  const docsDrive=await _getDocsDrive();
   const itemPath=`/CGD/${encodeURIComponent(ficheiro)}`;
   const itemUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:${itemPath}`;
+  console.log('A procurar Excel em:', itemUrl);
   const itemRes=await fetch(itemUrl,{headers:{'Authorization':'Bearer '+graphToken}});
-  if(!itemRes.ok) throw new Error(`Mapa Excel não encontrado em Documentos/CGD/ (HTTP ${itemRes.status})`);
+  if(!itemRes.ok){
+    // Debug: tentar listar a pasta CGD para ver se existe e o que tem dentro
+    try{
+      const cgdUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:/CGD:/children`;
+      const cgdRes=await fetch(cgdUrl,{headers:{'Authorization':'Bearer '+graphToken}});
+      if(cgdRes.ok){
+        const cgdData=await cgdRes.json();
+        console.log('Conteúdo da pasta CGD:',cgdData.value.map(c=>c.name));
+      }else{
+        console.log('Pasta CGD também não acessível:',cgdRes.status);
+      }
+    }catch(_){}
+    throw new Error(`Mapa Excel não encontrado em ${docsDrive.name}/CGD/${ficheiro} (HTTP ${itemRes.status}). Verifica a consola para mais detalhes.`);
+  }
   const item=await itemRes.json();
   const itemId=item.id;
   // 2) Sheet "Agendamentos DPA" — descobrir linhas já existentes via tabela usada
