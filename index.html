@@ -895,6 +895,7 @@ tbody tr:hover td{background:#FAFAF8}
                 <span class="cal-title" id="cal-title"></span>
                 <button class="btn btn-sm" onclick="calNav(1)">›</button>
                 <button class="btn btn-sm" onclick="calHoje()">Hoje</button>
+                <button class="btn btn-sm" onclick="exportarMapaCGD()" title="Descarregar agendamentos_dpa_pro.xlsx" style="margin-left:.5rem">📤 Exportar mapa CGD</button>
               </div>
               <div class="cal-view-btns">
                 <button class="cal-view-btn" onclick="calSetView('dia',this)">Dia</button>
@@ -2436,7 +2437,7 @@ const F={
   contactos:'Contactos',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
-const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'EstadoCGD'};
+const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
@@ -4138,6 +4139,31 @@ function onEvEntidadeChange(){
   if(aviso)aviso.style.display=(ent==='CGD'&&!num)?'block':'none';
 }
 
+// Descarregar o ficheiro Excel agendamentos_dpa_pro.xlsx
+async function exportarMapaCGD(){
+  showToast('A descarregar mapa CGD...','info');
+  try{
+    const drives=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
+    const docsDrive=drives.value.find(d=>d.name==='Documentos'||d.name==='Documents'||d.driveType==='documentLibrary');
+    if(!docsDrive) throw new Error('Drive Documentos não encontrado');
+    const itemPath=`/CGD/${encodeURIComponent('agendamentos_dpa_pro.xlsx')}`;
+    const contentUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:${itemPath}:/content`;
+    const r=await fetch(contentUrl,{headers:{'Authorization':'Bearer '+graphToken}});
+    if(!r.ok) throw new Error(`HTTP ${r.status} — confirma que o ficheiro existe em Documentos/CGD/`);
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    const dataStr=new Date().toISOString().slice(0,10).replace(/-/g,'');
+    a.download=`agendamentos_dpa_pro_${dataStr}.xlsx`;
+    document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    showToast('✓ Mapa CGD descarregado','success');
+  }catch(e){
+    showToast('Erro ao exportar mapa: '+e.message,'error');
+  }
+}
+
 // Sincronização com mapa Excel — chamada após gravar evento CGD com nº processo
 async function sincronizarMapaCGD(dados){
   // dados: {numProcesso, dataPedido, dataPretendida, estado}
@@ -4352,14 +4378,34 @@ async function guardarEvento(){
     carregarCalendario();
   }catch(e){
     const msg=(e&&e.message)||'';
-    // Se as colunas novas não existirem, tentar sem elas
-    if(/Entidade|NumProcesso|DataPedido|EstadoCGD/i.test(msg)){
+    console.warn('Erro a gravar evento (1ª tentativa):',msg);
+    // PRIMEIRO: tentar com nome interno alternativo do Estado_CGD (SP escapa _ para _x005f_)
+    if(/400|422|invalid|not.*found|column|field|Estado/i.test(msg)){
+      try{
+        const bodyAlt={...body};
+        const valEstado=bodyAlt[A.estadoCGD];
+        delete bodyAlt[A.estadoCGD];
+        bodyAlt['Estado_x005f_CGD']=valEstado;
+        await tentar(bodyAlt);
+        // Se funcionou, atualizar o mapa A em runtime
+        A.estadoCGD='Estado_x005f_CGD';
+        showToast(evItemId?'Evento actualizado!':'Evento criado!','success');
+        await sincronizarSeCGD();
+        fecharModalEvento();
+        carregarCalendario();
+        return;
+      }catch(eAlt){
+        console.warn('Fallback Estado_x005f_CGD também falhou:',eAlt.message);
+      }
+    }
+    // Se erro 400/422 (campos não reconhecidos), tentar sem as 4 colunas novas
+    if(/400|422|invalid|not.*found|column|field|Entidade|NumProcesso|DataPedido|EstadoCGD|Estado_CGD/i.test(msg)){
       try{
         const bodySemNovos={...body};
         delete bodySemNovos[A.entidade];delete bodySemNovos[A.numProcesso];
         delete bodySemNovos[A.dataPedido];delete bodySemNovos[A.estadoCGD];
         await tentar(bodySemNovos);
-        showToast('Evento gravado (colunas novas Entidade/NumProcesso/DataPedido/EstadoCGD ainda não existem na lista SP — cria-as)','');
+        showToast('⚠️ Evento gravado, mas as colunas Entidade/NumProcesso/DataPedido/EstadoCGD ainda não existem no SharePoint. Cria-as na lista Agenda-Escritorio.','');
         fecharModalEvento();
         carregarCalendario();
         return;
