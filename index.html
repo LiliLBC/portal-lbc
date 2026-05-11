@@ -4142,7 +4142,6 @@ function onEvEntidadeChange(){
 // Helper: encontrar o drive "Documentos" / "Shared Documents" do site principal
 async function _getDocsDrive(){
   const drives=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
-  console.log('Drives encontrados no site:', drives.value.map(d=>({name:d.name,id:d.id,type:d.driveType,webUrl:d.webUrl})));
   // 1ª preferência: o driveType=documentLibrary que tem "Documents" no webUrl (é o principal)
   let docsDrive=drives.value.find(d=>d.driveType==='documentLibrary'&&/\/Shared%20Documents$|\/Documentos$/i.test(d.webUrl||''));
   // 2ª: por nome
@@ -4150,7 +4149,6 @@ async function _getDocsDrive(){
   // 3ª: qualquer biblioteca de documentos
   if(!docsDrive) docsDrive=drives.value.find(d=>d.driveType==='documentLibrary');
   if(!docsDrive) throw new Error('Nenhuma biblioteca de Documentos encontrada no site');
-  console.log('Drive escolhido:', docsDrive.name, docsDrive.id);
   return docsDrive;
 }
 
@@ -4186,21 +4184,9 @@ async function sincronizarMapaCGD(dados){
   const docsDrive=await _getDocsDrive();
   const itemPath=`/CGD/${encodeURIComponent(ficheiro)}`;
   const itemUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:${itemPath}`;
-  console.log('A procurar Excel em:', itemUrl);
   const itemRes=await fetch(itemUrl,{headers:{'Authorization':'Bearer '+graphToken}});
   if(!itemRes.ok){
-    // Debug: tentar listar a pasta CGD para ver se existe e o que tem dentro
-    try{
-      const cgdUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/root:/CGD:/children`;
-      const cgdRes=await fetch(cgdUrl,{headers:{'Authorization':'Bearer '+graphToken}});
-      if(cgdRes.ok){
-        const cgdData=await cgdRes.json();
-        console.log('Conteúdo da pasta CGD:',cgdData.value.map(c=>c.name));
-      }else{
-        console.log('Pasta CGD também não acessível:',cgdRes.status);
-      }
-    }catch(_){}
-    throw new Error(`Mapa Excel não encontrado em ${docsDrive.name}/CGD/${ficheiro} (HTTP ${itemRes.status}). Verifica a consola para mais detalhes.`);
+    throw new Error(`Mapa Excel não encontrado em ${docsDrive.name}/CGD/${ficheiro} (HTTP ${itemRes.status})`);
   }
   const item=await itemRes.json();
   const itemId=item.id;
@@ -4379,9 +4365,7 @@ async function guardarEvento(){
 
   // Pós-gravação: se entidade=CGD e tem nº processo + data pedido, sincronizar Excel
   const sincronizarSeCGD=async ()=>{
-    console.log('[CGD] Pós-gravação. Entidade:',entidade,'| Nº Processo:',numProcesso,'| Data Pedido:',dataPedidoStr);
     if(entidade==='CGD'&&numProcesso&&dataPedidoStr){
-      console.log('[CGD] A iniciar sincronização do mapa...');
       try{
         await sincronizarMapaCGD({
           numProcesso,
@@ -4394,13 +4378,6 @@ async function guardarEvento(){
         console.warn('Falha na sincronização do mapa CGD:',e);
         showToast('Evento gravado, mas falha ao atualizar mapa CGD: '+e.message,'');
       }
-    } else {
-      // Avisar quais campos estão em falta
-      const faltam=[];
-      if(entidade!=='CGD') faltam.push(`entidade=CGD (atual: "${entidade||'vazio'}")`);
-      if(!numProcesso) faltam.push('Nº processo');
-      if(!dataPedidoStr) faltam.push('Data do pedido');
-      console.log('[CGD] Sincronização não tentada. Faltam:',faltam.join(', '));
     }
   };
 
