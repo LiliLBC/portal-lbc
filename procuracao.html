@@ -693,55 +693,6 @@ function addImovel(){
         </div>
         <div id="${id}-mrs-container"></div>
       </div>
-
-      <!-- Câmara municipal + LU -->
-      <div class="form-group"><label class="form-label">Câmara Municipal</label><input type="text" class="form-input" id="${id}-camara" placeholder="Ex: Évora"></div>
-      <div class="form-group" id="${id}-lu-group" style="display:none">
-        <label class="form-label">Licença de Utilização</label>
-        <select class="form-select" id="${id}-lu-tipo">
-          <option value="na">Não aplicável</option>
-          <option value="alvara">Alvará de Licença de Utilização</option>
-          <option value="comunicacao">Resposta à comunicação prévia</option>
-          <option value="isencao">Certidão de Isenção</option>
-          <option value="sem">Sem LU</option>
-        </select>
-      </div>
-      <div class="form-full" id="${id}-lu-detalhes" style="display:none">
-        <div class="form-grid form-grid-2">
-          <div class="form-group"><label class="form-label">Nº / Referência</label><input type="text" class="form-input" id="${id}-lu-num"></div>
-          <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="${id}-lu-data"></div>
-        </div>
-      </div>
-
-      <!-- Cert. energético -->
-      <div class="form-full">
-        <div class="toggle-row">
-          <div class="toggle-label">Certificado energético</div>
-          <label class="toggle-switch"><input type="checkbox" id="${id}-toggle-cert" onchange="onCertToggle('${id}')"><span class="toggle-slider"></span></label>
-        </div>
-        <div id="${id}-cert-fields" style="display:none;margin-top:.5rem">
-          <div class="form-grid form-grid-2">
-            <div class="form-group"><label class="form-label">Nº do certificado</label><input type="text" class="form-input" id="${id}-cert-num"></div>
-            <div class="form-group"><label class="form-label">Classe energética</label><input type="text" class="form-input" id="${id}-cert-classe" placeholder="Ex: B-"></div>
-            <div class="form-group"><label class="form-label">Data de emissão</label><input type="date" class="form-input" id="${id}-cert-data"></div>
-            <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-cert-val"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ónus -->
-      <div class="form-full">
-        <div class="toggle-row">
-          <div class="toggle-label">Existem ónus ou encargos sobre o imóvel</div>
-          <label class="toggle-switch"><input type="checkbox" id="${id}-toggle-onus" onchange="onOnusToggle('${id}')"><span class="toggle-slider"></span></label>
-        </div>
-        <div id="${id}-onus-fields" style="display:none;margin-top:.5rem">
-          <div class="form-group">
-            <label class="form-label">Descrição dos ónus</label>
-            <textarea class="form-textarea" id="${id}-onus-descricao" rows="2" style="min-height:60px" placeholder="Ex: Hipoteca voluntária registada a favor de..."></textarea>
-          </div>
-        </div>
-      </div>
     </div>`;
   document.getElementById('imoveis-container').appendChild(div);
 }
@@ -779,13 +730,6 @@ function addMatrizImovel(id,tipo){
       <div class="form-group"><label class="form-label">Ano do VPT</label><input type="text" class="form-input" id="${mid}-ano" placeholder="Ex: 2024"></div>
     </div>`;
   cont.appendChild(div);
-}
-
-function onCertToggle(id){
-  document.getElementById(`${id}-cert-fields`).style.display=document.getElementById(`${id}-toggle-cert`).checked?'block':'none';
-}
-function onOnusToggle(id){
-  document.getElementById(`${id}-onus-fields`).style.display=document.getElementById(`${id}-toggle-onus`).checked?'block':'none';
 }
 
 // Gera texto descritivo de UM imóvel
