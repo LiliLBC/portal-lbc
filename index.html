@@ -1188,6 +1188,14 @@ tbody tr:hover td{background:#FAFAF8}
               <div id="ev-aviso-num-processo" style="display:none;font-size:11px;color:#92400E;background:#FEF3C7;border-left:3px solid #F59E0B;padding:.4rem .6rem;border-radius:6px;margin-top:.4rem">⚠️ Sem nº de processo o evento <strong>aparece a laranja</strong> no calendário e <strong>NÃO é gravado no mapa Excel</strong>.</div>
             </div>
 
+            <div class="form-group form-full" id="ev-nao-adjudicado-wrap" style="display:none">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="ev-nao-adjudicado" style="cursor:pointer;width:16px;height:16px">
+                <span><strong>Não Adjudicado</strong> (na plataforma)</span>
+              </label>
+              <div style="font-size:11px;color:var(--text-faint);margin-top:4px;margin-left:24px">Marcado = aparece no mapa Excel · Desmarcado = já está inserido na plataforma CGD</div>
+            </div>
+
             <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
           </div>
           <div class="modal-actions" style="justify-content:space-between">
@@ -2447,7 +2455,7 @@ const F={
   contactos:'Contactos',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes'};
-const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD'};
+const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
@@ -3836,7 +3844,7 @@ async function carregarCalendario(){
   renderCalendario();
   try{
     if(listaIdAgenda){
-      const selComCGD=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD}`;
+      const selComCGD=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado}`;
       const selComObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes}`;
       const selSemObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel}`;
       const selSemFim=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
@@ -4184,6 +4192,7 @@ function onEvEntidadeChange(){
   const wrapData=document.getElementById('ev-data-pedido-wrap');
   const wrapNum=document.getElementById('ev-num-processo-wrap');
   const wrapEst=document.getElementById('ev-estado-cgd-wrap');
+  const wrapNaoAdj=document.getElementById('ev-nao-adjudicado-wrap');
   const aviso=document.getElementById('ev-aviso-num-processo');
   const reqData=document.getElementById('ev-data-pedido-req');
   const reqNum=document.getElementById('ev-num-processo-req');
@@ -4191,6 +4200,8 @@ function onEvEntidadeChange(){
   if(wrapData)wrapData.style.display=visivel?'block':'none';
   if(wrapNum)wrapNum.style.display=visivel?'block':'none';
   if(wrapEst)wrapEst.style.display=isCGD?'block':'none';
+  // Checkbox "Não Adjudicado" só para CGD
+  if(wrapNaoAdj)wrapNaoAdj.style.display=isCGD?'block':'none';
   // Marcas de obrigatório só para CGD
   if(reqData)reqData.style.display=isCGD?'inline':'none';
   if(reqNum)reqNum.style.display=isCGD?'inline':'none';
@@ -4249,42 +4260,121 @@ async function _getDocsDrive(){
 
 // Sincronização em massa: percorre todos os eventos CGD do calendário e re-cria/atualiza linhas no mapa Excel
 async function sincronizarTodosCGD(){
-  if(!confirm('Vai percorrer TODOS os eventos do calendário com entidade=CGD e atualizar o mapa Excel.\n\nIsto pode demorar alguns segundos. Continuar?'))return;
+  // Primeiro, ler o Excel para contar quantas linhas vão ser apagadas (Data Pretendida < hoje)
+  showToast('A verificar mapa Excel...','info');
+  let docsDrive,itemId;
+  let linhasParaApagar=[];
+  let valoresExcel=[];
+  try{
+    docsDrive=await _getDocsDrive();
+    const itemRes=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/CGD/${encodeURIComponent('agendamentos_dpa_pro.xlsx')}`,{headers:{'Authorization':'Bearer '+graphToken}});
+    if(!itemRes.ok) throw new Error(`Excel não encontrado (HTTP ${itemRes.status})`);
+    const item=await itemRes.json();
+    itemId=item.id;
+    const sheetName=encodeURIComponent('Agendamentos DPA');
+    const rangeRes=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A2:G500')`,{headers:{'Authorization':'Bearer '+graphToken}});
+    if(!rangeRes.ok) throw new Error(`Erro ao ler sheet (${rangeRes.status})`);
+    const range=await rangeRes.json();
+    valoresExcel=range.values||[];
+    // Hoje à meia-noite (UTC)
+    const hoje=new Date();const hojeY=hoje.getFullYear(),hojeM=hoje.getMonth(),hojeD=hoje.getDate();
+    const hojeMs=Date.UTC(hojeY,hojeM,hojeD);
+    // Excel serial → Data
+    const serialParaMs=serial=>{
+      if(typeof serial!=='number'||isNaN(serial))return null;
+      const epoch=Date.UTC(1899,11,30);
+      return epoch+serial*86400000;
+    };
+    // Identificar linhas com Data Pretendida (col C, índice 2) < hoje
+    for(let i=0;i<valoresExcel.length;i++){
+      const v=valoresExcel[i];
+      const ref=String(v[1]||'').trim();
+      if(!ref)continue; // linha vazia
+      const dataC=v[2];
+      let dataMs=null;
+      if(typeof dataC==='number') dataMs=serialParaMs(dataC);
+      else if(typeof dataC==='string'){
+        // Tentar dd-mm-yyyy ou yyyy-mm-dd
+        const m1=dataC.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+        const m2=dataC.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+        if(m1) dataMs=Date.UTC(+m1[3],+m1[2]-1,+m1[1]);
+        else if(m2) dataMs=Date.UTC(+m2[1],+m2[2]-1,+m2[3]);
+      }
+      if(dataMs!==null&&dataMs<hojeMs){
+        linhasParaApagar.push(i); // índice 0-based em valoresExcel
+      }
+    }
+  }catch(e){
+    showToast('Erro a ler Excel: '+e.message,'error');
+    return;
+  }
+
+  // Confirmação detalhada
+  const msg=`A sincronização vai:\n\n` +
+    `• APAGAR ${linhasParaApagar.length} linha(s) com Data Pretendida anterior a hoje\n` +
+    `• Inserir/atualizar linhas dos eventos CGD com Nº processo + "Não Adjudicado" marcado\n\n` +
+    `Esta ação é destrutiva. Continuar?`;
+  if(!confirm(msg))return;
+
   showToast('A sincronizar mapa CGD...','info');
   try{
-    // 1) Buscar eventos do calendário (todos)
-    const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD}`;
+    // 1) APAGAR linhas antigas (de baixo para cima, para não estragar índices)
+    const sheetName=encodeURIComponent('Agendamentos DPA');
+    let apagadas=0;
+    linhasParaApagar.sort((a,b)=>b-a); // descendente
+    for(const idx of linhasParaApagar){
+      const rowNum=idx+2;
+      const delUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A${rowNum}:G${rowNum}')/delete`;
+      const delRes=await fetch(delUrl,{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+        body:JSON.stringify({shift:'Up'})
+      });
+      if(delRes.ok)apagadas++;
+      else console.warn(`Falha ao apagar linha ${rowNum}: ${delRes.status}`);
+    }
+
+    // 2) Buscar eventos do calendário (todos)
+    const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado}`;
     let data;
     try{
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
     }catch(_){
       // Fallback se Estado_CGD ainda for x005f
-      const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD`;
+      const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD,${A.naoAdjudicado}`;
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selAlt})&$top=500`);
     }
     const itens=(data.value||[]).map(i=>i.fields);
-    // 2) Filtrar só os que têm entidade=CGD + nº processo + data pedido
+    // 3) Nova regra: entidade=CGD + nº processo + NaoAdjudicado marcado
     const validos=itens.filter(f=>{
       const ent=f[A.entidade]||'';
       const num=(f[A.numProcesso]||'').trim();
-      const dp=f[A.dataPedido]||'';
-      return ent==='CGD'&&num&&dp;
+      const na=f[A.naoAdjudicado];
+      const naMarc=(na===true||na==='true'||na===1||na==='1');
+      return ent==='CGD'&&num&&naMarc;
     });
     const ignorados=itens.filter(f=>{
       const ent=f[A.entidade]||'';
-      return ent==='CGD'&&!(f[A.numProcesso]&&f[A.dataPedido]);
+      if(ent!=='CGD')return false;
+      const num=(f[A.numProcesso]||'').trim();
+      const na=f[A.naoAdjudicado];
+      const naMarc=(na===true||na==='true'||na===1||na==='1');
+      return !num||!naMarc;
     });
+
     if(!validos.length){
-      showToast(`Nenhum evento CGD com nº processo e data de pedido encontrado. ${ignorados.length>0?`(${ignorados.length} CGD sem nº processo ou data de pedido)`:''}`,'');
+      const tot=apagadas>0?` (${apagadas} linhas antigas apagadas)`:'';
+      showToast(`Nenhum evento CGD com nº processo e "Não Adjudicado" marcado.${tot}`,'');
       return;
     }
-    // 3) Sincronizar um a um (em série, para evitar conflitos de escrita)
+    // 4) Sincronizar um a um (em série)
     let ok=0,fail=0;
     for(const f of validos){
       const numProc=(f[A.numProcesso]||'').trim();
       const dataPed=(f[A.dataPedido]||'').substring(0,10);
       const dataPret=(f[A.data]||'').substring(0,10);
       const est=f[A.estadoCGD]||f['Estado_x005f_CGD']||'Pendente';
+      if(!dataPed){ fail++; console.warn('Processo',numProc,'sem data pedido — ignorado'); continue; }
       try{
         await sincronizarMapaCGD({numProcesso:numProc,dataPedido:dataPed,dataPretendida:dataPret,estado:est});
         ok++;
@@ -4293,12 +4383,13 @@ async function sincronizarTodosCGD(){
         fail++;
       }
     }
-    const ignTxt=ignorados.length>0?` (${ignorados.length} eventos CGD ignorados por faltar nº processo ou data pedido)`:'';
-    if(fail===0){
-      showToast(`✓ Mapa CGD atualizado: ${ok} processos${ignTxt}`,'success');
-    }else{
-      showToast(`Sincronização parcial: ${ok} OK, ${fail} falhas${ignTxt}. Vê a consola para detalhes.`,'');
-    }
+    const partes=[];
+    if(apagadas>0)partes.push(`${apagadas} linha(s) antigas apagadas`);
+    partes.push(`${ok} processo(s) inseridos/atualizados`);
+    if(fail>0)partes.push(`${fail} falha(s)`);
+    if(ignorados.length>0)partes.push(`${ignorados.length} ignorados (sem nº processo ou já adjudicados)`);
+    const tipo=fail===0?'success':'';
+    showToast(`✓ Sincronização concluída: ${partes.join(' · ')}`,tipo);
   }catch(e){
     showToast('Erro a sincronizar: '+e.message,'error');
   }
@@ -4329,7 +4420,7 @@ async function exportarMapaCGD(){
 
 // Sincronização com mapa Excel — chamada após gravar evento CGD com nº processo
 async function sincronizarMapaCGD(dados){
-  // dados: {numProcesso, dataPedido, dataPretendida, estado}
+  // dados: {numProcesso, dataPedido, dataPretendida, estado, remover?}
   // Localização: site lbcsolicitadora2, Documentos/CGD/agendamentos_dpa_pro.xlsx
   const ficheiro='agendamentos_dpa_pro.xlsx';
   // 1) Encontrar drive e item do ficheiro (com debug)
@@ -4342,8 +4433,7 @@ async function sincronizarMapaCGD(dados){
   }
   const item=await itemRes.json();
   const itemId=item.id;
-  // 2) Sheet "Agendamentos DPA" — descobrir linhas já existentes via tabela usada
-  // Estratégia: ler range A2:G500 para procurar linha com Ref Processo = numProcesso
+  // 2) Sheet "Agendamentos DPA" — ler range A2:G500 para procurar linha
   const sheetName=encodeURIComponent('Agendamentos DPA');
   const rangeUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A2:G500')`;
   const rangeRes=await fetch(rangeUrl,{headers:{'Authorization':'Bearer '+graphToken}});
@@ -4355,6 +4445,19 @@ async function sincronizarMapaCGD(dados){
   for(let i=0;i<valores.length;i++){
     const ref=String(valores[i][1]||'').trim();
     if(ref&&ref===dados.numProcesso){linhaExistente=i;break;}
+  }
+  // Modo remover: apagar a linha inteira (não deixar buraco em branco)
+  if(dados.remover){
+    if(linhaExistente<0)return; // não está no Excel, nada a fazer
+    const rowNum=linhaExistente+2;
+    const delUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A${rowNum}:G${rowNum}')/delete`;
+    const delRes=await fetch(delUrl,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({shift:'Up'})
+    });
+    if(!delRes.ok) throw new Error(`Erro ao apagar linha ${rowNum}: ${delRes.status}`);
+    return;
   }
   // Datas no formato dd-mm-aaaa (formato pt) ou ISO; manter ISO simples
   const dataPed=dados.dataPedido; // 2026-05-15
@@ -4458,6 +4561,7 @@ function abrirModalEvento(dateStr){
   const elNum=document.getElementById('ev-num-processo');if(elNum)elNum.value='';
   const elDP=document.getElementById('ev-data-pedido');if(elDP)elDP.value='';
   const elEst=document.getElementById('ev-estado-cgd');if(elEst)elEst.value='Pendente';
+  const elNA=document.getElementById('ev-nao-adjudicado');if(elNA)elNA.checked=false;
   // Toggle CGD começa em "Não" (estado default seguro)
   setEvIsCGD(false);
   document.getElementById('ev-btn-eliminar').style.display='none';
@@ -4493,6 +4597,12 @@ function abrirEventoExistente(eventoId,ev){
   if(elDP)elDP.value=e[A.dataPedido]?e[A.dataPedido].substring(0,10):'';
   const elEst=document.getElementById('ev-estado-cgd');
   if(elEst)elEst.value=e[A.estadoCGD]||e['Estado_x005f_CGD']||'Pendente';
+  // Checkbox Não Adjudicado: aceita boolean, "true"/"false", ou string com 0/1
+  const elNA=document.getElementById('ev-nao-adjudicado');
+  if(elNA){
+    const valNA=e[A.naoAdjudicado];
+    elNA.checked=(valNA===true||valNA==='true'||valNA===1||valNA==='1');
+  }
   // Posicionar toggle e dropdown secundário consoante a entidade
   const elOutra=document.getElementById('ev-entidade-outra');
   if(entidadeAtual==='CGD'){
@@ -4524,11 +4634,12 @@ async function guardarEvento(){
   // está guardada nas colunas separadas Hora e Hora_Fim (texto).
   const dataStr=document.getElementById('ev-data').value; // YYYY-MM-DD
   const dataParaSP=dataStr+'T12:00:00Z';
-  // Campos novos: Entidade, NumProcesso, DataPedido, EstadoCGD
+  // Campos novos: Entidade, NumProcesso, DataPedido, EstadoCGD, NaoAdjudicado
   const entidade=document.getElementById('ev-entidade')?.value||'';
   const numProcesso=(document.getElementById('ev-num-processo')?.value||'').trim();
   const dataPedidoStr=document.getElementById('ev-data-pedido')?.value||'';
   const estadoCGD=document.getElementById('ev-estado-cgd')?.value||'Pendente';
+  const naoAdjudicado=!!document.getElementById('ev-nao-adjudicado')?.checked;
   const bodyBase={
     [A.titulo]:titulo,
     [A.data]:dataParaSP,
@@ -4540,6 +4651,7 @@ async function guardarEvento(){
     [A.numProcesso]:numProcesso,
     [A.dataPedido]:dataPedidoStr?dataPedidoStr+'T12:00:00Z':null,
     [A.estadoCGD]:entidade==='CGD'?estadoCGD:'',
+    [A.naoAdjudicado]:entidade==='CGD'?naoAdjudicado:false,
   };
   const body={...bodyBase,[A.observacoes]:observacoes};
   // Versão sem Hora_Fim (caso a coluna ainda não exista na lista SP)
@@ -4556,17 +4668,28 @@ async function guardarEvento(){
     }
   };
 
-  // Pós-gravação: se entidade=CGD e tem nº processo + data pedido, sincronizar Excel
+  // Pós-gravação: regra Excel = CGD + nº processo + NÃO ADJUDICADO marcado
+  // Se desmarca naoAdjudicado e tinha linha no Excel → REMOVE a linha
   const sincronizarSeCGD=async ()=>{
-    if(entidade==='CGD'&&numProcesso&&dataPedidoStr){
+    if(entidade==='CGD'&&numProcesso){
       try{
-        await sincronizarMapaCGD({
-          numProcesso,
-          dataPedido:dataPedidoStr,
-          dataPretendida:dataStr,
-          estado:estadoCGD,
-        });
-        showToast('✓ Mapa CGD atualizado','success');
+        if(naoAdjudicado&&dataPedidoStr){
+          // Inserir/atualizar linha
+          await sincronizarMapaCGD({
+            numProcesso,
+            dataPedido:dataPedidoStr,
+            dataPretendida:dataStr,
+            estado:estadoCGD,
+          });
+          showToast('✓ Mapa CGD atualizado','success');
+        }else{
+          // Remover linha (foi adjudicado ou falta data pedido)
+          await sincronizarMapaCGD({
+            numProcesso,
+            remover:true,
+          });
+          if(!naoAdjudicado) showToast('✓ Removido do mapa CGD (já adjudicado)','success');
+        }
       }catch(e){
         console.warn('Falha na sincronização do mapa CGD:',e);
         showToast('Evento gravado, mas falha ao atualizar mapa CGD: '+e.message,'');
