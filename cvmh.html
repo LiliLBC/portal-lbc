@@ -744,31 +744,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <div id="resumo-diferenca" style="margin-top:.4rem;font-weight:600"></div>
       </div>
 
-      <!-- a) SINAL -->
+      <!-- a) SINAL (múltiplos) -->
       <div class="toggle-row">
         <span class="toggle-label">a) Sinal / entrada inicial</span>
         <label class="toggle-switch"><input type="checkbox" id="toggle-sinal" onchange="onToggleSinal()"><span class="toggle-slider"></span></label>
       </div>
       <div class="cond-block" id="sinal-fields" style="display:none">
-        <div class="cond-block-title">Sinal — entrada inicial</div>
-        <div class="form-grid form-grid-2">
-          <div class="form-group">
-            <label class="form-label">Data do sinal <span>*</span></label>
-            <input type="date" class="form-input" id="sinal-data" oninput="calcularRemanescente()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Valor do sinal (€) <span>*</span></label>
-            <input type="text" class="form-input" id="sinal-valor" placeholder="Ex: 15.000,00" oninput="calcularRemanescente()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">IBAN comprador</label>
-            <input type="text" class="form-input" id="sinal-iban-comprador" placeholder="PT50...">
-          </div>
-          <div class="form-group">
-            <label class="form-label">IBAN vendedor</label>
-            <input type="text" class="form-input" id="sinal-iban-vendedor" placeholder="PT50...">
-          </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <div class="cond-block-title" style="margin-bottom:0">Sinais / entradas iniciais</div>
+          <button class="btn btn-sm" type="button" onclick="adicionarSinal()">+ Adicionar sinal</button>
         </div>
+        <div id="sinais-container"></div>
       </div>
 
       <!-- b) APB -->
@@ -1344,7 +1330,7 @@ function onDistrateChange() {
   } else {
     fields.style.display = 'block';
     onusPreview.textContent = 'Sobre o imóvel incide hipoteca voluntária registada pela [AP], a favor do [banco]...';
-    apbToggleRow.style.display = 'block';
+    apbToggleRow.style.display = 'flex';
     const bancoFields = document.getElementById('distrate-banco-fields');
     if (val === 'fisico') {
       title.textContent = 'Distrate físico';
@@ -1354,7 +1340,7 @@ function onDistrateChange() {
           <input type="date" class="form-input" id="distrate-data">
         </div>`;
       bancoFields.style.display = 'grid';
-      apbToggleRow.style.display = 'block';
+      apbToggleRow.style.display = 'flex';
     } else if (val === 'codigo') {
       title.textContent = 'Distrate por código';
       inner.innerHTML = `
@@ -1366,7 +1352,7 @@ function onDistrateChange() {
           <input type="text" class="form-input" id="distrate-codigo" placeholder="Código de acesso">
         </div>`;
       bancoFields.style.display = 'grid';
-      apbToggleRow.style.display = 'block';
+      apbToggleRow.style.display = 'flex';
     } else if (val === 'renuncia') {
       title.textContent = 'Renúncia pela CGD';
       inner.innerHTML = `
@@ -1462,9 +1448,72 @@ function onAPBChange() {
   calcularRemanescente();
 }
 
+// ─── SINAIS MÚLTIPLOS ─────────────────────────────────────────────────────
+let sinalCount = 0;
+
 function onToggleSinal() {
-  document.getElementById('sinal-fields').style.display = document.getElementById('toggle-sinal').checked ? 'block' : 'none';
+  const on = document.getElementById('toggle-sinal').checked;
+  document.getElementById('sinal-fields').style.display = on ? 'block' : 'none';
+  if (on && sinalCount === 0) {
+    adicionarSinal(); // primeiro sinal automaticamente
+  }
   calcularRemanescente();
+}
+
+function adicionarSinal() {
+  sinalCount++;
+  const idx = sinalCount;
+  const div = document.createElement('div');
+  div.className = 'sinal-bloco';
+  div.id = `sinal-bloco-${idx}`;
+  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.6rem;background:var(--surface)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Sinal ${idx}</span>
+      ${idx > 1 ? `<button type="button" onclick="removerSinal(${idx})" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1;padding:0 4px" title="Remover este sinal">×</button>` : ''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Data do sinal <span>*</span></label>
+        <input type="date" class="form-input" id="sinal-${idx}-data" oninput="calcularRemanescente()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor do sinal (€) <span>*</span></label>
+        <input type="text" class="form-input" id="sinal-${idx}-valor" placeholder="Ex: 15.000,00" oninput="calcularRemanescente()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">IBAN comprador</label>
+        <input type="text" class="form-input" id="sinal-${idx}-iban-comprador" placeholder="PT50...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">IBAN vendedor</label>
+        <input type="text" class="form-input" id="sinal-${idx}-iban-vendedor" placeholder="PT50...">
+      </div>
+    </div>`;
+  document.getElementById('sinais-container').appendChild(div);
+  calcularRemanescente();
+}
+
+function removerSinal(idx) {
+  const div = document.getElementById(`sinal-bloco-${idx}`);
+  if (div) div.remove();
+  calcularRemanescente();
+}
+
+// Devolve array com todos os sinais preenchidos: [{idx, data, valor, ibanC, ibanV}, ...]
+function lerSinais() {
+  const out = [];
+  document.querySelectorAll('#sinais-container .sinal-bloco').forEach(div => {
+    const m = div.id.match(/sinal-bloco-(\d+)/);
+    if (!m) return;
+    const idx = m[1];
+    const data = document.getElementById(`sinal-${idx}-data`)?.value || '';
+    const valor = document.getElementById(`sinal-${idx}-valor`)?.value || '';
+    const ibanC = document.getElementById(`sinal-${idx}-iban-comprador`)?.value || '';
+    const ibanV = document.getElementById(`sinal-${idx}-iban-vendedor`)?.value || '';
+    out.push({ idx, data, valor, ibanC, ibanV });
+  });
+  return out;
 }
 
 function onToggleCheque() {
@@ -1473,23 +1522,32 @@ function onToggleCheque() {
 }
 
 function calcularIS() {
-  const mutuo = parseFloat((document.getElementById('mutuo-valor').value || '0').replace(/\./g,'').replace(',','.')) || 0;
+  const mutuo = parseFloat((document.getElementById('mutuo-valor').value || '0').replace(/[\s\u00A0.]/g,'').replace(',','.')) || 0;
   const is = mutuo * 6 / 1000;
   document.getElementById('calculo-is').value = is > 0 ? is.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
 }
 
 function calcularRemanescente() {
-  const total = parseFloat((document.getElementById('preco-compra')?.value||'0').replace(/\./g,'').replace(',','.'))||0;
+  // Parser robusto de valores pt-PT: lida com NBSP, espaços, pontos (milhares) e vírgula (decimal)
+  const parsePT = s => {
+    if (!s) return 0;
+    const limpo = String(s).replace(/[\s\u00A0.]/g,'').replace(',','.');
+    const n = parseFloat(limpo);
+    return isNaN(n) ? 0 : n;
+  };
+  const total = parsePT(document.getElementById('preco-compra')?.value);
   const sinalOn = document.getElementById('toggle-sinal')?.checked;
   const apbOn = document.getElementById('toggle-apb')?.checked;
   const chequeOn = document.getElementById('toggle-cheque')?.checked;
-  const sinal = sinalOn ? (parseFloat((document.getElementById('sinal-valor')?.value||'0').replace(/\./g,'').replace(',','.'))||0) : 0;
-  const apbVal = apbOn ? (parseFloat((document.getElementById('apb-valor')?.value||'0').replace(/\./g,'').replace(',','.'))||0) : 0;
+  // Somar TODOS os sinais
+  const sinais = sinalOn ? lerSinais() : [];
+  const sinalTotal = sinais.reduce((s, x) => s + parsePT(x.valor), 0);
+  const apbVal = apbOn ? parsePT(document.getElementById('apb-valor')?.value) : 0;
   // Extenso APB
   const apbExtenso = document.getElementById('apb-extenso');
   if (apbExtenso) apbExtenso.value = apbVal > 0 ? valorExtenso(document.getElementById('apb-valor').value) : '';
   // Sugerir remanescente para cheque
-  const rem = total - sinal - apbVal;
+  const rem = total - sinalTotal - apbVal;
   const chequeValor = document.getElementById('cheque-valor');
   if (chequeOn && chequeValor && !chequeValor.value && rem > 0) {
     chequeValor.value = rem.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -1500,10 +1558,31 @@ function calcularRemanescente() {
   const diferenca = document.getElementById('resumo-diferenca');
   if (!total) { if(resumo) resumo.style.display='none'; return; }
   let html = ''; let soma = 0;
-  if (sinalOn && sinal > 0) { html += `a) Sinal: ${sinal.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`; soma += sinal; }
-  if (apbOn && apbVal > 0) { html += `b) APB: ${apbVal.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`; soma += apbVal; }
-  const chequeNum = chequeOn ? (parseFloat((chequeValor?.value||'0').replace(/\./g,'').replace(',','.'))||0) : 0;
-  if (chequeOn && chequeNum > 0) { html += `c) Cheque: ${chequeNum.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`; soma += chequeNum; }
+  // Listar cada sinal individualmente
+  if (sinalOn && sinais.length) {
+    sinais.forEach((s, i) => {
+      const v = parsePT(s.valor);
+      if (v > 0) {
+        const letra = String.fromCharCode(97 + i); // a, b, c...
+        html += `${letra}) Sinal ${i+1}: ${v.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`;
+        soma += v;
+      }
+    });
+  }
+  // APB e cheque continuam após os sinais (letras seguintes)
+  let letraIdx = sinais.filter(s => parsePT(s.valor) > 0).length;
+  if (apbOn && apbVal > 0) {
+    const letra = String.fromCharCode(97 + letraIdx);
+    html += `${letra}) APB: ${apbVal.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`;
+    soma += apbVal;
+    letraIdx++;
+  }
+  const chequeNum = chequeOn ? parsePT(chequeValor?.value) : 0;
+  if (chequeOn && chequeNum > 0) {
+    const letra = String.fromCharCode(97 + letraIdx);
+    html += `${letra}) Cheque: ${chequeNum.toLocaleString('pt-PT',{minimumFractionDigits:2})} €<br>`;
+    soma += chequeNum;
+  }
   if (linhas) linhas.innerHTML = html || 'Nenhum meio de pagamento seleccionado';
   const diff = total - soma;
   if (diferenca) {
@@ -2161,7 +2240,13 @@ function recolherDadosContrato() {
   let alineas = [];
   let letra = 97; // 'a'
   if (sinalOn) {
-    alineas.push(`${String.fromCharCode(letra++)}) Em ${fmtDataPT(v('sinal-data'))}, a título de sinal e princípio de pagamento, mediante transferência bancária, a Parte Compradora entregou a quantia de ${v('sinal-valor')} EUROS (${valorExtenso(v('sinal-valor'))}) da conta com o IBAN ${v('sinal-iban-comprador')} para a conta da Parte Vendedora com o IBAN ${v('sinal-iban-vendedor')};`);
+    const sinais = lerSinais();
+    sinais.forEach((s, i) => {
+      if (!parseValor(s.valor)) return; // ignorar sinais sem valor
+      const ordinal = sinais.length > 1 ? ` (${i + 1}º)` : '';
+      const intro = i === 0 ? 'a título de sinal e princípio de pagamento' : 'a título de reforço de sinal';
+      alineas.push(`${String.fromCharCode(letra++)}) Em ${fmtDataPT(s.data)}, ${intro}${ordinal}, mediante transferência bancária, a Parte Compradora entregou a quantia de ${s.valor} EUROS (${valorExtenso(s.valor)}) da conta com o IBAN ${s.ibanC} para a conta da Parte Vendedora com o IBAN ${s.ibanV};`);
+    });
   }
   if (apbAtivo) {
     alineas.push(`${String.fromCharCode(letra++)}) Ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${v('apb-valor')} EUROS (${valorExtenso(v('apb-valor'))}) mediante transferência bancária da conta ${v('apb-conta-origem')}, titulada pel${nC > 1 ? 'os SEGUNDOS' : 'o SEGUNDO'} junto da CAIXA, a creditar via target na conta ${v('apb-conta-destino')} cujo titular é o banco ${v('banco-hipotecante')};`);
@@ -2261,7 +2346,7 @@ function recolherDadosContrato() {
     Extenso_Despesas: valorExtenso(v('mutuo-despesas')),
     Hipoteca_Valor: v('hipoteca-valor'),
     Extenso_Hipoteca_Valor: valorExtenso(v('hipoteca-valor')),
-    Calculo_IS: v('calculo-is') || (parseFloat((v('mutuo-valor')||'0').replace(/\./g,'').replace(',','.')) * 6 / 1000).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}),
+    Calculo_IS: v('calculo-is') || (parseFloat((v('mutuo-valor')||'0').replace(/[\s\u00A0.]/g,'').replace(',','.')) * 6 / 1000).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}),
     TXT_Renuncia_Hipopteca,
     TXT_Menos35A,
     TXT_Onus_Inalienabilidade,
