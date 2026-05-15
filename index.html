@@ -3601,18 +3601,18 @@ function renderTarefas(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma tarefa encontrada.</div>';el.style.display='block';return;}
   el.innerHTML=lista.map(i=>`
     <div class="tarefa-card ${i[T.prioridade]==='Urgente'?'urgente':''}" id="tcard-${i.id}">
-      <div style="flex:1">
+      <div style="flex:1;cursor:pointer" onclick="abrirTarefaModal('${i.id}')">
         <div class="tarefa-card-title">${escHtml(i[T.titulo]||'—')}</div>
         <div class="tarefa-card-meta">${escHtml(i[T.responsavel]||'—')}${i[T.prazo]?' · '+fmtPrazo(i[T.prazo]):''}${i[T.observacoes]?' · <em>'+escHtml(i[T.observacoes])+'</em>':''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${prioridadeBadge(i[T.prioridade])}
-        <select class="td-select" style="width:100px" onchange="mudarEstadoTarefa('${i.id}',this.value)">
+        <select class="td-select" style="width:100px" onchange="mudarEstadoTarefa('${i.id}',this.value)" onclick="event.stopPropagation()">
           <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
           <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
           <option ${i[T.estado]==='Concluída'?'selected':''}>Concluída</option>
         </select>
-        <button class="btn btn-sm" onclick="editarTarefa('${i.id}')" title="Editar">✏️</button>
+        <button class="btn btn-sm" onclick="abrirTarefaModal('${i.id}')" title="Editar">✏️</button>
         <button class="btn btn-sm" onclick="apagarTarefa('${i.id}')" style="color:var(--red)" title="Apagar">🗑</button>
         <button class="btn btn-sm" onclick="criarProcessoDeTarefa('${escHtml(i[T.titulo]||'')}')" title="Criar processo" style="color:var(--accent)">📁</button>
       </div>
@@ -3667,6 +3667,10 @@ function renderTarefasDash(lista){
           <div><span style="font-weight:600;color:var(--text)">Prioridade:</span> ${escHtml(i[T.prioridade]||'Normal')}</div>
           <div><span style="font-weight:600;color:var(--text)">Estado:</span> ${escHtml(i[T.estado]||'—')}</div>
           ${obsTxt?`<div style="grid-column:1/-1"><span style="font-weight:600;color:var(--text)">Observações:</span> ${escHtml(obsTxt)}</div>`:''}
+        </div>
+        <div style="margin-top:.5rem;display:flex;gap:6px;justify-content:flex-end">
+          <button class="btn btn-sm" onclick="event.stopPropagation();abrirTarefaModal('${i.id}')" title="Editar tarefa">✏️ Editar</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();apagarTarefa('${i.id}')" style="color:var(--red)" title="Apagar">🗑</button>
         </div>
       </div>
     </div>`;
@@ -3724,19 +3728,71 @@ async function criarTarefaDash(){
 function toggleFormTarefa(){const f=document.getElementById('tarefa-form');f.style.display=f.style.display==='none'?'block':'none';}
 
 function editarTarefa(itemId){
-  const i=todasTarefas.find(t=>t.id===itemId);if(!i)return;
-  // Preenche o formulário com os dados da tarefa
-  document.getElementById('tar-titulo').value=i[T.titulo]||'';
-  document.getElementById('tar-responsavel').value=i[T.responsavel]||'';
-  document.getElementById('tar-prazo').value=i[T.prazo]?i[T.prazo].substring(0,10):'';
-  document.getElementById('tar-prioridade').value=i[T.prioridade]||'Normal';
-  document.getElementById('tar-obs').value=i[T.observacoes]||'';
-  // Muda o botão para guardar edição
-  const btn=document.querySelector('#tarefa-form .btn-primary');
-  btn.textContent='Guardar alterações';
-  btn.onclick=()=>guardarEdicaoTarefa(itemId);
-  document.getElementById('tarefa-form').style.display='block';
-  document.getElementById('tarefa-form').scrollIntoView({behavior:'smooth'});
+  // Compatibilidade — redireciona para o novo modal
+  abrirTarefaModal(itemId);
+}
+
+// ─── MODAL TAREFA (novo) ─────────────────────────────────────────────────────
+let modalTarefaId=null;
+
+function abrirTarefaModal(itemId){
+  const i=todasTarefas.find(t=>t.id===itemId);
+  if(!i){showToast('Tarefa não encontrada','error');return;}
+  modalTarefaId=itemId;
+  document.getElementById('mt-titulo').value=i[T.titulo]||'';
+  document.getElementById('mt-responsavel').value=i[T.responsavel]||'';
+  document.getElementById('mt-prazo').value=i[T.prazo]?i[T.prazo].substring(0,10):'';
+  document.getElementById('mt-prioridade').value=i[T.prioridade]||'Normal';
+  document.getElementById('mt-estado').value=i[T.estado]||'Por fazer';
+  document.getElementById('mt-obs').value=i[T.observacoes]||'';
+  document.getElementById('modal-tarefa-titulo').textContent='Editar tarefa';
+  document.getElementById('modal-tarefa').classList.add('show');
+  setTimeout(()=>document.getElementById('mt-titulo').focus(),100);
+}
+
+function fecharTarefaModal(){
+  document.getElementById('modal-tarefa').classList.remove('show');
+  modalTarefaId=null;
+}
+
+async function guardarTarefaModal(){
+  if(!modalTarefaId){showToast('Erro: sem ID','error');return;}
+  const titulo=document.getElementById('mt-titulo').value.trim();
+  if(!titulo){showToast('Preenche a descrição','error');return;}
+  const body={
+    [T.titulo]:titulo,
+    [T.responsavel]:document.getElementById('mt-responsavel').value,
+    [T.prazo]:document.getElementById('mt-prazo').value?document.getElementById('mt-prazo').value+'T12:00:00Z':null,
+    [T.prioridade]:document.getElementById('mt-prioridade').value,
+    [T.estado]:document.getElementById('mt-estado').value,
+    [T.observacoes]:document.getElementById('mt-obs').value,
+  };
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${modalTarefaId}/fields`,body);
+    showToast('Tarefa atualizada!','success');
+    fecharTarefaModal();
+    carregarTarefas();
+    if(typeof carregarTarefasDash==='function')carregarTarefasDash();
+  }catch(e){
+    showToast('Erro a guardar: '+e.message,'error');
+  }
+}
+
+async function eliminarTarefaModal(){
+  if(!modalTarefaId)return;
+  if(!confirm('Tens a certeza que queres apagar esta tarefa?'))return;
+  try{
+    await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${modalTarefaId}`,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    showToast('Tarefa apagada','success');
+    fecharTarefaModal();
+    carregarTarefas();
+    if(typeof carregarTarefasDash==='function')carregarTarefasDash();
+  }catch(e){
+    showToast('Erro a apagar: '+e.message,'error');
+  }
 }
 
 async function guardarEdicaoTarefa(itemId){
@@ -3964,9 +4020,8 @@ function renderEvt(e){
 
 function abrirTarefaDoCalendario(tarefaId,ev){
   if(ev)ev.stopPropagation();
-  const navServ=document.querySelector('.nav-item[onclick*="servicos"]');
-  if(navServ)navServ.click();
-  setTimeout(()=>servAbrirPainel(tarefaId),100);
+  // Abrir o modal de edição da tarefa diretamente
+  abrirTarefaModal(tarefaId);
 }
 
 // ─── VISTA MÊS ────────────────────────────────────────────────────────────────
@@ -10093,5 +10148,45 @@ function carregarScriptJustif(src){
 
 init();
 </script>
+
+<!-- ─── MODAL TAREFA ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-tarefa">
+  <div class="modal-box">
+    <div class="modal-box-title" id="modal-tarefa-titulo">Editar tarefa</div>
+    <div class="form-grid-2" style="display:grid;gap:.75rem">
+      <div class="form-group form-full"><label class="form-label">Descrição *</label><input class="form-input" id="mt-titulo" type="text" placeholder="Descrição da tarefa"></div>
+      <div class="form-group"><label class="form-label">Responsável</label>
+        <select class="form-select" id="mt-responsavel">
+          <option value="">—</option>
+          <option>Liliana Cardoso</option>
+          <option>Andreia Cabanas</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="mt-prazo" type="date"></div>
+      <div class="form-group"><label class="form-label">Prioridade</label>
+        <select class="form-select" id="mt-prioridade">
+          <option>Normal</option>
+          <option>Urgente</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Estado</label>
+        <select class="form-select" id="mt-estado">
+          <option>Por fazer</option>
+          <option>Em curso</option>
+          <option>Concluída</option>
+        </select>
+      </div>
+      <div class="form-group form-full"><label class="form-label">Observações</label><textarea class="form-input" id="mt-obs" rows="4" placeholder="Notas sobre a tarefa..."></textarea></div>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between">
+      <button class="btn" onclick="eliminarTarefaModal()" style="color:var(--red);border-color:var(--red)">🗑 Eliminar</button>
+      <div style="display:flex;gap:.5rem;margin-left:auto">
+        <button class="btn" onclick="fecharTarefaModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarTarefaModal()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
