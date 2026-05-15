@@ -1202,6 +1202,27 @@ tbody tr:hover td{background:#FAFAF8}
                 <span><strong>Email de Agendamento</strong> enviado ao cliente</span>
               </label>
               <div style="font-size:11px;color:var(--text-faint);margin-top:4px;margin-left:24px">Marcado = evento fica a azul no calendário · Desmarcado = ainda não foi enviado</div>
+
+              <!-- Anexar PDF do email à pasta do cliente -->
+              <div style="margin-top:.75rem;margin-left:24px;padding:.75rem;background:var(--bg-secondary);border-radius:6px;border:0.5px dashed var(--border-soft)">
+                <div style="font-size:12px;font-weight:500;color:var(--text-strong);margin-bottom:.4rem">📎 Anexar PDF do email à pasta do cliente</div>
+                <div style="display:grid;grid-template-columns:1fr;gap:6px">
+                  <div>
+                    <label style="font-size:10px;color:var(--text-muted)">Pasta do cliente</label>
+                    <div style="position:relative">
+                      <input class="form-input" id="ev-pasta-search" type="text" placeholder="Começa a escrever para procurar..." oninput="evPesquisarPastas()" onfocus="evPesquisarPastas()" autocomplete="off" style="font-size:12px">
+                      <div id="ev-pasta-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--bg-primary);border:0.5px solid var(--border-soft);border-radius:6px;max-height:180px;overflow-y:auto;margin-top:2px;box-shadow:var(--shadow)"></div>
+                    </div>
+                    <div id="ev-pasta-selecionada" style="font-size:11px;margin-top:4px"></div>
+                  </div>
+                  <div>
+                    <label style="font-size:10px;color:var(--text-muted)">Ficheiro PDF</label>
+                    <input class="form-input" id="ev-pdf-file" type="file" accept=".pdf,.eml,.msg" style="font-size:11px">
+                  </div>
+                  <button type="button" class="btn btn-sm" onclick="evUploadPdfEmail()" id="ev-pdf-btn" style="margin-top:4px">📤 Guardar na pasta</button>
+                </div>
+                <div id="ev-pdf-status" style="font-size:11px;margin-top:4px"></div>
+              </div>
             </div>
 
             <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
@@ -4785,6 +4806,113 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(inp)inp.addEventListener('input',onEvEntidadeChange);
 });
 
+// ─── Upload PDF do email para pasta do cliente ─────────────────────────────
+let evPastaSelecionada=null;
+
+// Carregar lista de pastas em background se ainda não estiver carregada
+async function evGarantirPastasCarregadas(){
+  if(Array.isArray(todasPastasClientes)&&todasPastasClientes.length>0)return;
+  if(!bibliotecaProcessosId)return;
+  try{
+    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
+    todasPastasClientes=(data.value||[]).filter(p=>p.folder&&p.name).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
+    const pSearch=document.getElementById('ev-pasta-search');
+    if(pSearch){pSearch.placeholder=`Pesquisar entre ${todasPastasClientes.length} pastas...`;}
+  }catch(e){console.warn('Falha a carregar pastas para o modal evento:',e);}
+}
+
+function evPesquisarPastas(){
+  const q=(document.getElementById('ev-pasta-search')?.value||'').toLowerCase().trim();
+  const dd=document.getElementById('ev-pasta-dropdown');
+  if(!dd)return;
+  // Reset seleção quando o utilizador escreve
+  evPastaSelecionada=null;
+  document.getElementById('ev-pasta-selecionada').innerHTML='';
+  if(!q||!Array.isArray(todasPastasClientes)||!todasPastasClientes.length){
+    dd.style.display='none';
+    if(!todasPastasClientes||!todasPastasClientes.length){
+      dd.innerHTML='<div style="padding:8px 12px;font-size:11px;color:var(--text-faint)">Lista de pastas ainda não carregada. Vai a Pastas/clientes primeiro.</div>';
+      dd.style.display=q?'block':'none';
+    }
+    return;
+  }
+  const resultados=todasPastasClientes.filter(p=>(p.nome||'').toLowerCase().includes(q)).slice(0,10);
+  if(!resultados.length){
+    dd.innerHTML='<div style="padding:8px 12px;font-size:11px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  }else{
+    dd.innerHTML=resultados.map(p=>{
+      const safe=JSON.stringify({id:p.id,nome:p.nome,webUrl:p.webUrl||''}).replace(/"/g,'&quot;');
+      return `<div onclick='evSelecionarPasta(${safe})' style="padding:6px 10px;font-size:11px;cursor:pointer;border-bottom:0.5px solid var(--border-soft)" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">${escHtml(p.nome)}</div>`;
+    }).join('');
+  }
+  dd.style.display='block';
+}
+
+function evSelecionarPasta(pasta){
+  evPastaSelecionada=pasta;
+  document.getElementById('ev-pasta-search').value=pasta.nome;
+  document.getElementById('ev-pasta-dropdown').style.display='none';
+  document.getElementById('ev-pasta-selecionada').innerHTML=`<span style="color:#1E6E3A;font-weight:500">✓ Selecionada:</span> ${escHtml(pasta.nome)}`;
+}
+
+// Fechar dropdown quando clica fora
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('#ev-pasta-search')&&!e.target.closest('#ev-pasta-dropdown')){
+    const dd=document.getElementById('ev-pasta-dropdown');
+    if(dd)dd.style.display='none';
+  }
+});
+
+async function evUploadPdfEmail(){
+  const fileInput=document.getElementById('ev-pdf-file');
+  const status=document.getElementById('ev-pdf-status');
+  const btn=document.getElementById('ev-pdf-btn');
+  if(!fileInput.files||!fileInput.files[0]){
+    status.innerHTML='<span style="color:var(--red)">⚠ Escolhe um ficheiro primeiro.</span>';
+    return;
+  }
+  if(!evPastaSelecionada){
+    status.innerHTML='<span style="color:var(--red)">⚠ Escolhe a pasta do cliente.</span>';
+    return;
+  }
+  if(!bibliotecaProcessosId){
+    status.innerHTML='<span style="color:var(--red)">⚠ Biblioteca PROCESSOS não está carregada.</span>';
+    return;
+  }
+  const file=fileInput.files[0];
+  // Construir nome do ficheiro: prefixo "Email_Agendamento_" + data + nome original
+  const dataEv=document.getElementById('ev-data').value||new Date().toISOString().slice(0,10);
+  const dataLimpa=dataEv.replace(/-/g,'');
+  // Sanitizar nome original
+  const originalSanitized=file.name.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);
+  const nomeFinal=`Email_Agendamento_${dataLimpa}_${originalSanitized}`;
+  btn.disabled=true;
+  status.innerHTML='<span style="color:var(--text-muted)">A enviar...</span>';
+  try{
+    const url=`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${evPastaSelecionada.id}:/${encodeURIComponent(nomeFinal)}:/content?@microsoft.graph.conflictBehavior=rename`;
+    const r=await fetch(url,{
+      method:'PUT',
+      headers:{
+        'Authorization':'Bearer '+graphToken,
+        'Content-Type':file.type||'application/octet-stream',
+      },
+      body:file
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const result=await r.json();
+    status.innerHTML=`<span style="color:#1E6E3A">✓ Guardado: <strong>${escHtml(result.name)}</strong> em <em>${escHtml(evPastaSelecionada.nome)}</em></span>`;
+    showToast('PDF guardado na pasta do cliente','success');
+    // Limpar input para não fazer upload duplicado
+    fileInput.value='';
+  }catch(e){
+    console.error('Erro upload PDF email:',e);
+    status.innerHTML=`<span style="color:var(--red)">✗ Erro: ${escHtml(e.message)}</span>`;
+    showToast('Erro a guardar PDF: '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
 function abrirModalEvento(dateStr){
   evItemId=null;
   document.getElementById('ev-data').value=dateStr;
@@ -4802,11 +4930,20 @@ function abrirModalEvento(dateStr){
   const elEst=document.getElementById('ev-estado-cgd');if(elEst)elEst.value='Pendente';
   const elNA=document.getElementById('ev-nao-adjudicado');if(elNA)elNA.checked=false;
   const elEmA=document.getElementById('ev-email-agendamento');if(elEmA)elEmA.checked=false;
+  // Reset campos de upload PDF
+  evPastaSelecionada=null;
+  const pSearch=document.getElementById('ev-pasta-search');if(pSearch)pSearch.value='';
+  const pSel=document.getElementById('ev-pasta-selecionada');if(pSel)pSel.innerHTML='';
+  const pDD=document.getElementById('ev-pasta-dropdown');if(pDD)pDD.style.display='none';
+  const pFile=document.getElementById('ev-pdf-file');if(pFile)pFile.value='';
+  const pStatus=document.getElementById('ev-pdf-status');if(pStatus)pStatus.innerHTML='';
   // Toggle CGD começa em "Não" (estado default seguro)
   setEvIsCGD(false);
   document.getElementById('ev-btn-eliminar').style.display='none';
   document.getElementById('modal-evento-titulo').textContent=`Novo evento — ${fmtData(dateStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
+  // Pré-carregar pastas em background (não bloqueia)
+  evGarantirPastasCarregadas();
 }
 
 function abrirEventoExistente(eventoId,ev){
@@ -4849,6 +4986,13 @@ function abrirEventoExistente(eventoId,ev){
     const valEmA=e[A.emailAgendamento];
     elEmA.checked=(valEmA===true||valEmA==='true'||valEmA===1||valEmA==='1');
   }
+  // Reset campos de upload PDF (cada evento começa limpo)
+  evPastaSelecionada=null;
+  const pSearch=document.getElementById('ev-pasta-search');if(pSearch)pSearch.value='';
+  const pSel=document.getElementById('ev-pasta-selecionada');if(pSel)pSel.innerHTML='';
+  const pDD=document.getElementById('ev-pasta-dropdown');if(pDD)pDD.style.display='none';
+  const pFile=document.getElementById('ev-pdf-file');if(pFile)pFile.value='';
+  const pStatus=document.getElementById('ev-pdf-status');if(pStatus)pStatus.innerHTML='';
   // Posicionar toggle e dropdown secundário consoante a entidade
   const elOutra=document.getElementById('ev-entidade-outra');
   if(entidadeAtual==='CGD'){
@@ -4862,6 +5006,8 @@ function abrirEventoExistente(eventoId,ev){
   document.getElementById('ev-btn-eliminar').style.display='inline-flex';
   document.getElementById('modal-evento-titulo').textContent=`Editar evento — ${fmtData(dataStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
+  // Pré-carregar pastas em background (não bloqueia)
+  evGarantirPastasCarregadas();
 }
 
 function fecharModalEvento(){document.getElementById('modal-evento').classList.remove('show');evItemId=null;}
