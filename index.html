@@ -1196,6 +1196,14 @@ tbody tr:hover td{background:#FAFAF8}
               <div style="font-size:11px;color:var(--text-faint);margin-top:4px;margin-left:24px">Marcado = aparece no mapa Excel · Desmarcado = já está inserido na plataforma CGD</div>
             </div>
 
+            <div class="form-group form-full" id="ev-email-agendamento-wrap" style="display:none">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="ev-email-agendamento" style="cursor:pointer;width:16px;height:16px">
+                <span><strong>Email de Agendamento</strong> enviado ao cliente</span>
+              </label>
+              <div style="font-size:11px;color:var(--text-faint);margin-top:4px;margin-left:24px">Marcado = evento fica a azul no calendário · Desmarcado = ainda não foi enviado</div>
+            </div>
+
             <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
           </div>
           <div class="modal-actions" style="justify-content:space-between">
@@ -2455,7 +2463,7 @@ const F={
   contactos:'Contactos',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica'};
-const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado'};
+const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
@@ -4062,7 +4070,7 @@ async function carregarCalendario(){
   renderCalendario();
   try{
     if(listaIdAgenda){
-      const selComCGD=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado}`;
+      const selComCGD=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado},${A.emailAgendamento}`;
       const selComObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel},${A.observacoes}`;
       const selSemObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel}`;
       const selSemFim=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
@@ -4165,18 +4173,33 @@ function renderEvt(e){
   }
   const hora=e._hora?`<span style="font-weight:600">${e._hora}</span> `:'';
   const titulo=escHtml(e[A.titulo]||'—');
-  // Aviso visual: entidade CGD sem nº processo (fica TODO laranja)
+  // Estados visuais (por ordem de prioridade):
+  // 1. CGD sem nº processo → laranja (aviso)
+  // 2. CGD com Email de Agendamento enviado → azul
+  // 3. caso contrário → cor normal do tipo (Escritura = verde)
   const ent=e[A.entidade]||'';
   const num=(e[A.numProcesso]||'').trim();
   const cgdSemNum=(ent==='CGD'&&!num);
-  const avisoCGD=cgdSemNum
-    ?`<span style="display:inline-block;margin-right:3px;font-weight:700">⚠</span>`
-    :'';
-  const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}${cgdSemNum?' — ⚠️ Sem nº de Processo (não gravado no mapa Excel)':''}`.trim();
-  // Estilo: fundo laranja completo se for CGD sem nº processo (sobrepõe-se à classe normal)
-  const styleExtra=cgdSemNum
-    ?' style="background:#FEF3C7;color:#92400E;border-left:3px solid #F59E0B;font-weight:500"'
-    :'';
+  const emA=e[A.emailAgendamento];
+  const emAMarcado=(emA===true||emA==='true'||emA===1||emA==='1');
+  const cgdComEmail=(ent==='CGD'&&num&&emAMarcado);
+
+  let avisoCGD='';
+  let styleExtra='';
+  let extraTitulo='';
+
+  if(cgdSemNum){
+    // Laranja completo
+    avisoCGD=`<span style="display:inline-block;margin-right:3px;font-weight:700">⚠</span>`;
+    styleExtra=' style="background:#FEF3C7;color:#92400E;border-left:3px solid #F59E0B;font-weight:500"';
+    extraTitulo=' — ⚠️ Sem nº de Processo (não gravado no mapa Excel)';
+  }else if(cgdComEmail){
+    // Azul completo
+    avisoCGD=`<span style="display:inline-block;margin-right:3px;font-weight:700">✉</span>`;
+    styleExtra=' style="background:#DBEAFE;color:#1E40AF;border-left:3px solid #3B82F6;font-weight:500"';
+    extraTitulo=' — ✉️ Email de Agendamento enviado';
+  }
+  const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}${extraTitulo}`.trim();
   return `<div class="cal-event ${cls}"${styleExtra} title="${escHtml(titleAttr)}" onclick="abrirEventoExistente('${e.id}',event)">${avisoCGD}${hora}${titulo}</div>`;
 }
 
@@ -4410,6 +4433,7 @@ function onEvEntidadeChange(){
   const wrapNum=document.getElementById('ev-num-processo-wrap');
   const wrapEst=document.getElementById('ev-estado-cgd-wrap');
   const wrapNaoAdj=document.getElementById('ev-nao-adjudicado-wrap');
+  const wrapEmailAg=document.getElementById('ev-email-agendamento-wrap');
   const aviso=document.getElementById('ev-aviso-num-processo');
   const reqData=document.getElementById('ev-data-pedido-req');
   const reqNum=document.getElementById('ev-num-processo-req');
@@ -4419,6 +4443,8 @@ function onEvEntidadeChange(){
   if(wrapEst)wrapEst.style.display=isCGD?'block':'none';
   // Checkbox "Não Adjudicado" só para CGD
   if(wrapNaoAdj)wrapNaoAdj.style.display=isCGD?'block':'none';
+  // Checkbox "Email de Agendamento" só para CGD
+  if(wrapEmailAg)wrapEmailAg.style.display=isCGD?'block':'none';
   // Marcas de obrigatório só para CGD
   if(reqData)reqData.style.display=isCGD?'inline':'none';
   if(reqNum)reqNum.style.display=isCGD?'inline':'none';
@@ -4482,12 +4508,12 @@ async function sincronizarTodosCGD(){
   // 1) Carregar eventos CGD do calendário PRIMEIRO (para sabermos quais têm checkbox marcada/desmarcada)
   let itensCalendario=[];
   try{
-    const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado}`;
+    const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado},${A.emailAgendamento}`;
     let data;
     try{
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
     }catch(_){
-      const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD,${A.naoAdjudicado}`;
+      const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD,${A.naoAdjudicado},${A.emailAgendamento}`;
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selAlt})&$top=500`);
     }
     itensCalendario=(data.value||[]).map(i=>i.fields).filter(f=>(f[A.entidade]||'')==='CGD');
@@ -4775,6 +4801,7 @@ function abrirModalEvento(dateStr){
   const elDP=document.getElementById('ev-data-pedido');if(elDP)elDP.value='';
   const elEst=document.getElementById('ev-estado-cgd');if(elEst)elEst.value='Pendente';
   const elNA=document.getElementById('ev-nao-adjudicado');if(elNA)elNA.checked=false;
+  const elEmA=document.getElementById('ev-email-agendamento');if(elEmA)elEmA.checked=false;
   // Toggle CGD começa em "Não" (estado default seguro)
   setEvIsCGD(false);
   document.getElementById('ev-btn-eliminar').style.display='none';
@@ -4816,6 +4843,12 @@ function abrirEventoExistente(eventoId,ev){
     const valNA=e[A.naoAdjudicado];
     elNA.checked=(valNA===true||valNA==='true'||valNA===1||valNA==='1');
   }
+  // Checkbox Email de Agendamento (mesma lógica)
+  const elEmA=document.getElementById('ev-email-agendamento');
+  if(elEmA){
+    const valEmA=e[A.emailAgendamento];
+    elEmA.checked=(valEmA===true||valEmA==='true'||valEmA===1||valEmA==='1');
+  }
   // Posicionar toggle e dropdown secundário consoante a entidade
   const elOutra=document.getElementById('ev-entidade-outra');
   if(entidadeAtual==='CGD'){
@@ -4853,6 +4886,7 @@ async function guardarEvento(){
   const dataPedidoStr=document.getElementById('ev-data-pedido')?.value||'';
   const estadoCGD=document.getElementById('ev-estado-cgd')?.value||'Pendente';
   const naoAdjudicado=!!document.getElementById('ev-nao-adjudicado')?.checked;
+  const emailAgendamento=!!document.getElementById('ev-email-agendamento')?.checked;
   const bodyBase={
     [A.titulo]:titulo,
     [A.data]:dataParaSP,
@@ -4865,6 +4899,7 @@ async function guardarEvento(){
     [A.dataPedido]:dataPedidoStr?dataPedidoStr+'T12:00:00Z':null,
     [A.estadoCGD]:entidade==='CGD'?estadoCGD:'',
     [A.naoAdjudicado]:entidade==='CGD'?naoAdjudicado:false,
+    [A.emailAgendamento]:entidade==='CGD'?emailAgendamento:false,
   };
   const body={...bodyBase,[A.observacoes]:observacoes};
   // Versão sem Hora_Fim (caso a coluna ainda não exista na lista SP)
