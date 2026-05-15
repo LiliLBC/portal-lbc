@@ -1211,6 +1211,7 @@ tbody tr:hover td{background:#FAFAF8}
                   <button type="button" class="btn btn-sm" onclick="evUploadPdfEmail()" id="ev-pdf-btn">📤 Carregar</button>
                 </div>
                 <div id="ev-pdf-status" style="font-size:11px;margin-top:6px"></div>
+                <div id="ev-pdf-guardados" style="font-size:11px;margin-top:6px"></div>
               </div>
             </div>
 
@@ -4792,7 +4793,19 @@ async function _formatarColunasData(driveId,itemId,sheetName,rowNum){
 // Listener para o input do nº processo (atualiza aviso em tempo real)
 document.addEventListener('DOMContentLoaded',()=>{
   const inp=document.getElementById('ev-num-processo');
-  if(inp)inp.addEventListener('input',onEvEntidadeChange);
+  if(inp){
+    inp.addEventListener('input',onEvEntidadeChange);
+    // Debounce para re-listar PDFs quando muda o nº processo
+    let pdfTimer=null;
+    inp.addEventListener('input',()=>{
+      clearTimeout(pdfTimer);
+      pdfTimer=setTimeout(()=>{
+        // Só pesquisar se for CGD
+        const ent=document.getElementById('ev-entidade')?.value||'';
+        if(ent==='CGD')evCarregarPdfsGuardados();
+      },600);
+    });
+  }
 });
 
 // ─── Upload PDF do email para biblioteca EmailPdf ─────────────────────────
@@ -4808,6 +4821,73 @@ async function _getDriveEmailPdf(){
   return driveIdEmailPdf;
 }
 
+// Listar PDFs guardados na biblioteca EmailPdf que correspondem a este nº processo
+// Sanitizar nº processo para nome de pasta (substitui / e outros caracteres por _)
+function _sanitizarPasta(numProc){
+  return String(numProc||'').replace(/[\/\\:*?"<>|]/g,'_').trim();
+}
+
+// Mostrar o PDF guardado para este agendamento (se existir)
+async function evCarregarPdfsGuardados(){
+  const cont=document.getElementById('ev-pdf-guardados');
+  if(!cont)return;
+  const numProc=(document.getElementById('ev-num-processo')?.value||'').trim();
+  if(!numProc){cont.innerHTML='';return;}
+  const pasta=_sanitizarPasta(numProc);
+  cont.innerHTML='<span style="color:var(--text-muted)">A verificar PDF guardado...</span>';
+  try{
+    const driveId=await _getDriveEmailPdf();
+    // Tentar listar a subpasta do nº processo
+    const r=await fetch(`${GRAPH_BASE}/drives/${driveId}/root:/${encodeURIComponent(pasta)}:/children?$select=name,webUrl,id,lastModifiedDateTime`,{
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(r.status===404){
+      // Subpasta ainda não existe — significa que não foi guardado nenhum PDF
+      cont.innerHTML='<span style="color:var(--text-faint);font-style:italic">Ainda não há PDF guardado.</span>';
+      return;
+    }
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data=await r.json();
+    const pdfs=(data.value||[]).filter(f=>!f.folder);
+    if(!pdfs.length){
+      cont.innerHTML='<span style="color:var(--text-faint);font-style:italic">Ainda não há PDF guardado.</span>';
+      return;
+    }
+    // Mostrar todos os ficheiros que existirem na subpasta (deve ser 1, mas robustez)
+    pdfs.sort((a,b)=>(b.lastModifiedDateTime||'').localeCompare(a.lastModifiedDateTime||''));
+    const lista=pdfs.map(f=>{
+      const url=f.webUrl||'';
+      const dt=f.lastModifiedDateTime?new Date(f.lastModifiedDateTime).toLocaleDateString('pt-PT'):'';
+      const nomeEsc=escHtml(f.name).replace(/'/g,"\\'");
+      return `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#EFF6FF;border-radius:4px;margin-top:3px;border:0.5px solid #BFDBFE">
+        <span style="flex:1;font-size:11px">📄 <a href="${escHtml(url)}" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:500">${escHtml(f.name)}</a>${dt?` <span style="color:var(--text-faint)">· ${escHtml(dt)}</span>`:''}</span>
+        <button type="button" onclick="evApagarPdfGuardado('${escHtml(f.id)}','${nomeEsc}')" title="Apagar" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0 4px;line-height:1">×</button>
+      </div>`;
+    }).join('');
+    cont.innerHTML=lista;
+  }catch(e){
+    console.warn('Erro a listar PDFs guardados:',e);
+    cont.innerHTML=`<span style="color:var(--red);font-style:italic">Erro a listar PDFs: ${escHtml(e.message)}</span>`;
+  }
+}
+
+async function evApagarPdfGuardado(itemId,nome){
+  if(!confirm(`Apagar "${nome}" da biblioteca EmailPdf?\n\nEsta ação é permanente.`))return;
+  try{
+    const driveId=await _getDriveEmailPdf();
+    const r=await fetch(`${GRAPH_BASE}/drives/${driveId}/items/${itemId}`,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok&&r.status!==204) throw new Error(`HTTP ${r.status}`);
+    showToast('PDF apagado','success');
+    evCarregarPdfsGuardados();
+  }catch(e){
+    console.error('Erro a apagar PDF:',e);
+    showToast('Erro a apagar: '+e.message,'error');
+  }
+}
+
 async function evUploadPdfEmail(){
   const fileInput=document.getElementById('ev-pdf-file');
   const status=document.getElementById('ev-pdf-status');
@@ -4816,18 +4896,47 @@ async function evUploadPdfEmail(){
     status.innerHTML='<span style="color:var(--red)">⚠ Escolhe um ficheiro primeiro.</span>';
     return;
   }
+  // Verificar nº processo
+  const numProc=(document.getElementById('ev-num-processo')?.value||'').trim();
+  if(!numProc){
+    status.innerHTML='<span style="color:var(--red)">⚠ Preenche o Nº Processo antes de carregar o PDF.</span>';
+    return;
+  }
   const file=fileInput.files[0];
-  // Construir nome: <NumProcesso>_<Data>_<original>
-  const numProc=(document.getElementById('ev-num-processo')?.value||'').trim().replace(/[^a-zA-Z0-9.-]/g,'_')||'sem-num';
-  const dataEv=document.getElementById('ev-data').value||new Date().toISOString().slice(0,10);
-  const dataLimpa=dataEv.replace(/-/g,'');
-  const originalSanitized=file.name.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);
-  const nomeFinal=`${numProc}_${dataLimpa}_${originalSanitized}`;
+  const pasta=_sanitizarPasta(numProc);
+  // Manter o nome original do PDF (apenas sanitizar caracteres ilegais no SP)
+  const nomeOriginal=file.name.replace(/[\/\\:*?"<>|]/g,'_');
   btn.disabled=true;
   status.innerHTML='<span style="color:var(--text-muted)">A enviar...</span>';
   try{
     const driveId=await _getDriveEmailPdf();
-    const url=`${GRAPH_BASE}/drives/${driveId}/root:/${encodeURIComponent(nomeFinal)}:/content?@microsoft.graph.conflictBehavior=rename`;
+    // 1) Apagar qualquer PDF anterior da subpasta (só pode haver 1 por agendamento)
+    try{
+      const rList=await fetch(`${GRAPH_BASE}/drives/${driveId}/root:/${encodeURIComponent(pasta)}:/children?$select=id,name`,{
+        headers:{'Authorization':'Bearer '+graphToken}
+      });
+      if(rList.ok){
+        const dataList=await rList.json();
+        const antigos=(dataList.value||[]).filter(f=>!f.folder);
+        for(const f of antigos){
+          try{
+            await fetch(`${GRAPH_BASE}/drives/${driveId}/items/${f.id}`,{
+              method:'DELETE',
+              headers:{'Authorization':'Bearer '+graphToken}
+            });
+            console.log(`PDF antigo apagado: ${f.name}`);
+          }catch(eDel){
+            console.warn('Falha a apagar PDF antigo:',f.name,eDel);
+          }
+        }
+      }
+      // Se rList.status === 404, subpasta ainda não existe — segue em frente
+    }catch(eList){
+      console.warn('Erro ao listar PDFs antigos (a continuar):',eList);
+    }
+    // 2) Upload do novo PDF para a subpasta (cria a pasta se não existir)
+    // O endpoint /drives/{driveId}/root:/{pasta}/{nome}:/content cria a pasta automaticamente
+    const url=`${GRAPH_BASE}/drives/${driveId}/root:/${encodeURIComponent(pasta)}/${encodeURIComponent(nomeOriginal)}:/content?@microsoft.graph.conflictBehavior=rename`;
     const r=await fetch(url,{
       method:'PUT',
       headers:{
@@ -4838,10 +4947,11 @@ async function evUploadPdfEmail(){
     });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const result=await r.json();
-    const webUrl=result.webUrl||'';
-    status.innerHTML=`<span style="color:#1E6E3A">✓ Guardado: <strong>${escHtml(result.name)}</strong></span>${webUrl?` <a href="${escHtml(webUrl)}" target="_blank" style="color:var(--accent);font-size:11px;margin-left:4px">[abrir]</a>`:''}`;
-    showToast('PDF guardado na biblioteca EmailPdf','success');
+    status.innerHTML=`<span style="color:#1E6E3A">✓ PDF guardado</span>`;
+    showToast('PDF guardado','success');
     fileInput.value='';
+    // Refrescar lista
+    evCarregarPdfsGuardados();
   }catch(e){
     console.error('Erro upload PDF email:',e);
     status.innerHTML=`<span style="color:var(--red)">✗ Erro: ${escHtml(e.message)}</span>`;
@@ -4871,6 +4981,7 @@ function abrirModalEvento(dateStr){
   // Reset campos de upload PDF
   const pFile=document.getElementById('ev-pdf-file');if(pFile)pFile.value='';
   const pStatus=document.getElementById('ev-pdf-status');if(pStatus)pStatus.innerHTML='';
+  const pGuard=document.getElementById('ev-pdf-guardados');if(pGuard)pGuard.innerHTML='';
   // Toggle CGD começa em "Não" (estado default seguro)
   setEvIsCGD(false);
   document.getElementById('ev-btn-eliminar').style.display='none';
@@ -4921,6 +5032,11 @@ function abrirEventoExistente(eventoId,ev){
   // Reset campos de upload PDF (cada evento começa limpo)
   const pFile=document.getElementById('ev-pdf-file');if(pFile)pFile.value='';
   const pStatus=document.getElementById('ev-pdf-status');if(pStatus)pStatus.innerHTML='';
+  const pGuard=document.getElementById('ev-pdf-guardados');if(pGuard)pGuard.innerHTML='';
+  // Listar PDFs já guardados para este nº processo
+  if((e[A.numProcesso]||'').trim()){
+    setTimeout(()=>evCarregarPdfsGuardados(),200);
+  }
   // Posicionar toggle e dropdown secundário consoante a entidade
   const elOutra=document.getElementById('ev-entidade-outra');
   if(entidadeAtual==='CGD'){
