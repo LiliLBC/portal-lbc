@@ -3273,23 +3273,37 @@ function procurarPastaRegisto(i){
     painelPastaUrl=i[F.ligacaoPasta];
     const nomePasta=decodeURIComponent(i[F.ligacaoPasta].split('/').pop()||'').replace(/%20/g,' ')||'Pasta ligada';
     nomeEl.textContent=nomePasta;
+    nomeEl.style.color='';
     btnAbrir.style.display='inline-flex';
   }else{
-    // Sem link — tentar encontrar por nome automaticamente
+    // Sem link — tentar encontrar UMA correspondência ÚNICA pelo nome do cliente
+    // Regra rigorosa: a pasta tem de conter TODAS as palavras significativas (>=3 chars)
+    // E só faz auto-associação se houver EXATAMENTE 1 candidato.
     const nome=(i[F.nome]||'').toUpperCase().trim();
-    const palavras=nome.split(/\s+/).filter(p=>p.length>2);
-    const pasta=pastasPainel.find(p=>{
-      const np=p.nome.toUpperCase();
-      return palavras.some(w=>np.includes(w));
-    });
-    if(pasta){
-      painelPastaUrl=pasta.webUrl;
-      nomeEl.textContent=pasta.nome+' (auto)';
+    const palavras=nome.split(/\s+/).filter(p=>p.length>=3);
+    let candidatos=[];
+    if(palavras.length>0){
+      candidatos=pastasPainel.filter(p=>{
+        const np=(p.nome||'').toUpperCase();
+        // TODAS as palavras têm de estar na pasta
+        return palavras.every(w=>np.includes(w));
+      });
+    }
+    if(candidatos.length===1){
+      // 1 só candidato: sugere mas NÃO grava automaticamente
+      painelPastaUrl=candidatos[0].webUrl;
+      nomeEl.innerHTML=`${escHtml(candidatos[0].nome)} <span style="color:#92400E;font-weight:600">(auto-sugerido — confirma com Alterar se errado)</span>`;
       btnAbrir.style.display='inline-flex';
-      guardarLinkPasta(pasta.webUrl);
+      // NOTA: não chamamos guardarLinkPasta aqui — só grava quando o utilizador carregar em Guardar
+    }else if(candidatos.length>1){
+      // Vários possíveis — não escolher
+      painelPastaUrl=null;
+      nomeEl.innerHTML=`<span style="color:#92400E">${candidatos.length} pastas possíveis — usa Alterar para escolher</span>`;
+      btnAbrir.style.display='none';
     }else{
       painelPastaUrl=null;
       nomeEl.textContent='Sem pasta associada';
+      nomeEl.style.color='';
       btnAbrir.style.display='none';
     }
   }
