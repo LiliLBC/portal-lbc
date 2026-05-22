@@ -1763,6 +1763,8 @@ function recolherDados() {
   // Outorgantes múltiplos
   dados._vendedores=document.querySelectorAll('#vendedores-container .outorgante-block').length;
   dados._compradores=document.querySelectorAll('#compradores-container .outorgante-block').length;
+  // Sinais múltiplos — guardar array com os dados de cada sinal
+  dados._sinais=lerSinais().map(s=>({data:s.data,valor:s.valor,ibanC:s.ibanC,ibanV:s.ibanV}));
   // Trato sucessivo
   const ts=recolherTratoSuc();if(ts)dados._trato_suc=ts;
   return dados;
@@ -1774,9 +1776,31 @@ function restaurarDados(dados) {
   const nComp=parseInt(dados._compradores||1);
   while(document.querySelectorAll('#vendedores-container .outorgante-block').length<nVend)addOutorgante('vendedores');
   while(document.querySelectorAll('#compradores-container .outorgante-block').length<nComp)addOutorgante('compradores');
-  // Campos simples
+  // Restaurar sinais múltiplos ANTES de preencher campos simples
+  // Limpar sinais existentes
+  const sinaisContainer=document.getElementById('sinais-container');
+  if(sinaisContainer){
+    sinaisContainer.innerHTML='';
+    sinalCount=0;
+  }
+  if(Array.isArray(dados._sinais)&&dados._sinais.length){
+    document.getElementById('toggle-sinal').checked=true;
+    document.getElementById('sinal-fields').style.display='block';
+    // Criar um bloco por cada sinal e preencher
+    dados._sinais.forEach(s=>{
+      adicionarSinal();
+      const idx=sinalCount; // o adicionarSinal incrementa sinalCount
+      const setVal=(suf,val)=>{const el=document.getElementById(`sinal-${idx}-${suf}`);if(el)el.value=val||'';};
+      setVal('data',s.data);
+      setVal('valor',s.valor);
+      setVal('iban-comprador',s.ibanC);
+      setVal('iban-vendedor',s.ibanV);
+    });
+  }
+  // Campos simples (NÃO repor IDs de sinais — já tratados acima)
   Object.entries(dados).forEach(([id, val]) => {
     if(id.startsWith('_'))return;
+    if(/^sinal-\d+-/.test(id))return; // ignorar campos de sinais dinâmicos
     const el = document.getElementById(id); if (!el) return;
     if (el.type === 'checkbox') el.checked = val; else el.value = val;
   });
@@ -1795,7 +1819,16 @@ function restaurarDados(dados) {
   document.querySelectorAll('[id$="-hab-tipo"]').forEach(el=>{
     const idx=el.id.replace('falecido-','').replace('-hab-tipo','');onHabTipoChange(idx);
   });
+  // Re-trigger toggles de pagamento (APB, cheque) para mostrar/esconder campos
+  ['toggle-apb','toggle-cheque'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      if(id==='toggle-apb'&&typeof onAPBChange==='function')onAPBChange();
+      if(id==='toggle-cheque'&&typeof onToggleCheque==='function')onToggleCheque();
+    }
+  });
   updateDataExtenso(); updatePrecoExtenso(); calcularIS();
+  calcularRemanescente();
 }
 
 // ─── PASTA DO CLIENTE ─────────────────────────────────────────────────────────
