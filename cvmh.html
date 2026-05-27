@@ -548,6 +548,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
+      <!-- Cláusulas livres (entram no VERIFIQUEI, por ordem) -->
+      <div class="form-group">
+        <label class="form-label">Cláusulas livres adicionais</label>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;line-height:1.5">Texto livre que será acrescentado ao fim do <strong>VERIFIQUEI QUE</strong>, por ordem, antes do <strong>ARQUIVO</strong>. O prefixo <code>--- </code> é adicionado automaticamente.</div>
+        <div id="clausulas-livres-container"></div>
+        <button class="btn btn-sm" type="button" onclick="adicionarClausulaLivre()" style="margin-top:.25rem">+ Adicionar cláusula</button>
+      </div>
+
     </div>
   </div>
 
@@ -1460,6 +1468,40 @@ function onToggleSinal() {
   calcularRemanescente();
 }
 
+// ─── CLÁUSULAS LIVRES (VERIFIQUEI) ────────────────────────────────────────────
+let clausulaLivreCount = 0;
+
+function adicionarClausulaLivre() {
+  clausulaLivreCount++;
+  const idx = clausulaLivreCount;
+  const div = document.createElement('div');
+  div.className = 'clausula-livre-bloco';
+  div.id = `clausula-livre-bloco-${idx}`;
+  div.style.cssText = 'display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.5rem';
+  div.innerHTML = `
+    <textarea class="form-input" id="clausula-livre-${idx}" rows="2" placeholder="Texto da cláusula a acrescentar ao VERIFIQUEI..." style="flex:1;resize:vertical;min-height:2.4rem"></textarea>
+    <button type="button" onclick="removerClausulaLivre(${idx})" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1;padding:6px 4px;flex-shrink:0" title="Remover esta cláusula">×</button>`;
+  document.getElementById('clausulas-livres-container').appendChild(div);
+}
+
+function removerClausulaLivre(idx) {
+  const div = document.getElementById(`clausula-livre-bloco-${idx}`);
+  if (div) div.remove();
+}
+
+// Devolve o texto de todas as cláusulas livres preenchidas, cada uma numa linha,
+// com o prefixo "--- " (mantendo a ordem em que aparecem no formulário).
+function lerClausulasLivres() {
+  const linhas = [];
+  document.querySelectorAll('#clausulas-livres-container .clausula-livre-bloco textarea').forEach(ta => {
+    let txt = (ta.value || '').trim();
+    if (!txt) return;
+    if (!txt.startsWith('---')) txt = '--- ' + txt;
+    linhas.push(txt);
+  });
+  return linhas.join('\n');
+}
+
 function adicionarSinal() {
   sinalCount++;
   const idx = sinalCount;
@@ -2336,6 +2378,7 @@ function recolherDadosContrato() {
     TXT_TA_LU,
     TXTImpostos,
     TXTAdvert_Condominio,
+    TXT_Clausulas_Livres: lerClausulasLivres(),
     Data_CPU: fmtDataPT(v('data-cpu')),
     Cod_CRP: v('cod-crp'),
     Data_CRP: fmtDataPT(v('data-crp')),
