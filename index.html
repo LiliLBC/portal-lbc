@@ -555,7 +555,7 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="filter-row" style="padding:.2rem .5rem .4rem;flex-shrink:0">
               <button class="filter-chip active" onclick="filtrarRegistos('',this)">Todas</button>
-              <button class="filter-chip" onclick="filtrarRegistos('Em curso',this)">Em curso</button>
+              <button class="filter-chip" onclick="filtrarRegistos('Apresentado',this)">Apresentadas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Depositado',this)">Depositadas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Concluido',this)">Concluídas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
@@ -582,6 +582,10 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="metric-label">Particulares</div>
               <div class="metric-value" id="mv-part" style="color:var(--amber);font-size:22px">—</div>
               <div class="metric-sub" id="ms-part">—</div>
+            </div>
+            <div class="metric-card" id="mc-apres-meses">
+              <div class="metric-label">Apresentadas / mês</div>
+              <div class="metric-sub" id="ms-apres-meses" style="margin-top:.3rem">—</div>
             </div>
           </div>
         </div>
@@ -3127,17 +3131,40 @@ function atualizarMetricas(lista){
   [['cgd','CGD'],['remax','REMAX'],['part','Particulares']].forEach(([k,g])=>{
     const arr=grupos[g];
     const n=arr.length;
-    const ec=contarEstado(arr,'Em curso');
+    const apr=contarEstado(arr,'Apresentado');
     const dep=contarEstado(arr,'Depositado');
     const con=contarEstado(arr,'Concluido');
     const sup=contarEstado(arr,'Suprimento');
     document.getElementById(`mv-${k}`).textContent=n;
     document.getElementById(`ms-${k}`).innerHTML=
-      `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Em curso</span><span style="font-weight:500">${ec}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Apresentadas</span><span style="font-weight:500">${apr}</span></div>`+
       `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Depositadas</span><span style="font-weight:500">${dep}</span></div>`+
       `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Concluídas</span><span style="font-weight:500">${con}</span></div>`+
       `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">Suprimentos</span><span style="font-weight:500">${sup}</span></div>`;
   });
+
+  // ─── Card: Escrituras apresentadas por mês (estado Apresentado, agrupadas pelo mês da DataEscritura) ───
+  const elMeses=document.getElementById('ms-apres-meses');
+  if(elMeses){
+    const apresentadas=lista.filter(i=>(i[F.estado]||'').toLowerCase()==='apresentado'&&i[F.data]);
+    const contagem={}; // chave: "YYYY-MM" -> nº de escrituras
+    apresentadas.forEach(i=>{
+      const d=new Date(i[F.data]);
+      if(isNaN(d))return;
+      const chave=`${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
+      contagem[chave]=(contagem[chave]||0)+1;
+    });
+    const chaves=Object.keys(contagem).sort(); // ordem cronológica ascendente
+    if(chaves.length===0){
+      elMeses.innerHTML=`<div style="font-size:10px;color:var(--text-faint);font-style:italic">Sem escrituras apresentadas</div>`;
+    }else{
+      elMeses.innerHTML=chaves.map(ch=>{
+        const [ano,mes]=ch.split('-');
+        const nomeMes=MESES[parseInt(mes,10)];
+        return `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px"><span style="color:var(--text-faint)">${nomeMes} ${ano}</span><span style="font-weight:500">${contagem[ch]}</span></div>`;
+      }).join('');
+    }
+  }
 
 }
 
