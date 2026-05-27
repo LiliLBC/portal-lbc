@@ -548,12 +548,28 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
-      <!-- Cláusulas livres (entram no VERIFIQUEI, por ordem) -->
+      <!-- Cláusulas livres — VERIFIQUEI -->
       <div class="form-group">
-        <label class="form-label">Cláusulas livres adicionais</label>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;line-height:1.5">Texto livre que será acrescentado ao fim do <strong>VERIFIQUEI QUE</strong>, por ordem, antes do <strong>ARQUIVO</strong>. O prefixo <code>--- </code> é adicionado automaticamente.</div>
+        <label class="form-label">Cláusulas livres — secção VERIFIQUEI</label>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;line-height:1.5">Texto livre acrescentado ao fim do <strong>VERIFIQUEI QUE</strong>, por ordem, antes do <strong>ARQUIVO</strong>. O prefixo <code>--- </code> é adicionado automaticamente.</div>
         <div id="clausulas-livres-container"></div>
-        <button class="btn btn-sm" type="button" onclick="adicionarClausulaLivre()" style="margin-top:.25rem">+ Adicionar cláusula</button>
+        <button class="btn btn-sm" type="button" onclick="adicionarClausulaLivre()" style="margin-top:.25rem">+ Adicionar cláusula ao VERIFIQUEI</button>
+      </div>
+
+      <!-- Cláusulas livres — ARQUIVO -->
+      <div class="form-group">
+        <label class="form-label">Cláusulas livres — secção ARQUIVO</label>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;line-height:1.5">Texto livre acrescentado à secção <strong>ARQUIVO</strong>, por ordem, a seguir ao texto dos impostos. O prefixo <code>--- </code> é adicionado automaticamente.</div>
+        <div id="clausulas-arquivo-container"></div>
+        <button class="btn btn-sm" type="button" onclick="adicionarClausulaArquivo()" style="margin-top:.25rem">+ Adicionar cláusula ao ARQUIVO</button>
+      </div>
+
+      <!-- Declarações complementares (texto livre, a vermelho no documento) -->
+      <div class="form-group">
+        <label class="form-label">Declarações complementares</label>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;line-height:1.5">Texto livre inserido no fim do Termo de Autenticação, a seguir à assinatura. Aparece <strong style="color:#c0392b">a vermelho</strong> no documento, com o título <strong>DECLARAÇÕES COMPLEMENTARES</strong>, para depois cortares e colares onde for preciso no contrato. O prefixo <code>--- </code> é adicionado automaticamente.</div>
+        <div id="declaracoes-comp-container"></div>
+        <button class="btn btn-sm" type="button" onclick="adicionarDeclaracaoComp()" style="margin-top:.25rem">+ Adicionar declaração</button>
       </div>
 
     </div>
@@ -1502,6 +1518,73 @@ function lerClausulasLivres() {
   return linhas.join('\n');
 }
 
+// ─── CLÁUSULAS LIVRES (ARQUIVO) ───────────────────────────────────────────────
+let clausulaArquivoCount = 0;
+
+function adicionarClausulaArquivo() {
+  clausulaArquivoCount++;
+  const idx = clausulaArquivoCount;
+  const div = document.createElement('div');
+  div.className = 'clausula-arquivo-bloco';
+  div.id = `clausula-arquivo-bloco-${idx}`;
+  div.style.cssText = 'display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.5rem';
+  div.innerHTML = `
+    <textarea class="form-input" id="clausula-arquivo-${idx}" rows="2" placeholder="Texto da cláusula a acrescentar ao ARQUIVO..." style="flex:1;resize:vertical;min-height:2.4rem"></textarea>
+    <button type="button" onclick="removerClausulaArquivo(${idx})" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1;padding:6px 4px;flex-shrink:0" title="Remover esta cláusula">×</button>`;
+  document.getElementById('clausulas-arquivo-container').appendChild(div);
+}
+
+function removerClausulaArquivo(idx) {
+  const div = document.getElementById(`clausula-arquivo-bloco-${idx}`);
+  if (div) div.remove();
+}
+
+function lerClausulasArquivo() {
+  const linhas = [];
+  document.querySelectorAll('#clausulas-arquivo-container .clausula-arquivo-bloco textarea').forEach(ta => {
+    let txt = (ta.value || '').trim();
+    if (!txt) return;
+    if (!txt.startsWith('---')) txt = '--- ' + txt;
+    linhas.push(txt);
+  });
+  return linhas.join('\n');
+}
+
+// ─── DECLARAÇÕES COMPLEMENTARES (texto livre, a vermelho) ─────────────────────
+let declaracaoCompCount = 0;
+
+function adicionarDeclaracaoComp() {
+  declaracaoCompCount++;
+  const idx = declaracaoCompCount;
+  const div = document.createElement('div');
+  div.className = 'declaracao-comp-bloco';
+  div.id = `declaracao-comp-bloco-${idx}`;
+  div.style.cssText = 'display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.5rem';
+  div.innerHTML = `
+    <textarea class="form-input" id="declaracao-comp-${idx}" rows="2" placeholder="Texto da declaração complementar..." style="flex:1;resize:vertical;min-height:2.4rem"></textarea>
+    <button type="button" onclick="removerDeclaracaoComp(${idx})" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1;padding:6px 4px;flex-shrink:0" title="Remover esta declaração">×</button>`;
+  document.getElementById('declaracoes-comp-container').appendChild(div);
+}
+
+function removerDeclaracaoComp(idx) {
+  const div = document.getElementById(`declaracao-comp-bloco-${idx}`);
+  if (div) div.remove();
+}
+
+// Devolve as declarações complementares com o título por cima.
+// Se não houver nenhuma preenchida, devolve string vazia (não aparece nada).
+function lerDeclaracoesComp() {
+  const linhas = [];
+  document.querySelectorAll('#declaracoes-comp-container .declaracao-comp-bloco textarea').forEach(ta => {
+    let txt = (ta.value || '').trim();
+    if (!txt) return;
+    if (!txt.startsWith('---')) txt = '--- ' + txt;
+    linhas.push(txt);
+  });
+  if (linhas.length === 0) return '';
+  return 'DECLARAÇÕES COMPLEMENTARES:\n' + linhas.join('\n');
+}
+
 function adicionarSinal() {
   sinalCount++;
   const idx = sinalCount;
@@ -2379,6 +2462,8 @@ function recolherDadosContrato() {
     TXTImpostos,
     TXTAdvert_Condominio,
     TXT_Clausulas_Livres: lerClausulasLivres(),
+    TXT_Clausulas_Livres_Arquivo: lerClausulasArquivo(),
+    TXT_Declaracoes_Complementares: lerDeclaracoesComp(),
     Data_CPU: fmtDataPT(v('data-cpu')),
     Cod_CRP: v('cod-crp'),
     Data_CRP: fmtDataPT(v('data-crp')),
