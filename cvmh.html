@@ -356,10 +356,57 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <!-- ③ SECÇÃO 3 — VENDEDORES -->
+  <!-- ③ SECÇÃO 3 — GARANTES E FIADORES (QUARTA OUTORGANTE) -->
   <div class="section-card">
     <div class="section-card-header">
       <div class="section-num">3</div>
+      <div>
+        <div class="section-name">Quarta(s) Outorgante(s) — Garantes e/ou Fiadores</div>
+        <div class="section-desc">Indica se há terceiros garantes (donos de imóvel dado em garantia ≠ comprador) e/ou fiadores no contrato.</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="toggle-row">
+        <span class="toggle-label">Há terceiros garantes (donos do imóvel ≠ comprador/mutuário)?</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-terceiros" onchange="onGarantesFiadoresChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Há fiadores no contrato?</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-fiadores" onchange="onGarantesFiadoresChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row" id="row-mesmas-pessoas" style="display:none;background:var(--accent-light)">
+        <span class="toggle-label">Os fiadores são as mesmas pessoas que os terceiros garantes?</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-mesmas-pessoas" checked onchange="onGarantesFiadoresChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="info-garantes-fiadores" class="form-help" style="display:none;font-size:11px;color:#856404;background:#FFF3CD;border-left:3px solid #FFC107;padding:.55rem .65rem;border-radius:6px;margin:.4rem 0"></div>
+    </div>
+
+    <!-- Lista UNIFICADA: aparece quando há terceiros + fiadores e são as mesmas pessoas -->
+    <div id="grupo-unificado" style="display:none">
+      <div style="font-size:11px;color:var(--text-muted);margin:.6rem 0 .4rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Garantes Hipotecários e Fiadores (Quartos Outorgantes)</div>
+      <div id="unificados-container"></div>
+      <button class="add-outorgante-btn" onclick="addOutorgante('unificados')" type="button">+ Adicionar Garante e Fiador</button>
+    </div>
+
+    <!-- Lista TERCEIROS (só): aparece quando há terceiros mas não fiadores OU fiadores diferentes -->
+    <div id="grupo-terceiros" style="display:none">
+      <div style="font-size:11px;color:var(--text-muted);margin:.6rem 0 .4rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Terceiros Garantes (donos do imóvel)</div>
+      <div id="terceiros-container"></div>
+      <button class="add-outorgante-btn" onclick="addOutorgante('terceiros')" type="button">+ Adicionar Terceiro Garante</button>
+    </div>
+
+    <!-- Lista FIADORES (só): aparece quando há fiadores mas não são terceiros (ou são diferentes) -->
+    <div id="grupo-fiadores" style="display:none">
+      <div style="font-size:11px;color:var(--text-muted);margin:.6rem 0 .4rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Fiadores</div>
+      <div id="fiadores-container"></div>
+      <button class="add-outorgante-btn" onclick="addOutorgante('fiadores')" type="button">+ Adicionar Fiador</button>
+    </div>
+  </div>
+
+  <!-- ④ SECÇÃO 4 — VENDEDORES -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">4</div>
       <div>
         <div class="section-name">Primeira(s) Parte(s) — Vendedor(es)</div>
         <div class="section-desc">Pessoa singular ou empresa. Clica + para adicionar mais outorgantes.</div>
@@ -385,10 +432,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <!-- ④ SECÇÃO 4 — COMPRADORES -->
+  <!-- ⑤ SECÇÃO 5 — COMPRADORES -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-num">4</div>
+      <div class="section-num">5</div>
       <div>
         <div class="section-name">Segunda(s) Parte(s) — Comprador(es) / Mutuário(s)</div>
         <div class="section-desc">Pessoa singular ou empresa. Clica + para adicionar mais outorgantes.</div>
@@ -398,10 +445,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="add-outorgante-btn" onclick="addOutorgante('compradores')">+ Adicionar comprador</button>
   </div>
 
-  <!-- ⑤ SECÇÃO 5 — VERIFIQUEI -->
+  <!-- ⑥ SECÇÃO 6 — VERIFIQUEI -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-num">5</div>
+      <div class="section-num">6</div>
       <div>
         <div class="section-name">Verifiquei</div>
         <div class="section-desc">Documentos e diligências verificados</div>
@@ -575,10 +622,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <!-- ⑥ SECÇÃO 6 — IMÓVEL -->
+  <!-- ⑦ SECÇÃO 7 — IMÓVEL -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-num">6</div>
+      <div class="section-num">7</div>
       <div>
         <div class="section-name">Identificação do Imóvel</div>
         <div class="section-desc">Dados da certidão permanente e caderneta predial</div>
@@ -740,10 +787,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <!-- ⑦ SECÇÃO 7 — PREÇO -->
+  <!-- ⑧ SECÇÃO 8 — PREÇO -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-num">7</div>
+      <div class="section-num">8</div>
       <div>
         <div class="section-name">Preço</div>
         <div class="section-desc">Valor e forma de pagamento</div>
@@ -842,10 +889,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <!-- ⑧ SECÇÃO 8 — MEDIAÇÃO -->
+  <!-- ⑨ SECÇÃO 9 — MEDIAÇÃO -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-num">8</div>
+      <div class="section-num">9</div>
       <div>
         <div class="section-name">Mediação Imobiliária</div>
       </div>
@@ -870,10 +917,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
-  <!-- ⑨ SECÇÃO 9 — MÚTUO E HIPOTECA -->
+  <!-- ⑩ SECÇÃO 10 — MÚTUO E HIPOTECA -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-num">9</div>
+      <div class="section-num">10</div>
       <div>
         <div class="section-name">Mútuo e Hipoteca</div>
         <div class="section-desc">Dados do empréstimo CGD</div>
@@ -1040,25 +1087,41 @@ function fmtDataPT(isoDate) {
 // ─── OUTORGANTES ──────────────────────────────────────────────────────────────
 let vendedoresCount = 0;
 let compradoresCount = 0;
+const garanteCounts = { terceiros: 0, fiadores: 0, unificados: 0 };
 
 function addOutorgante(tipo) {
   const container = document.getElementById(`${tipo}-container`);
-  const idx = tipo === 'vendedores' ? ++vendedoresCount : ++compradoresCount;
+  const labels = {
+    vendedores: 'Vendedor',
+    compradores: 'Comprador',
+    terceiros: 'Terceiro Garante',
+    fiadores: 'Fiador',
+    unificados: 'Garante e Fiador'
+  };
+  const label = labels[tipo] || 'Outorgante';
+  // ID único e determinista por lista (importante para restaurar o rascunho)
+  let idx;
+  if (tipo === 'vendedores') idx = ++vendedoresCount;
+  else if (tipo === 'compradores') idx = ++compradoresCount;
+  else idx = ++garanteCounts[tipo];
   const id = `${tipo}-${idx}`;
-  const label = tipo === 'vendedores' ? 'Vendedor' : 'Comprador';
+  // Número visível (e botão remover) por lista, não global
+  const idxLocal = (container ? container.querySelectorAll('.outorgante-block').length : 0) + 1;
+  // Garantes/fiadores são sempre pessoas singulares — sem opção "Empresa"
+  const permiteEmpresa = (tipo === 'vendedores' || tipo === 'compradores');
 
   const div = document.createElement('div');
   div.className = 'outorgante-block';
   div.id = id;
   div.innerHTML = `
     <div class="outorgante-header">
-      <span class="outorgante-title">${label} ${idx}</span>
+      <span class="outorgante-title">${label} ${idxLocal}</span>
       <div style="display:flex;align-items:center;gap:.5rem">
-        <div class="outorgante-type">
+        <div class="outorgante-type"${permiteEmpresa ? '' : ' style="display:none"'}>
           <button class="type-btn active" onclick="setTipoOutorgante('${id}','singular',this)">Pessoa singular</button>
-          <button class="type-btn" onclick="setTipoOutorgante('${id}','empresa',this)">Empresa</button>
+          ${permiteEmpresa ? `<button class="type-btn" onclick="setTipoOutorgante('${id}','empresa',this)">Empresa</button>` : ''}
         </div>
-        ${idx > 1 ? `<button class="remove-btn" onclick="removeOutorgante('${id}','${tipo}')">×</button>` : ''}
+        ${idxLocal > 1 ? `<button class="remove-btn" onclick="removeOutorgante('${id}','${tipo}')">×</button>` : ''}
       </div>
     </div>
 
@@ -1291,6 +1354,57 @@ function onConjugeOutorganteChange(id) {
     conjDados.style.display = 'none';
     moradaIndividual.style.display = 'block';
   }
+}
+
+// ─── GARANTES E FIADORES — visibilidade e estado ───────────────────────────
+function temTerceirosGarantes(){
+  return !!document.getElementById('toggle-terceiros')?.checked;
+}
+function temFiadores(){
+  return !!document.getElementById('toggle-fiadores')?.checked;
+}
+function fiadoresSaoTerceiros(){
+  return temTerceirosGarantes() && temFiadores() && !!document.getElementById('toggle-mesmas-pessoas')?.checked;
+}
+
+// Título do contrato — acrescenta "E FIANÇA" quando há fiadores
+function getTipoContrato(){
+  const base = 'COMPRA E VENDA COM MÚTUO E HIPOTECA';
+  return temFiadores() ? `${base} E FIANÇA` : base;
+}
+
+function onGarantesFiadoresChange(){
+  const tT = temTerceirosGarantes();
+  const tF = temFiadores();
+  const rowMesmas = document.getElementById('row-mesmas-pessoas');
+  const grupoUnif = document.getElementById('grupo-unificado');
+  const grupoTerc = document.getElementById('grupo-terceiros');
+  const grupoFia  = document.getElementById('grupo-fiadores');
+  const info      = document.getElementById('info-garantes-fiadores');
+
+  // Toggle "mesmas pessoas" só aparece quando ambos os 1ºs toggles estão ON
+  rowMesmas.style.display = (tT && tF) ? 'flex' : 'none';
+  const mesmas = (tT && tF) ? !!document.getElementById('toggle-mesmas-pessoas').checked : false;
+
+  const mostraUnif = (tT && tF && mesmas);
+  const mostraTerc = (tT && !mostraUnif);
+  const mostraFia  = (tF && !mostraUnif);
+
+  grupoUnif.style.display = mostraUnif ? 'block' : 'none';
+  grupoTerc.style.display = mostraTerc ? 'block' : 'none';
+  grupoFia.style.display  = mostraFia  ? 'block' : 'none';
+
+  if (mostraUnif && !document.querySelector('#unificados-container .outorgante-block')) addOutorgante('unificados');
+  if (mostraTerc && !document.querySelector('#terceiros-container .outorgante-block'))  addOutorgante('terceiros');
+  if (mostraFia  && !document.querySelector('#fiadores-container .outorgante-block'))   addOutorgante('fiadores');
+
+  let txt = '';
+  if (mostraUnif) txt = 'ℹ️ Como ambos os papéis são preenchidos pelas mesmas pessoas, basta uma só lista. Aparecerão no contrato como QUARTOS OUTORGANTES, na qualidade de GARANTES HIPOTECÁRIOS E FIADORES.';
+  else if (tT && tF && !mesmas) txt = 'ℹ️ Vais preencher duas listas separadas — Terceiros Garantes (donos do imóvel) e Fiadores (pessoas diferentes), ambos como QUARTOS OUTORGANTES.';
+  else if (tT && !tF) txt = 'ℹ️ Os Terceiros Garantes são donos do imóvel hipotecado mas não são fiadores. Designados como QUARTO(S) OUTORGANTE(S), na qualidade de GARANTE(S) HIPOTECÁRIO(S).';
+  else if (!tT && tF) txt = 'ℹ️ Os Fiadores garantem o empréstimo com o seu património. Designados como QUARTO(S) OUTORGANTE(S), na qualidade de FIADOR(ES). O título do contrato passa a incluir "E FIANÇA".';
+  info.style.display = txt ? 'block' : 'none';
+  info.textContent = txt;
 }
 
 // ─── SECÇÃO 1 ─────────────────────────────────────────────────────────────────
@@ -1888,6 +2002,9 @@ function recolherDados() {
   // Outorgantes múltiplos
   dados._vendedores=document.querySelectorAll('#vendedores-container .outorgante-block').length;
   dados._compradores=document.querySelectorAll('#compradores-container .outorgante-block').length;
+  dados._terceiros=document.querySelectorAll('#terceiros-container .outorgante-block').length;
+  dados._fiadores=document.querySelectorAll('#fiadores-container .outorgante-block').length;
+  dados._unificados=document.querySelectorAll('#unificados-container .outorgante-block').length;
   // Sinais múltiplos — guardar array com os dados de cada sinal
   dados._sinais=lerSinais().map(s=>({data:s.data,valor:s.valor,ibanC:s.ibanC,ibanV:s.ibanV}));
   // Trato sucessivo
@@ -1901,6 +2018,13 @@ function restaurarDados(dados) {
   const nComp=parseInt(dados._compradores||1);
   while(document.querySelectorAll('#vendedores-container .outorgante-block').length<nVend)addOutorgante('vendedores');
   while(document.querySelectorAll('#compradores-container .outorgante-block').length<nComp)addOutorgante('compradores');
+  // Garantes/Fiadores — recriar blocos ANTES de preencher campos
+  const nTerc=parseInt(dados._terceiros||0);
+  const nFia=parseInt(dados._fiadores||0);
+  const nUnif=parseInt(dados._unificados||0);
+  while(document.querySelectorAll('#terceiros-container .outorgante-block').length<nTerc)addOutorgante('terceiros');
+  while(document.querySelectorAll('#fiadores-container .outorgante-block').length<nFia)addOutorgante('fiadores');
+  while(document.querySelectorAll('#unificados-container .outorgante-block').length<nUnif)addOutorgante('unificados');
   // Restaurar sinais múltiplos ANTES de preencher campos simples
   // Limpar sinais existentes
   const sinaisContainer=document.getElementById('sinais-container');
@@ -1952,6 +2076,7 @@ function restaurarDados(dados) {
       if(id==='toggle-cheque'&&typeof onToggleCheque==='function')onToggleCheque();
     }
   });
+  if (typeof onGarantesFiadoresChange === 'function') onGarantesFiadoresChange();
   updateDataExtenso(); updatePrecoExtenso(); calcularIS();
   calcularRemanescente();
 }
@@ -2298,6 +2423,17 @@ function recolherDadosContrato() {
   const Plural_Primeiros = nV > 1 ? 'PRIMEIROS' : 'PRIMEIRO';
   const Plural_Segundos = nC > 1 ? 'SEGUNDOS' : 'SEGUNDO';
 
+  // ── Garantes e Fiadores (Quartos Outorgantes) ─────────────────────────────
+  const Titulo_Contrato          = getTipoContrato();
+  const Bloco_Quartos_TermoAut   = gerarBlocoTermoAutenticacao();
+  const Bloco_Quartos_Cabecalho  = gerarBlocoCabecalhoContrato();
+  const Clausula_Fianca          = gerarClausulaFianca(compradores, recolherFiadores());
+  const Sujeito_Hipoteca         = gerarSujeitoHipoteca(compradores);
+  const Sujeito_Hipoteca_Reg     = gerarRegistoSujeito(compradores);
+  const Bloco_Quartos_Hipoteca   = gerarBlocoTerceirosHipoteca();
+  const Garantia_Texto           = gerarTextoGarantias();
+  const Linha_Parte_Fiadora      = gerarLinhaParteFiadora();
+
   // ── Verificação empresas ──────────────────────────────────────────────────
   const empV = vendedores.find(o => o.tipo === 'empresa');
   const empC = compradores.find(o => o.tipo === 'empresa');
@@ -2455,6 +2591,16 @@ function recolherDadosContrato() {
     Bloco_Compradores,
     Plural_Primeiros,
     Plural_Segundos,
+    // ── Garantes e Fiadores (Quartos Outorgantes) ───────────────────────────
+    Titulo_Contrato,
+    Bloco_Quartos_TermoAut,
+    Bloco_Quartos_Cabecalho,
+    Clausula_Fianca,
+    Sujeito_Hipoteca,
+    Sujeito_Hipoteca_Reg,
+    Bloco_Quartos_Hipoteca,
+    Garantia_Texto,
+    Linha_Parte_Fiadora,
     Verificacao_Empresa_V,
     Verificacao_Empresa_C,
     TXTDistrate,
@@ -2567,6 +2713,225 @@ function recolherOutorgantes(tipo) {
     }
   });
   return resultado;
+}
+
+// ═══ GARANTES E FIADORES ════════════════════════════════════════════════════
+// Recolhe pessoas singulares do container indicado (terceiros/fiadores/unificados)
+function recolherPessoasSingulares(containerId){
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+  const blocos = container.querySelectorAll('.outorgante-block');
+  const resultado = [];
+  blocos.forEach(bloco => {
+    const id = bloco.id;
+    const ec = document.getElementById(`${id}-estado-civil`)?.value || 'solteiro';
+    resultado.push({
+      tipo: 'singular',
+      nome: (document.getElementById(`${id}-nome`)?.value || '').toUpperCase(),
+      genero: document.getElementById(`${id}-genero`)?.value || 'M',
+      naturalidade: document.getElementById(`${id}-naturalidade`)?.value || '',
+      cc: document.getElementById(`${id}-cc`)?.value || '',
+      ccValidade: document.getElementById(`${id}-cc-val`)?.value || '',
+      nif: document.getElementById(`${id}-nif`)?.value || '',
+      estadoCivil: ec,
+      regime: document.getElementById(`${id}-regime`)?.value || '',
+      conjugeOutorgante: document.getElementById(`${id}-conjuge-outorgante`)?.value || 'nao',
+      conjugeNome: (document.getElementById(`${id}-conjuge-nome`)?.value || '').toUpperCase(),
+      conjugeGenero: document.getElementById(`${id}-conjuge-genero`)?.value || 'F',
+      conjugeNaturalidade: document.getElementById(`${id}-conjuge-naturalidade`)?.value || '',
+      conjugeCC: document.getElementById(`${id}-conjuge-cc`)?.value || '',
+      conjugeCCVal: document.getElementById(`${id}-conjuge-cc-val`)?.value || '',
+      conjugeNIF: document.getElementById(`${id}-conjuge-nif`)?.value || '',
+      morada: document.getElementById(`${id}-morada`)?.value || '',
+      moradaConjunta: document.getElementById(`${id}-morada-conjunta`)?.value || '',
+    });
+  });
+  return resultado;
+}
+
+// Pessoas que aparecem como TERCEIROS GARANTES (donos do imóvel)
+function recolherTerceiros(){
+  if (fiadoresSaoTerceiros()) return recolherPessoasSingulares('unificados-container');
+  if (temTerceirosGarantes()) return recolherPessoasSingulares('terceiros-container');
+  return [];
+}
+// Pessoas que aparecem como FIADORES
+function recolherFiadores(){
+  if (fiadoresSaoTerceiros()) return recolherPessoasSingulares('unificados-container');
+  if (temFiadores()) return recolherPessoasSingulares('fiadores-container');
+  return [];
+}
+
+// Designações no contrato — no CVMH a posição "TERCEIRA" é a Caixa, pelo que
+// garantes/fiadores são QUARTOS OUTORGANTES, identificados pela função.
+function designacaoTerceiros(plural){
+  return plural
+    ? 'QUARTOS OUTORGANTES, na qualidade de GARANTES HIPOTECÁRIOS'
+    : 'QUARTO OUTORGANTE, na qualidade de GARANTE HIPOTECÁRIO';
+}
+function designacaoFiadores(plural){
+  return plural
+    ? 'QUARTOS OUTORGANTES, na qualidade de FIADORES'
+    : 'QUARTO OUTORGANTE, na qualidade de FIADOR';
+}
+function designacaoUnificada(plural){
+  return plural
+    ? 'QUARTOS OUTORGANTES, na qualidade de GARANTES HIPOTECÁRIOS E FIADORES'
+    : 'QUARTO OUTORGANTE, na qualidade de GARANTE HIPOTECÁRIO E FIADOR';
+}
+
+// Texto identificativo de uma pessoa singular (alargado: naturalidade, CC, NIF, morada)
+function gerarTextoPessoa(o, ehUltimo){
+  if (!o || o.tipo !== 'singular') return '';
+  const f = o.genero === 'F';
+  const ec = estadoCivilTexto(o.estadoCivil, o.genero);
+  let txt = `${o.nome}, natural de ${o.naturalidade}, portador${f?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, ${ec}`;
+  if (o.estadoCivil === 'casado') {
+    if (o.conjugeNome) txt += ` sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}`;
+    else txt += ` sob o regime da ${regimenTexto(o.regime)}`;
+    if (o.conjugeNIF) txt += `, NIF ${o.conjugeNIF}`;
+  }
+  if (o.morada) txt += `, residente em ${o.morada}`;
+  txt += ehUltimo ? '.' : ';';
+  return txt;
+}
+
+function gerarBlocoIdentificacao(pessoas){
+  if (!pessoas || !pessoas.length) return '';
+  return pessoas.map((p,i)=>gerarTextoPessoa(p, i===pessoas.length-1)).join('\n');
+}
+
+function fraseDesignacao(pessoas, designacao){
+  if (!pessoas || !pessoas.length) return '';
+  const plural = pessoas.length > 1;
+  return ` adiante designad${plural?'os':'o'} por ${designacao}.`;
+}
+
+// ════ Cláusula FIANÇA — no CVMH o mutuário é o SEGUNDO outorgante
+function gerarClausulaFianca(compradores, fiadores){
+  if (!fiadores || !fiadores.length) return '';
+  const cP = (compradores||[]).length > 1;   // mais que 1 comprador/mutuário?
+  const fiP = fiadores.length > 1;            // mais que 1 fiador?
+  const SEGUNDO    = cP ? 'os SEGUNDOS' : 'o SEGUNDO';
+  const doSEGUNDO  = cP ? 'dos SEGUNDOS' : 'do SEGUNDO';
+  const pelaSEGUNDO= cP ? 'pelos SEGUNDOS' : 'pelo SEGUNDO';
+  const O_FIADOR = fiP ? 'OS FIADORES' : 'O FIADOR';
+  const constitui = fiP ? 'constituem-se' : 'constitui-se';
+  const principal_pagador = fiP ? 'principais pagadores' : 'principal pagador';
+  const O_min = fiP ? 'Os' : 'O';
+  const Fiador = fiP ? 'Fiadores' : 'Fiador';
+  const assume = fiP ? 'assumem' : 'assume';
+  const do_Fiador = fiP ? 'dos Fiadores' : 'do Fiador';
+
+  return [
+    '--------------- FIANÇA ---------------',
+    `--- Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaSEGUNDO} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${principal_pagador} ${doSEGUNDO};`,
+    `--- ${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${doSEGUNDO} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
+    `--- A presente fiança é prestada com a qualidade de ${principal_pagador}, podendo o Banco, em caso de incumprimento por parte ${doSEGUNDO}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${doSEGUNDO}.`
+  ].join('\n');
+}
+
+// ════ Bloco no Termo de Autenticação (cabeçalho dos quartos outorgantes)
+function gerarBlocoTermoAutenticacao(){
+  const terc = recolherTerceiros();
+  const fia  = recolherFiadores();
+  let pessoas;
+  if (fiadoresSaoTerceiros()){
+    pessoas = recolherPessoasSingulares('unificados-container');
+  } else if (temTerceirosGarantes() && temFiadores()){
+    pessoas = [...recolherPessoasSingulares('terceiros-container'), ...recolherPessoasSingulares('fiadores-container')];
+  } else if (temTerceirosGarantes()){
+    pessoas = terc;
+  } else if (temFiadores()){
+    pessoas = fia;
+  } else {
+    return '';
+  }
+  if (!pessoas.length) return '';
+  const total = pessoas.length;
+  const titulo = total > 1 ? 'QUARTOS OUTORGANTES' : 'QUARTA OUTORGANTE';
+  const corpo = pessoas.map((p,i)=>gerarTextoPessoa(p, i===total-1)).join('\n');
+  return `${titulo}\n${corpo}`;
+}
+
+// ════ Bloco no cabeçalho do contrato (E [identificação] adiante designado por ...)
+function gerarBlocoCabecalhoContrato(){
+  let blocos = [];
+  if (fiadoresSaoTerceiros()){
+    const pessoas = recolherPessoasSingulares('unificados-container');
+    if (!pessoas.length) return '';
+    blocos.push({pessoas, designacao: designacaoUnificada(pessoas.length>1)});
+  } else {
+    if (temTerceirosGarantes()){
+      const pessoas = recolherPessoasSingulares('terceiros-container');
+      if (pessoas.length) blocos.push({pessoas, designacao: designacaoTerceiros(pessoas.length>1)});
+    }
+    if (temFiadores()){
+      const pessoas = recolherPessoasSingulares('fiadores-container');
+      if (pessoas.length) blocos.push({pessoas, designacao: designacaoFiadores(pessoas.length>1)});
+    }
+  }
+  if (!blocos.length) return '';
+  return blocos.map(b => {
+    const ident = gerarBlocoIdentificacao(b.pessoas);
+    const fr = fraseDesignacao(b.pessoas, b.designacao);
+    return `E\n${ident}${fr}`;
+  }).join('\n\n');
+}
+
+// ════ Sujeito da hipoteca: quem a constitui
+function gerarSujeitoHipoteca(compradores){
+  const cP = (compradores||[]).length > 1;
+  if (temTerceirosGarantes()){
+    const pessoas = fiadoresSaoTerceiros()
+      ? recolherPessoasSingulares('unificados-container')
+      : recolherPessoasSingulares('terceiros-container');
+    const plural = pessoas.length > 1;
+    return plural
+      ? 'Os QUARTOS OUTORGANTES constituem hipoteca'
+      : 'O QUARTO OUTORGANTE constitui hipoteca';
+  }
+  // Sem terceiros — é o(s) comprador(es)/mutuário(s) (SEGUNDO/SEGUNDOS)
+  return cP ? 'Os SEGUNDOS constituem hipoteca' : 'O SEGUNDO constitui hipoteca';
+}
+
+// ════ "Registado a favor do(s) SEGUNDO(S) / QUARTO(S) OUTORGANTE(S)"
+function gerarRegistoSujeito(compradores){
+  const cP = (compradores||[]).length > 1;
+  if (temTerceirosGarantes()){
+    const pessoas = fiadoresSaoTerceiros()
+      ? recolherPessoasSingulares('unificados-container')
+      : recolherPessoasSingulares('terceiros-container');
+    const plural = pessoas.length > 1;
+    return plural ? 'QUARTOS OUTORGANTES' : 'QUARTO OUTORGANTE';
+  }
+  return cP ? 'SEGUNDOS' : 'SEGUNDO';
+}
+
+// ════ Bloco extra na cláusula HIPOTECA quando há terceiros garantes
+function gerarBlocoTerceirosHipoteca(){
+  if (!temTerceirosGarantes()) return '';
+  return '--- Os QUARTOS OUTORGANTES, na qualidade de Garantes Hipotecários, declaram conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente os aceitam, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.';
+}
+
+// ════ Texto da cláusula GARANTIAS
+function gerarTextoGarantias(){
+  return temFiadores()
+    ? 'O empréstimo fica garantido pelas hipoteca e fiança atrás constituídas.'
+    : 'O empréstimo fica garantido pela hipoteca atrás constituída.';
+}
+
+// ════ Linha "Parte fiadora: ..." no Documento Complementar
+function gerarLinhaParteFiadora(){
+  const fia = recolherFiadores();
+  if (!fia || !fia.length) return '';
+  const nomes = fia.map(p => p.nome).filter(Boolean);
+  if (!nomes.length) return '';
+  let lista;
+  if (nomes.length === 1) lista = nomes[0];
+  else if (nomes.length === 2) lista = nomes.join(' e ');
+  else lista = nomes.slice(0,-1).join(', ') + ' e ' + nomes[nomes.length-1];
+  return `Parte fiadora: ${lista}`;
 }
 
 function gerarTextoOutorgante(o) {
