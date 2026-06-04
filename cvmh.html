@@ -2424,15 +2424,17 @@ function recolherDadosContrato() {
   const Plural_Segundos = nC > 1 ? 'SEGUNDOS' : 'SEGUNDO';
 
   // ── Garantes e Fiadores (Quartos Outorgantes) ─────────────────────────────
-  const Titulo_Contrato          = getTipoContrato();
-  const Bloco_Quartos_TermoAut   = gerarBlocoTermoAutenticacao();
-  const Bloco_Quartos_Cabecalho  = gerarBlocoCabecalhoContrato();
-  const Clausula_Fianca          = gerarClausulaFianca(compradores, recolherFiadores());
-  const Sujeito_Hipoteca         = gerarSujeitoHipoteca(compradores);
-  const Sujeito_Hipoteca_Reg     = gerarRegistoSujeito(compradores);
-  const Bloco_Quartos_Hipoteca   = gerarBlocoTerceirosHipoteca();
-  const Garantia_Texto           = gerarTextoGarantias();
-  const Linha_Parte_Fiadora      = gerarLinhaParteFiadora();
+  // Nomes alinhados com as tags existentes no template TEMPL_CVMH_CGD_v2.docx
+  const Bloco_Terceiros_TermoAut  = gerarBlocoTermoAutenticacao();
+  const Bloco_Terceiros_Cabecalho = gerarBlocoCabecalhoContrato();
+  const Clausula_Fianca           = gerarClausulaFianca(compradores, recolherFiadores());
+  const Bloco_Terceiros_Hipoteca  = gerarBlocoTerceirosHipoteca();
+  // Placeholders opcionais (o template ainda não os usa, mas ficam prontos):
+  const Titulo_Contrato           = getTipoContrato();
+  const Sujeito_Hipoteca          = gerarSujeitoHipoteca(compradores);
+  const Sujeito_Hipoteca_Reg      = gerarRegistoSujeito(compradores);
+  const Garantia_Texto            = gerarTextoGarantias();
+  const Linha_Parte_Fiadora       = gerarLinhaParteFiadora();
 
   // ── Verificação empresas ──────────────────────────────────────────────────
   const empV = vendedores.find(o => o.tipo === 'empresa');
@@ -2592,13 +2594,15 @@ function recolherDadosContrato() {
     Plural_Primeiros,
     Plural_Segundos,
     // ── Garantes e Fiadores (Quartos Outorgantes) ───────────────────────────
-    Titulo_Contrato,
-    Bloco_Quartos_TermoAut,
-    Bloco_Quartos_Cabecalho,
+    // Tags usadas pelo template:
+    Bloco_Terceiros_TermoAut,
+    Bloco_Terceiros_Cabecalho,
     Clausula_Fianca,
+    Bloco_Terceiros_Hipoteca,
+    // Opcionais (prontos caso adiciones as tags ao template):
+    Titulo_Contrato,
     Sujeito_Hipoteca,
     Sujeito_Hipoteca_Reg,
-    Bloco_Quartos_Hipoteca,
     Garantia_Texto,
     Linha_Parte_Fiadora,
     Verificacao_Empresa_V,
@@ -2953,7 +2957,7 @@ function gerarTextoOutorgante(o) {
 
 function estadoCivilTexto(ec, genero) {
   const f = genero === 'F';
-  const map = {solteiro:`solteiro${f?'a':''}, maior`,casado:`casado${f?'a':''}`,divorciado:`divorciad${f?'a':'o'}`,viuvo:`viúvo${f?'a':''}`};
+  const map = {solteiro:`solteir${f?'a':'o'}, maior`,casado:`casad${f?'a':'o'}`,divorciado:`divorciad${f?'a':'o'}`,viuvo:`viúv${f?'a':'o'}`};
   return map[ec] || ec;
 }
 
