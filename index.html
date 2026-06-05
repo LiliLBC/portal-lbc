@@ -2964,6 +2964,57 @@ function promptCustom(titulo, valorInicial){
   });
 }
 
+// Modal de edição de pasta cliente com campos de aniversário
+function promptClienteAniversario(titulo, vals){
+  vals=vals||{};
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:"DM Sans",sans-serif';
+    overlay.innerHTML=`
+      <div style="background:white;border-radius:12px;padding:1.5rem;max-width:520px;width:92%;box-shadow:0 20px 50px rgba(0,0,0,.25)">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:.9rem">${escHtml(titulo)}</div>
+        <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Nome do cliente</label>
+        <input type="text" id="pca-nome" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Mono',monospace;outline:none;text-transform:uppercase;box-sizing:border-box">
+        <div style="font-size:11px;color:var(--text-faint);margin:.9rem 0 .5rem">Para o cartão de aniversário da LBC (opcional):</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Data de nascimento</label>
+            <input type="date" id="pca-nasc" style="width:100%;padding:.55rem .7rem;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+          <div style="flex:1.3;min-width:170px">
+            <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Email</label>
+            <input type="email" id="pca-email" placeholder="email@exemplo.pt" style="width:100%;padding:.55rem .7rem;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+          <div style="flex:.7;min-width:100px">
+            <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Género</label>
+            <select id="pca-genero" style="width:100%;padding:.55rem .5rem;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;box-sizing:border-box">
+              <option value="">—</option><option value="F">Feminino</option><option value="M">Masculino</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.2rem">
+          <button id="pca-cancelar" style="padding:.5rem 1rem;border-radius:7px;border:1px solid var(--border);background:white;cursor:pointer;font-size:12px">Cancelar</button>
+          <button id="pca-ok" style="padding:.5rem 1rem;border-radius:7px;border:none;background:var(--accent);color:white;cursor:pointer;font-size:12px;font-weight:500">Guardar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('pca-nome').value=vals.nome||'';
+    document.getElementById('pca-nasc').value=vals.dob||'';
+    document.getElementById('pca-email').value=vals.email||'';
+    document.getElementById('pca-genero').value=vals.genero||'';
+    const nomeEl=document.getElementById('pca-nome');nomeEl.focus();nomeEl.select();
+    const fechar=(v)=>{document.body.removeChild(overlay);resolve(v);};
+    document.getElementById('pca-ok').onclick=()=>fechar({
+      nome:document.getElementById('pca-nome').value,
+      dob:document.getElementById('pca-nasc').value,
+      email:document.getElementById('pca-email').value.trim(),
+      genero:document.getElementById('pca-genero').value
+    });
+    document.getElementById('pca-cancelar').onclick=()=>fechar(null);
+    overlay.onclick=(e)=>{if(e.target===overlay)fechar(null);};
+  });
+}
+
 async function editarNomePasta(pastaId,nomeAtual){
   const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
   const novoNome=await promptCustom('Editar nome da pasta',nomeDecod);
@@ -5483,22 +5534,51 @@ function renderProcessos(lista){
 // ─── EDITAR / APAGAR PASTA DE CLIENTE ─────────────────────────────────────────
 async function editarPastaCliente(pastaId,nomeAtual){
   const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
-  const novoNome=await promptCustom('Editar nome da pasta cliente',nomeDecod);
-  if(novoNome===null)return;
-  const trim=sanitizarNomePasta(novoNome.trim().toUpperCase());
+  // Pré-carregar o aniversário existente deste cliente (se houver) para mostrar no modal
+  let pre={dob:'',email:'',genero:''};
+  try{
+    await carregarAniversariosCache();
+    const ex=_acharAniversario(nomeDecod,'','Aniversário');
+    if(ex){
+      pre.dob=(ex.f[AN.data]||'').substring(0,10);
+      pre.email=ex.f[AN.email]||'';
+      pre.genero=ex.f[AN.genero]||'';
+    }
+  }catch(e){/* lista pode não existir ainda — segue sem pré-preenchimento */}
+  const vals=await promptClienteAniversario('Editar pasta cliente',{nome:nomeDecod,...pre});
+  if(vals===null)return;
+  const trim=sanitizarNomePasta((vals.nome||'').trim().toUpperCase());
   if(!trim){showToast('O nome não pode estar vazio','error');return;}
-  if(trim===nomeDecod)return;
   try{
     await renovarToken();
-    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}`,{
-      method:'PATCH',
-      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
-      body:JSON.stringify({name:trim})
-    });
-    if(!r.ok)throw new Error(`Erro ${r.status}`);
-    showToast(`Pasta renomeada para "${trim}"`,'success');
+    // Renomear a pasta só se o nome mudou
+    if(trim!==nomeDecod){
+      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}`,{
+        method:'PATCH',
+        headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+        body:JSON.stringify({name:trim})
+      });
+      if(!r.ok)throw new Error(`Erro ${r.status}`);
+    }
+    // Aniversário — cria/atualiza só se houver data de nascimento
+    if(vals.dob){
+      try{
+        await carregarAniversariosCache();
+        const ex=_acharAniversario(nomeDecod,'','Aniversário');
+        if(ex){
+          const fields={[AN.titulo]:trim,[AN.tipo]:'Aniversário',[AN.ativo]:true,[AN.data]:vals.dob+'T00:00:00Z'};
+          if(vals.email)fields[AN.email]=vals.email;
+          if(vals.genero)fields[AN.genero]=vals.genero;
+          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items/${ex.id}/fields`,fields);
+          ex.f={...ex.f,...fields};
+        } else {
+          await upsertAniversario({nome:trim,email:vals.email,dob:vals.dob,genero:vals.genero,nif:'',tipo:'Aniversário'});
+        }
+      }catch(err){showToast('Pasta guardada, mas o aniversário falhou: '+err.message,'error');}
+    }
+    showToast(trim!==nomeDecod?`Pasta renomeada para "${trim}"`:'Dados do cliente guardados','success');
     await carregarProcessos();
-  }catch(e){showToast('Erro ao renomear: '+e.message,'error');}
+  }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
 async function apagarPastaCliente(pastaId,nomeAtual){
@@ -5678,23 +5758,36 @@ async function resolverListaAniversarios(){
   AN={titulo:'Title',email:find(AN_DEFAULT.email),tipo:find(AN_DEFAULT.tipo),data:find(AN_DEFAULT.data),nif:find(AN_DEFAULT.nif),genero:find(AN_DEFAULT.genero),ativo:find(AN_DEFAULT.ativo),ultimoAno:find(AN_DEFAULT.ultimoAno)};
 }
 
+// Cache dos itens da lista (carrega uma vez; força com force=true)
+async function carregarAniversariosCache(force){
+  await resolverListaAniversarios();
+  if(_aniversariosCache===null||force){
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items?$expand=fields&$top=2000`);
+    _aniversariosCache=(r.value||[]).map(i=>({id:i.id,f:i.fields||{}}));
+  }
+  return _aniversariosCache;
+}
+
+// Localiza uma linha por NIF (se houver) ou por nome+tipo
+function _acharAniversario(nome,nif,tipo){
+  tipo=tipo||'Aniversário';
+  const nomeU=(nome||'').toUpperCase().trim();
+  let x=null;
+  if(nif)x=_aniversariosCache.find(r=>((r.f[AN.nif]||'')+'').trim()===(''+nif).trim() && (r.f[AN.tipo]||'')===tipo);
+  if(!x)x=_aniversariosCache.find(r=>((r.f[AN.titulo]||'').toUpperCase().trim())===nomeU && (r.f[AN.tipo]||'')===tipo);
+  return x;
+}
+
 // Cria ou atualiza uma linha de aniversário. Casa por NIF (se houver) ou por nome+tipo.
 async function upsertAniversario({nome,email,dob,genero,nif,tipo}){
-  await resolverListaAniversarios();
+  await carregarAniversariosCache();
   tipo=tipo||'Aniversário';
   const fields={[AN.titulo]:nome,[AN.tipo]:tipo,[AN.ativo]:true};
   if(email)fields[AN.email]=email;
   if(dob)fields[AN.data]=(dob.length===10?dob+'T00:00:00Z':dob);
   if(genero)fields[AN.genero]=genero;
   if(nif)fields[AN.nif]=(''+nif).trim();
-  if(_aniversariosCache===null){
-    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items?$expand=fields&$top=2000`);
-    _aniversariosCache=(r.value||[]).map(i=>({id:i.id,f:i.fields||{}}));
-  }
-  const nomeU=(nome||'').toUpperCase().trim();
-  let existente=null;
-  if(nif)existente=_aniversariosCache.find(x=>((x.f[AN.nif]||'')+'').trim()===(''+nif).trim() && (x.f[AN.tipo]||'')===tipo);
-  if(!existente)existente=_aniversariosCache.find(x=>((x.f[AN.titulo]||'').toUpperCase().trim())===nomeU && (x.f[AN.tipo]||'')===tipo);
+  const existente=_acharAniversario(nome,nif,tipo);
   if(existente){
     await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items/${existente.id}/fields`,fields);
     existente.f={...existente.f,...fields};
