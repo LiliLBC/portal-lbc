@@ -5963,8 +5963,9 @@ async function carregarContaCorrente(){
     const sf=[CC.titulo,CC.cliente,CC.honorarios,CC.gastos,CC.recebido,CC.estado,CC.observacoes,CC.data].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${sf})&$top=500`);
     todosCC=(data.value||[]).map(i=>({id:i.id,...i.fields}));
-    document.getElementById('cc-count').textContent=`${todosCC.length} registos`;
-    renderCC(todosCC);
+    const visiveis=ccEmAberto(todosCC);
+    document.getElementById('cc-count').textContent=`${visiveis.length} ${visiveis.length===1?'registo em aberto':'registos em aberto'}`;
+    renderCC(visiveis);
   }catch(e){document.getElementById('cc-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
@@ -5997,9 +5998,13 @@ function renderCC(lista){
   el.style.display='block';
 }
 
+// Mostra só registos em aberto — esconde os "Concluido" (dados mantêm-se na lista)
+function ccEmAberto(lista){return (lista||[]).filter(i=>(i[CC.estado]||'')!=='Concluido');}
+
 function filtrarCC(){
   const q=(document.getElementById('cc-search').value||'').toLowerCase();
-  renderCC(q?todosCC.filter(i=>(i[CC.cliente]||'').toLowerCase().includes(q)||(i[CC.titulo]||'').toLowerCase().includes(q)):todosCC);
+  const base=ccEmAberto(todosCC);
+  renderCC(q?base.filter(i=>(i[CC.cliente]||'').toLowerCase().includes(q)||(i[CC.titulo]||'').toLowerCase().includes(q)):base);
 }
 
 function limparFiltrosCC(){
