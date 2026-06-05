@@ -694,6 +694,15 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-label">Nº Processo</div>
               <input class="form-input" id="p-numProcesso" placeholder="—">
             </div>
+            <div class="field-group">
+              <div class="field-label">Natureza do imóvel</div>
+              <select class="form-select" id="p-natureza">
+                <option value="">—</option>
+                <option value="HPP">HPP — habitação própria permanente</option>
+                <option value="Outro">Outro (terreno, 2.ª habitação, investimento…)</option>
+              </select>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:.2rem">Define o tom do cartão de aniversário da escritura.</div>
+            </div>
 
             <!-- ─── CONTACTOS (colapsável) ──────────────────────────────────── -->
             <div class="field-group field-full" style="margin-bottom:.4rem">
@@ -2499,6 +2508,7 @@ const F={
   pago:'Pago',
   codCRP:'CERT_PERMANENTE',
   contactos:'Contactos',
+  natureza:'NaturezaImovel',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica'};
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
@@ -3300,7 +3310,7 @@ function abrirPainelNovo(){
   document.getElementById('painel-pasta-search').value='';
   document.getElementById('painel-pasta-search').placeholder='A carregar pastas...';
   document.getElementById('painel-pasta-search').disabled=true;
-  ['p-nome','p-data','p-produto','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
+  ['p-nome','p-data','p-produto','p-natureza','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
    'p-apRegisto','p-apData','p-apConserv','p-numProcesso','p-numPedido','p-codDeposito','p-codCRP','p-montCredito',
    'p-valorProc','p-valorServico','p-margemLiq','p-custoSup','p-dataResolSup','p-observacoes'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
@@ -3332,6 +3342,7 @@ function abrirPainelRegisto(itemId){
   sv('p-nome').value=i[F.nome]||'';
   sv('p-data').value=i[F.data]?i[F.data].substring(0,10):'';
   sv('p-produto').value=i[F.produto]||'';
+  sv('p-natureza').value=i[F.natureza]||'';
   sv('p-entidade').value=i[F.entidade]||'';
   sv('p-procurador').value=i[F.procurador]||'';
   sv('p-estado').value=i[F.estado]||'Agendado';
@@ -3603,6 +3614,7 @@ async function guardarPainel(){
   const nome=sv('p-nome'); if(nome) body[F.nome]=nome;
   const data=svDate('p-data'); if(data) body[F.data]=data;
   const produto=svChoice('p-produto'); if(produto) body[F.produto]=produto;
+  const natureza=svChoice('p-natureza'); if(natureza) body[F.natureza]=natureza;
   const entidade=svChoice('p-entidade'); if(entidade) body[F.entidade]=entidade;
   const procurador=svChoice('p-procurador'); if(procurador) body[F.procurador]=procurador;
   const estado=svChoice('p-estado'); if(estado) body[F.estado]=estado;
