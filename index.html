@@ -1315,6 +1315,29 @@ tbody tr:hover td{background:#FAFAF8}
               <input class="form-input" id="proc-novo-nome" placeholder="Ex: JOAQUIM MIGUEL VELEZ" style="text-transform:uppercase">
             </div>
             <div id="proc-novo-preview" style="font-size:11px;color:var(--text-faint);margin-top:.25rem;font-family:'DM Mono',monospace"></div>
+
+            <div style="margin-top:1rem;padding-top:.85rem;border-top:1px dashed var(--border)">
+              <div style="font-size:11px;color:var(--text-faint);margin-bottom:.6rem">Opcional — preenche para enviarmos o cartão de aniversário da LBC.</div>
+              <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+                <div class="form-group" style="flex:1;min-width:150px">
+                  <label class="form-label">Data de nascimento</label>
+                  <input class="form-input" type="date" id="proc-novo-nasc">
+                </div>
+                <div class="form-group" style="flex:1.4;min-width:180px">
+                  <label class="form-label">Email</label>
+                  <input class="form-input" type="email" id="proc-novo-email" placeholder="email@exemplo.pt">
+                </div>
+                <div class="form-group" style="flex:.7;min-width:110px">
+                  <label class="form-label">Género</label>
+                  <select class="form-input" id="proc-novo-genero">
+                    <option value="">—</option>
+                    <option value="F">Feminino</option>
+                    <option value="M">Masculino</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div class="form-actions" style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="criarPastaCliente()">
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg>
@@ -2480,6 +2503,11 @@ const F={
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica'};
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
 const LISTA_AGENDA='Agenda_Escritorio';
+const LISTA_ANIVERSARIOS='ListaAniversarios';
+const AN_DEFAULT={titulo:'Title',email:'Email',tipo:'TipoA',data:'DataReferencia',nif:'NIF',genero:'Genero',ativo:'Ativo',ultimoAno:'UltimoAnoEnviado'};
+let AN=null; // nomes internos resolvidos das colunas
+let listaIdAniversarios=null;
+let _aniversariosCache=null;
 
 let msalApp=null,graphToken=null,contaAtual=null;
 let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null,driveIdAvencas=null;
@@ -5399,6 +5427,9 @@ function procPesquisaConfirmaNova(){
   document.getElementById('proc-novo-passo2').style.display='block';
   document.getElementById('proc-novo-nome').value=nome;
   document.getElementById('proc-novo-preview').textContent=nome?`Pasta a criar: ${nome}`:'';
+  if(document.getElementById('proc-novo-nasc'))document.getElementById('proc-novo-nasc').value='';
+  if(document.getElementById('proc-novo-email'))document.getElementById('proc-novo-email').value='';
+  if(document.getElementById('proc-novo-genero'))document.getElementById('proc-novo-genero').value='';
   document.getElementById('proc-novo-nome').focus();
 }
 
@@ -5628,6 +5659,52 @@ function atualizarPreviewSubpasta(){
   }
 }
 
+// ═══ ANIVERSÁRIOS ═══════════════════════════════════════════════════════════
+// Resolve o id da ListaAniversarios e os nomes INTERNOS das colunas (o SharePoint
+// pode codificá-los; isto evita erros de "campo não encontrado").
+async function resolverListaAniversarios(){
+  if(listaIdAniversarios && AN) return;
+  const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName`);
+  const lst=(r.value||[]).find(l=>(l.name||'').toLowerCase()==='listaaniversarios'||(l.displayName||'').toLowerCase()==='listaaniversarios');
+  if(!lst) throw new Error('Lista "ListaAniversarios" não encontrada no SharePoint.');
+  listaIdAniversarios=lst.id;
+  let cols=[];
+  try{ const c=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/columns?$select=name,displayName`); cols=c.value||[]; }catch(e){}
+  const find=(want)=>{
+    const w=want.toLowerCase();
+    const c=cols.find(x=>(x.name||'').toLowerCase()===w||(x.displayName||'').toLowerCase()===w);
+    return c?c.name:want;
+  };
+  AN={titulo:'Title',email:find(AN_DEFAULT.email),tipo:find(AN_DEFAULT.tipo),data:find(AN_DEFAULT.data),nif:find(AN_DEFAULT.nif),genero:find(AN_DEFAULT.genero),ativo:find(AN_DEFAULT.ativo),ultimoAno:find(AN_DEFAULT.ultimoAno)};
+}
+
+// Cria ou atualiza uma linha de aniversário. Casa por NIF (se houver) ou por nome+tipo.
+async function upsertAniversario({nome,email,dob,genero,nif,tipo}){
+  await resolverListaAniversarios();
+  tipo=tipo||'Aniversário';
+  const fields={[AN.titulo]:nome,[AN.tipo]:tipo,[AN.ativo]:true};
+  if(email)fields[AN.email]=email;
+  if(dob)fields[AN.data]=(dob.length===10?dob+'T00:00:00Z':dob);
+  if(genero)fields[AN.genero]=genero;
+  if(nif)fields[AN.nif]=(''+nif).trim();
+  if(_aniversariosCache===null){
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items?$expand=fields&$top=2000`);
+    _aniversariosCache=(r.value||[]).map(i=>({id:i.id,f:i.fields||{}}));
+  }
+  const nomeU=(nome||'').toUpperCase().trim();
+  let existente=null;
+  if(nif)existente=_aniversariosCache.find(x=>((x.f[AN.nif]||'')+'').trim()===(''+nif).trim() && (x.f[AN.tipo]||'')===tipo);
+  if(!existente)existente=_aniversariosCache.find(x=>((x.f[AN.titulo]||'').toUpperCase().trim())===nomeU && (x.f[AN.tipo]||'')===tipo);
+  if(existente){
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items/${existente.id}/fields`,fields);
+    existente.f={...existente.f,...fields};
+    return {updated:true};
+  }
+  const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items`,{fields});
+  _aniversariosCache.unshift({id:r.id,f:fields});
+  return {created:true};
+}
+
 async function criarPastaCliente(){
   const nome=document.getElementById('proc-novo-nome').value.toUpperCase().trim();
   if(!nome){showToast('Preenche o nome do cliente.','error');return;}
@@ -5636,8 +5713,24 @@ async function criarPastaCliente(){
   try{
     const res=await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children`,{name:nomeSan,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
     showToast(`Pasta "${nomeSan}" criada! Vamos criar o primeiro processo...`,'success');
+    // Registar aniversário da pessoa (opcional — não impede a criação da pasta)
+    const nasc=(document.getElementById('proc-novo-nasc')?.value||'').trim();
+    const emailCli=(document.getElementById('proc-novo-email')?.value||'').trim();
+    const genCli=(document.getElementById('proc-novo-genero')?.value||'').trim();
+    if(nasc){
+      try{
+        await upsertAniversario({nome:nomeSan,email:emailCli,dob:nasc,genero:genCli,nif:'',tipo:'Aniversário'});
+        showToast('Data de aniversário guardada para os parabéns da LBC.','success');
+      }catch(err){
+        console.warn('Aniversário não registado:',err);
+        showToast('Pasta criada, mas não consegui guardar o aniversário: '+err.message,'error');
+      }
+    }
     document.getElementById('proc-novo-nome').value='';
     document.getElementById('proc-novo-preview').textContent='';
+    if(document.getElementById('proc-novo-nasc'))document.getElementById('proc-novo-nasc').value='';
+    if(document.getElementById('proc-novo-email'))document.getElementById('proc-novo-email').value='';
+    if(document.getElementById('proc-novo-genero'))document.getElementById('proc-novo-genero').value='';
     // Recarregar pastas + ir directo para "Novo processo" com cliente pré-seleccionado
     await carregarProcessos();
     procSetTab('subpasta',document.getElementById('proc-tab-subpasta'));
