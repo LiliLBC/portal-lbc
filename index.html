@@ -11019,7 +11019,8 @@ ${eye}${head}
   let _evs=[];
   window.anivInit=async function(){
     const scr=document.getElementById('screen-aniversarios');
-    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in">0</span></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div></div>`;
+    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in" style="margin-left:8px">0</span><button class="aniv-b prim" id="aniv-novo" style="margin-left:auto;padding:6px 12px">+ Adicionar aniversário</button></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div></div>`;
+    scr.querySelector('#aniv-novo').onclick=abrirNovoAniversario;
     try{_evs=await carregar();}catch(e){scr.querySelector('#aniv-hoje').innerHTML=`<div class="aniv-meta">Não foi possível ler a ListaAniversarios: ${esc(e.message)}</div>`;return;}
     const hoje=_evs.filter(e=>e.dias===0), prox=_evs.filter(e=>e.dias>0&&e.dias<=7).sort((a,b)=>a.dias-b.dias);
     scr.querySelector('#aniv-badge-in').textContent=hoje.length;
@@ -11065,6 +11066,39 @@ ${eye}${head}
       if(r.ok){toast('Email enviado ✓');ov.classList.remove('show');}else toast('Falha no envio ('+r.status+')');}catch(e){toast('Erro de rede no envio');}
   }
   function toast(m){if(typeof showToast==='function'){showToast(m,'info');return;}}
+
+  // ── adicionar aniversário à mão (cliente extra, sem contrato) ─────────────
+  function abrirNovoAniversario(){
+    document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 10px">Adicionar aniversário</h3>
+      <input class="aniv-fld" id="na-nome" placeholder="Nome">
+      <select class="aniv-fld" id="na-genero"><option value="F">Feminino</option><option value="M">Masculino</option></select>
+      <label style="font-size:11px;color:#6B6770;display:block;margin:2px 0 3px">Data de nascimento</label>
+      <input class="aniv-fld" id="na-nasc" type="date">
+      <input class="aniv-fld" id="na-tel" placeholder="Telemóvel" inputmode="tel">
+      <input class="aniv-fld" id="na-email" type="email" placeholder="Email">
+      <input class="aniv-fld" id="na-nif" placeholder="NIF (opcional)">
+      <div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b prim" id="na-guardar">Guardar aniversário</button></div>`;
+    ov.classList.add('show');
+    document.getElementById('na-guardar').onclick=guardarNovoAniversario;
+  }
+  async function guardarNovoAniversario(){
+    const nome=(document.getElementById('na-nome').value||'').toUpperCase().trim();
+    const nasc=document.getElementById('na-nasc').value;
+    if(!nome){toast('Preenche o nome');return;}
+    if(!nasc){toast('Preenche a data de nascimento');return;}
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}
+    const genero=document.getElementById('na-genero').value, tel=document.getElementById('na-tel').value.trim(),
+      email=document.getElementById('na-email').value.trim(), nif=document.getElementById('na-nif').value.trim();
+    try{
+      await resolver();const C=_cols;
+      const fields={[C.titulo]:nome,[C.tipo]:'Aniversário',[C.data]:nasc+'T00:00:00Z',[C.ativo]:true,[C.genero]:genero};
+      if(email)fields[C.email]=email; if(tel)fields[C.tel]=tel; if(nif)fields[C.nif]=nif;
+      const r=await fetch(`${GBASE}/sites/${_site}/lists/${_list}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(!r.ok)throw new Error('Graph '+r.status);
+      ov.classList.remove('show');toast('Aniversário adicionado ✓');
+      if(typeof window.anivInit==='function')window.anivInit();
+    }catch(e){toast('Erro a guardar: '+e.message);}
+  }
 
   // ── integração no menu / ecrã / nav() ─────────────────────────────────────
   function atualizarBadgeNav(n){const b=document.getElementById('aniv-badge-nav');if(b)b.style.display=n>0?'inline-flex':'none',b.textContent=n;}
