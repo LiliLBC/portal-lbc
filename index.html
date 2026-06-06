@@ -694,15 +694,6 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-label">Nº Processo</div>
               <input class="form-input" id="p-numProcesso" placeholder="—">
             </div>
-            <div class="field-group">
-              <div class="field-label">Natureza do imóvel</div>
-              <select class="form-select" id="p-natureza">
-                <option value="">—</option>
-                <option value="HPP">HPP — habitação própria permanente</option>
-                <option value="Outro">Outro (terreno, 2.ª habitação, investimento…)</option>
-              </select>
-              <div style="font-size:10px;color:var(--text-faint);margin-top:.2rem">Define o tom do cartão de aniversário da escritura.</div>
-            </div>
 
             <!-- ─── CONTACTOS (colapsável) ──────────────────────────────────── -->
             <div class="field-group field-full" style="margin-bottom:.4rem">
@@ -1324,29 +1315,6 @@ tbody tr:hover td{background:#FAFAF8}
               <input class="form-input" id="proc-novo-nome" placeholder="Ex: JOAQUIM MIGUEL VELEZ" style="text-transform:uppercase">
             </div>
             <div id="proc-novo-preview" style="font-size:11px;color:var(--text-faint);margin-top:.25rem;font-family:'DM Mono',monospace"></div>
-
-            <div style="margin-top:1rem;padding-top:.85rem;border-top:1px dashed var(--border)">
-              <div style="font-size:11px;color:var(--text-faint);margin-bottom:.6rem">Opcional — preenche para enviarmos o cartão de aniversário da LBC.</div>
-              <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-                <div class="form-group" style="flex:1;min-width:150px">
-                  <label class="form-label">Data de nascimento</label>
-                  <input class="form-input" type="date" id="proc-novo-nasc">
-                </div>
-                <div class="form-group" style="flex:1.4;min-width:180px">
-                  <label class="form-label">Email</label>
-                  <input class="form-input" type="email" id="proc-novo-email" placeholder="email@exemplo.pt">
-                </div>
-                <div class="form-group" style="flex:.7;min-width:110px">
-                  <label class="form-label">Género</label>
-                  <select class="form-input" id="proc-novo-genero">
-                    <option value="">—</option>
-                    <option value="F">Feminino</option>
-                    <option value="M">Masculino</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
             <div class="form-actions" style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="criarPastaCliente()">
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg>
@@ -2508,16 +2476,10 @@ const F={
   pago:'Pago',
   codCRP:'CERT_PERMANENTE',
   contactos:'Contactos',
-  natureza:'NaturezaImovel',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica'};
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
 const LISTA_AGENDA='Agenda_Escritorio';
-const LISTA_ANIVERSARIOS='ListaAniversarios';
-const AN_DEFAULT={titulo:'Title',email:'Email',tipo:'TipoA',data:'DataReferencia',nif:'NIF',genero:'Genero',ativo:'Ativo',ultimoAno:'UltimoAnoEnviado'};
-let AN=null; // nomes internos resolvidos das colunas
-let listaIdAniversarios=null;
-let _aniversariosCache=null;
 
 let msalApp=null,graphToken=null,contaAtual=null;
 let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null,driveIdAvencas=null;
@@ -2974,57 +2936,6 @@ function promptCustom(titulo, valorInicial){
   });
 }
 
-// Modal de edição de pasta cliente com campos de aniversário
-function promptClienteAniversario(titulo, vals){
-  vals=vals||{};
-  return new Promise(resolve=>{
-    const overlay=document.createElement('div');
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:"DM Sans",sans-serif';
-    overlay.innerHTML=`
-      <div style="background:white;border-radius:12px;padding:1.5rem;max-width:520px;width:92%;box-shadow:0 20px 50px rgba(0,0,0,.25)">
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:.9rem">${escHtml(titulo)}</div>
-        <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Nome do cliente</label>
-        <input type="text" id="pca-nome" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Mono',monospace;outline:none;text-transform:uppercase;box-sizing:border-box">
-        <div style="font-size:11px;color:var(--text-faint);margin:.9rem 0 .5rem">Para o cartão de aniversário da LBC (opcional):</div>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-          <div style="flex:1;min-width:140px">
-            <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Data de nascimento</label>
-            <input type="date" id="pca-nasc" style="width:100%;padding:.55rem .7rem;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;box-sizing:border-box">
-          </div>
-          <div style="flex:1.3;min-width:170px">
-            <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Email</label>
-            <input type="email" id="pca-email" placeholder="email@exemplo.pt" style="width:100%;padding:.55rem .7rem;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;box-sizing:border-box">
-          </div>
-          <div style="flex:.7;min-width:100px">
-            <label style="display:block;font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Género</label>
-            <select id="pca-genero" style="width:100%;padding:.55rem .5rem;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;box-sizing:border-box">
-              <option value="">—</option><option value="F">Feminino</option><option value="M">Masculino</option>
-            </select>
-          </div>
-        </div>
-        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.2rem">
-          <button id="pca-cancelar" style="padding:.5rem 1rem;border-radius:7px;border:1px solid var(--border);background:white;cursor:pointer;font-size:12px">Cancelar</button>
-          <button id="pca-ok" style="padding:.5rem 1rem;border-radius:7px;border:none;background:var(--accent);color:white;cursor:pointer;font-size:12px;font-weight:500">Guardar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    document.getElementById('pca-nome').value=vals.nome||'';
-    document.getElementById('pca-nasc').value=vals.dob||'';
-    document.getElementById('pca-email').value=vals.email||'';
-    document.getElementById('pca-genero').value=vals.genero||'';
-    const nomeEl=document.getElementById('pca-nome');nomeEl.focus();nomeEl.select();
-    const fechar=(v)=>{document.body.removeChild(overlay);resolve(v);};
-    document.getElementById('pca-ok').onclick=()=>fechar({
-      nome:document.getElementById('pca-nome').value,
-      dob:document.getElementById('pca-nasc').value,
-      email:document.getElementById('pca-email').value.trim(),
-      genero:document.getElementById('pca-genero').value
-    });
-    document.getElementById('pca-cancelar').onclick=()=>fechar(null);
-    overlay.onclick=(e)=>{if(e.target===overlay)fechar(null);};
-  });
-}
-
 async function editarNomePasta(pastaId,nomeAtual){
   const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
   const novoNome=await promptCustom('Editar nome da pasta',nomeDecod);
@@ -3310,7 +3221,7 @@ function abrirPainelNovo(){
   document.getElementById('painel-pasta-search').value='';
   document.getElementById('painel-pasta-search').placeholder='A carregar pastas...';
   document.getElementById('painel-pasta-search').disabled=true;
-  ['p-nome','p-data','p-produto','p-natureza','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
+  ['p-nome','p-data','p-produto','p-entidade','p-procurador','p-predio','p-freguesia','p-concelho',
    'p-apRegisto','p-apData','p-apConserv','p-numProcesso','p-numPedido','p-codDeposito','p-codCRP','p-montCredito',
    'p-valorProc','p-valorServico','p-margemLiq','p-custoSup','p-dataResolSup','p-observacoes'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
@@ -3342,7 +3253,6 @@ function abrirPainelRegisto(itemId){
   sv('p-nome').value=i[F.nome]||'';
   sv('p-data').value=i[F.data]?i[F.data].substring(0,10):'';
   sv('p-produto').value=i[F.produto]||'';
-  sv('p-natureza').value=i[F.natureza]||'';
   sv('p-entidade').value=i[F.entidade]||'';
   sv('p-procurador').value=i[F.procurador]||'';
   sv('p-estado').value=i[F.estado]||'Agendado';
@@ -3614,7 +3524,6 @@ async function guardarPainel(){
   const nome=sv('p-nome'); if(nome) body[F.nome]=nome;
   const data=svDate('p-data'); if(data) body[F.data]=data;
   const produto=svChoice('p-produto'); if(produto) body[F.produto]=produto;
-  const natureza=svChoice('p-natureza'); if(natureza) body[F.natureza]=natureza;
   const entidade=svChoice('p-entidade'); if(entidade) body[F.entidade]=entidade;
   const procurador=svChoice('p-procurador'); if(procurador) body[F.procurador]=procurador;
   const estado=svChoice('p-estado'); if(estado) body[F.estado]=estado;
@@ -5490,9 +5399,6 @@ function procPesquisaConfirmaNova(){
   document.getElementById('proc-novo-passo2').style.display='block';
   document.getElementById('proc-novo-nome').value=nome;
   document.getElementById('proc-novo-preview').textContent=nome?`Pasta a criar: ${nome}`:'';
-  if(document.getElementById('proc-novo-nasc'))document.getElementById('proc-novo-nasc').value='';
-  if(document.getElementById('proc-novo-email'))document.getElementById('proc-novo-email').value='';
-  if(document.getElementById('proc-novo-genero'))document.getElementById('proc-novo-genero').value='';
   document.getElementById('proc-novo-nome').focus();
 }
 
@@ -5546,51 +5452,22 @@ function renderProcessos(lista){
 // ─── EDITAR / APAGAR PASTA DE CLIENTE ─────────────────────────────────────────
 async function editarPastaCliente(pastaId,nomeAtual){
   const nomeDecod=nomeAtual.replace(/&#39;/g,"'");
-  // Pré-carregar o aniversário existente deste cliente (se houver) para mostrar no modal
-  let pre={dob:'',email:'',genero:''};
-  try{
-    await carregarAniversariosCache();
-    const ex=_acharAniversario(nomeDecod,'','Aniversário');
-    if(ex){
-      pre.dob=(ex.f[AN.data]||'').substring(0,10);
-      pre.email=ex.f[AN.email]||'';
-      pre.genero=ex.f[AN.genero]||'';
-    }
-  }catch(e){/* lista pode não existir ainda — segue sem pré-preenchimento */}
-  const vals=await promptClienteAniversario('Editar pasta cliente',{nome:nomeDecod,...pre});
-  if(vals===null)return;
-  const trim=sanitizarNomePasta((vals.nome||'').trim().toUpperCase());
+  const novoNome=await promptCustom('Editar nome da pasta cliente',nomeDecod);
+  if(novoNome===null)return;
+  const trim=sanitizarNomePasta(novoNome.trim().toUpperCase());
   if(!trim){showToast('O nome não pode estar vazio','error');return;}
+  if(trim===nomeDecod)return;
   try{
     await renovarToken();
-    // Renomear a pasta só se o nome mudou
-    if(trim!==nomeDecod){
-      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}`,{
-        method:'PATCH',
-        headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
-        body:JSON.stringify({name:trim})
-      });
-      if(!r.ok)throw new Error(`Erro ${r.status}`);
-    }
-    // Aniversário — cria/atualiza só se houver data de nascimento
-    if(vals.dob){
-      try{
-        await carregarAniversariosCache();
-        const ex=_acharAniversario(nomeDecod,'','Aniversário');
-        if(ex){
-          const fields={[AN.titulo]:trim,[AN.tipo]:'Aniversário',[AN.ativo]:true,[AN.data]:vals.dob+'T00:00:00Z'};
-          if(vals.email)fields[AN.email]=vals.email;
-          if(vals.genero)fields[AN.genero]=vals.genero;
-          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items/${ex.id}/fields`,fields);
-          ex.f={...ex.f,...fields};
-        } else {
-          await upsertAniversario({nome:trim,email:vals.email,dob:vals.dob,genero:vals.genero,nif:'',tipo:'Aniversário'});
-        }
-      }catch(err){showToast('Pasta guardada, mas o aniversário falhou: '+err.message,'error');}
-    }
-    showToast(trim!==nomeDecod?`Pasta renomeada para "${trim}"`:'Dados do cliente guardados','success');
+    const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}`,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({name:trim})
+    });
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    showToast(`Pasta renomeada para "${trim}"`,'success');
     await carregarProcessos();
-  }catch(e){showToast('Erro: '+e.message,'error');}
+  }catch(e){showToast('Erro ao renomear: '+e.message,'error');}
 }
 
 async function apagarPastaCliente(pastaId,nomeAtual){
@@ -5751,65 +5628,6 @@ function atualizarPreviewSubpasta(){
   }
 }
 
-// ═══ ANIVERSÁRIOS ═══════════════════════════════════════════════════════════
-// Resolve o id da ListaAniversarios e os nomes INTERNOS das colunas (o SharePoint
-// pode codificá-los; isto evita erros de "campo não encontrado").
-async function resolverListaAniversarios(){
-  if(listaIdAniversarios && AN) return;
-  const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName`);
-  const lst=(r.value||[]).find(l=>(l.name||'').toLowerCase()==='listaaniversarios'||(l.displayName||'').toLowerCase()==='listaaniversarios');
-  if(!lst) throw new Error('Lista "ListaAniversarios" não encontrada no SharePoint.');
-  listaIdAniversarios=lst.id;
-  let cols=[];
-  try{ const c=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/columns?$select=name,displayName`); cols=c.value||[]; }catch(e){}
-  const find=(want)=>{
-    const w=want.toLowerCase();
-    const c=cols.find(x=>(x.name||'').toLowerCase()===w||(x.displayName||'').toLowerCase()===w);
-    return c?c.name:want;
-  };
-  AN={titulo:'Title',email:find(AN_DEFAULT.email),tipo:find(AN_DEFAULT.tipo),data:find(AN_DEFAULT.data),nif:find(AN_DEFAULT.nif),genero:find(AN_DEFAULT.genero),ativo:find(AN_DEFAULT.ativo),ultimoAno:find(AN_DEFAULT.ultimoAno)};
-}
-
-// Cache dos itens da lista (carrega uma vez; força com force=true)
-async function carregarAniversariosCache(force){
-  await resolverListaAniversarios();
-  if(_aniversariosCache===null||force){
-    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items?$expand=fields&$top=2000`);
-    _aniversariosCache=(r.value||[]).map(i=>({id:i.id,f:i.fields||{}}));
-  }
-  return _aniversariosCache;
-}
-
-// Localiza uma linha por NIF (se houver) ou por nome+tipo
-function _acharAniversario(nome,nif,tipo){
-  tipo=tipo||'Aniversário';
-  const nomeU=(nome||'').toUpperCase().trim();
-  let x=null;
-  if(nif)x=_aniversariosCache.find(r=>((r.f[AN.nif]||'')+'').trim()===(''+nif).trim() && (r.f[AN.tipo]||'')===tipo);
-  if(!x)x=_aniversariosCache.find(r=>((r.f[AN.titulo]||'').toUpperCase().trim())===nomeU && (r.f[AN.tipo]||'')===tipo);
-  return x;
-}
-
-// Cria ou atualiza uma linha de aniversário. Casa por NIF (se houver) ou por nome+tipo.
-async function upsertAniversario({nome,email,dob,genero,nif,tipo}){
-  await carregarAniversariosCache();
-  tipo=tipo||'Aniversário';
-  const fields={[AN.titulo]:nome,[AN.tipo]:tipo,[AN.ativo]:true};
-  if(email)fields[AN.email]=email;
-  if(dob)fields[AN.data]=(dob.length===10?dob+'T00:00:00Z':dob);
-  if(genero)fields[AN.genero]=genero;
-  if(nif)fields[AN.nif]=(''+nif).trim();
-  const existente=_acharAniversario(nome,nif,tipo);
-  if(existente){
-    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items/${existente.id}/fields`,fields);
-    existente.f={...existente.f,...fields};
-    return {updated:true};
-  }
-  const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAniversarios}/items`,{fields});
-  _aniversariosCache.unshift({id:r.id,f:fields});
-  return {created:true};
-}
-
 async function criarPastaCliente(){
   const nome=document.getElementById('proc-novo-nome').value.toUpperCase().trim();
   if(!nome){showToast('Preenche o nome do cliente.','error');return;}
@@ -5818,24 +5636,8 @@ async function criarPastaCliente(){
   try{
     const res=await graphPost(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children`,{name:nomeSan,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
     showToast(`Pasta "${nomeSan}" criada! Vamos criar o primeiro processo...`,'success');
-    // Registar aniversário da pessoa (opcional — não impede a criação da pasta)
-    const nasc=(document.getElementById('proc-novo-nasc')?.value||'').trim();
-    const emailCli=(document.getElementById('proc-novo-email')?.value||'').trim();
-    const genCli=(document.getElementById('proc-novo-genero')?.value||'').trim();
-    if(nasc){
-      try{
-        await upsertAniversario({nome:nomeSan,email:emailCli,dob:nasc,genero:genCli,nif:'',tipo:'Aniversário'});
-        showToast('Data de aniversário guardada para os parabéns da LBC.','success');
-      }catch(err){
-        console.warn('Aniversário não registado:',err);
-        showToast('Pasta criada, mas não consegui guardar o aniversário: '+err.message,'error');
-      }
-    }
     document.getElementById('proc-novo-nome').value='';
     document.getElementById('proc-novo-preview').textContent='';
-    if(document.getElementById('proc-novo-nasc'))document.getElementById('proc-novo-nasc').value='';
-    if(document.getElementById('proc-novo-email'))document.getElementById('proc-novo-email').value='';
-    if(document.getElementById('proc-novo-genero'))document.getElementById('proc-novo-genero').value='';
     // Recarregar pastas + ir directo para "Novo processo" com cliente pré-seleccionado
     await carregarProcessos();
     procSetTab('subpasta',document.getElementById('proc-tab-subpasta'));
@@ -5963,9 +5765,8 @@ async function carregarContaCorrente(){
     const sf=[CC.titulo,CC.cliente,CC.honorarios,CC.gastos,CC.recebido,CC.estado,CC.observacoes,CC.data].join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${sf})&$top=500`);
     todosCC=(data.value||[]).map(i=>({id:i.id,...i.fields}));
-    const visiveis=ccEmAberto(todosCC);
-    document.getElementById('cc-count').textContent=`${visiveis.length} ${visiveis.length===1?'registo em aberto':'registos em aberto'}`;
-    renderCC(visiveis);
+    document.getElementById('cc-count').textContent=`${todosCC.length} registos`;
+    renderCC(todosCC);
   }catch(e){document.getElementById('cc-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
@@ -5998,13 +5799,9 @@ function renderCC(lista){
   el.style.display='block';
 }
 
-// Mostra só registos em aberto — esconde os "Concluido" (dados mantêm-se na lista)
-function ccEmAberto(lista){return (lista||[]).filter(i=>(i[CC.estado]||'')!=='Concluido');}
-
 function filtrarCC(){
   const q=(document.getElementById('cc-search').value||'').toLowerCase();
-  const base=ccEmAberto(todosCC);
-  renderCC(q?base.filter(i=>(i[CC.cliente]||'').toLowerCase().includes(q)||(i[CC.titulo]||'').toLowerCase().includes(q)):base);
+  renderCC(q?todosCC.filter(i=>(i[CC.cliente]||'').toLowerCase().includes(q)||(i[CC.titulo]||'').toLowerCase().includes(q)):todosCC);
 }
 
 function limparFiltrosCC(){
@@ -10871,6 +10668,216 @@ init();
     </div>
   </div>
 </div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     NÚCLEO DE CONTACTOS — colar este bloco INTEIRO imediatamente antes de </body>
+     no index.html. É aditivo e "namespaced" (tudo nuc…); não altera nada do que
+     já existe. Os botões aparecem no painel do registo de escrituras.
+     Requisitos já satisfeitos: scope Mail.Send no MSAL; lista ListaAniversarios
+     com as colunas Telemovel e Finalidade.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  const GBASE='https://graph.microsoft.com/v1.0';
+  const NUC={ anivHost:'lbcsolicitadorapt.sharepoint.com', anivSitePath:'/sites/lbcsolicitadora2',
+    anivListName:'listaaniversarios', ficheiro:'CONTACTOS_CLIENTE.json',
+    rascunhos:['RASCUNHO_CVMH.json','RASCUNHO_MH.json','RASCUNHO_MH_TOIC.json','RASCUNHO_CV.json'] };
+  const PAPEIS=['Comprador','Vendedor','Imobiliária','Outro'];
+
+  const tk=()=>window.graphToken||(typeof graphToken!=='undefined'?graphToken:null);
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const ini=n=>(n||'').split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
+  const waNum=t=>{t=(t||'').replace(/\D/g,'');return t&&t.length===9?'351'+t:t;};
+  const val=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  async function gGet(u){const r=await fetch(u,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw new Error('Graph '+r.status);return r.json();}
+
+  // ── estilos próprios (injetados uma vez) ─────────────────────────────────
+  const css=`
+  .nuc-ov{position:fixed;inset:0;background:rgba(20,16,30,.5);display:none;align-items:flex-start;justify-content:center;padding:28px 16px;overflow:auto;z-index:11000}
+  .nuc-ov.show{display:flex}
+  .nuc-modal{background:#fff;border-radius:14px;max-width:480px;width:100%;padding:16px 18px;font-family:inherit}
+  .nuc-modal h3{font-size:15px;font-weight:600;margin:0 0 2px}.nuc-sub{font-size:12px;color:#6B6770;margin-bottom:10px}
+  .nuc-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#9B97A2;margin:8px 0 4px}
+  .nuc-p{border:1px solid #E5E2DC;border-radius:8px;padding:8px;margin-bottom:7px;background:#F5F3EF}
+  .nuc-nrow{display:flex;gap:5px;align-items:center;margin-bottom:5px}
+  .nuc-f{font-family:inherit;font-size:12px;padding:6px 8px;border:1px solid #E5E2DC;border-radius:7px;background:#fff;width:100%}
+  .nuc-papel{width:118px;flex-shrink:0}.nuc-x{border:none;background:none;color:#9B97A2;cursor:pointer;font-size:15px}
+  .nuc-cc{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  .nuc-add{font-size:12px;color:#6E5A9E;background:none;border:none;cursor:pointer;padding:3px 0;margin-top:2px}
+  .nuc-acts{display:flex;gap:8px;margin-top:12px}
+  .nuc-acts .s{flex:1;background:#6E5A9E;color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer}
+  .nuc-acts .o{width:64px;background:#F5F3EF;border:1px solid #E5E2DC;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .nuc-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem}
+  .nuc-btn{font-family:inherit;font-size:12px;padding:6px 10px;border-radius:7px;border:1px solid #E5E2DC;background:#fff;color:#2C2A33;cursor:pointer}
+  .nuc-btn:hover{background:#F5F3EF}
+  .nuc-vp{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #E5E2DC}.nuc-vp:last-child{border-bottom:none}
+  .nuc-av{width:34px;height:34px;border-radius:50%;background:#EEEBF6;color:#4E3D78;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0}
+  .nuc-cbtn{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 8px;border:1px solid #E5E2DC;border-radius:7px;text-decoration:none;color:#2C2A33;margin:4px 4px 0 0}`;
+  const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  const ov=document.createElement('div');ov.className='nuc-ov';ov.id='nuc-ov';ov.innerHTML='<div class="nuc-modal" id="nuc-modal"></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target.id==='nuc-ov')fechar();});
+  function fechar(){ov.classList.remove('show');}
+
+  // ── resolver pasta a partir do registo aberto ────────────────────────────
+  function resolvePasta(){
+    const url=(typeof painelPastaUrl!=='undefined'&&painelPastaUrl)||'';
+    if(!url||typeof pastasPainel==='undefined'||typeof bibliotecaId==='undefined')return null;
+    const p=pastasPainel.find(x=>x.webUrl===url);
+    if(!p)return null;
+    return {driveId:bibliotecaId,itemId:p.id,pastaNome:p.nome};
+  }
+  function escrituraDoPainel(){
+    return {proc:val('p-numProcesso'), data:(val('p-data')||'').substring(0,10), finalidade:''};
+  }
+
+  // ── ler compradores/vendedores do rascunho ───────────────────────────────
+  function extrair(rasc){
+    const out=[];
+    Object.keys(rasc||{}).forEach(k=>{
+      if(!k.endsWith('-nome'))return;
+      const pref=k.slice(0,-5);
+      if(/conjuge|conj-|ger-|-ger$/.test(pref))return;
+      const nome=(rasc[k]||'').toString().toUpperCase().trim();if(!nome)return;
+      let papel='Outro';
+      if(/comprador|mutuario/i.test(pref))papel='Comprador'; else if(/vendedor/i.test(pref))papel='Vendedor';
+      out.push({nome,papel,genero:rasc[pref+'-genero']||'',nif:(rasc[pref+'-nif']||'').toString().trim(),nascimento:rasc[pref+'-nasc']||'',telm:'',email:''});
+    });
+    return out;
+  }
+  async function lerRascunho(c){
+    for(const f of NUC.rascunhos){
+      try{const j=await gGet(`${GBASE}/drives/${c.driveId}/items/${c.itemId}:/${f}:/content`);return extrair(j);}catch(e){}
+    }
+    return [];
+  }
+
+  function pHTML(p){return `<div class="nuc-p" data-genero="${esc(p.genero)}" data-nif="${esc(p.nif)}" data-nasc="${esc(p.nascimento)}">
+    <div class="nuc-nrow"><input class="nuc-f nome" value="${esc(p.nome)}" placeholder="Nome">
+    <select class="nuc-f nuc-papel papel">${PAPEIS.map(x=>`<option ${x===p.papel?'selected':''}>${x}</option>`).join('')}</select>
+    <button class="nuc-x" onclick="this.closest('.nuc-p').remove()">×</button></div>
+    <div class="nuc-cc"><input class="nuc-f telm" value="${esc(p.telm)}" placeholder="Telemóvel" inputmode="tel">
+    <input class="nuc-f email" type="email" value="${esc(p.email)}" placeholder="Email"></div></div>`;}
+
+  async function abrirCaixa(c){
+    const m=document.getElementById('nuc-modal');
+    m.innerHTML=`<h3>Recolher contactos</h3><div class="nuc-sub">${esc(c.pastaNome||'(pasta não ligada)')} · ${esc(c.escritura&&c.escritura.proc||'')}</div>
+      <div class="nuc-lbl">Finalidade da escritura</div>
+      <select class="nuc-f" id="nuc-fin"><option value="">— escolher —</option><option value="hpp">Habitação própria permanente</option><option value="outra">Outra (investimento, terreno, 2.ª habitação)</option></select>
+      <div class="nuc-lbl">Pessoas (do rascunho) + imobiliária</div>
+      <div id="nuc-pessoas"><div class="nuc-sub">A ler o rascunho…</div></div>
+      <button class="nuc-add" id="nuc-addp">+ adicionar pessoa (imobiliária / outro)</button>
+      <div class="nuc-acts"><button class="s" id="nuc-guardar">Guardar na pasta</button><button class="o" id="nuc-ok">OK</button></div>`;
+    ov.classList.add('show');
+    document.getElementById('nuc-ok').onclick=fechar;
+    document.getElementById('nuc-addp').onclick=()=>document.getElementById('nuc-pessoas').insertAdjacentHTML('beforeend',pHTML({nome:'',papel:'Imobiliária',genero:'',nif:'',nascimento:'',telm:'',email:''}));
+    document.getElementById('nuc-guardar').onclick=()=>guardar(c);
+    let pessoas=[];try{pessoas=await lerRascunho(c);}catch(e){}
+    document.getElementById('nuc-pessoas').innerHTML=(pessoas.length?pessoas:[{nome:'',papel:'Comprador',genero:'',nif:'',nascimento:'',telm:'',email:''}]).map(pHTML).join('');
+  }
+  function recolher(){
+    const out=[];
+    document.querySelectorAll('#nuc-pessoas .nuc-p').forEach(b=>{
+      const nome=b.querySelector('.nome').value.trim(),telm=b.querySelector('.telm').value.trim(),email=b.querySelector('.email').value.trim();
+      if(!nome&&!telm&&!email)return;
+      out.push({nome,papel:b.querySelector('.papel').value,telm,email,genero:b.dataset.genero||'',nif:b.dataset.nif||'',nascimento:b.dataset.nasc||''});
+    });
+    return out;
+  }
+  async function guardar(c){
+    const pessoas=recolher();
+    if(!pessoas.length){toast('Sem contactos preenchidos');return;}
+    if(!c.driveId||!c.itemId){toast('Liga primeiro a pasta do cliente ao registo');return;}
+    const escritura={...(c.escritura||{}),finalidade:val('nuc-fin')};
+    const dados={pasta:c.pastaNome,escritura,pessoas,gravadoEm:new Date().toISOString()};
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}
+    try{
+      await fetch(`${GBASE}/drives/${c.driveId}/items/${c.itemId}:/${NUC.ficheiro}:/content`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(dados)});
+      const r=await upsert(token,pessoas,escritura);
+      toast(`Guardado · aniversários: ${r.novos} novo(s), ${r.atual} atualizado(s)`);fechar();
+    }catch(e){toast('Erro a guardar: '+e.message);}
+  }
+
+  let _aSite=null,_aList=null,_aCols=null;
+  async function resolverAniv(){
+    if(!_aSite){_aSite=(await gGet(`${GBASE}/sites/${NUC.anivHost}:${NUC.anivSitePath}`)).id;}
+    if(!_aList){const ls=await gGet(`${GBASE}/sites/${_aSite}/lists?$select=id,name,displayName`);
+      const l=(ls.value||[]).find(x=>(x.name||'').toLowerCase()===NUC.anivListName||(x.displayName||'').toLowerCase()===NUC.anivListName);
+      if(!l)throw new Error('ListaAniversarios não encontrada');_aList=l.id;}
+    if(!_aCols){let cols=[];try{cols=(await gGet(`${GBASE}/sites/${_aSite}/lists/${_aList}/columns?$select=name,displayName`)).value||[];}catch(e){}
+      const f=w=>{const ww=w.toLowerCase();const c=cols.find(x=>(x.name||'').toLowerCase()===ww||(x.displayName||'').toLowerCase()===ww);return c?c.name:w;};
+      _aCols={titulo:'Title',email:f('Email'),tel:f('Telemovel'),tipo:f('TipoA'),data:f('DataReferencia'),finalidade:f('Finalidade'),nif:f('NIF'),genero:f('Genero'),ativo:f('Ativo')};}
+  }
+  async function upsert(token,pessoas,escritura){
+    await resolverAniv();const C=_aCols;
+    const itens=((await gGet(`${GBASE}/sites/${_aSite}/lists/${_aList}/items?$expand=fields&$top=2000`)).value||[]).map(i=>({id:i.id,f:i.fields||{}}));
+    let novos=0,atual=0;
+    const grava=async(fields,match)=>{const ex=itens.find(match);
+      if(ex){await fetch(`${GBASE}/sites/${_aSite}/lists/${_aList}/items/${ex.id}/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(fields)});ex.f={...ex.f,...fields};atual++;}
+      else{const r=await fetch(`${GBASE}/sites/${_aSite}/lists/${_aList}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});if(r.ok){const j=await r.json();itens.unshift({id:j.id,f:fields});novos++;}}};
+    for(const p of pessoas){
+      const base={[C.titulo]:p.nome,[C.ativo]:true};
+      if(p.email)base[C.email]=p.email;if(p.telm)base[C.tel]=p.telm;if(p.genero)base[C.genero]=p.genero;if(p.nif)base[C.nif]=p.nif;
+      if(p.nascimento){const fl={...base,[C.tipo]:'Aniversário',[C.data]:p.nascimento+'T00:00:00Z'};
+        await grava(fl,x=>(p.nif&&((x.f[C.nif]||'')+'').trim()===p.nif&&(x.f[C.tipo]||'')==='Aniversário')||(!p.nif&&(x.f[C.titulo]||'').toUpperCase().trim()===p.nome&&(x.f[C.tipo]||'')==='Aniversário'));}
+      if(p.papel==='Comprador'&&escritura&&escritura.data){const fl={...base,[C.tipo]:'Escritura',[C.data]:escritura.data+'T00:00:00Z'};if(escritura.finalidade)fl[C.finalidade]=escritura.finalidade;
+        await grava(fl,x=>(p.nif&&((x.f[C.nif]||'')+'').trim()===p.nif&&(x.f[C.tipo]||'')==='Escritura'&&(x.f[C.data]||'').slice(0,10)===escritura.data)||(!p.nif&&(x.f[C.titulo]||'').toUpperCase().trim()===p.nome&&(x.f[C.tipo]||'')==='Escritura'&&(x.f[C.data]||'').slice(0,10)===escritura.data));}
+    }
+    return {novos,atual};
+  }
+
+  const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const dPT=iso=>{if(!iso)return '';const[a,m,d]=iso.split('-');return `${d}/${m}/${a}`;};
+  const aniv=iso=>{if(!iso)return 'sem data de nascimento';const[,m,d]=iso.split('-');return `faz anos a ${parseInt(d)} de ${MES[parseInt(m)-1]}`;};
+  function renderVista(d){
+    const fin=d.escritura&&d.escritura.finalidade==='hpp'?'Habitação própria':(d.escritura&&d.escritura.finalidade?'Investimento':'');
+    const pes=(d.pessoas||[]).map(p=>{const t=(p.telm||'').replace(/\D/g,'');const c=[];
+      if(t)c.push(`<a class="nuc-cbtn" href="tel:+351${t}">📞 ${esc(p.telm)}</a>`);
+      if(t)c.push(`<a class="nuc-cbtn" href="https://wa.me/${waNum(t)}" target="_blank">💬 WhatsApp</a>`);
+      if(p.email)c.push(`<a class="nuc-cbtn" href="mailto:${esc(p.email)}">✉️ ${esc(p.email)}</a>`);
+      return `<div class="nuc-vp"><div class="nuc-av">${ini(p.nome)}</div><div style="flex:1">
+        <div style="font-weight:600">${esc(p.nome)} <span style="font-size:11px;color:#6B6770;font-weight:400">· ${esc(p.papel)}</span></div>
+        <div>${c.join('')||'<span class="nuc-sub">Sem contactos</span>'}</div>
+        <div class="nuc-sub" style="margin-top:5px">🎂 ${p.nascimento?`<b>${dPT(p.nascimento)}</b> · ${aniv(p.nascimento)}`:'sem data de nascimento'}</div></div></div>`;}).join('');
+    const m=document.getElementById('nuc-modal');
+    m.innerHTML=`<h3>Contactos do cliente</h3><div class="nuc-sub">${esc(d.pasta||'')} · ${esc(d.escritura&&d.escritura.proc||'—')} ${fin?'· '+fin:''}</div>${pes||'<div class="nuc-sub">Sem pessoas</div>'}
+      <div class="nuc-acts"><button class="s" id="nuc-edit">+ contactos / editar</button><button class="o" id="nuc-fechar">Fechar</button></div>`;
+    ov.classList.add('show');
+    document.getElementById('nuc-fechar').onclick=fechar;
+    document.getElementById('nuc-edit').onclick=()=>{const c=ctxRegisto();abrirCaixa(c);};
+  }
+  async function ver(c){
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}
+    try{const d=await gGet(`${GBASE}/drives/${c.driveId}/items/${c.itemId}:/${NUC.ficheiro}:/content`);renderVista(d);}
+    catch(e){toast('Ainda não há contactos guardados nesta pasta');}
+  }
+
+  function ctxRegisto(){const pasta=resolvePasta()||{driveId:null,itemId:null,pastaNome:''};return {...pasta,escritura:escrituraDoPainel()};}
+
+  // ── injeta os botões no painel do registo (sem reescrever nada) ──────────
+  function injetarBotoes(){
+    if(document.getElementById('nuc-tools'))return;
+    const host=document.getElementById('painel-pasta-existente')||document.getElementById('painel-pasta-wrap');
+    if(!host)return;
+    const div=document.createElement('div');div.className='nuc-tools';div.id='nuc-tools';
+    div.innerHTML=`<button type="button" class="nuc-btn" id="nuc-carregar">📇 Carregar contactos</button><button type="button" class="nuc-btn" id="nuc-mais">＋ contactos</button>`;
+    host.insertAdjacentElement('afterend',div);
+    document.getElementById('nuc-carregar').onclick=()=>{const c=ctxRegisto();if(!c.itemId){toast('Liga a pasta do cliente ao registo primeiro');return;}ver(c);};
+    document.getElementById('nuc-mais').onclick=()=>{const c=ctxRegisto();if(!c.itemId){toast('Liga a pasta do cliente ao registo primeiro');return;}abrirCaixa(c);};
+  }
+  // estende abrirPainelRegisto sem o substituir
+  if(typeof window.abrirPainelRegisto==='function'){
+    const _orig=window.abrirPainelRegisto;
+    window.abrirPainelRegisto=function(){const r=_orig.apply(this,arguments);setTimeout(injetarBotoes,0);return r;};
+  }
+
+  function toast(msg){ if(typeof showToast==='function'){showToast(msg,'info');return;} alert(msg); }
+
+  // expõe para uso noutros sítios (ex.: lembrete de fim de escritura)
+  window.nucAbrirCaixaContactos=abrirCaixa;
+  window.nucVerContactos=ver;
+})();
+</script>
 
 </body>
 </html>
