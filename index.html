@@ -10995,15 +10995,16 @@ ${eye}${head}
   function diasAte(mes,dia){const h=new Date();const a=new Date(h.getFullYear(),mes-1,dia);if(a<new Date(h.getFullYear(),h.getMonth(),h.getDate()))a.setFullYear(h.getFullYear()+1);return Math.round((a-new Date(h.getFullYear(),h.getMonth(),h.getDate()))/86400000);}
   async function carregar(){
     await resolver();const C=_cols;
-    const it=((await gGet(`${GBASE}/sites/${_site}/lists/${_list}/items?$expand=fields&$top=2000`)).value||[]).map(i=>i.fields||{});
+    const rows=((await gGet(`${GBASE}/sites/${_site}/lists/${_list}/items?$expand=fields&$top=2000`)).value||[]);
     const hoje=new Date();const evs=[];
-    it.forEach(fl=>{
+    rows.forEach(row=>{
+      const fl=row.fields||{};
       if(fl[C.ativo]===false)return;
       const d=(fl[C.data]||'').slice(0,10);if(!d)return;const[ano,m,dia]=d.split('-').map(Number);if(!m||!dia)return;
       const tipoA=fl[C.tipo]||'Aniversário';
       let tipo='aniversario',anos=0;
       if(tipoA==='Escritura'){tipo=(fl[C.finalidade]||'').toLowerCase()==='hpp'?'escritura_hpp':'escritura_outra';anos=hoje.getFullYear()-ano;if(anos<1)anos=1;}
-      evs.push({tipo,nome:fl[C.titulo]||'',genero:fl[C.genero]||'M',anos,email:fl[C.email]||'',tel:fl[C.tel]||'',dias:diasAte(m,dia)});
+      evs.push({id:row.id,tipoA,dataISO:d,finalidade:fl[C.finalidade]||'',nif:fl[C.nif]||'',tipo,nome:fl[C.titulo]||'',genero:fl[C.genero]||'M',anos,email:fl[C.email]||'',tel:fl[C.tel]||'',dias:diasAte(m,dia)});
     });
     return evs;
   }
@@ -11014,7 +11015,7 @@ ${eye}${head}
     const sub=ev.tipo==='aniversario'?'Aniversário':`${p.et} · ${ev.anos} ano${ev.anos>1?'s':''}`;
     return `<div class="aniv-ev"><div class="aniv-av ${p.av}">${ini(ev.nome)}</div>
       <div class="aniv-m"><div class="aniv-nome">${esc(ev.nome)}<span class="aniv-chip ${p.chip}">${p.et}</span></div><div class="aniv-meta">${sub} · ${ev.email||ev.tel||'sem contacto'}</div></div>
-      <button class="aniv-send" data-i="${i}">Enviar cartão</button></div>`;
+      <div style="display:flex;gap:6px;flex-shrink:0"><button class="aniv-send" data-i="${i}">Enviar</button><button class="aniv-b" data-edit="${i}" style="padding:6px 9px">Editar</button><button class="aniv-b" data-del="${i}" style="padding:6px 9px">Apagar</button></div></div>`;
   }
   let _evs=[];
   window.anivInit=async function(){
@@ -11027,6 +11028,8 @@ ${eye}${head}
     scr.querySelector('#aniv-hoje').innerHTML=hoje.length?hoje.map((e)=>evHTML(e,_evs.indexOf(e))).join(''):'<div class="aniv-meta">Nenhum aniversário hoje.</div>';
     scr.querySelector('#aniv-prox').innerHTML=prox.length?prox.map((e)=>evHTML(e,_evs.indexOf(e))).join(''):'<div class="aniv-meta">Nada nos próximos 7 dias.</div>';
     scr.querySelectorAll('.aniv-send').forEach(b=>b.onclick=()=>abrirEnvio(_evs[+b.dataset.i]));
+    scr.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>abrirEditar(_evs[+b.dataset.edit]));
+    scr.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>abrirApagar(_evs[+b.dataset.del]));
     atualizarBadgeNav(hoje.length);
   };
 
@@ -11106,6 +11109,56 @@ ${eye}${head}
       ov.classList.remove('show');toast('Aniversário adicionado ✓');
       if(typeof window.anivInit==='function')window.anivInit();
     }catch(e){toast('Erro a guardar: '+e.message);}
+  }
+
+  // ── editar / apagar aniversário ───────────────────────────────────────────
+  let _edit=null;
+  function abrirEditar(ev){
+    _edit=ev;const escr=ev.tipoA==='Escritura';
+    document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 10px">Editar ${escr?'aniversário de escritura':'aniversário'}</h3>
+      <input class="aniv-fld" id="ed-nome" value="${esc(ev.nome)}" placeholder="Nome">
+      <select class="aniv-fld" id="ed-genero"><option value="F"${ev.genero==='F'?' selected':''}>Feminino</option><option value="M"${ev.genero!=='F'?' selected':''}>Masculino</option></select>
+      <label style="font-size:11px;color:#6B6770;display:block;margin:2px 0 3px">${escr?'Data da escritura':'Data de nascimento'}</label>
+      <input class="aniv-fld" id="ed-data" type="date" value="${esc(ev.dataISO)}">
+      ${escr?`<label style="font-size:11px;color:#6B6770;display:block;margin:2px 0 3px">Finalidade</label><select class="aniv-fld" id="ed-fin"><option value="hpp"${(ev.finalidade||'').toLowerCase()==='hpp'?' selected':''}>Habitação própria</option><option value="outra"${(ev.finalidade||'').toLowerCase()!=='hpp'?' selected':''}>Outra / investimento</option></select>`:''}
+      <input class="aniv-fld" id="ed-tel" value="${esc(ev.tel)}" placeholder="Telemóvel" inputmode="tel">
+      <input class="aniv-fld" id="ed-email" type="email" value="${esc(ev.email)}" placeholder="Email">
+      <input class="aniv-fld" id="ed-nif" value="${esc(ev.nif)}" placeholder="NIF (opcional)">
+      <div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b prim" id="ed-guardar">Guardar alterações</button></div>`;
+    ov.classList.add('show');
+    document.getElementById('ed-guardar').onclick=guardarEdicao;
+  }
+  async function guardarEdicao(){
+    const ev=_edit;if(!ev)return;
+    const nome=(document.getElementById('ed-nome').value||'').toUpperCase().trim();
+    const data=document.getElementById('ed-data').value;
+    if(!nome||!data){toast('Nome e data são obrigatórios');return;}
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}
+    try{
+      await resolver();const C=_cols;
+      const fields={[C.titulo]:nome,[C.genero]:document.getElementById('ed-genero').value,[C.data]:data+'T00:00:00Z',
+        [C.email]:document.getElementById('ed-email').value.trim(),[C.tel]:document.getElementById('ed-tel').value.trim(),[C.nif]:document.getElementById('ed-nif').value.trim()};
+      if(ev.tipoA==='Escritura'){const fe=document.getElementById('ed-fin');if(fe)fields[C.finalidade]=fe.value;}
+      const r=await fetch(`${GBASE}/sites/${_site}/lists/${_list}/items/${ev.id}/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(fields)});
+      if(!r.ok)throw new Error('Graph '+r.status);
+      ov.classList.remove('show');toast('Alterações guardadas ✓');if(window.anivInit)window.anivInit();
+    }catch(e){toast('Erro a guardar: '+e.message);}
+  }
+  function abrirApagar(ev){
+    document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 8px">Apagar aniversário</h3>
+      <p style="font-size:13px;color:#6B6770;margin:0 0 14px">Apagar o ${ev.tipoA==='Escritura'?'aniversário de escritura':'aniversário'} de <b>${esc(ev.nome)}</b>? Isto remove a linha da lista.</p>
+      <div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b" id="ap-sim" style="background:#DC3545;border-color:#DC3545;color:#fff">Apagar</button></div>`;
+    ov.classList.add('show');
+    document.getElementById('ap-sim').onclick=()=>apagar(ev);
+  }
+  async function apagar(ev){
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}
+    try{
+      await resolver();
+      const r=await fetch(`${GBASE}/sites/${_site}/lists/${_list}/items/${ev.id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+      if(!r.ok&&r.status!==204)throw new Error('Graph '+r.status);
+      ov.classList.remove('show');toast('Aniversário apagado');if(window.anivInit)window.anivInit();
+    }catch(e){toast('Erro a apagar: '+e.message);}
   }
 
   // ── integração no menu / ecrã / nav() ─────────────────────────────────────
