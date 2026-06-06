@@ -10879,5 +10879,212 @@ init();
 })();
 </script>
 
+<!-- ════════════════════════════════════════════════════════════════════════
+     CALENDÁRIO DE ANIVERSÁRIOS (Fase 3) — colar este bloco INTEIRO antes de </body>
+     (a seguir ao bloco do Núcleo de Contactos). É aditivo e namespaced (aniv…):
+     cria a entrada "Aniversários" no menu, o ecrã, e estende nav() — sem alterar
+     nada do que já existe. Lê a ListaAniversarios e envia os cartões.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  const GBASE='https://graph.microsoft.com/v1.0';
+  const ANIV={ host:'lbcsolicitadorapt.sharepoint.com', sitePath:'/sites/lbcsolicitadora2', listName:'listaaniversarios' };
+  const CONTACTOS_LBC='266 104 210 · 960 215 959 · geral@lbc-solicitadora.pt';
+  const tk=()=>window.graphToken||(typeof graphToken!=='undefined'?graphToken:null);
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const ini=n=>(n||'').split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
+  const waNum=t=>{t=(t||'').replace(/\D/g,'');return t&&t.length===9?'351'+t:t;};
+  const artigo=g=>g==='F'?'a':'o';
+  async function gGet(u){const r=await fetch(u,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw new Error('Graph '+r.status);return r.json();}
+
+  // ── estilos ──────────────────────────────────────────────────────────────
+  const css=`
+  .aniv-badge{background:#DC3545;color:#fff;font-size:11px;font-weight:600;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto}
+  #screen-aniversarios{padding:0}
+  .aniv-wrap{max-width:760px}
+  .aniv-card{background:var(--surface,#fff);border:1px solid var(--border,#E5E2DC);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .aniv-h{display:flex;align-items:center;gap:10px;margin-bottom:4px}.aniv-h h3{font-size:15px;font-weight:600;margin:0}
+  .aniv-grp{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#9B97A2;margin:14px 0 6px}
+  .aniv-ev{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border,#E5E2DC)}.aniv-ev:last-child{border-bottom:none}
+  .aniv-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
+  .av-rose{background:#FBE7E0;color:#8A5A60}.av-plum{background:#EBE6D6;color:#3E3357}.av-blue{background:#E1E8EF;color:#3C5066}
+  .aniv-m{flex:1;min-width:0}.aniv-nome{font-weight:600}.aniv-meta{font-size:12px;color:#6B6770}
+  .aniv-chip{display:inline-block;font-size:10px;padding:1px 8px;border-radius:10px;margin-left:4px}
+  .chip-rose{background:#FBE7E0;color:#8A5A60}.chip-plum{background:#EBE6D6;color:#3E3357}.chip-blue{background:#E1E8EF;color:#3C5066}
+  .aniv-send{font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--accent,#6E5A9E);background:var(--accent,#6E5A9E);color:#fff;cursor:pointer}
+  .aniv-ov{position:fixed;inset:0;background:rgba(20,16,30,.5);display:none;align-items:flex-start;justify-content:center;padding:28px 16px;overflow:auto;z-index:12000}
+  .aniv-ov.show{display:flex}
+  .aniv-modal{background:#fff;border-radius:14px;max-width:680px;width:100%;padding:16px 18px}
+  .aniv-tabs{display:flex;gap:8px;margin:10px 0}
+  .aniv-tab{flex:1;padding:9px;border-radius:8px;border:1px solid #E5E2DC;background:transparent;font-size:13px;cursor:pointer;font-family:inherit}
+  .aniv-tab.on-mail{border-color:#6E5A9E;background:#6E5A9E;color:#fff}.aniv-tab.on-wa{border-color:#25D366;background:#25D366;color:#fff}
+  .aniv-prev{border:1px solid #E5E2DC;border-radius:10px;overflow:hidden;margin-bottom:10px}.aniv-prev svg{display:block;width:100%;height:auto}
+  .aniv-fld{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid #E5E2DC;border-radius:8px;margin-bottom:8px}
+  .aniv-row{display:flex;gap:8px;justify-content:flex-end}
+  .aniv-b{font-family:inherit;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #E5E2DC;background:#fff;cursor:pointer}
+  .aniv-b.prim{background:#6E5A9E;border-color:#6E5A9E;color:#fff}.aniv-b.wa{background:#25D366;border-color:#25D366;color:#fff}`;
+  const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+
+  const PAL={ aniversario:{bg:'#FBF3F0',card:'#8A5A60',ac:'#C49088',tx:'#8A5A60',bd:'#936C70',av:'av-rose',chip:'chip-rose',et:'Aniversário'},
+    escritura_hpp:{bg:'#FAF5EA',card:'#3E3357',ac:'#C2A15A',tx:'#3E3357',bd:'#5C5470',av:'av-plum',chip:'chip-plum',et:'Casa'},
+    escritura_outra:{bg:'#EFF3F7',card:'#3C5066',ac:'#7E93A8',tx:'#3C5066',bd:'#5E7184',av:'av-blue',chip:'chip-blue',et:'Investimento'} };
+  const anosEye=n=>n===1?'HÁ UM ANO':'HÁ '+n+' ANOS';
+  const anosIn=n=>n===1?'um ano':n+' anos';
+
+  function cartaoSVG(ev,fontStyle){
+    const p=PAL[ev.tipo],nome=esc(ev.nome),car='Car'+artigo(ev.genero);
+    const fonts=fontStyle||`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500&display=swap');`;
+    let eye='',head='',sign='',l1='',l2='',l3='';
+    if(ev.tipo==='aniversario'){
+      head=`<text class="serif" x="340" y="210" text-anchor="middle" font-size="54" font-weight="500" fill="${p.tx}">Feliz Aniversário</text>`;sign='Com amizade,';
+      l1='Em nome de toda a equipa da LBC Solicitadora,';l2=`desejamos-lhe um dia tão especial como ${artigo(ev.genero)} ${nome}.`;l3='Que este novo ano lhe traga saúde, alegria e as melhores conquistas.';
+    }else if(ev.tipo==='escritura_hpp'){
+      eye=`<text class="sans" x="340" y="172" text-anchor="middle" font-size="12" fill="${p.ac}" letter-spacing="7">${anosEye(ev.anos)}</text>`;
+      head=`<text class="serif" x="340" y="216" text-anchor="middle" font-size="42" font-weight="500" fill="${p.tx}">o sonho da sua casa</text>`;sign='Com amizade,';
+      l1=`Há precisamente ${anosIn(ev.anos)}, recebíamos juntos as chaves`;l2='do seu novo lar. Foi uma honra fazer parte desse momento.';l3='Que a sua casa continue a encher-se de boas memórias.';
+    }else{
+      eye=`<text class="sans" x="340" y="172" text-anchor="middle" font-size="12" fill="${p.ac}" letter-spacing="7">${anosEye(ev.anos)}</text>`;
+      head=`<text class="serif" x="340" y="216" text-anchor="middle" font-size="42" font-weight="500" fill="${p.tx}">mais um passo, juntos</text>`;sign='Com os melhores cumprimentos,';
+      l1=`Há ${anosIn(ev.anos)} concretizávamos consigo mais este investimento.`;l2=`Foi um gosto acompanhá-l${artigo(ev.genero)} e agradecemos a sua confiança.`;l3='Continuamos ao seu lado nos próximos passos.';
+    }
+    return `<svg width="100%" viewBox="0 0 680 500" xmlns="http://www.w3.org/2000/svg"><style>${fonts}.serif{font-family:'Cormorant Garamond',Georgia,serif}.sans{font-family:'Jost','Helvetica Neue',Arial,sans-serif}</style>
+<rect x="22" y="18" width="636" height="464" rx="6" fill="${p.bg}" stroke="${p.card}" stroke-width="1"/>
+<rect x="42" y="38" width="596" height="424" rx="3" fill="none" stroke="${p.ac}" stroke-width="1"/>
+<rect x="48" y="44" width="584" height="412" rx="2" fill="none" stroke="${p.ac}" stroke-width="0.5"/>
+<circle cx="340" cy="86" r="30" fill="none" stroke="${p.ac}" stroke-width="1.5"/><circle cx="340" cy="86" r="24" fill="none" stroke="${p.ac}" stroke-width="0.5"/>
+<text class="serif" x="340" y="95" text-anchor="middle" font-size="26" font-weight="600" fill="${p.tx}" letter-spacing="1">LBC</text>
+<text class="sans" x="340" y="131" text-anchor="middle" font-size="11" fill="${p.ac}" letter-spacing="6">SOLICITADORA</text>
+${eye}${head}
+<line x1="272" y1="242" x2="322" y2="242" stroke="${p.ac}" stroke-width="0.75"/><rect x="336" y="238" width="8" height="8" transform="rotate(45 340 242)" fill="none" stroke="${p.ac}" stroke-width="0.75"/><line x1="358" y1="242" x2="408" y2="242" stroke="${p.ac}" stroke-width="0.75"/>
+<text class="serif" x="340" y="286" text-anchor="middle" font-size="23" font-weight="500" font-style="italic" fill="${p.tx}">${car} ${nome},</text>
+<text class="sans" x="340" y="320" text-anchor="middle" font-size="15" font-weight="300" fill="${p.bd}">${esc(l1)}</text>
+<text class="sans" x="340" y="344" text-anchor="middle" font-size="15" font-weight="300" fill="${p.bd}">${esc(l2)}</text>
+<text class="sans" x="340" y="368" text-anchor="middle" font-size="15" font-weight="300" fill="${p.bd}">${esc(l3)}</text>
+<text class="serif" x="340" y="410" text-anchor="middle" font-size="17" font-weight="500" font-style="italic" fill="${p.tx}">${sign}</text>
+<text class="sans" x="340" y="432" text-anchor="middle" font-size="11" fill="${p.ac}" letter-spacing="4">A EQUIPA LBC · ÉVORA</text>
+<text class="sans" x="340" y="451" text-anchor="middle" font-size="9.5" font-weight="300" fill="${p.bd}" letter-spacing="0.5">${esc(CONTACTOS_LBC)}</text></svg>`;
+  }
+  let _fontCSS=null;
+  async function fontesEmbebidas(){
+    if(_fontCSS!==null)return _fontCSS;
+    try{const u="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500&display=swap";
+      let c=await(await fetch(u)).text();const urls=[...c.matchAll(/url\((https:\/\/[^)]+\.woff2)\)/g)].map(m=>m[1]);
+      await Promise.all([...new Set(urls)].map(async w=>{const b=await(await fetch(w)).arrayBuffer();const by=new Uint8Array(b);let s='';for(let i=0;i<by.length;i++)s+=String.fromCharCode(by[i]);c=c.split(w).join('data:font/woff2;base64,'+btoa(s));}));
+      _fontCSS=c;}catch(e){_fontCSS='';}
+    return _fontCSS;
+  }
+  async function cartaoPNG(ev,scale){
+    scale=scale||2;const svg=cartaoSVG(ev,await fontesEmbebidas());
+    try{await document.fonts.ready;}catch(e){}
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+    const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url;});
+    const cv=document.createElement('canvas');cv.width=680*scale;cv.height=500*scale;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);x.drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+    return await new Promise(r=>cv.toBlob(b=>r(b),'image/png'));
+  }
+  const b64=b=>new Promise(r=>{const f=new FileReader();f.onloadend=()=>r(f.result.split(',')[1]);f.readAsDataURL(b);});
+
+  // ── ler ListaAniversarios ─────────────────────────────────────────────────
+  let _site=null,_list=null,_cols=null;
+  async function resolver(){
+    if(!_site)_site=(await gGet(`${GBASE}/sites/${ANIV.host}:${ANIV.sitePath}`)).id;
+    if(!_list){const ls=await gGet(`${GBASE}/sites/${_site}/lists?$select=id,name,displayName`);const l=(ls.value||[]).find(x=>(x.name||'').toLowerCase()===ANIV.listName||(x.displayName||'').toLowerCase()===ANIV.listName);if(!l)throw new Error('ListaAniversarios não encontrada');_list=l.id;}
+    if(!_cols){let cols=[];try{cols=(await gGet(`${GBASE}/sites/${_site}/lists/${_list}/columns?$select=name,displayName`)).value||[];}catch(e){}
+      const f=w=>{const ww=w.toLowerCase();const c=cols.find(x=>(x.name||'').toLowerCase()===ww||(x.displayName||'').toLowerCase()===ww);return c?c.name:w;};
+      _cols={titulo:'Title',email:f('Email'),tel:f('Telemovel'),tipo:f('TipoA'),data:f('DataReferencia'),finalidade:f('Finalidade'),nif:f('NIF'),genero:f('Genero'),ativo:f('Ativo')};}
+  }
+  function diasAte(mes,dia){const h=new Date();const a=new Date(h.getFullYear(),mes-1,dia);if(a<new Date(h.getFullYear(),h.getMonth(),h.getDate()))a.setFullYear(h.getFullYear()+1);return Math.round((a-new Date(h.getFullYear(),h.getMonth(),h.getDate()))/86400000);}
+  async function carregar(){
+    await resolver();const C=_cols;
+    const it=((await gGet(`${GBASE}/sites/${_site}/lists/${_list}/items?$expand=fields&$top=2000`)).value||[]).map(i=>i.fields||{});
+    const hoje=new Date();const evs=[];
+    it.forEach(fl=>{
+      if(fl[C.ativo]===false)return;
+      const d=(fl[C.data]||'').slice(0,10);if(!d)return;const[ano,m,dia]=d.split('-').map(Number);if(!m||!dia)return;
+      const tipoA=fl[C.tipo]||'Aniversário';
+      let tipo='aniversario',anos=0;
+      if(tipoA==='Escritura'){tipo=(fl[C.finalidade]||'').toLowerCase()==='hpp'?'escritura_hpp':'escritura_outra';anos=hoje.getFullYear()-ano;if(anos<1)anos=1;}
+      evs.push({tipo,nome:fl[C.titulo]||'',genero:fl[C.genero]||'M',anos,email:fl[C.email]||'',tel:fl[C.tel]||'',dias:diasAte(m,dia)});
+    });
+    return evs;
+  }
+
+  // ── render da secção ──────────────────────────────────────────────────────
+  function evHTML(ev,i){
+    const p=PAL[ev.tipo];
+    const sub=ev.tipo==='aniversario'?'Aniversário':`${p.et} · ${ev.anos} ano${ev.anos>1?'s':''}`;
+    return `<div class="aniv-ev"><div class="aniv-av ${p.av}">${ini(ev.nome)}</div>
+      <div class="aniv-m"><div class="aniv-nome">${esc(ev.nome)}<span class="aniv-chip ${p.chip}">${p.et}</span></div><div class="aniv-meta">${sub} · ${ev.email||ev.tel||'sem contacto'}</div></div>
+      <button class="aniv-send" data-i="${i}">Enviar cartão</button></div>`;
+  }
+  let _evs=[];
+  window.anivInit=async function(){
+    const scr=document.getElementById('screen-aniversarios');
+    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in">0</span></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div></div>`;
+    try{_evs=await carregar();}catch(e){scr.querySelector('#aniv-hoje').innerHTML=`<div class="aniv-meta">Não foi possível ler a ListaAniversarios: ${esc(e.message)}</div>`;return;}
+    const hoje=_evs.filter(e=>e.dias===0), prox=_evs.filter(e=>e.dias>0&&e.dias<=7).sort((a,b)=>a.dias-b.dias);
+    scr.querySelector('#aniv-badge-in').textContent=hoje.length;
+    scr.querySelector('#aniv-hoje').innerHTML=hoje.length?hoje.map((e)=>evHTML(e,_evs.indexOf(e))).join(''):'<div class="aniv-meta">Nenhum aniversário hoje.</div>';
+    scr.querySelector('#aniv-prox').innerHTML=prox.length?prox.map((e)=>evHTML(e,_evs.indexOf(e))).join(''):'<div class="aniv-meta">Nada nos próximos 7 dias.</div>';
+    scr.querySelectorAll('.aniv-send').forEach(b=>b.onclick=()=>abrirEnvio(_evs[+b.dataset.i]));
+    atualizarBadgeNav(hoje.length);
+  };
+
+  // ── modal de envio ────────────────────────────────────────────────────────
+  const ov=document.createElement('div');ov.className='aniv-ov';ov.id='aniv-ov';ov.innerHTML='<div class="aniv-modal" id="aniv-modal"></div>';document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target.id==='aniv-ov')ov.classList.remove('show');});
+  let _cur=null;
+  function abrirEnvio(ev){
+    _cur=ev;const car='Car'+artigo(ev.genero);
+    let tel=(ev.tel||'').replace(/[\s+()-]/g,'');if(tel&&!tel.startsWith('351')&&tel.length===9)tel='351'+tel;
+    const txtWa=ev.tipo==='aniversario'?`${car} ${ev.nome}, em nome de toda a equipa da LBC Solicitadora desejamos-lhe um feliz aniversário!`:`${car} ${ev.nome}, há ${anosIn(ev.anos)} ${ev.tipo==='escritura_hpp'?'recebíamos juntos as chaves do seu lar':'concretizávamos consigo mais um passo'}. Um abraço da equipa LBC.`;
+    document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 2px">Enviar cartão — ${esc(ev.nome)}</h3>
+      <div class="aniv-tabs"><button class="aniv-tab on-mail" id="aniv-tm">✉️ Email</button><button class="aniv-tab" id="aniv-tw">💬 WhatsApp</button></div>
+      <div class="aniv-prev">${cartaoSVG(ev)}</div>
+      <div id="aniv-pmail"><input class="aniv-fld" id="aniv-email" placeholder="email@exemplo.pt" value="${esc(ev.email)}"><div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b prim" id="aniv-env-mail">Enviar por email</button></div></div>
+      <div id="aniv-pwa" style="display:none"><input class="aniv-fld" id="aniv-tel" value="${tel}"><textarea class="aniv-fld" id="aniv-watext" rows="3">${esc(txtWa)}</textarea><div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b wa" id="aniv-env-wa">Descarregar + WhatsApp</button></div></div>`;
+    ov.classList.add('show');
+    document.getElementById('aniv-tm').onclick=()=>tab(1);document.getElementById('aniv-tw').onclick=()=>tab(0);
+    document.getElementById('aniv-env-mail').onclick=enviarEmail;document.getElementById('aniv-env-wa').onclick=enviarWa;
+  }
+  function tab(mail){document.getElementById('aniv-pmail').style.display=mail?'block':'none';document.getElementById('aniv-pwa').style.display=mail?'none':'block';
+    document.getElementById('aniv-tm').className='aniv-tab'+(mail?' on-mail':'');document.getElementById('aniv-tw').className='aniv-tab'+(mail?'':' on-wa');}
+  async function enviarWa(){
+    const tel=(document.getElementById('aniv-tel').value||'').replace(/\D/g,'');const msg=document.getElementById('aniv-watext').value.trim();
+    if(!tel){toast('Preenche o telemóvel');return;}toast('A preparar o cartão…');
+    try{const blob=await cartaoPNG(_cur);const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cartao_${_cur.nome.replace(/\s+/g,'_')}.png`;document.body.appendChild(a);a.click();a.remove();
+      window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');ov.classList.remove('show');}catch(e){toast('Erro a gerar o cartão');}
+  }
+  async function enviarEmail(){
+    const para=document.getElementById('aniv-email').value.trim();if(!para){toast('Preenche o email');return;}
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}toast('A gerar o cartão…');
+    let base;try{base=await b64(await cartaoPNG(_cur));}catch(e){toast('Erro a gerar o cartão');return;}
+    const ass=_cur.tipo==='aniversario'?'Feliz Aniversário — LBC Solicitadora':(_cur.tipo==='escritura_hpp'?'Uma data especial — LBC Solicitadora':'Os nossos cumprimentos — LBC Solicitadora');
+    const message={subject:ass,body:{contentType:'HTML',content:`<div style="font-family:Arial,sans-serif;background:#f4f1ea;padding:24px;text-align:center"><img src="cid:cartaoLBC" style="max-width:600px;width:100%;border-radius:8px"></div>`},
+      toRecipients:[{emailAddress:{address:para}}],attachments:[{'@odata.type':'#microsoft.graph.fileAttachment',name:'cartao-lbc.png',contentType:'image/png',isInline:true,contentId:'cartaoLBC',contentBytes:base}]};
+    try{const r=await fetch(`${GBASE}/me/sendMail`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({message,saveToSentItems:true})});
+      if(r.ok){toast('Email enviado ✓');ov.classList.remove('show');}else toast('Falha no envio ('+r.status+')');}catch(e){toast('Erro de rede no envio');}
+  }
+  function toast(m){if(typeof showToast==='function'){showToast(m,'info');return;}}
+
+  // ── integração no menu / ecrã / nav() ─────────────────────────────────────
+  function atualizarBadgeNav(n){const b=document.getElementById('aniv-badge-nav');if(b)b.style.display=n>0?'inline-flex':'none',b.textContent=n;}
+  function instalar(){
+    if(document.getElementById('screen-aniversarios'))return;
+    // ecrã
+    const base=document.querySelector('.screen');if(!base)return;
+    const scr=document.createElement('div');scr.className='screen';scr.id='screen-aniversarios';base.parentNode.appendChild(scr);
+    // item de menu (a seguir ao Registo de escrituras)
+    const reg=document.querySelector('.nav-item[onclick*="registo"]');
+    const item=document.createElement('div');item.className='nav-item';item.setAttribute('onclick',"nav('aniversarios',this)");
+    item.innerHTML=`<span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h12v7H2z"/><path d="M8 7V4M8 4c-1-2-3-1-3 .5C5 6 8 4 8 4zM8 4c1-2 3-1 3 .5C11 6 8 4 8 4z"/></svg></span>Aniversários<span class="aniv-badge" id="aniv-badge-nav" style="display:none">0</span>`;
+    if(reg&&reg.parentNode)reg.insertAdjacentElement('afterend',item);else if(base.parentNode)document.querySelector('.nav-item')?.parentNode?.appendChild(item);
+    // título + extensão do nav()
+    if(typeof pageTitles!=='undefined')pageTitles.aniversarios='Aniversários';
+    if(typeof window.nav==='function'){const _n=window.nav;window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='aniversarios'&&typeof window.anivInit==='function')window.anivInit();return r;};}
+  }
+  if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
 </body>
 </html>
