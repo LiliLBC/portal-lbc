@@ -11042,7 +11042,7 @@ ${eye}${head}
       <div class="aniv-tabs"><button class="aniv-tab on-mail" id="aniv-tm">✉️ Email</button><button class="aniv-tab" id="aniv-tw">💬 WhatsApp</button></div>
       <div class="aniv-prev">${cartaoSVG(ev)}</div>
       <div id="aniv-pmail"><input class="aniv-fld" id="aniv-email" placeholder="email@exemplo.pt" value="${esc(ev.email)}"><div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b prim" id="aniv-env-mail">Enviar por email</button></div></div>
-      <div id="aniv-pwa" style="display:none"><input class="aniv-fld" id="aniv-tel" value="${tel}"><textarea class="aniv-fld" id="aniv-watext" rows="3">${esc(txtWa)}</textarea><div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b wa" id="aniv-env-wa">Descarregar + WhatsApp</button></div></div>`;
+      <div id="aniv-pwa" style="display:none"><input class="aniv-fld" id="aniv-tel" value="${tel}"><textarea class="aniv-fld" id="aniv-watext" rows="3">${esc(txtWa)}</textarea><div style="font-size:11px;color:#6B6770;margin-bottom:8px">Abre a conversa e copia o cartão. Na conversa, faz <b>Ctrl+V</b> para ele aparecer como imagem (não anexes como ficheiro).</div><div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b wa" id="aniv-env-wa">Copiar cartão + WhatsApp</button></div></div>`;
     ov.classList.add('show');
     document.getElementById('aniv-tm').onclick=()=>tab(1);document.getElementById('aniv-tw').onclick=()=>tab(0);
     document.getElementById('aniv-env-mail').onclick=enviarEmail;document.getElementById('aniv-env-wa').onclick=enviarWa;
@@ -11052,13 +11052,15 @@ ${eye}${head}
   function enviarWa(){
     const tel=(document.getElementById('aniv-tel').value||'').replace(/\D/g,'');const msg=document.getElementById('aniv-watext').value.trim();
     if(!tel){toast('Preenche o telemóvel');return;}
-    // Abrir o WhatsApp JÁ, dentro do clique — senão o browser bloqueia a janela
+    const png=cartaoPNG(_cur); // Promise<Blob> — gerado uma vez
+    // 1) copiar o cartão para a área de transferência (para colar como IMAGEM no WhatsApp)
+    let copiado=false;
+    try{ if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){ navigator.clipboard.write([new ClipboardItem({'image/png':png})]); copiado=true; } }catch(e){}
+    // 2) abrir o WhatsApp com a mensagem (dentro do clique)
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
-    toast('A descarregar o cartão para anexares…');
-    cartaoPNG(_cur).then(blob=>{
-      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cartao_${_cur.nome.replace(/\s+/g,'_')}.png`;document.body.appendChild(a);a.click();a.remove();
-      toast('Cartão descarregado — anexa-o na conversa do WhatsApp');
-    }).catch(()=>toast('WhatsApp aberto, mas falhou gerar a imagem'));
+    // 3) descarregar também, como alternativa
+    png.then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cartao_${_cur.nome.replace(/\s+/g,'_')}.png`;document.body.appendChild(a);a.click();a.remove();}).catch(()=>{});
+    toast(copiado?'Cartão copiado — cola (Ctrl+V) na conversa para aparecer como imagem':'Cartão descarregado — anexa-o como foto');
     ov.classList.remove('show');
   }
   async function enviarEmail(){
