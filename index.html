@@ -11049,11 +11049,17 @@ ${eye}${head}
   }
   function tab(mail){document.getElementById('aniv-pmail').style.display=mail?'block':'none';document.getElementById('aniv-pwa').style.display=mail?'none':'block';
     document.getElementById('aniv-tm').className='aniv-tab'+(mail?' on-mail':'');document.getElementById('aniv-tw').className='aniv-tab'+(mail?'':' on-wa');}
-  async function enviarWa(){
+  function enviarWa(){
     const tel=(document.getElementById('aniv-tel').value||'').replace(/\D/g,'');const msg=document.getElementById('aniv-watext').value.trim();
-    if(!tel){toast('Preenche o telemóvel');return;}toast('A preparar o cartão…');
-    try{const blob=await cartaoPNG(_cur);const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cartao_${_cur.nome.replace(/\s+/g,'_')}.png`;document.body.appendChild(a);a.click();a.remove();
-      window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');ov.classList.remove('show');}catch(e){toast('Erro a gerar o cartão');}
+    if(!tel){toast('Preenche o telemóvel');return;}
+    // Abrir o WhatsApp JÁ, dentro do clique — senão o browser bloqueia a janela
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+    toast('A descarregar o cartão para anexares…');
+    cartaoPNG(_cur).then(blob=>{
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cartao_${_cur.nome.replace(/\s+/g,'_')}.png`;document.body.appendChild(a);a.click();a.remove();
+      toast('Cartão descarregado — anexa-o na conversa do WhatsApp');
+    }).catch(()=>toast('WhatsApp aberto, mas falhou gerar a imagem'));
+    ov.classList.remove('show');
   }
   async function enviarEmail(){
     const para=document.getElementById('aniv-email').value.trim();if(!para){toast('Preenche o email');return;}
