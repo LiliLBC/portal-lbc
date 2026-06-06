@@ -11181,5 +11181,86 @@ ${eye}${head}
 })();
 </script>
 
+<!-- ════════════════════════════════════════════════════════════════════════
+     LEMBRETE DE FIM DE ESCRITURA — colar antes de </body> (a seguir aos blocos
+     do Núcleo e dos Aniversários). Aditivo e namespaced (lemb…). Vigia a agenda
+     (todosEventos) e, 5 min antes da Hora_Fim, mostra uma caixa no canto inferior
+     esquerdo para recolher contactos na pasta de cliente. OK dispensa por utilizador.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  const ANTEC=5, INT=30000;                          // 5 min antes; verifica a cada 30s
+  const EXCLUIR=/feriado|ocupado|f[ée]rias|almo[çc]o|reuni[ãa]o/i; // eventos que não são escrituras
+  const A_=(typeof A!=='undefined')?A:{titulo:'Title',data:'Data',horaFim:'Hora_Fim',tipo:'Evento'};
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const toast=m=>{if(typeof showToast==='function')showToast(m,'info');};
+  function user(){try{return(typeof contaAtual!=='undefined'&&contaAtual&&(contaAtual.username||contaAtual.homeAccountId))||'user';}catch(e){return 'user';}}
+  const kd=id=>'lbc_lemb_'+user()+'_'+id;
+  const disp=id=>{try{return localStorage.getItem(kd(id))==='1';}catch(e){return false;}};
+  const setDisp=id=>{try{localStorage.setItem(kd(id),'1');}catch(e){}};
+
+  const css=`
+  #lemb-host{position:fixed;left:18px;bottom:18px;display:flex;flex-direction:column-reverse;gap:10px;z-index:13000;width:340px;max-width:calc(100vw - 36px)}
+  .lemb{background:#fff;border:1px solid #E5E2DC;border-left:4px solid #DC3545;border-radius:10px;box-shadow:0 8px 28px rgba(20,16,30,.18);padding:13px 14px;animation:lembpop .18s ease-out}
+  @keyframes lembpop{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .lemb-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .lemb-alert{width:22px;height:22px;border-radius:50%;background:#FCE8EA;color:#DC3545;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;animation:lembpulse 1.2s infinite}
+  @keyframes lembpulse{0%,100%{box-shadow:0 0 0 0 rgba(220,53,69,.4)}70%{box-shadow:0 0 0 7px rgba(220,53,69,0)}}
+  .lemb-t{font-weight:600;font-size:13px}.lemb-s{font-size:11px;color:#6B6770}
+  .lemb-f{width:100%;font-family:inherit;font-size:12px;padding:6px 8px;border:1px solid #E5E2DC;border-radius:7px;margin-top:2px}
+  .lemb-dd{position:relative;background:#fff;border:1px solid #E5E2DC;border-radius:7px;box-shadow:0 6px 18px rgba(0,0,0,.12);margin-top:3px;max-height:150px;overflow:auto;display:none}
+  .lemb-it{padding:6px 9px;font-size:12px;cursor:pointer}.lemb-it:hover{background:#F5F3EF}
+  .lemb-acts{display:flex;gap:8px;margin-top:10px}
+  .lemb-rec{flex:1;background:#6E5A9E;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .lemb-ok{width:60px;background:#F5F3EF;border:1px solid #E5E2DC;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}`;
+  const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  const host=document.createElement('div');host.id='lemb-host';document.body.appendChild(host);
+
+  function hojeStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function fimDate(ev){const data=(ev[A_.data]||'').slice(0,10);const hf=(ev[A_.horaFim]||'').trim();if(!data||!hf)return null;const m=hf.match(/(\d{1,2}):(\d{2})/);if(!m)return null;const d=new Date(data+'T00:00:00');d.setHours(+m[1],+m[2],0,0);return d;}
+  async function ensurePastas(){ if((typeof pastasPainel==='undefined'||!pastasPainel||!pastasPainel.length)&&typeof carregarPastasPainel==='function'){try{await carregarPastasPainel();}catch(e){}} }
+  const fecha=id=>{const el=document.getElementById('lemb-'+id);if(el)el.remove();};
+
+  function mostra(ev){
+    const id=ev.id; if(!id||document.getElementById('lemb-'+id)||disp(id))return;
+    const titulo=ev[A_.titulo]||'Escritura', hf=ev[A_.horaFim]||'';
+    const box=document.createElement('div');box.className='lemb';box.id='lemb-'+id;box.dataset.folder='';box.dataset.fnome='';
+    box.innerHTML=`<div class="lemb-head"><div class="lemb-alert">!</div><div><div class="lemb-t">Escritura a terminar — recolher contactos</div><div class="lemb-s">${esc(titulo)} · termina ${esc(hf)}</div></div></div>
+      <input class="lemb-f" id="lemb-srch-${id}" placeholder="Pasta de cliente (nome)" autocomplete="off" value="${esc(titulo)}">
+      <div class="lemb-dd" id="lemb-dd-${id}"></div>
+      <div class="lemb-acts"><button class="lemb-rec" id="lemb-rec-${id}">Recolher contactos</button><button class="lemb-ok" id="lemb-ok-${id}">OK</button></div>`;
+    host.appendChild(box);
+    const inp=box.querySelector('#lemb-srch-'+id), dd=box.querySelector('#lemb-dd-'+id);
+    const filtra=()=>{const q=(inp.value||'').toLowerCase().trim();const arr=(typeof pastasPainel!=='undefined'&&pastasPainel)||[];const res=arr.filter(p=>(p.nome||'').toLowerCase().includes(q)).slice(0,6);
+      if(!q||!res.length){dd.style.display='none';return;}
+      dd.innerHTML=res.map(p=>`<div class="lemb-it" data-id="${esc(p.id)}" data-nome="${esc(p.nome)}">${esc(p.nome)}</div>`).join('');dd.style.display='block';
+      dd.querySelectorAll('.lemb-it').forEach(it=>it.onmousedown=()=>{box.dataset.folder=it.dataset.id;box.dataset.fnome=it.dataset.nome;inp.value=it.dataset.nome;dd.style.display='none';});};
+    inp.oninput=filtra;inp.onfocus=filtra;inp.onblur=()=>setTimeout(()=>{dd.style.display='none';},160);
+    box.querySelector('#lemb-ok-'+id).onclick=()=>{setDisp(id);fecha(id);};
+    box.querySelector('#lemb-rec-'+id).onclick=()=>{
+      const fid=box.dataset.folder; if(!fid){toast('Escolhe a pasta de cliente');return;}
+      const data=(ev[A_.data]||'').slice(0,10);
+      if(typeof window.nucAbrirCaixaContactos==='function')
+        window.nucAbrirCaixaContactos({driveId:(typeof bibliotecaId!=='undefined'?bibliotecaId:null),itemId:fid,pastaNome:box.dataset.fnome||'',escritura:{data,finalidade:''}});
+      else toast('Núcleo de contactos indisponível');
+    };
+    ensurePastas();
+  }
+  function tick(){
+    if(typeof todosEventos==='undefined'||!todosEventos)return;
+    const now=Date.now(), h=hojeStr();
+    todosEventos.forEach(ev=>{
+      if(!ev.id||disp(ev.id)||document.getElementById('lemb-'+ev.id))return;
+      if((ev[A_.data]||'').slice(0,10)!==h)return;
+      if(EXCLUIR.test((ev[A_.tipo]||'')+' '+(ev[A_.titulo]||'')))return;
+      const fd=fimDate(ev); if(!fd)return;
+      if(now>=fd.getTime()-ANTEC*60000) mostra(ev);
+    });
+  }
+  function start(){ ensurePastas(); tick(); setInterval(tick,INT); }
+  if(document.readyState!=='loading')start();else document.addEventListener('DOMContentLoaded',start);
+})();
+</script>
+
 </body>
 </html>
