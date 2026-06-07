@@ -1164,8 +1164,7 @@ async function carregarRascunho(daPasta=false){
       if(r.ok){restaurarDadosCompleto(await r.json());showToast('Rascunho carregado!','success');return;}
     }catch(e){}
   }
-  const raw=localStorage.getItem('cv_rascunho');
-  if(raw){try{restaurarDadosCompleto(JSON.parse(raw));document.getElementById('rascunho-status').style.display='inline-flex';}catch(e){}}
+  // (sem fallback de localStorage: rascunho só carrega da pasta identificada)
 }
 function limparFormulario(){if(!confirm('Limpar tudo?'))return;localStorage.removeItem('cv_rascunho');location.reload();}
 
@@ -1654,7 +1653,6 @@ function carregarScript(src){return new Promise((r,j)=>{const s=document.createE
 window.onload=()=>{
   addOutorgante('vendedores','Vendedor');
   addOutorgante('compradores','Comprador');
-  carregarRascunho();
   carregarPastasSP();
 };
 </script>

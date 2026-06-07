@@ -182,11 +182,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
-      <!-- AP Aquisição -->
-      <div class="form-group">
-        <label class="form-label">AP da aquisição (a favor da parte vendedora) <span>*</span></label>
-        <input type="text" class="form-input" id="ap-aquisicao" placeholder="Ex: Ap. 12 de 2015/04/20">
-      </div>
 
       <!-- MATRIZES URBANAS (fração, urbano, misto) -->
       <div id="matriz-urbana-fields">
@@ -1114,27 +1109,28 @@ function gerarTextoImovel(){
   const conserv=v('conservatoria');
   const numDesc=v('num-descricao');
   const freg=v('freguesia-conservatoria');
-  const ap=v('ap-aquisicao');
   const desc=v('descricao-predio');
 
-  // Matrizes urbanas
+  // Matrizes — só as que correspondem ao tipo de prédio, e só linhas com artigo preenchido
+  const incUrb=(tipo==='fracao'||tipo==='urbano'||tipo==='misto');
+  const incRus=(tipo==='rustico'||tipo==='misto');
   const musEl=document.querySelectorAll('[id^="mu-"][id$="-artigo"]');
-  const mus=[...musEl].map(el=>{
+  const mus=incUrb?[...musEl].map(el=>{
     const idx=el.id.replace('mu-','').replace('-artigo','');
-    const art=el.value;const fregM=document.getElementById(`mu-${idx}-freguesia`)?.value||'';
+    const art=(el.value||'').trim();if(!art)return null;
+    const fregM=document.getElementById(`mu-${idx}-freguesia`)?.value||'';
     const vpt=document.getElementById(`mu-${idx}-vpt`)?.value||'';const ano=document.getElementById(`mu-${idx}-ano`)?.value||'';
     return `artigo matricial ${art}, da freguesia de ${fregM}, a que corresponde o valor patrimonial tributário de ${vpt} EUROS, determinado no ano de ${ano}`;
-  }).filter(Boolean);
-
-  // Matrizes rústicas
+  }).filter(Boolean):[];
   const mrsEl=document.querySelectorAll('[id^="mr-"][id$="-artigo"]');
-  const mrs=[...mrsEl].map(el=>{
+  const mrs=incRus?[...mrsEl].map(el=>{
     const idx=el.id.replace('mr-','').replace('-artigo','');
-    const art=el.value;const sec=document.getElementById(`mr-${idx}-seccao`)?.value||'';
+    const art=(el.value||'').trim();if(!art)return null;
+    const sec=document.getElementById(`mr-${idx}-seccao`)?.value||'';
     const fregM=document.getElementById(`mr-${idx}-freguesia`)?.value||'';
     const vpt=document.getElementById(`mr-${idx}-vpt`)?.value||'';const ano=document.getElementById(`mr-${idx}-ano`)?.value||'';
     return `artigo matricial ${art}${sec?', secção '+sec:''}, da freguesia de ${fregM}, a que corresponde o valor patrimonial tributário de ${vpt} EUROS, determinado no ano de ${ano}`;
-  }).filter(Boolean);
+  }).filter(Boolean):[];
 
   let txt='';
   if(tipo==='fracao'){
@@ -1148,9 +1144,10 @@ function gerarTextoImovel(){
     txt=`do prédio urbano, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }
 
-  if(mus.length) txt+=`, inscrito na matriz predial urbana sob o ${mus.join(' e o ')}`;
-  if(mrs.length) txt+=`, e na matriz predial rústica sob o ${mrs.join(' e o ')}`;
-  if(ap) txt+=`, adquirido pela ${ap}`;
+  const _matr=[];
+  if(mus.length) _matr.push(`na matriz predial urbana sob o ${mus.join(' e o ')}`);
+  if(mrs.length) _matr.push(`na matriz predial rústica sob o ${mrs.join(' e o ')}`);
+  if(_matr.length) txt+=`, inscrito ${_matr.join(' e ')}`;
   return txt;
 }
 

@@ -1976,7 +1976,7 @@ tbody tr:hover td{background:#FAFAF8}
             <div class="field-grid">
               <div class="field-group field-full">
                 <div class="field-label">Título / Descrição *</div>
-                <input class="form-input" id="av-p-titulo" placeholder="Ex: João Silva — CPCV">
+                <input class="form-input" id="av-p-titulo" placeholder="Ex: Largo de Santo Amaro, Beja">
                 <div class="form-hint" id="av-p-titulo-hint" style="display:none;color:#f59e0b;font-weight:500;margin-top:4px"></div>
               </div>
               <div class="field-group">
@@ -9647,7 +9647,7 @@ function avPainelServicoChange(){
     if(serv==='CARTAS CONFINANTES')titulo.placeholder='Ex: Rua do Pinheiro, Carapuções, Coruche';
   }else{
     hint.style.display='none';
-    titulo.placeholder='Ex: João Silva — CPCV';
+    titulo.placeholder='Ex: Largo de Santo Amaro, Beja';
   }
 }
 
@@ -9663,7 +9663,7 @@ function abrirPainelAvencaNovo(){
   document.getElementById('av-p-urgente').checked=false;
   document.getElementById('av-p-pasta-wrap').style.display='none';
   document.getElementById('av-p-titulo-hint').style.display='none';
-  document.getElementById('av-p-titulo').placeholder='Ex: João Silva — CPCV';
+  document.getElementById('av-p-titulo').placeholder='Ex: Largo de Santo Amaro, Beja';
   document.getElementById('av-overlay').style.display='block';
   document.getElementById('av-painel').classList.add('open');
 }
