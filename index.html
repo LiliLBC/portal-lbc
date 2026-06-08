@@ -2627,6 +2627,20 @@ function abrirModalCodDeposito(){
   renderContactosNoModal(contactos);
   depSetTab('email');
   document.getElementById('modal-cod-deposito').classList.add('show');
+  // Enriquecer com os contactos guardados na pasta (CONTACTOS_CLIENTE.json), se existirem
+  if(typeof window.nucContactosRegisto==='function'){
+    window.nucContactosRegisto().then(fc=>{
+      if(!fc||(!fc.emails.length&&!fc.telefones.length))return;
+      const dedup=arr=>{const s=new Set();return arr.filter(x=>{const k=(x.valor||'').toLowerCase();if(!k||s.has(k))return false;s.add(k);return true;});};
+      const merged={emails:dedup([...fc.emails,...contactos.emails]),telefones:dedup([...fc.telefones,...contactos.telefones])};
+      const cEm=merged.emails.find(e=>e.tipo==='Comprador')||merged.emails[0];
+      const cTel=merged.telefones.find(t=>t.tipo==='Comprador')||merged.telefones[0];
+      const elE=document.getElementById('dep-email-para'); if(elE&&!elE.value.trim()&&cEm)elE.value=cEm.valor;
+      const elT=document.getElementById('dep-wa-telefone');
+      if(elT&&(!elT.value||elT.value==='351')&&cTel){let n=cTel.valor.replace(/[\s+()-]/g,'');if(n&&!n.startsWith('351')&&n.length===9)n='351'+n;elT.value=n;}
+      renderContactosNoModal(merged);
+    }).catch(()=>{});
+  }
 }
 
 // Mostra os contactos como botões clicáveis para preencher rapidamente
@@ -10896,6 +10910,18 @@ init();
   }
 
   function ctxRegisto(){const pasta=resolvePasta()||{driveId:null,itemId:null,pastaNome:''};return {...pasta,escritura:escrituraDoPainel()};}
+
+  // Lê os contactos guardados na pasta do registo aberto e devolve no formato {emails,telefones}
+  async function contactosDoRegistoParaModal(){
+    const pasta=resolvePasta(); if(!pasta||!pasta.itemId)return null;
+    try{
+      const d=await gGet(`${GBASE}/drives/${pasta.driveId}/items/${pasta.itemId}:/${NUC.ficheiro}:/content`);
+      const emails=[],telefones=[];
+      (d.pessoas||[]).forEach(p=>{ if(p.email)emails.push({tipo:p.papel||'',valor:p.email}); if(p.telm)telefones.push({tipo:p.papel||'',valor:p.telm}); });
+      return {emails,telefones,pessoas:d.pessoas||[]};
+    }catch(e){return null;}
+  }
+  window.nucContactosRegisto=contactosDoRegistoParaModal;
 
   // ── injeta os botões no painel do registo (sem reescrever nada) ──────────
   function injetarBotoes(){
