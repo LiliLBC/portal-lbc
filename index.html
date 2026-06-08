@@ -10759,21 +10759,64 @@ init();
     <div class="nuc-cc"><input class="nuc-f telm" value="${esc(p.telm)}" placeholder="Telemóvel" inputmode="tel">
     <input class="nuc-f email" type="email" value="${esc(p.email)}" placeholder="Email"></div></div>`;}
 
+  async function nucEnsurePastas(){
+    const has=()=>(typeof pastasPainel!=='undefined'&&pastasPainel&&pastasPainel.length)||(typeof todasPastasClientes!=='undefined'&&todasPastasClientes&&todasPastasClientes.length);
+    if(has())return;
+    if(typeof carregarPastasPainel!=='function')return;
+    for(let i=0;i<25&&(typeof bibliotecaId==='undefined'||!bibliotecaId);i++){await new Promise(r=>setTimeout(r,200));}
+    try{await carregarPastasPainel();}catch(e){}
+  }
+  function nucListaPastas(){const a=(typeof pastasPainel!=='undefined'&&pastasPainel)||[];const b=(typeof todasPastasClientes!=='undefined'&&todasPastasClientes)||[];const mp=new Map();[...a,...b].forEach(p=>{if(p&&p.id&&!mp.has(p.id))mp.set(p.id,p);});return [...mp.values()];}
+
   async function abrirCaixa(c){
+    c=c||{};
+    const temPasta=!!(c.driveId&&c.itemId);
+    const cliente=(c.escritura&&c.escritura.clienteNome)||c.clienteNome||'';
     const m=document.getElementById('nuc-modal');
-    m.innerHTML=`<h3>Recolher contactos</h3><div class="nuc-sub">${esc(c.pastaNome||'(pasta não ligada)')} · ${esc(c.escritura&&c.escritura.proc||'')}</div>
+    m.innerHTML=`<h3>Recolher contactos</h3>
+      <div class="nuc-sub" id="nuc-pasta-info">${temPasta?esc(c.pastaNome||'pasta ligada'):'Escolhe a pasta de cliente onde guardar'}</div>
+      ${temPasta?'':`<input class="nuc-f" id="nuc-srch" placeholder="Pasta de cliente (nome)" autocomplete="off" value="${esc(cliente)}"><div id="nuc-dd" style="display:none;border:1px solid #E5E2DC;border-radius:7px;max-height:150px;overflow:auto;margin-top:3px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.12)"></div>`}
       <div class="nuc-lbl">Finalidade da escritura</div>
       <select class="nuc-f" id="nuc-fin"><option value="">— escolher —</option><option value="hpp">Habitação própria permanente</option><option value="outra">Outra (investimento, terreno, 2.ª habitação)</option></select>
       <div class="nuc-lbl">Pessoas (do rascunho) + imobiliária</div>
-      <div id="nuc-pessoas"><div class="nuc-sub">A ler o rascunho…</div></div>
+      <div id="nuc-pessoas"><div class="nuc-sub">${temPasta?'A ler o rascunho…':'Escolhe a pasta para carregar compradores e vendedores do rascunho.'}</div></div>
       <button class="nuc-add" id="nuc-addp">+ adicionar pessoa (imobiliária / outro)</button>
       <div class="nuc-acts"><button class="s" id="nuc-guardar">Guardar na pasta</button><button class="o" id="nuc-ok">OK</button></div>`;
     ov.classList.add('show');
+    if(c.escritura&&c.escritura.finalidade){const fe=document.getElementById('nuc-fin');if(fe)fe.value=c.escritura.finalidade;}
     document.getElementById('nuc-ok').onclick=fechar;
     document.getElementById('nuc-addp').onclick=()=>document.getElementById('nuc-pessoas').insertAdjacentHTML('beforeend',pHTML({nome:'',papel:'Imobiliária',genero:'',nif:'',nascimento:'',telm:'',email:''}));
     document.getElementById('nuc-guardar').onclick=()=>guardar(c);
-    let pessoas=[];try{pessoas=await lerRascunho(c);}catch(e){}
-    document.getElementById('nuc-pessoas').innerHTML=(pessoas.length?pessoas:[{nome:'',papel:'Comprador',genero:'',nif:'',nascimento:'',telm:'',email:''}]).map(pHTML).join('');
+
+    async function carregaPessoas(){
+      let pessoas=[];try{pessoas=await lerRascunho(c);}catch(e){}
+      const base=pessoas.length?pessoas:[{nome:'',papel:'Comprador',genero:'',nif:'',nascimento:'',telm:'',email:''}];
+      const imob=[{nome:'',papel:'Imobiliária',genero:'',nif:'',nascimento:'',telm:'',email:''},{nome:'',papel:'Imobiliária',genero:'',nif:'',nascimento:'',telm:'',email:''}];
+      document.getElementById('nuc-pessoas').innerHTML=[...base,...imob].map(pHTML).join('');
+    }
+
+    if(temPasta){ carregaPessoas(); return; }
+
+    // sem pasta: seletor dentro do formulário
+    const inp=document.getElementById('nuc-srch'), dd=document.getElementById('nuc-dd');
+    const filtra=()=>{
+      const raw=(inp.value||'').toLowerCase().trim(); const arr=nucListaPastas();
+      if(!arr.length){dd.innerHTML='<div style="padding:6px 9px;font-size:13px;color:#999">A carregar pastas… aguarda um instante</div>';dd.style.display='block';return;}
+      if(!raw){dd.style.display='none';return;}
+      const words=raw.split(/\s+/).filter(w=>w.length>2);
+      let res=arr.filter(p=>{const n=(p.nome||'').toLowerCase();return n.includes(raw)||(words.length&&words.every(w=>n.includes(w)));}).slice(0,8);
+      if(!res.length){dd.innerHTML='<div style="padding:6px 9px;font-size:13px;color:#999">Sem correspondência — escreve menos do nome</div>';dd.style.display='block';return;}
+      dd.innerHTML=res.map(p=>`<div class="nuc-ddit" data-id="${esc(p.id)}" data-nome="${esc(p.nome)}" style="padding:6px 9px;font-size:13px;cursor:pointer">${esc(p.nome)}</div>`).join('');dd.style.display='block';
+      dd.querySelectorAll('.nuc-ddit[data-id]').forEach(it=>it.onmousedown=()=>{
+        c.driveId=(typeof bibliotecaId!=='undefined'?bibliotecaId:null);c.itemId=it.dataset.id;c.pastaNome=it.dataset.nome;
+        inp.value=it.dataset.nome;dd.style.display='none';
+        document.getElementById('nuc-pasta-info').textContent=it.dataset.nome;
+        document.getElementById('nuc-pessoas').innerHTML='<div class="nuc-sub">A ler o rascunho…</div>';
+        carregaPessoas();
+      });
+    };
+    inp.oninput=filtra;inp.onfocus=filtra;inp.onblur=()=>setTimeout(()=>{dd.style.display='none';},170);
+    nucEnsurePastas().then(()=>{ if(document.getElementById('nuc-srch')) filtra(); });
   }
   function recolher(){
     const out=[];
@@ -10787,7 +10830,7 @@ init();
   async function guardar(c){
     const pessoas=recolher();
     if(!pessoas.length){toast('Sem contactos preenchidos');return;}
-    if(!c.driveId||!c.itemId){toast('Liga primeiro a pasta do cliente ao registo');return;}
+    if(!c.driveId||!c.itemId){toast('Escolhe a pasta de cliente primeiro');return;}
     const escritura={...(c.escritura||{}),finalidade:val('nuc-fin')};
     const dados={pasta:c.pastaNome,escritura,pessoas,gravadoEm:new Date().toISOString()};
     const token=tk();if(!token){toast('Sem sessão Graph');return;}
@@ -10863,7 +10906,7 @@ init();
     div.innerHTML=`<button type="button" class="nuc-btn" id="nuc-carregar">📇 Carregar contactos</button><button type="button" class="nuc-btn" id="nuc-mais">＋ contactos</button>`;
     host.insertAdjacentElement('afterend',div);
     document.getElementById('nuc-carregar').onclick=()=>{const c=ctxRegisto();if(!c.itemId){toast('Liga a pasta do cliente ao registo primeiro');return;}ver(c);};
-    document.getElementById('nuc-mais').onclick=()=>{const c=ctxRegisto();if(!c.itemId){toast('Liga a pasta do cliente ao registo primeiro');return;}abrirCaixa(c);};
+    document.getElementById('nuc-mais').onclick=()=>abrirCaixa(ctxRegisto());
   }
   // estende abrirPainelRegisto sem o substituir
   if(typeof window.abrirPainelRegisto==='function'){
@@ -11232,33 +11275,17 @@ ${eye}${head}
   function mostra(ev){
     const id=ev.id; if(!id||document.getElementById('lemb-'+id)||disp(id))return;
     const titulo=ev[A_.titulo]||'Escritura', hf=ev[A_.horaFim]||'';
-    const box=document.createElement('div');box.className='lemb';box.id='lemb-'+id;box.dataset.folder='';box.dataset.fnome='';
+    const box=document.createElement('div');box.className='lemb';box.id='lemb-'+id;
     box.innerHTML=`<div class="lemb-head"><div class="lemb-alert">!</div><div><div class="lemb-t">Escritura a terminar — recolher contactos</div><div class="lemb-s">${esc(titulo)} · termina ${esc(hf)}</div></div></div>
-      <input class="lemb-f" id="lemb-srch-${id}" placeholder="Pasta de cliente (nome)" autocomplete="off" value="${esc(titulo)}">
-      <div class="lemb-dd" id="lemb-dd-${id}"></div>
       <div class="lemb-acts"><button class="lemb-rec" id="lemb-rec-${id}">Recolher contactos</button><button class="lemb-ok" id="lemb-ok-${id}">OK</button></div>`;
     host.appendChild(box);
-    const inp=box.querySelector('#lemb-srch-'+id), dd=box.querySelector('#lemb-dd-'+id);
-    const filtra=()=>{
-      const raw=(inp.value||'').toLowerCase().trim();
-      const arr=listaPastas();
-      if(!arr.length){dd.innerHTML='<div class="lemb-it" style="color:#999">A carregar pastas… aguarda um instante</div>';dd.style.display='block';return;}
-      if(!raw){dd.style.display='none';return;}
-      const words=raw.split(/\s+/).filter(w=>w.length>2);
-      let res=arr.filter(p=>{const n=(p.nome||'').toLowerCase();return n.includes(raw)||(words.length&&words.every(w=>n.includes(w)));}).slice(0,8);
-      if(!res.length){dd.innerHTML='<div class="lemb-it" style="color:#999">Sem correspondência — apaga e escreve menos do nome</div>';dd.style.display='block';return;}
-      dd.innerHTML=res.map(p=>`<div class="lemb-it" data-id="${esc(p.id)}" data-nome="${esc(p.nome)}">${esc(p.nome)}</div>`).join('');dd.style.display='block';
-      dd.querySelectorAll('.lemb-it[data-id]').forEach(it=>it.onmousedown=()=>{box.dataset.folder=it.dataset.id;box.dataset.fnome=it.dataset.nome;inp.value=it.dataset.nome;dd.style.display='none';});};
-    inp.oninput=filtra;inp.onfocus=filtra;inp.onblur=()=>setTimeout(()=>{dd.style.display='none';},160);
     box.querySelector('#lemb-ok-'+id).onclick=()=>{setDisp(id);fecha(id);};
     box.querySelector('#lemb-rec-'+id).onclick=()=>{
-      const fid=box.dataset.folder; if(!fid){toast('Escolhe a pasta de cliente');return;}
       const data=(ev[A_.data]||'').slice(0,10);
       if(typeof window.nucAbrirCaixaContactos==='function')
-        window.nucAbrirCaixaContactos({driveId:(typeof bibliotecaId!=='undefined'?bibliotecaId:null),itemId:fid,pastaNome:box.dataset.fnome||'',escritura:{data,finalidade:''}});
+        window.nucAbrirCaixaContactos({clienteNome:titulo,escritura:{data,finalidade:'',clienteNome:titulo}});
       else toast('Núcleo de contactos indisponível');
     };
-    ensurePastas().then(()=>{ if(document.getElementById('lemb-'+id)) filtra(); });
   }
   function tick(){
     if(typeof todosEventos==='undefined'||!todosEventos)return;
