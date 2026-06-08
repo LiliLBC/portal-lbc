@@ -4596,6 +4596,19 @@ async function sincronizarTodosCGD(){
     return (na===true||na==='true'||na===1||na==='1');
   };
 
+  // Limpeza por DATA: apagar do mapa tudo o que tenha Data Pretendida <= hoje (inclusive)
+  const _serialDe=v=>{
+    if(v===''||v==null)return null;
+    if(typeof v==='number')return v;                 // já é serial Excel
+    const s=String(v).trim();let y,m,d,mt;
+    if(mt=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)){y=+mt[1];m=+mt[2];d=+mt[3];}
+    else if(mt=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)){d=+mt[1];m=+mt[2];y=+mt[3];}
+    else return null;
+    return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);
+  };
+  const _hoje=new Date();
+  const hojeSerial=Math.round((Date.UTC(_hoje.getFullYear(),_hoje.getMonth(),_hoje.getDate())-Date.UTC(1899,11,30))/86400000);
+
   // 2) Ler o Excel e identificar quais linhas apagar
   //    Regra: apagar SE existir evento no calendário com mesmo nº processo E checkbox desmarcada
   //    Órfãos (sem evento no calendário) → DEIXAR EM PAZ
@@ -4613,15 +4626,14 @@ async function sincronizarTodosCGD(){
     const range=await rangeRes.json();
     valoresExcel=range.values||[];
     for(let i=0;i<valoresExcel.length;i++){
+      // 1) Regra por DATA: Data Pretendida (coluna C, índice 2) <= hoje → apagar (todas as linhas, órfãos incluídos)
+      const serialPret=_serialDe(valoresExcel[i][2]);
+      if(serialPret!==null && serialPret<=hojeSerial){ linhasParaApagar.push(i); continue; }
       const ref=String(valoresExcel[i][1]||'').trim();
       if(!ref)continue; // linha vazia
+      // 2) Regra da checkbox: existe no calendário com "Não Adjudicado" desmarcada (já adjudicado) → apagar
       const naStatus=naMarcadaParaProc(ref);
-      // naStatus === null → órfão (não existe no calendário) → NÃO apagar
-      // naStatus === false → existe mas checkbox desmarcada (já adjudicado) → APAGAR
-      // naStatus === true → continua a ser válido para o mapa → NÃO apagar
-      if(naStatus===false){
-        linhasParaApagar.push(i);
-      }
+      if(naStatus===false){ linhasParaApagar.push(i); }
     }
   }catch(e){
     showToast('Erro a ler Excel: '+e.message,'error');
@@ -4633,7 +4645,9 @@ async function sincronizarTodosCGD(){
     const num=(f[A.numProcesso]||'').trim();
     const na=f[A.naoAdjudicado];
     const naMarc=(na===true||na==='true'||na===1||na==='1');
-    return num&&naMarc;
+    const sp=_serialDe((f[A.data]||'').substring(0,10));
+    const futuro=(sp!==null&&sp>hojeSerial); // não reinserir os que já passaram ou são de hoje
+    return num&&naMarc&&futuro;
   });
   const ignorados=itensCalendario.filter(f=>{
     const num=(f[A.numProcesso]||'').trim();
@@ -4644,9 +4658,9 @@ async function sincronizarTodosCGD(){
 
   // 4) Confirmação detalhada
   const partes=[];
-  partes.push(`APAGAR ${linhasParaApagar.length} linha(s) cuja checkbox "Não Adjudicado" está desmarcada (já adjudicados na plataforma)`);
-  partes.push(`Inserir/atualizar ${validos.length} processo(s) com checkbox marcada`);
-  const msg=`A sincronização vai:\n\n• ${partes.join('\n• ')}\n\nProcessos órfãos no Excel (sem evento no calendário) ficam intactos.\n\nContinuar?`;
+  partes.push(`APAGAR ${linhasParaApagar.length} linha(s): Data Pretendida até hoje, inclusive (e/ou já adjudicadas)`);
+  partes.push(`Inserir/atualizar ${validos.length} processo(s) futuros com checkbox marcada`);
+  const msg=`A sincronização vai:\n\n• ${partes.join('\n• ')}\n\nNota: linhas com Data Pretendida ≤ hoje são apagadas, mesmo as órfãs.\n\nContinuar?`;
   if(!confirm(msg))return;
 
   showToast('A sincronizar mapa CGD...','info');

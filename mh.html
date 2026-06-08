@@ -2167,14 +2167,19 @@ function gerarTextoMutuario(o) {
   }
   const g = o.genero === 'F';
   const ec = estadoCivilTexto(o.estadoCivil, o.genero);
+  const idCC = `portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}`;
+  if (o.estadoCivil === 'casado' && o.conjugeOutorgante === 'sim') {
+    const gc = o.conjugeGenero === 'F';
+    return `${o.nome}, natural de ${o.naturalidade}, ${idCC}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, e número de identificação fiscal ${o.conjugeNIF}, ambos residentes em ${o.moradaConjunta};`;
+  }
   if (o.estadoCivil === 'casado') {
-    let txt = `${o.nome}, natural de ${o.naturalidade}, NIF ${o.nif}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)}`;
+    let txt = `${o.nome}, natural de ${o.naturalidade}, ${idCC}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)}`;
     if (o.conjugeNome) txt += ` com ${o.conjugeNome}`;
     if (o.conjugeNIF) txt += `, NIF ${o.conjugeNIF}`;
-    txt += ';';
+    txt += `, residente em ${o.morada};`;
     return txt;
   }
-  return `${o.nome}, natural de ${o.naturalidade}, NIF ${o.nif}, ${ec};`;
+  return `${o.nome}, natural de ${o.naturalidade}, ${idCC}, ${ec}, residente em ${o.morada};`;
 }
 
 function estadoCivilTexto(ec, genero) {
