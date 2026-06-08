@@ -11218,7 +11218,15 @@ ${eye}${head}
 
   function hojeStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   function fimDate(ev){const data=(ev[A_.data]||'').slice(0,10);const hf=(ev[A_.horaFim]||'').trim();if(!data||!hf)return null;const m=hf.match(/(\d{1,2}):(\d{2})/);if(!m)return null;const d=new Date(data+'T00:00:00');d.setHours(+m[1],+m[2],0,0);return d;}
-  async function ensurePastas(){ if((typeof pastasPainel==='undefined'||!pastasPainel||!pastasPainel.length)&&typeof carregarPastasPainel==='function'){try{await carregarPastasPainel();}catch(e){}} }
+  function temPastas(){return (typeof pastasPainel!=='undefined'&&pastasPainel&&pastasPainel.length)||(typeof todasPastasClientes!=='undefined'&&todasPastasClientes&&todasPastasClientes.length);}
+  function listaPastas(){const a=(typeof pastasPainel!=='undefined'&&pastasPainel)||[];const b=(typeof todasPastasClientes!=='undefined'&&todasPastasClientes)||[];const m=new Map();[...a,...b].forEach(p=>{if(p&&p.id&&!m.has(p.id))m.set(p.id,p);});return [...m.values()];}
+  async function ensurePastas(){
+    if(temPastas())return;
+    if(typeof carregarPastasPainel!=='function')return;
+    // esperar que bibliotecaId esteja disponível (até ~5s)
+    for(let i=0;i<25 && (typeof bibliotecaId==='undefined'||!bibliotecaId);i++){await new Promise(r=>setTimeout(r,200));}
+    try{await carregarPastasPainel();}catch(e){}
+  }
   const fecha=id=>{const el=document.getElementById('lemb-'+id);if(el)el.remove();};
 
   function mostra(ev){
@@ -11231,10 +11239,16 @@ ${eye}${head}
       <div class="lemb-acts"><button class="lemb-rec" id="lemb-rec-${id}">Recolher contactos</button><button class="lemb-ok" id="lemb-ok-${id}">OK</button></div>`;
     host.appendChild(box);
     const inp=box.querySelector('#lemb-srch-'+id), dd=box.querySelector('#lemb-dd-'+id);
-    const filtra=()=>{const q=(inp.value||'').toLowerCase().trim();const arr=(typeof pastasPainel!=='undefined'&&pastasPainel)||[];const res=arr.filter(p=>(p.nome||'').toLowerCase().includes(q)).slice(0,6);
-      if(!q||!res.length){dd.style.display='none';return;}
+    const filtra=()=>{
+      const raw=(inp.value||'').toLowerCase().trim();
+      const arr=listaPastas();
+      if(!arr.length){dd.innerHTML='<div class="lemb-it" style="color:#999">A carregar pastas… aguarda um instante</div>';dd.style.display='block';return;}
+      if(!raw){dd.style.display='none';return;}
+      const words=raw.split(/\s+/).filter(w=>w.length>2);
+      let res=arr.filter(p=>{const n=(p.nome||'').toLowerCase();return n.includes(raw)||(words.length&&words.every(w=>n.includes(w)));}).slice(0,8);
+      if(!res.length){dd.innerHTML='<div class="lemb-it" style="color:#999">Sem correspondência — apaga e escreve menos do nome</div>';dd.style.display='block';return;}
       dd.innerHTML=res.map(p=>`<div class="lemb-it" data-id="${esc(p.id)}" data-nome="${esc(p.nome)}">${esc(p.nome)}</div>`).join('');dd.style.display='block';
-      dd.querySelectorAll('.lemb-it').forEach(it=>it.onmousedown=()=>{box.dataset.folder=it.dataset.id;box.dataset.fnome=it.dataset.nome;inp.value=it.dataset.nome;dd.style.display='none';});};
+      dd.querySelectorAll('.lemb-it[data-id]').forEach(it=>it.onmousedown=()=>{box.dataset.folder=it.dataset.id;box.dataset.fnome=it.dataset.nome;inp.value=it.dataset.nome;dd.style.display='none';});};
     inp.oninput=filtra;inp.onfocus=filtra;inp.onblur=()=>setTimeout(()=>{dd.style.display='none';},160);
     box.querySelector('#lemb-ok-'+id).onclick=()=>{setDisp(id);fecha(id);};
     box.querySelector('#lemb-rec-'+id).onclick=()=>{
@@ -11244,7 +11258,7 @@ ${eye}${head}
         window.nucAbrirCaixaContactos({driveId:(typeof bibliotecaId!=='undefined'?bibliotecaId:null),itemId:fid,pastaNome:box.dataset.fnome||'',escritura:{data,finalidade:''}});
       else toast('Núcleo de contactos indisponível');
     };
-    ensurePastas();
+    ensurePastas().then(()=>{ if(document.getElementById('lemb-'+id)) filtra(); });
   }
   function tick(){
     if(typeof todosEventos==='undefined'||!todosEventos)return;
