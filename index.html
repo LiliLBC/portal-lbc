@@ -10984,7 +10984,7 @@ init();
   const css=`
   .aniv-badge{background:#DC3545;color:#fff;font-size:11px;font-weight:600;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto}
   #screen-aniversarios{padding:0}
-  .aniv-wrap{max-width:760px}
+  .aniv-wrap{max-width:920px}
   .aniv-card{background:var(--surface,#fff);border:1px solid var(--border,#E5E2DC);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .aniv-h{display:flex;align-items:center;gap:10px;margin-bottom:4px}.aniv-h h3{font-size:15px;font-weight:600;margin:0}
   .aniv-grp{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#9B97A2;margin:14px 0 6px}
@@ -11005,7 +11005,14 @@ init();
   .aniv-fld{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid #E5E2DC;border-radius:8px;margin-bottom:8px}
   .aniv-row{display:flex;gap:8px;justify-content:flex-end}
   .aniv-b{font-family:inherit;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #E5E2DC;background:#fff;cursor:pointer}
-  .aniv-b.prim{background:#6E5A9E;border-color:#6E5A9E;color:#fff}.aniv-b.wa{background:#25D366;border-color:#25D366;color:#fff}`;
+  .aniv-b.prim{background:#6E5A9E;border-color:#6E5A9E;color:#fff}.aniv-b.wa{background:#25D366;border-color:#25D366;color:#fff}
+  .aniv-star{font-size:16px;line-height:1;padding:5px 7px;border-radius:8px;border:1px solid #E5E2DC;background:#fff;cursor:pointer;color:#C9A227}.aniv-star.on{background:#FCF3D6;border-color:#E6C84A}
+  .aniv-cal-h{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}.aniv-cal-tit{font-weight:600;font-size:14px;min-width:150px;text-align:center}
+  .aniv-cal-wd{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}.aniv-cal-wd>div{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#9B97A2;text-align:center;padding:2px 0}
+  .aniv-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .aniv-cell{min-height:62px;border:1px solid var(--border,#E5E2DC);border-radius:8px;padding:3px 4px;display:flex;flex-direction:column;gap:2px}.aniv-cell.vazia{border:none;background:transparent}.aniv-cell.hoje{border-color:#6E5A9E;box-shadow:inset 0 0 0 1px #6E5A9E}
+  .aniv-daynum{font-size:11px;color:#6B6770;font-weight:600}
+  .aniv-bday{font-size:10px;padding:2px 5px;border-radius:6px;border:1px solid;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
   const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 
   const PAL={ aniversario:{bg:'#FBF3F0',card:'#8A5A60',ac:'#C49088',tx:'#8A5A60',bd:'#936C70',av:'av-rose',chip:'chip-rose',et:'Aniversário'},
@@ -11073,12 +11080,15 @@ ${eye}${head}
     if(!_list){const ls=await gGet(`${GBASE}/sites/${_site}/lists?$select=id,name,displayName`);const l=(ls.value||[]).find(x=>(x.name||'').toLowerCase()===ANIV.listName||(x.displayName||'').toLowerCase()===ANIV.listName);if(!l)throw new Error('ListaAniversarios não encontrada');_list=l.id;}
     if(!_cols){let cols=[];try{cols=(await gGet(`${GBASE}/sites/${_site}/lists/${_list}/columns?$select=name,displayName`)).value||[];}catch(e){}
       const f=w=>{const ww=w.toLowerCase();const c=cols.find(x=>(x.name||'').toLowerCase()===ww||(x.displayName||'').toLowerCase()===ww);return c?c.name:w;};
-      _cols={titulo:'Title',email:f('Email'),tel:f('Telemovel'),tipo:f('TipoA'),data:f('DataReferencia'),finalidade:f('Finalidade'),nif:f('NIF'),genero:f('Genero'),ativo:f('Ativo')};}
+      _cols={titulo:'Title',email:f('Email'),tel:f('Telemovel'),tipo:f('TipoA'),data:f('DataReferencia'),finalidade:f('Finalidade'),nif:f('NIF'),genero:f('Genero'),ativo:f('Ativo'),especial:f('Especial')};}
   }
   function diasAte(mes,dia){const h=new Date();const a=new Date(h.getFullYear(),mes-1,dia);if(a<new Date(h.getFullYear(),h.getMonth(),h.getDate()))a.setFullYear(h.getFullYear()+1);return Math.round((a-new Date(h.getFullYear(),h.getMonth(),h.getDate()))/86400000);}
+  function lerEspeciaisLS(){try{return JSON.parse(localStorage.getItem('lbc_aniv_especiais')||'{}');}catch(e){return {};}}
+  function gravarEspeciaisLS(o){try{localStorage.setItem('lbc_aniv_especiais',JSON.stringify(o));}catch(e){}}
   async function carregar(){
     await resolver();const C=_cols;
     const rows=((await gGet(`${GBASE}/sites/${_site}/lists/${_list}/items?$expand=fields&$top=2000`)).value||[]);
+    const espLS=lerEspeciaisLS();
     const hoje=new Date();const evs=[];
     rows.forEach(row=>{
       const fl=row.fields||{};
@@ -11087,9 +11097,16 @@ ${eye}${head}
       const tipoA=fl[C.tipo]||'Aniversário';
       let tipo='aniversario',anos=0;
       if(tipoA==='Escritura'){tipo=(fl[C.finalidade]||'').toLowerCase()==='hpp'?'escritura_hpp':'escritura_outra';anos=hoje.getFullYear()-ano;if(anos<1)anos=1;}
-      evs.push({id:row.id,tipoA,dataISO:d,finalidade:fl[C.finalidade]||'',nif:fl[C.nif]||'',tipo,nome:fl[C.titulo]||'',genero:fl[C.genero]||'M',anos,email:fl[C.email]||'',tel:fl[C.tel]||'',dias:diasAte(m,dia)});
+      const espField=(fl[C.especial]===true||fl[C.especial]===1||fl[C.especial]==='1'||fl[C.especial]==='true');
+      evs.push({id:row.id,tipoA,dataISO:d,finalidade:fl[C.finalidade]||'',nif:fl[C.nif]||'',tipo,nome:fl[C.titulo]||'',genero:fl[C.genero]||'M',anos,email:fl[C.email]||'',tel:fl[C.tel]||'',dias:diasAte(m,dia),especial:espField||!!espLS[row.id]});
     });
     return evs;
+  }
+  async function alternaEspecial(ev){
+    ev.especial=!ev.especial;
+    const ls=lerEspeciaisLS(); if(ev.especial)ls[ev.id]=1;else delete ls[ev.id]; gravarEspeciaisLS(ls);
+    try{const token=tk();if(token&&_cols&&_cols.especial){await fetch(`${GBASE}/sites/${_site}/lists/${_list}/items/${ev.id}/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({[_cols.especial]:ev.especial})});}}catch(e){}
+    if(window.anivInit)window.anivInit();
   }
 
   // ── render da secção ──────────────────────────────────────────────────────
@@ -11098,12 +11115,40 @@ ${eye}${head}
     const sub=ev.tipo==='aniversario'?'Aniversário':`${p.et} · ${ev.anos} ano${ev.anos>1?'s':''}`;
     return `<div class="aniv-ev"><div class="aniv-av ${p.av}">${ini(ev.nome)}</div>
       <div class="aniv-m"><div class="aniv-nome">${esc(ev.nome)}<span class="aniv-chip ${p.chip}">${p.et}</span></div><div class="aniv-meta">${sub} · ${ev.email||ev.tel||'sem contacto'}</div></div>
-      <div style="display:flex;gap:6px;flex-shrink:0"><button class="aniv-send" data-i="${i}">Enviar</button><button class="aniv-b" data-edit="${i}" style="padding:6px 9px">Editar</button><button class="aniv-b" data-del="${i}" style="padding:6px 9px">Apagar</button></div></div>`;
+      <div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="aniv-star${ev.especial?' on':''}" data-star="${i}" title="Cliente especial (lembrar presente)">${ev.especial?'⭐':'☆'}</button><button class="aniv-send" data-i="${i}">Enviar</button><button class="aniv-b" data-edit="${i}" style="padding:6px 9px">Editar</button><button class="aniv-b" data-del="${i}" style="padding:6px 9px">Apagar</button></div></div>`;
+  }
+  // ── grelha do mês ─────────────────────────────────────────────────────────
+  let _gAno=null,_gMes=null;
+  const _MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const _WD=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  function abrevNome(n){const ps=(n||'').trim().split(/\s+/);if(!ps.length)return '';return ps[0]+(ps[1]?' '+ps[1][0]+'.':'');}
+  function gridHTML(ano,mes){
+    const primeiro=new Date(ano,mes,1).getDay();
+    const dias=new Date(ano,mes+1,0).getDate();
+    const h=new Date();const ehAtual=(h.getFullYear()===ano&&h.getMonth()===mes);
+    const porDia={};_evs.forEach(e=>{const m=+e.dataISO.slice(5,7);if(m===mes+1){const d=+e.dataISO.slice(8,10);(porDia[d]=porDia[d]||[]).push(e);}});
+    let cells='';
+    for(let i=0;i<primeiro;i++)cells+='<div class="aniv-cell vazia"></div>';
+    for(let d=1;d<=dias;d++){
+      const lst=porDia[d]||[];
+      const chips=lst.map(e=>{const p=PAL[e.tipo];return `<div class="aniv-bday" style="background:${p.bg};color:${p.tx};border-color:${p.bd}" data-i="${_evs.indexOf(e)}" title="${esc(e.nome)}">${e.especial?'⭐ ':''}${esc(abrevNome(e.nome))}</div>`;}).join('');
+      cells+=`<div class="aniv-cell${ehAtual&&h.getDate()===d?' hoje':''}"><div class="aniv-daynum">${d}</div>${chips}</div>`;
+    }
+    return `<div class="aniv-cal-h"><button class="aniv-b" id="aniv-cal-prev" style="padding:4px 11px">‹</button><div class="aniv-cal-tit">${_MESES[mes]} ${ano}</div><button class="aniv-b" id="aniv-cal-next" style="padding:4px 11px">›</button></div>
+      <div class="aniv-cal-wd">${_WD.map(w=>`<div>${w}</div>`).join('')}</div><div class="aniv-cal-grid">${cells}</div>`;
+  }
+  function renderGrid(){
+    const card=document.getElementById('aniv-cal-card'); if(!card)return;
+    if(_gAno===null){const h=new Date();_gAno=h.getFullYear();_gMes=h.getMonth();}
+    card.innerHTML=gridHTML(_gAno,_gMes);
+    card.querySelector('#aniv-cal-prev').onclick=()=>{_gMes--;if(_gMes<0){_gMes=11;_gAno--;}renderGrid();};
+    card.querySelector('#aniv-cal-next').onclick=()=>{_gMes++;if(_gMes>11){_gMes=0;_gAno++;}renderGrid();};
+    card.querySelectorAll('.aniv-bday').forEach(b=>b.onclick=()=>abrirEnvio(_evs[+b.dataset.i]));
   }
   let _evs=[];
   window.anivInit=async function(){
     const scr=document.getElementById('screen-aniversarios');
-    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in" style="margin-left:8px">0</span><button class="aniv-b prim" id="aniv-novo" style="margin-left:auto;padding:6px 12px">+ Adicionar aniversário</button></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div></div>`;
+    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in" style="margin-left:8px">0</span><button class="aniv-b prim" id="aniv-novo" style="margin-left:auto;padding:6px 12px">+ Adicionar aniversário</button></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div><div class="aniv-card" id="aniv-cal-card"><div class="aniv-meta">A carregar calendário…</div></div></div>`;
     scr.querySelector('#aniv-novo').onclick=abrirNovoAniversario;
     try{_evs=await carregar();}catch(e){scr.querySelector('#aniv-hoje').innerHTML=`<div class="aniv-meta">Não foi possível ler a ListaAniversarios: ${esc(e.message)}</div>`;return;}
     const hoje=_evs.filter(e=>e.dias===0), prox=_evs.filter(e=>e.dias>0&&e.dias<=7).sort((a,b)=>a.dias-b.dias);
@@ -11113,6 +11158,8 @@ ${eye}${head}
     scr.querySelectorAll('.aniv-send').forEach(b=>b.onclick=()=>abrirEnvio(_evs[+b.dataset.i]));
     scr.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>abrirEditar(_evs[+b.dataset.edit]));
     scr.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>abrirApagar(_evs[+b.dataset.del]));
+    scr.querySelectorAll('[data-star]').forEach(b=>b.onclick=()=>alternaEspecial(_evs[+b.dataset.star]));
+    renderGrid();
     atualizarBadgeNav(hoje.length);
   };
 
