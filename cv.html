@@ -824,7 +824,7 @@ function addOutorgante(tipo,label){
       </div>
       ${ehComprador?`
       <div class="form-grid form-grid-2" style="margin-top:.5rem;padding-top:.6rem;border-top:1px dashed #e5e0d5">
-        <div class="form-group"><label class="form-label">Data de nascimento <span style="font-weight:400;color:#999">(cartão de aniversário)</span></label><input type="date" class="form-input" id="${id}-nasc"></div>
+
         <div class="form-group"><label class="form-label">Email <span style="font-weight:400;color:#999">(opcional)</span></label><input type="email" class="form-input" id="${id}-email" placeholder="email@exemplo.pt"></div>
       </div>`:''}
       <div class="casado-fields" id="${id}-casado" style="display:none">
@@ -1419,7 +1419,6 @@ async function confirmarGerar(modo){
     const nome=gerarNomeFicheiro();
     if(modo==='sharepoint')await guardarNoSharePoint(blob,nome);
     else{if(!window.saveAs)await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');saveAs(blob,nome);showToast('✓ Contrato descarregado!','success');}
-    try{const rA=await registarAniversariosCompradores();if(rA&&(rA.novos||rA.atual))showToast(`Aniversários guardados: ${rA.novos} novo(s), ${rA.atual} atualizado(s).`,'success');}catch(err){console.warn('Aniversário compradores:',err);}
   }catch(e){showToast('Erro: '+e.message,'error');console.error(e);}
 }
 
