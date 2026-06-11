@@ -137,7 +137,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </a>
     <div>
       <span class="page-title">Compra e Venda de Imóvel</span>
-      <span class="page-sub">Novo contrato</span>
+      <span class="page-sub">Novo contrato · v2026-06-11.1</span>
     </div>
   </div>
   <div class="topbar-actions">
@@ -829,13 +829,29 @@ function addOutorgante(tipo,label){
       </div>`:''}
       <div class="casado-fields" id="${id}-casado" style="display:none">
         <div class="casado-fields-title">Cônjuge / Unido de facto</div>
+        <div class="form-grid form-grid-2" id="${id}-conj-perguntas" style="margin-bottom:.75rem">
+          <div class="form-group">
+            <label class="form-label">Cônjuge é também outorgante?</label>
+            <select class="form-select" id="${id}-conj-outorgante" onchange="onConjOutorganteCV('${id}')">
+              <option value="sim">Sim — ambos outorgam</option>
+              <option value="nao">Não</option>
+            </select>
+          </div>
+          <div class="form-group" id="${id}-conj-prop-wrap">
+            <label class="form-label">Cônjuge é também proprietário?</label>
+            <select class="form-select" id="${id}-conj-proprietario">
+              <option value="sim">Sim — ambos proprietários</option>
+              <option value="nao">Não — apenas presta consentimento</option>
+            </select>
+          </div>
+        </div>
         <div class="form-grid form-grid-2">
           <div class="form-group form-full"><label class="form-label">Nome <span>*</span></label><input type="text" class="form-input" id="${id}-conj-nome" style="text-transform:uppercase"></div>
-          <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-conj-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-          <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-conj-naturalidade"></div>
-          <div class="form-group"><label class="form-label">Tipo doc.</label><select class="form-select" id="${id}-conj-tipo-doc"><option value="cc">Cartão de Cidadão</option><option value="passaporte">Passaporte</option><option value="residencia">Cartão de Residência</option><option value="residencia-permanente">Residência Permanente</option></select></div>
-          <div class="form-group"><label class="form-label">Nº doc.</label><input type="text" class="form-input" id="${id}-conj-num-doc"></div>
-          <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-conj-val-doc"></div>
+          <div class="form-group conj-extra"><label class="form-label">Género</label><select class="form-select" id="${id}-conj-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="form-group conj-extra"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-conj-naturalidade"></div>
+          <div class="form-group conj-extra"><label class="form-label">Tipo doc.</label><select class="form-select" id="${id}-conj-tipo-doc"><option value="cc">Cartão de Cidadão</option><option value="passaporte">Passaporte</option><option value="residencia">Cartão de Residência</option><option value="residencia-permanente">Residência Permanente</option></select></div>
+          <div class="form-group conj-extra"><label class="form-label">Nº doc.</label><input type="text" class="form-input" id="${id}-conj-num-doc"></div>
+          <div class="form-group conj-extra"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-conj-val-doc"></div>
           <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-conj-nif"></div>
           <div class="form-group"><label class="form-label">Regime</label>
             <select class="form-select" id="${id}-regime">
@@ -844,7 +860,7 @@ function addOutorgante(tipo,label){
               <option value="comunhao-geral">Comunhão geral</option>
             </select>
           </div>
-          <div class="form-group form-full"><label class="form-label">Morada conjunta <span>*</span></label><input type="text" class="form-input" id="${id}-morada-conjunta"></div>
+          <div class="form-group form-full conj-extra"><label class="form-label">Morada conjunta <span>*</span></label><input type="text" class="form-input" id="${id}-morada-conjunta"></div>
         </div>
       </div>
       <div id="${id}-morada-wrap" style="margin-top:.75rem">
@@ -887,7 +903,30 @@ function onECChange(id){
   const ec=document.getElementById(`${id}-estado-civil`)?.value;
   const casado=ec==='casado'||ec==='uniao-facto';
   document.getElementById(`${id}-casado`).style.display=casado?'block':'none';
-  document.getElementById(`${id}-morada-wrap`).style.display=casado?'none':'block';
+  // As perguntas outorgante/proprietário e o consentimento (art.º 1682.º-A CC) aplicam-se a casados; a união de facto mantém identificação conjunta
+  const perguntas=document.getElementById(`${id}-conj-perguntas`);
+  if(perguntas)perguntas.style.display=ec==='casado'?'grid':'none';
+  if(ec==='casado'){onConjOutorganteCV(id);}
+  else{
+    document.querySelectorAll(`#${id}-casado .conj-extra`).forEach(el=>el.style.display='');
+    document.getElementById(`${id}-morada-wrap`).style.display=casado?'none':'block';
+  }
+}
+
+function onConjOutorganteCV(id){
+  const val=document.getElementById(`${id}-conj-outorgante`)?.value;
+  const propWrap=document.getElementById(`${id}-conj-prop-wrap`);
+  const extras=document.querySelectorAll(`#${id}-casado .conj-extra`);
+  if(val==='sim'){
+    if(propWrap)propWrap.style.display='';
+    extras.forEach(el=>el.style.display='');
+    document.getElementById(`${id}-morada-wrap`).style.display='none';
+  }else{
+    // Cônjuge não outorga — identificação mínima (nome + NIF) e morada individual
+    if(propWrap)propWrap.style.display='none';
+    extras.forEach(el=>el.style.display='none');
+    document.getElementById(`${id}-morada-wrap`).style.display='block';
+  }
 }
 
 // ─── CONDICIONAIS ─────────────────────────────────────────────────────────────
@@ -1393,10 +1432,22 @@ function recolherOutorgantes(tipo){
     const tipoDocTexto=t=>({cc:'cartão de cidadão',passaporte:'passaporte',residencia:'cartão de residência',['residencia-permanente']:'cartão de residência permanente'}[t]||t);
     if(tipoOut==='singular'){
       const ec=v('estado-civil');const casado=ec==='casado'||ec==='uniao-facto';
-      return{tipo:'singular',nome:v('nome').toUpperCase(),genero:v('genero'),naturalidade:v('naturalidade'),tipoDoc:tipoDocTexto(v('tipo-doc')),numDoc:v('num-doc'),valDoc:fmtDataPT(v('val-doc')),nif:v('nif'),estadoCivil:ec,regime:v('regime'),conjNome:v('conj-nome').toUpperCase(),conjGenero:v('conj-genero'),conjNaturalidade:v('conj-naturalidade'),conjTipoDoc:tipoDocTexto(v('conj-tipo-doc')),conjNumDoc:v('conj-num-doc'),conjValDoc:fmtDataPT(v('conj-val-doc')),conjNif:v('conj-nif'),morada:casado?v('morada-conjunta'):v('morada'),casado};
+      const conjOutorgante=ec==='casado'?(v('conj-outorgante')||'sim'):'sim';
+      const conjProprietario=ec==='casado'?(v('conj-proprietario')||'sim'):'sim';
+      const moradaFinal=(ec==='casado'&&conjOutorgante==='nao')?v('morada'):(casado?v('morada-conjunta'):v('morada'));
+      return{tipo:'singular',nome:v('nome').toUpperCase(),genero:v('genero'),naturalidade:v('naturalidade'),tipoDoc:tipoDocTexto(v('tipo-doc')),numDoc:v('num-doc'),valDoc:fmtDataPT(v('val-doc')),nif:v('nif'),estadoCivil:ec,regime:v('regime'),conjOutorgante,conjProprietario,conjNome:v('conj-nome').toUpperCase(),conjGenero:v('conj-genero'),conjNaturalidade:v('conj-naturalidade'),conjTipoDoc:tipoDocTexto(v('conj-tipo-doc')),conjNumDoc:v('conj-num-doc'),conjValDoc:fmtDataPT(v('conj-val-doc')),conjNif:v('conj-nif'),morada:moradaFinal,casado};
     }
     return{tipo:'empresa',empNome:v('emp-nome').toUpperCase(),empNif:v('emp-nif'),empSede:v('emp-sede'),empCapital:v('emp-capital'),empCrc:v('emp-crc'),gerNome:v('ger-nome').toUpperCase(),gerGenero:v('ger-genero'),gerNaturalidade:v('ger-naturalidade'),gerCC:v('ger-cc'),gerVal:fmtDataPT(v('ger-val')),gerNif:v('ger-nif'),gerEc:v('ger-ec'),gerMorada:v('ger-morada')};
   });
+}
+
+function detalheConjCV(o){
+  const gc=o.conjGenero==='F';
+  const segs=[];
+  if(o.conjNaturalidade)segs.push(`natural de ${o.conjNaturalidade}`);
+  if(o.conjNumDoc)segs.push(`portador${gc?'a':''} do ${o.conjTipoDoc} com o número ${o.conjNumDoc}${o.conjValDoc?`, válido até ${o.conjValDoc}`:''}`);
+  if(o.conjNif)segs.push(`NIF ${o.conjNif}`);
+  return segs.length?`, ${segs.join(', ')}`:'';
 }
 
 function textoOutorgante(o){
@@ -1404,10 +1455,45 @@ function textoOutorgante(o){
   const ecTexto=(ec,g)=>({solteiro:g==='F'?'solteira, maior':'solteiro, maior',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
   if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.empNome}, NIF ${o.empNif}, com sede em ${o.empSede}${o.empCapital?', capital social de €'+o.empCapital:''}, neste ato representada por ${o.gerNome}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão com o número ${o.gerCC}, válido até ${o.gerVal}, NIF ${o.gerNif}, residente em ${o.gerMorada}`;}
   const g=o.genero==='F';
+  const regime=regimenMap[o.regime]||o.regime;
   let txt=`${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do ${o.tipoDoc} emitido pela República Portuguesa com o número ${o.numDoc}, válido até ${o.valDoc}, e número de identificação fiscal ${o.nif}`;
-  if(o.casado){const gc=o.conjGenero==='F';txt+=`, ${g?'casada':'casado'} no regime de ${regimenMap[o.regime]||o.regime} com ${o.conjNome}, natural de ${o.conjNaturalidade}, portador${gc?'a':''} do ${o.conjTipoDoc} com o número ${o.conjNumDoc}, válido até ${o.conjValDoc}, NIF ${o.conjNif}, ambos residentes em ${o.morada}`;}
-  else txt+=`, ${ecTexto(o.estadoCivil,o.genero)}, residente em ${o.morada}`;
+  if(o.estadoCivil==='casado'&&o.conjOutorgante!=='sim'&&o.conjNome){
+    // Cônjuge não outorgante — identificação mínima (nome + NIF)
+    txt+=`, ${g?'casada':'casado'} no regime de ${regime} com ${o.conjNome}${o.conjNif?`, NIF ${o.conjNif}`:''}, residente em ${o.morada}`;
+    return txt;
+  }
+  if(o.estadoCivil==='casado'&&o.conjOutorgante==='sim'&&o.conjProprietario!=='nao'){
+    // Ambos proprietários — identificação conjunta em pé de igualdade
+    txt+=` e ${o.conjNome}${detalheConjCV(o)}, casados entre si no regime de ${regime}, ambos residentes em ${o.morada}`;
+    return txt;
+  }
+  if(o.estadoCivil==='casado'&&o.casado){
+    // Cônjuge outorga apenas para prestar consentimento (art.º 1682.º-A CC)
+    txt+=`, ${g?'casada':'casado'} no regime de ${regime} com ${o.conjNome}${detalheConjCV(o)}, ambos residentes em ${o.morada}`;
+    return txt;
+  }
+  if(o.estadoCivil==='uniao-facto'&&o.casado){
+    // União de facto — sem regime de bens
+    txt+=`, em união de facto com ${o.conjNome}${detalheConjCV(o)}, ambos residentes em ${o.morada}`;
+    return txt;
+  }
+  txt+=`, ${ecTexto(o.estadoCivil,o.genero)}, residente em ${o.morada}`;
   return txt;
+}
+
+// Consentimento conjugal (art.º 1682.º-A CC) — cônjuges outorgantes não proprietários
+function primeiroUltimoNome(nome){
+  const partes=(nome||'').trim().split(/\s+/).filter(Boolean);
+  if(partes.length<=1)return partes[0]||'';
+  return `${partes[0]} ${partes[partes.length-1]}`;
+}
+function linhaConsentimentoCV(outorgantes){
+  const conjuges=(outorgantes||[])
+    .filter(o=>o.tipo==='singular'&&o.estadoCivil==='casado'&&o.conjOutorgante==='sim'&&o.conjProprietario==='nao'&&o.conjNome)
+    .map(o=>primeiroUltimoNome(o.conjNome));
+  if(!conjuges.length)return'';
+  const plural=conjuges.length>1;
+  return `;\n\n${listarComEVirgula(conjuges)}, nos termos do art.º 1682.º-A do Código Civil, expressamente presta${plural?'m':''} o seu consentimento para a plena validade do ato`;
 }
 
 // ─── GERAR CONTRATO ───────────────────────────────────────────────────────────
@@ -1437,7 +1523,7 @@ function recolherDadosContrato(){
   const vendedores=recolherOutorgantes('vendedores');
   const compradores=recolherOutorgantes('compradores');
   const nV=vendedores.length,nC=compradores.length;
-  const Bloco_Vendedores=vendedores.map(textoOutorgante).join(';\n\nE\n\n');
+  const Bloco_Vendedores=vendedores.map(textoOutorgante).join(';\n\nE\n\n')+linhaConsentimentoCV(vendedores);
   const Bloco_Compradores=compradores.map(textoOutorgante).join(';\n\nE\n\n');
   const Plural_Primeiros=nV>1?'OS PRIMEIROS CONTRATANTES':'O PRIMEIRO CONTRATANTE';
   const Plural_Segundos=nC>1?'OS SEGUNDOS CONTRATANTES':'O SEGUNDO CONTRATANTE';

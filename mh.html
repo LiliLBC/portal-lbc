@@ -246,7 +246,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </a>
     <div>
       <span class="page-title">Mútuo com Hipoteca — CGD</span>
-      <span class="page-sub">Novo contrato</span>
+      <span class="page-sub">Novo contrato · v2026-06-11.1</span>
     </div>
   </div>
   <div class="topbar-actions">
@@ -1009,28 +1009,38 @@ function addOutorgante(tipo) {
         </div>
         <!-- DADOS DO CÔNJUGE -->
         <div id="${id}-conjuge-dados" style="margin-top:.75rem">
+          <div class="form-grid form-grid-2" style="margin-bottom:.75rem" id="${id}-conjuge-prop-wrap">
+            <div class="form-group form-full">
+              <label class="form-label">Cônjuge é também proprietário do imóvel? <span>*</span></label>
+              <select class="form-select" id="${id}-conjuge-proprietario">
+                <option value="sim">Sim — ambos hipotecam</option>
+                <option value="nao">Não — apenas presta consentimento conjugal</option>
+              </select>
+              <div class="form-hint">Se o imóvel é só de um dos cônjuges, o outro outorga para consentir na hipoteca (art.º 1682.º-A CC).</div>
+            </div>
+          </div>
           <div class="cond-block-title" style="margin-bottom:.6rem">Dados do cônjuge</div>
           <div class="form-grid form-grid-2">
             <div class="form-group form-full">
               <label class="form-label">Nome completo do cônjuge <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-nome" placeholder="Em maiúsculas" style="text-transform:uppercase">
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Género <span>*</span></label>
               <select class="form-select" id="${id}-conjuge-genero">
                 <option value="M">Masculino</option>
                 <option value="F">Feminino</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Natural de <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-naturalidade">
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Nº Cartão de Cidadão <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-cc">
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Válido até <span>*</span></label>
               <input type="date" class="form-input" id="${id}-conjuge-cc-val">
             </div>
@@ -1038,7 +1048,7 @@ function addOutorgante(tipo) {
               <label class="form-label">NIF <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-nif">
             </div>
-            <div class="form-group form-full">
+            <div class="form-group form-full conj-extra">
               <label class="form-label">Morada (partilhada) <span>*</span></label>
               <input type="text" class="form-input" id="${id}-morada-conjunta" placeholder="Morada comum do casal">
             </div>
@@ -1164,13 +1174,19 @@ function onEstadoCivilChange(id) {
 function onConjugeOutorganteChange(id) {
   const val = document.getElementById(`${id}-conjuge-outorgante`)?.value;
   const conjDados = document.getElementById(`${id}-conjuge-dados`);
+  const propWrap = document.getElementById(`${id}-conjuge-prop-wrap`);
   const moradaIndividual = document.getElementById(`${id}-morada-individual`);
   if (!conjDados) return;
+  conjDados.style.display = 'block';
+  const extras = conjDados.querySelectorAll('.conj-extra');
   if (val === 'sim') {
-    conjDados.style.display = 'block';
+    if (propWrap) propWrap.style.display = '';
+    extras.forEach(el => el.style.display = '');
     moradaIndividual.style.display = 'none';
   } else {
-    conjDados.style.display = 'none';
+    // Cônjuge não outorga — identificação mínima (nome + NIF) e morada individual
+    if (propWrap) propWrap.style.display = 'none';
+    extras.forEach(el => el.style.display = 'none');
     moradaIndividual.style.display = 'block';
   }
 }
@@ -1915,6 +1931,14 @@ function recolherDadosContrato() {
   if (mutuarios.length > 1) {
     Clausula_Mutuario2 = mutuarios.slice(1).map(o => gerarTextoMutuario(o)).join('\n');
   }
+  // Consentimento conjugal (art.º 1682.º-A CC) — cônjuges mutuários não proprietários
+  const _conjConsent = mutuarios
+    .filter(o => o.tipo === 'singular' && o.estadoCivil === 'casado' && o.conjugeOutorgante === 'sim' && o.conjugeProprietario === 'nao' && o.conjugeNome)
+    .map(o => primeiroUltimoNomeMH(o.conjugeNome));
+  if (_conjConsent.length) {
+    const _pl = _conjConsent.length > 1;
+    Clausula_Mutuario2 += `${Clausula_Mutuario2?'\n':''}${listarComEVirgulaMH(_conjConsent)}, nos termos do art.º 1682.º-A do Código Civil, expressamente presta${_pl?'m':''} o seu consentimento para a plena validade do ato;`;
+  }
 
   // ── Procuração ───────────────────────────────────────────────────────────────
   const CRP_Codigo = v('cod-crp');
@@ -2122,6 +2146,8 @@ function recolherMutuarios() {
         estadoCivil: ec,
         regime: document.getElementById(`${id}-regime`)?.value || '',
         conjugeOutorgante: document.getElementById(`${id}-conjuge-outorgante`)?.value || 'nao',
+      conjugeProprietario: document.getElementById(`${id}-conjuge-proprietario`)?.value || 'sim',
+        conjugeProprietario: document.getElementById(`${id}-conjuge-proprietario`)?.value || 'sim',
         conjugeNome: (document.getElementById(`${id}-conjuge-nome`)?.value || '').toUpperCase(),
         conjugeGenero: document.getElementById(`${id}-conjuge-genero`)?.value || 'F',
         conjugeNaturalidade: document.getElementById(`${id}-conjuge-naturalidade`)?.value || '',
@@ -2154,6 +2180,17 @@ function recolherMutuarios() {
   return resultado;
 }
 
+function primeiroUltimoNomeMH(nome){
+  const partes=(nome||'').trim().split(/\s+/).filter(Boolean);
+  if(partes.length<=1)return partes[0]||'';
+  return `${partes[0]} ${partes[partes.length-1]}`;
+}
+function listarComEVirgulaMH(arr){
+  if(!arr.length)return'';
+  if(arr.length===1)return arr[0];
+  if(arr.length===2)return`${arr[0]} e ${arr[1]}`;
+  return arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1];
+}
 function gerarTextoMutuario(o) {
   if (!o) return '';
   if (o.tipo === 'empresa') {
@@ -2166,7 +2203,12 @@ function gerarTextoMutuario(o) {
   const idCC = `portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}`;
   if (o.estadoCivil === 'casado' && o.conjugeOutorgante === 'sim') {
     const gc = o.conjugeGenero === 'F';
-    return `${o.nome}, natural de ${o.naturalidade}, ${idCC}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, e número de identificação fiscal ${o.conjugeNIF}, ambos residentes em ${o.moradaConjunta};`;
+    const segs = [];
+    if (o.conjugeNaturalidade) segs.push(`natural de ${o.conjugeNaturalidade}`);
+    if (o.conjugeCC) segs.push(`portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}${o.conjugeCCVal?`, válido até ${fmtDataPT(o.conjugeCCVal)}`:''}`);
+    if (o.conjugeNIF) segs.push(`${segs.length?'e ':''}número de identificação fiscal ${o.conjugeNIF}`);
+    const det = segs.length ? `, ${segs.join(', ')}` : '';
+    return `${o.nome}, natural de ${o.naturalidade}, ${idCC}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}${det}, ambos residentes em ${o.moradaConjunta};`;
   }
   if (o.estadoCivil === 'casado') {
     let txt = `${o.nome}, natural de ${o.naturalidade}, ${idCC}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)}`;
@@ -2216,6 +2258,7 @@ function recolherPessoasSingulares(containerId){
       estadoCivil: ec,
       regime: document.getElementById(`${id}-regime`)?.value || '',
       conjugeOutorgante: document.getElementById(`${id}-conjuge-outorgante`)?.value || 'nao',
+      conjugeProprietario: document.getElementById(`${id}-conjuge-proprietario`)?.value || 'sim',
       conjugeNome: (document.getElementById(`${id}-conjuge-nome`)?.value || '').toUpperCase(),
       conjugeGenero: document.getElementById(`${id}-conjuge-genero`)?.value || 'F',
       conjugeNaturalidade: document.getElementById(`${id}-conjuge-naturalidade`)?.value || '',
