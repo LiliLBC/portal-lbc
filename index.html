@@ -360,6 +360,9 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('registo',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span>Registo de escrituras
     </div>
+    <div class="nav-item" onclick="abrirClausulas()">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h8a2 2 0 012 2v10l-3-2-3 2-3-2-3 2V4a2 2 0 012-2z"/><path d="M5.5 6h5M5.5 9h3.5"/></svg></span>Cláusulas Especiais
+    </div>
     <div class="nav-section">Clientes &amp; Serviços</div>
     <div class="nav-item" onclick="nav('processos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
@@ -2802,6 +2805,11 @@ function fecharDropdownFora(e){
     document.getElementById('contratos-menu').classList.remove('show');
     document.getElementById('contratos-btn').classList.remove('open');
   }
+}
+function abrirClausulas(){
+  // Passar token para a página via localStorage (mesmo padrão dos contratos)
+  if(typeof graphToken!=='undefined'&&graphToken) localStorage.setItem('lbc_graph_token', graphToken);
+  window.open('clausulas.html','_blank');
 }
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');

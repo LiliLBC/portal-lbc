@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cláusulas Especiais — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);transition:all .15s;text-decoration:none}
+.back-btn:hover{background:var(--surface2);color:var(--text)}
+.page-title{font-size:14px;font-weight:600}
+.page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
+
+/* LAYOUT */
+.container{max-width:860px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:.6rem;margin-bottom:1rem;align-items:center}
+.search-wrap{position:relative;flex:1}
+.search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-faint)}
+.search-input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+
+/* CHIPS DE CATEGORIA */
+.chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.chip{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.chip:hover{border-color:var(--accent)}
+.chip.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+
+/* CARTÕES DE CLÁUSULA */
+.clausula-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:.75rem;box-shadow:var(--shadow);cursor:pointer;transition:border .15s}
+.clausula-card:hover{border-color:var(--border-strong)}
+.clausula-card.aberta{border-color:var(--accent)}
+.clausula-top{display:flex;align-items:center;gap:.6rem;justify-content:space-between}
+.clausula-nome{font-size:13px;font-weight:600;flex:1}
+.clausula-cat{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-dark);background:var(--accent-light);border:1px solid var(--accent);padding:2px 9px;border-radius:20px;white-space:nowrap}
+.clausula-corpo{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-muted);line-height:1.8;margin-top:.6rem;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.clausula-card.aberta .clausula-corpo{display:block;-webkit-line-clamp:unset;color:var(--text);background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 7px 7px 0;padding:.75rem .9rem}
+.clausula-acoes{display:none;gap:.5rem;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)}
+.clausula-card.aberta .clausula-acoes{display:flex}
+mark{background:var(--amber-light);color:var(--amber);border-radius:3px;padding:0 1px}
+
+/* BOTÕES */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-danger:hover{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+
+/* FORM */
+.form-group{display:flex;flex-direction:column;gap:4px;margin-bottom:.85rem}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input,.form-textarea{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.form-textarea{font-family:'DM Mono',monospace;font-size:12px;line-height:1.7;min-height:200px;resize:vertical}
+.form-input:focus,.form-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+.form-erro{font-size:11px;color:var(--red);margin-top:2px;display:none}
+
+/* ESTADOS */
+.estado{padding:2.5rem 1rem;text-align:center;color:var(--text-faint);font-size:13px;line-height:1.7}
+.notice{display:flex;align-items:flex-start;gap:9px;padding:.65rem .9rem;border-radius:7px;font-size:12px;margin-bottom:1rem;line-height:1.5}
+.notice-warning{background:var(--amber-light);color:var(--amber);border:1px solid #FAC775}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:14px;padding:1.75rem;max-width:620px;width:92%;box-shadow:var(--shadow-md);transform:translateY(8px);transition:transform .2s;max-height:88vh;overflow:auto}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1.1rem}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.1rem;padding-top:1.1rem;border-top:1px solid var(--border);justify-content:flex-end}
+
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+
+@media(max-width:640px){
+  .container{padding:1rem 1rem 4rem}
+  .toolbar{flex-direction:column;align-items:stretch}
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:window.close()" class="back-btn">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+      Fechar
+    </a>
+    <div>
+      <span class="page-title">Cláusulas Especiais</span>
+      <span class="page-sub">Biblioteca de minutas · v2026-06-11.1</span>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="abrirModal()">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
+    Nova cláusula
+  </button>
+</div>
+
+<div class="container">
+  <div class="notice notice-warning" id="aviso-sp" style="display:none"></div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+      <input type="text" class="search-input" id="pesquisa" placeholder="Pesquisar por expressão — nome ou texto da cláusula..." oninput="renderizar()">
+    </div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+  <div id="lista"></div>
+</div>
+
+<!-- MODAL NOVA/EDITAR -->
+<div class="modal-overlay" id="modal-clausula">
+  <div class="modal">
+    <div class="modal-title" id="modal-titulo">Nova cláusula</div>
+    <div class="form-group">
+      <label class="form-label">Nome <span>*</span></label>
+      <input type="text" class="form-input" id="cl-nome" placeholder="Ex: Imposto Selo Óbito">
+      <div class="form-erro" id="erro-nome">Já existe uma cláusula com este nome. Escolha um nome diferente.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoria</label>
+      <input type="text" class="form-input" id="cl-categoria" list="categorias-existentes" placeholder="Ex: Verificações, Compra e Venda, Heranças...">
+      <datalist id="categorias-existentes"></datalist>
+      <div class="form-hint">Opcional — serve para a segmentação por separadores. Escreva uma nova ou escolha uma existente.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Texto da cláusula <span>*</span></label>
+      <textarea class="form-textarea" id="cl-corpo" placeholder="Texto integral. Use [X], [data], [identificação...] para os campos a preencher em cada caso."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardarClausula()">Guardar cláusula</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let clausulas = [];          // {id, nome, categoria, corpo}
+let categoriaAtiva = '';     // '' = todas
+let editandoId = null;
+let cartoesAbertos = new Set();
+
+// ─── SHAREPOINT (mesmo padrão do resto do portal) ────────────────────────────
+const SP_HOST = 'lbcsolicitadorapt.sharepoint.com';
+const SP_SITE = 'lbcsolicitadora2';
+const SP_LISTA = 'ClausulasEspeciais';
+let _siteId = null, _listId = null;
+
+async function getGraphToken() {
+  const stored = localStorage.getItem('lbc_graph_token');
+  if (stored) return stored;
+  if (window.opener && window.opener.graphToken) return window.opener.graphToken;
+  if (window.parent && window.parent.graphToken) return window.parent.graphToken;
+  throw new Error('Sessão não encontrada. Abra esta página a partir do portal LBC.');
+}
+
+async function gGet(url, token) {
+  const r = await fetch(url, {headers:{Authorization:'Bearer '+token}});
+  if (!r.ok) throw new Error(`Graph ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+async function resolverLista(token) {
+  if (_listId) return;
+  const s = await gGet(`https://graph.microsoft.com/v1.0/sites/${SP_HOST}:/sites/${SP_SITE}`, token);
+  _siteId = s.id;
+  const ls = await gGet(`https://graph.microsoft.com/v1.0/sites/${_siteId}/lists?$select=id,name,displayName`, token);
+  const alvo = (ls.value||[]).find(l =>
+    [l.name, l.displayName].some(n => n && n.replace(/[\s\u00e1\u00e0]/g,m=>({' ':'','\u00e1':'a','\u00e0':'a'}[m])).toLowerCase().includes('clausulasespeciais'.replace(/\s/g,'')))
+    || [l.name, l.displayName].some(n => n && n.toLowerCase().replace(/\s|á/g, c => c==='á'?'a':'') === 'clausulasespeciais')
+  );
+  if (alvo) { _listId = alvo.id; return; }
+  // Tentar criar a lista (requer permissões de gestão; se falhar, instruções manuais)
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${_siteId}/lists`, {
+    method:'POST', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body: JSON.stringify({
+      displayName: SP_LISTA,
+      columns: [
+        {name:'Categoria', text:{}},
+        {name:'Corpo', text:{allowMultipleLines:true, textType:'plain'}}
+      ],
+      list: {template:'genericList'}
+    })
+  });
+  if (r.ok) { _listId = (await r.json()).id; return; }
+  document.getElementById('aviso-sp').style.display = 'flex';
+  document.getElementById('aviso-sp').textContent =
+    `A lista "${SP_LISTA}" não existe no site ${SP_SITE} e não foi possível criá-la automaticamente. Crie-a manualmente no SharePoint com as colunas: Title (nome), Categoria (texto) e Corpo (texto multilinha), e recarregue a página.`;
+  throw new Error('Lista indisponível');
+}
+
+async function carregarClausulas() {
+  try {
+    const token = await getGraphToken();
+    await resolverLista(token);
+    const r = await gGet(`https://graph.microsoft.com/v1.0/sites/${_siteId}/lists/${_listId}/items?$expand=fields&$top=2000`, token);
+    clausulas = (r.value||[]).map(it => ({
+      id: it.id,
+      nome: it.fields?.Title || '',
+      categoria: it.fields?.Categoria || '',
+      corpo: it.fields?.Corpo || ''
+    })).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  } catch(e) {
+    console.error(e);
+    if (!document.getElementById('aviso-sp').textContent) {
+      document.getElementById('aviso-sp').style.display = 'flex';
+      document.getElementById('aviso-sp').textContent = e.message;
+    }
+    clausulas = [];
+  }
+  renderizar();
+}
+
+// ─── PESQUISA E RENDERIZAÇÃO ─────────────────────────────────────────────────
+const normalizar = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const escapeHtml = s => (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function realcar(texto, termo) {
+  const esc = escapeHtml(texto);
+  if (!termo) return esc;
+  const normTexto = normalizar(texto);
+  const normTermo = normalizar(termo);
+  if (!normTermo) return esc;
+  // localizar ocorrências no texto normalizado e mapear para o original (mesmo comprimento após NFD strip por carácter)
+  const out = [];
+  let i = 0;
+  while (i < normTexto.length) {
+    const pos = normTexto.indexOf(normTermo, i);
+    if (pos < 0) { out.push(escapeHtml(texto.slice(i))); break; }
+    out.push(escapeHtml(texto.slice(i, pos)));
+    out.push('<mark>'+escapeHtml(texto.slice(pos, pos+termo.length))+'</mark>');
+    i = pos + normTermo.length;
+  }
+  return out.join('');
+}
+
+function categorias() {
+  return [...new Set(clausulas.map(c=>c.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+}
+
+function renderizar() {
+  const termo = document.getElementById('pesquisa').value.trim();
+  // chips
+  const cats = categorias();
+  const chips = [`<button class="chip ${categoriaAtiva===''?'active':''}" onclick="setCategoria('')">Todas (${clausulas.length})</button>`]
+    .concat(cats.map(c=>{
+      const n = clausulas.filter(x=>x.categoria===c).length;
+      return `<button class="chip ${categoriaAtiva===c?'active':''}" onclick="setCategoria('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)} (${n})</button>`;
+    }));
+  document.getElementById('chips').innerHTML = chips.join('');
+
+  // filtrar
+  let vis = clausulas;
+  if (categoriaAtiva) vis = vis.filter(c=>c.categoria===categoriaAtiva);
+  if (termo) {
+    const nt = normalizar(termo);
+    vis = vis.filter(c => normalizar(c.nome).includes(nt) || normalizar(c.corpo).includes(nt));
+  }
+
+  const lista = document.getElementById('lista');
+  if (!clausulas.length) {
+    lista.innerHTML = `<div class="estado">Ainda não há cláusulas na biblioteca.<br>Clique em <b>Nova cláusula</b> para criar a primeira — por exemplo, "Imposto Selo Óbito".</div>`;
+    return;
+  }
+  if (!vis.length) {
+    lista.innerHTML = `<div class="estado">Nenhuma cláusula corresponde a "${escapeHtml(termo)}"${categoriaAtiva?` na categoria ${escapeHtml(categoriaAtiva)}`:''}.<br>Experimente outra expressão ou limpe o filtro.</div>`;
+    return;
+  }
+  lista.innerHTML = vis.map(c => `
+    <div class="clausula-card ${cartoesAbertos.has(c.id)?'aberta':''}" onclick="toggleCartao('${c.id}')">
+      <div class="clausula-top">
+        <div class="clausula-nome">${realcar(c.nome, termo)}</div>
+        ${c.categoria?`<div class="clausula-cat">${escapeHtml(c.categoria)}</div>`:''}
+      </div>
+      <div class="clausula-corpo">${realcar(c.corpo, termo)}</div>
+      <div class="clausula-acoes" onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-primary" onclick="copiarClausula('${c.id}')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M11 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v7a1 1 0 001 1h2"/></svg>
+          Copiar texto
+        </button>
+        <button class="btn btn-sm" onclick="abrirModal('${c.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="eliminarClausula('${c.id}')">Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+
+function setCategoria(c){ categoriaAtiva = c; renderizar(); }
+function toggleCartao(id){ cartoesAbertos.has(id)?cartoesAbertos.delete(id):cartoesAbertos.add(id); renderizar(); }
+
+// ─── AÇÕES ────────────────────────────────────────────────────────────────────
+async function copiarClausula(id) {
+  const c = clausulas.find(x=>x.id===id); if (!c) return;
+  try {
+    await navigator.clipboard.writeText(c.corpo);
+    showToast('Cláusula copiada — cole no contrato com Ctrl+V', 'success');
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = c.corpo; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    showToast('Cláusula copiada — cole no contrato com Ctrl+V', 'success');
+  }
+}
+
+function abrirModal(id) {
+  editandoId = id || null;
+  document.getElementById('modal-titulo').textContent = id ? 'Editar cláusula' : 'Nova cláusula';
+  document.getElementById('btn-guardar').textContent = id ? 'Guardar alterações' : 'Guardar cláusula';
+  const c = id ? clausulas.find(x=>x.id===id) : null;
+  document.getElementById('cl-nome').value = c?.nome || '';
+  document.getElementById('cl-categoria').value = c?.categoria || '';
+  document.getElementById('cl-corpo').value = c?.corpo || '';
+  document.getElementById('erro-nome').style.display = 'none';
+  document.getElementById('categorias-existentes').innerHTML =
+    categorias().map(x=>`<option value="${escapeHtml(x)}">`).join('');
+  document.getElementById('modal-clausula').classList.add('show');
+  setTimeout(()=>document.getElementById('cl-nome').focus(), 100);
+}
+function fecharModal(){ document.getElementById('modal-clausula').classList.remove('show'); }
+
+function nomeDuplicado(nome) {
+  const n = normalizar(nome.trim());
+  return clausulas.some(c => normalizar(c.nome.trim()) === n && c.id !== editandoId);
+}
+
+async function guardarClausula() {
+  const nome = document.getElementById('cl-nome').value.trim();
+  const categoria = document.getElementById('cl-categoria').value.trim();
+  const corpo = document.getElementById('cl-corpo').value.trim();
+  if (!nome) { showToast('Indique o nome da cláusula', 'error'); return; }
+  if (!corpo) { showToast('O texto da cláusula está vazio', 'error'); return; }
+  if (nomeDuplicado(nome)) {
+    document.getElementById('erro-nome').style.display = 'block';
+    document.getElementById('cl-nome').focus();
+    return;
+  }
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  try {
+    const token = await getGraphToken();
+    await resolverLista(token);
+    const fields = {Title: nome, Categoria: categoria, Corpo: corpo};
+    if (editandoId) {
+      const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${_siteId}/lists/${_listId}/items/${editandoId}/fields`,
+        {method:'PATCH', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}, body:JSON.stringify(fields)});
+      if (!r.ok) throw new Error('Não foi possível guardar as alterações ('+r.status+')');
+      showToast('Cláusula atualizada', 'success');
+    } else {
+      const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${_siteId}/lists/${_listId}/items`,
+        {method:'POST', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}, body:JSON.stringify({fields})});
+      if (!r.ok) throw new Error('Não foi possível criar a cláusula ('+r.status+')');
+      showToast('Cláusula guardada', 'success');
+    }
+    fecharModal();
+    await carregarClausulas();
+  } catch(e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function eliminarClausula(id) {
+  const c = clausulas.find(x=>x.id===id); if (!c) return;
+  if (!confirm(`Eliminar a cláusula "${c.nome}"? Esta ação não pode ser anulada.`)) return;
+  try {
+    const token = await getGraphToken();
+    const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${_siteId}/lists/${_listId}/items/${id}`,
+      {method:'DELETE', headers:{Authorization:'Bearer '+token}});
+    if (!r.ok) throw new Error('Não foi possível eliminar ('+r.status+')');
+    showToast('Cláusula eliminada', 'success');
+    await carregarClausulas();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + (tipo||'');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+// teclas: Esc fecha modal
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+carregarClausulas();
+</script>
+</body>
+</html>
