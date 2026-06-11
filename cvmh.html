@@ -245,7 +245,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </a>
     <div>
       <span class="page-title">Compra e Venda com Mútuo e Hipoteca — CGD</span>
-      <span class="page-sub">Novo contrato · v2026-06-11.1</span>
+      <span class="page-sub">Novo contrato · v2026-06-11.2</span>
     </div>
   </div>
   <div class="topbar-actions">
@@ -1937,6 +1937,23 @@ function addFalecido(dados={}){
       </div>
     </div>
     <div style="margin-top:.5rem;padding:.75rem;background:var(--surface2);border-radius:8px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em">Participação de Imposto do Selo (óbito) — art.º 26.º CIS</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">N.º da participação <span>*</span></label>
+          <input type="text" class="form-input" id="falecido-${idx}-is-numero" value="${dados.isNumero||''}" placeholder="Ex: 123456">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de entrega <span>*</span></label>
+          <input type="date" class="form-input" id="falecido-${idx}-is-data" value="${dados.isData||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Serviço de Finanças <span>*</span></label>
+          <input type="text" class="form-input" id="falecido-${idx}-is-sf" value="${dados.isSF||''}" placeholder="Ex: Évora">
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:.5rem;padding:.75rem;background:var(--surface2);border-radius:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
         <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Herdeiros</div>
         <button class="btn btn-sm" onclick="addHerdeiro(${idx})" type="button" style="font-size:10px;padding:2px 8px">+ Herdeiro</button>
@@ -1978,7 +1995,7 @@ function recolherTratoSuc(){
     const v=id=>document.getElementById(`falecido-${idx}-${id}`)?.value||'';
     const herdeiros=[];
     bloco.querySelectorAll(`[id^="falecido-${idx}-herdeiro-"][id$="-nome"]`).forEach(el=>{if(el.value.trim())herdeiros.push({nome:el.value.trim()});});
-    falecidos.push({nome:v('nome'),dataObito:v('data-obito'),freguesia:v('freguesia'),habTipo:v('hab-tipo'),habData:v('hab-data'),habCodigo:v('hab-codigo'),habCopia:v('hab-copia'),habNumero:v('hab-numero'),habNotario:v('hab-notario'),herdeiros});
+    falecidos.push({nome:v('nome'),dataObito:v('data-obito'),freguesia:v('freguesia'),habTipo:v('hab-tipo'),habData:v('hab-data'),habCodigo:v('hab-codigo'),habCopia:v('hab-copia'),habNumero:v('hab-numero'),habNotario:v('hab-notario'),isNumero:v('is-numero'),isData:v('is-data'),isSF:v('is-sf'),herdeiros});
   });
   return falecidos;
 }
@@ -2003,6 +2020,11 @@ function gerarTextosTratoSuc(){
     }
   });
 
+  // ── 1b. IMPOSTO DO SELO POR ÓBITO (art.º 63.º-A CIS) — uma frase por falecido ──
+  const isLinhas=falecidos
+    .filter(f=>f.isNumero||f.isData||f.isSF)
+    .map(f=>`--- Verifiquei, nos termos e para os efeitos do disposto no artigo 63.º-A do Código do Imposto do Selo, o cumprimento das obrigações declarativas relativas ao Imposto do Selo devido pela transmissão gratuita por óbito de ${f.nome}, mediante a exibição da participação a que se refere o artigo 26.º do mesmo Código, registada sob o n.º ${f.isNumero||''}, apresentada no Serviço de Finanças de ${f.isSF||''} em ${fmtDataPT(f.isData)}, da qual consta a relação dos bens objeto da presente escritura; ----------`);
+
   // ── 2. TEXTO (vai para a cláusula da Compra e Venda) ───────────────────────
   const textoLinhas=falecidos.map(f=>{
     const nome=(f.nome||'').toUpperCase();
@@ -2014,7 +2036,7 @@ function gerarTextosTratoSuc(){
   });
 
   return {
-    TXT_TratoSuc_Legitimidade: legitLinhas.join('\n'),
+    TXT_TratoSuc_Legitimidade: [...legitLinhas, ...isLinhas].join('\n'),
     TXT_TratoSuc_Texto: textoLinhas.join('\n')
   };
 }
@@ -2036,12 +2058,21 @@ function primeiroUltimoNome(nome){
 
 // Linha de consentimento conjugal (art.º 1682.º-A CC) — cônjuges outorgantes não proprietários
 function gerarLinhaConsentimentoConjugal(outorgantes){
+  const item = gerarConsentimentoConjugal(outorgantes);
+  return item.length ? `\n${item[0].nomes}${item[0].resto}` : '';
+}
+
+// Versão estruturada para o loop {#Consentimento_Conjugal} do Termo (nomes a negrito)
+function gerarConsentimentoConjugal(outorgantes){
   const conjuges=(outorgantes||[])
     .filter(o=>o.tipo==='singular'&&o.estadoCivil==='casado'&&o.conjugeOutorgante==='sim'&&o.conjugeProprietario==='nao'&&o.conjugeNome)
     .map(o=>primeiroUltimoNome(o.conjugeNome));
-  if(!conjuges.length)return'';
+  if(!conjuges.length)return[];
   const plural=conjuges.length>1;
-  return `\n${listarComEVirgula(conjuges)}, nos termos do art.º 1682.º-A do Código Civil, expressamente presta${plural?'m':''} o seu consentimento para a plena validade do ato;`;
+  return [{
+    nomes: listarComEVirgula(conjuges),
+    resto: `, nos termos do art.º 1682.º-A do Código Civil, expressamente presta${plural?'m':''} o seu consentimento para a plena validade do ato;`
+  }];
 }
 
 // ─── CABEÇALHO DO CONTRATO — identificação abreviada ─────────────────────────
@@ -2576,6 +2607,9 @@ function recolherDadosContrato() {
   const Bloco_Vendedores = vendedores.map(o => gerarTextoOutorgante(o)).join('\n')
     + gerarLinhaConsentimentoConjugal(vendedores);
   const Bloco_Compradores = compradores.map(o => gerarTextoOutorgante(o)).join('\n');
+  const Vendedores_Termo = vendedores.map(o => gerarSlotsOutorgante(o));
+  const Compradores_Termo = compradores.map(o => gerarSlotsOutorgante(o));
+  const Consentimento_Conjugal = gerarConsentimentoConjugal(vendedores);
   const Vendedores_Curto = gerarBlocoCurto(vendedores);
   const Compradores_Curto = gerarBlocoCurto(compradores);
 
@@ -2751,6 +2785,9 @@ function recolherDadosContrato() {
     Procuracao_Procurador: procCGD ? S[procCGD].codProcuracao : '',
     Bloco_Vendedores,
     Bloco_Compradores,
+    Vendedores_Termo,
+    Compradores_Termo,
+    Consentimento_Conjugal,
     Vendedores_Curto,
     Compradores_Curto,
     Plural_Primeiros,
@@ -3102,31 +3139,67 @@ function gerarLinhaParteFiadora(){
   return `Parte fiadora: ${lista}`;
 }
 
-function gerarTextoOutorgante(o) {
-  if (!o) return '';
+// Slots {nome, meio, conjNome, fim} — nomes saem a negrito no template, resto em texto normal.
+// Usados pelos loops do Termo ({#Vendedores_Termo}/{#Compradores_Termo}); gerarTextoOutorgante junta-os.
+function detalheConjuge(o){
+  const gc = o.conjugeGenero === 'F';
+  const segs = [];
+  if (o.conjugeNaturalidade) segs.push(`natural de ${o.conjugeNaturalidade}`);
+  if (o.conjugeCC) segs.push(`portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}${o.conjugeCCVal?`, válido até ${fmtDataPT(o.conjugeCCVal)}`:''}`);
+  if (o.conjugeNIF) segs.push(`${segs.length?'e ':''}número de identificação fiscal ${o.conjugeNIF}`);
+  return segs.length ? `, ${segs.join(', ')}` : '';
+}
+
+function gerarSlotsOutorgante(o) {
+  if (!o) return {nome:'',meio:'',conjNome:'',fim:''};
   if (o.tipo === 'empresa') {
     const g = o.gerGenero === 'F';
     const ec = estadoCivilTexto(o.gerEstadoCivil, o.gerGenero);
-    return `${o.gerNome}, ${ec}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${fmtDataPT(o.gerCCVal)}, e número de identificação fiscal ${o.gerNIF}, residente em ${o.gerMorada}, neste ato enquanto sócio${g?'a':''} e gerente em representação da sociedade comercial ${o.empNome}, com capital social de ${o.empCapital} Euros, registada na conservatória de registo comercial sob o número único de matrícula de pessoa coletiva ${o.empNIF}, com sede em ${o.empSede};`;
+    return {
+      nome: o.gerNome,
+      meio: `, ${ec}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${fmtDataPT(o.gerCCVal)}, e número de identificação fiscal ${o.gerNIF}, residente em ${o.gerMorada}, neste ato enquanto sóci${g?'a':'o'} e gerente em representação da sociedade comercial `,
+      conjNome: o.empNome,
+      fim: `, com capital social de ${o.empCapital} Euros, registada na conservatória de registo comercial sob o número único de matrícula de pessoa coletiva ${o.empNIF}, com sede em ${o.empSede};`
+    };
   }
   const g = o.genero === 'F';
   const ec = estadoCivilTexto(o.estadoCivil, o.genero);
+  const idBase = `, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}`;
   if (o.estadoCivil === 'casado' && o.conjugeOutorgante === 'sim') {
-    const gc = o.conjugeGenero === 'F';
     const regime = regimenTexto(o.regime);
     if (o.conjugeProprietario !== 'nao') {
       // Ambos proprietários — identificação conjunta em pé de igualdade
-      return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif} e ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, e número de identificação fiscal ${o.conjugeNIF}, casados entre si sob o regime da ${regime}, ambos residentes em ${o.moradaConjunta};`;
+      return {
+        nome: o.nome,
+        meio: `${idBase} e `,
+        conjNome: o.conjugeNome,
+        fim: `${detalheConjuge(o)}, casados entre si sob o regime da ${regime}, ambos residentes em ${o.moradaConjunta};`
+      };
     }
-    // Cônjuge não proprietário — outorga apenas para prestar consentimento (redação provisória; ver alteração 2)
-    return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, casado${g?'a':''} sob o regime da ${regime} com ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, e número de identificação fiscal ${o.conjugeNIF}, ambos residentes em ${o.moradaConjunta};`;
+    // Cônjuge outorga apenas para prestar consentimento
+    return {
+      nome: o.nome,
+      meio: `${idBase}, casad${g?'a':'o'} sob o regime da ${regime} com `,
+      conjNome: o.conjugeNome,
+      fim: `${detalheConjuge(o)}, ambos residentes em ${o.moradaConjunta};`
+    };
   }
   if (o.estadoCivil === 'casado' && o.conjugeOutorgante !== 'sim' && o.conjugeNome) {
     // Cônjuge não outorgante — identificação mínima do cônjuge (nome + NIF)
     const nifConj = o.conjugeNIF ? `, número de identificação fiscal ${o.conjugeNIF}` : '';
-    return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}${nifConj}, residente em ${o.morada};`;
+    return {
+      nome: o.nome,
+      meio: `${idBase}, casad${g?'a':'o'} sob o regime da ${regimenTexto(o.regime)} com `,
+      conjNome: o.conjugeNome,
+      fim: `${nifConj}, residente em ${o.morada};`
+    };
   }
-  return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, ${ec}, residente${g?'':'(s)'} em ${o.morada};`;
+  return {nome:o.nome, meio:`${idBase}, ${ec}, residente${g?'':'(s)'} em ${o.morada};`, conjNome:'', fim:''};
+}
+
+function gerarTextoOutorgante(o) {
+  const s = gerarSlotsOutorgante(o);
+  return `${s.nome}${s.meio}${s.conjNome}${s.fim}`;
 }
 
 function estadoCivilTexto(ec, genero) {
