@@ -2708,13 +2708,22 @@ function recolherDadosContrato() {
 
   // ── Casa Pronta ───────────────────────────────────────────────────────────
   let TXT_CasaPronta_Bloco = '';
+  let CP_Ini='', CP_Numero='', CP_Meio='', CP_Camara='', CP_Fim='';
   if (checked('toggle-casa-pronta')) {
     const camara = v('cp-camara');
     const pronuncia = v('cp-pronuncia');
-    const txtPronuncia = pronuncia === 'sim'
-      ? `e Câmara Municipal de "${camara}" não pretende exercer o direito que legalmente lhe assiste na preferência de compra sobre o imóvel;`
-      : `e a Câmara Municipal de "${camara}" nada disseram sobre o direito que legalmente lhe assiste na preferência de compra sobre o imóvel.`;
-    TXT_CasaPronta_Bloco = `--- Foi requerido para efeitos dos direitos de preferência nos termos do número 3 do artigo 37º da Lei 83/2019, de 3 de setembro (Lei De Bases Da Habitação), conjugado com o art.º 7º da Lei 89/2021, de 03 de novembro, com o número ${v('cp-numero')}, disponibilizado em ${fmtDataPT(v('cp-data'))} através do sítio www.casapronta.pt, onde o Instituto da Habitação e da Reabilitação Urbana (HIRU), o Património Cultural, I. P., a ESTAMO – Participações Imobiliárias ${txtPronuncia}`;
+    CP_Ini = `--- Foi requerido para efeitos dos direitos de preferência nos termos do número 3 do artigo 37º da Lei 83/2019, de 3 de setembro (Lei De Bases Da Habitação), conjugado com o art.º 7º da Lei 89/2021, de 03 de novembro, com o número `;
+    CP_Numero = v('cp-numero');
+    CP_Camara = camara;
+    const cpComum = `, disponibilizado em ${fmtDataPT(v('cp-data'))} através do sítio www.casapronta.pt, onde o Instituto da Habitação e da Reabilitação Urbana (IHRU), o Património Cultural, I. P., a ESTAMO – Participações Imobiliárias `;
+    if (pronuncia === 'sim') {
+      CP_Meio = cpComum + `e Câmara Municipal de "`;
+      CP_Fim = `" não pretende exercer o direito que legalmente lhe assiste na preferência de compra sobre o imóvel;`;
+    } else {
+      CP_Meio = cpComum + `e a Câmara Municipal de "`;
+      CP_Fim = `" nada disseram sobre o direito que legalmente lhe assiste na preferência de compra sobre o imóvel.`;
+    }
+    TXT_CasaPronta_Bloco = `${CP_Ini}${CP_Numero}${CP_Meio}${CP_Camara}${CP_Fim}`;
   }
 
   // ── Preço e pagamento ─────────────────────────────────────────────────────
@@ -2832,6 +2841,7 @@ function recolherDadosContrato() {
     VPT_Valor: v('vpt-valor'),
     VPT_Ano: v('vpt-ano'),
     TXT_CasaPronta_Bloco,
+    CP_Ini, CP_Numero, CP_Meio, CP_Camara, CP_Fim,
     Pedido_CasaPronta: v('cp-numero'),
     Data_CasaPronta: fmtDataPT(v('cp-data')),
     TXT_CasaPronta: '',  // legacy - não usado
