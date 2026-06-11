@@ -1197,28 +1197,38 @@ function addOutorgante(tipo) {
         </div>
         <!-- DADOS DO CÔNJUGE -->
         <div id="${id}-conjuge-dados" style="margin-top:.75rem">
+          <div class="form-grid form-grid-2" style="margin-bottom:.75rem" id="${id}-conjuge-prop-wrap">
+            <div class="form-group form-full">
+              <label class="form-label">Cônjuge é também proprietário? <span>*</span></label>
+              <select class="form-select" id="${id}-conjuge-proprietario">
+                <option value="sim">Sim — ambos proprietários (vendem ambos)</option>
+                <option value="nao">Não — apenas presta consentimento conjugal</option>
+              </select>
+              <div class="form-hint">Se ambos constam do registo, a identificação é conjunta. Se só um é proprietário, o cônjuge outorga para consentir (art.º 1682.º-A CC).</div>
+            </div>
+          </div>
           <div class="cond-block-title" style="margin-bottom:.6rem">Dados do cônjuge</div>
           <div class="form-grid form-grid-2">
             <div class="form-group form-full">
               <label class="form-label">Nome completo do cônjuge <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-nome" placeholder="Em maiúsculas" style="text-transform:uppercase">
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Género <span>*</span></label>
               <select class="form-select" id="${id}-conjuge-genero">
                 <option value="M">Masculino</option>
                 <option value="F">Feminino</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Natural de <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-naturalidade">
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Nº Cartão de Cidadão <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-cc">
             </div>
-            <div class="form-group">
+            <div class="form-group conj-extra">
               <label class="form-label">Válido até <span>*</span></label>
               <input type="date" class="form-input" id="${id}-conjuge-cc-val">
             </div>
@@ -1226,7 +1236,7 @@ function addOutorgante(tipo) {
               <label class="form-label">NIF <span>*</span></label>
               <input type="text" class="form-input" id="${id}-conjuge-nif">
             </div>
-            <div class="form-group form-full">
+            <div class="form-group form-full conj-extra">
               <label class="form-label">Morada (partilhada) <span>*</span></label>
               <input type="text" class="form-input" id="${id}-morada-conjunta" placeholder="Morada comum do casal">
             </div>
@@ -1353,14 +1363,19 @@ function onEstadoCivilChange(id) {
 function onConjugeOutorganteChange(id) {
   const val = document.getElementById(`${id}-conjuge-outorgante`)?.value;
   const conjDados = document.getElementById(`${id}-conjuge-dados`);
-  const moradaConj = document.getElementById(`${id}-morada-conjunta`)?.closest('.form-group');
+  const propWrap = document.getElementById(`${id}-conjuge-prop-wrap`);
   const moradaIndividual = document.getElementById(`${id}-morada-individual`);
   if (!conjDados) return;
+  conjDados.style.display = 'block';
+  const extras = conjDados.querySelectorAll('.conj-extra');
   if (val === 'sim') {
-    conjDados.style.display = 'block';
+    if (propWrap) propWrap.style.display = '';
+    extras.forEach(el => el.style.display = '');
     moradaIndividual.style.display = 'none';
   } else {
-    conjDados.style.display = 'none';
+    // Cônjuge não outorga — identificação mínima (nome + NIF) e morada individual
+    if (propWrap) propWrap.style.display = 'none';
+    extras.forEach(el => el.style.display = 'none');
     moradaIndividual.style.display = 'block';
   }
 }
@@ -1896,6 +1911,7 @@ function addFalecido(dados={}){
             <option value="">Selecionar...</option>
             <option value="codigo" ${dados.habTipo==='codigo'?'selected':''}>Com código de acesso</option>
             <option value="copia" ${dados.habTipo==='copia'?'selected':''}>Cópia certificada</option>
+            <option value="simplificado" ${dados.habTipo==='simplificado'?'selected':''}>Procedimento Simplificado (conservatória)</option>
           </select>
         </div>
         <div class="form-group">
@@ -1909,6 +1925,10 @@ function addFalecido(dados={}){
         <div class="form-group" id="falecido-${idx}-copia-group" style="display:${dados.habTipo==='copia'?'block':'none'}">
           <label class="form-label">Referência da cópia</label>
           <input type="text" class="form-input" id="falecido-${idx}-hab-copia" value="${dados.habCopia||''}" placeholder="Ex: Certidão nº 123/2024">
+        </div>
+        <div class="form-group" id="falecido-${idx}-simp-group" style="display:${dados.habTipo==='simplificado'?'block':'none'}">
+          <label class="form-label">Número do procedimento <span>*</span></label>
+          <input type="text" class="form-input" id="falecido-${idx}-hab-numero" value="${dados.habNumero||''}" placeholder="Ex: 1234/2025">
         </div>
         <div class="form-group">
           <label class="form-label">Notário / Conservatória</label>
@@ -1946,6 +1966,8 @@ function onHabTipoChange(idx){
   const tipo=document.getElementById(`falecido-${idx}-hab-tipo`).value;
   document.getElementById(`falecido-${idx}-cod-group`).style.display=tipo==='codigo'?'block':'none';
   document.getElementById(`falecido-${idx}-copia-group`).style.display=tipo==='copia'?'block':'none';
+  const simpGroup=document.getElementById(`falecido-${idx}-simp-group`);
+  if(simpGroup)simpGroup.style.display=tipo==='simplificado'?'block':'none';
 }
 
 function recolherTratoSuc(){
@@ -1956,7 +1978,7 @@ function recolherTratoSuc(){
     const v=id=>document.getElementById(`falecido-${idx}-${id}`)?.value||'';
     const herdeiros=[];
     bloco.querySelectorAll(`[id^="falecido-${idx}-herdeiro-"][id$="-nome"]`).forEach(el=>{if(el.value.trim())herdeiros.push({nome:el.value.trim()});});
-    falecidos.push({nome:v('nome'),dataObito:v('data-obito'),freguesia:v('freguesia'),habTipo:v('hab-tipo'),habData:v('hab-data'),habCodigo:v('hab-codigo'),habCopia:v('hab-copia'),habNotario:v('hab-notario'),herdeiros});
+    falecidos.push({nome:v('nome'),dataObito:v('data-obito'),freguesia:v('freguesia'),habTipo:v('hab-tipo'),habData:v('hab-data'),habCodigo:v('hab-codigo'),habCopia:v('hab-copia'),habNumero:v('hab-numero'),habNotario:v('hab-notario'),herdeiros});
   });
   return falecidos;
 }
@@ -1974,6 +1996,8 @@ function gerarTextosTratoSuc(){
     const notario=f.habNotario||'';
     if(f.habTipo==='codigo'){
       return `--- Verifiquei a legitimidade dos outorgantes pela Habilitação de herdeiros lavrada em ${dataHab}, no cartório notarial de ${notario} através do código ${f.habCodigo||''}; ----------`;
+    } else if(f.habTipo==='simplificado'){
+      return `--- Verifiquei a legitimidade dos outorgantes pelo Procedimento Simplificado de Habilitação de Herdeiros n.º ${f.habNumero||''}, lavrado em ${dataHab}, na Conservatória de ${notario}; ----------`;
     } else {
       return `--- Verifiquei a legitimidade dos outorgantes pela Habilitação de herdeiros lavrada em ${dataHab}, no cartório notarial de ${notario} e que arquivo; ----------`;
     }
@@ -2001,6 +2025,61 @@ function listarComEVirgula(arr){
   if(arr.length===1)return arr[0];
   if(arr.length===2)return`${arr[0]} e ${arr[1]}`;
   return arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1];
+}
+
+// Helper: 'TÂNIA FÁTIMA DOS SANTOS OLIVEIRA ZARCOS' → 'TÂNIA ZARCOS'
+function primeiroUltimoNome(nome){
+  const partes=(nome||'').trim().split(/\s+/).filter(Boolean);
+  if(partes.length<=1)return partes[0]||'';
+  return `${partes[0]} ${partes[partes.length-1]}`;
+}
+
+// Linha de consentimento conjugal (art.º 1682.º-A CC) — cônjuges outorgantes não proprietários
+function gerarLinhaConsentimentoConjugal(outorgantes){
+  const conjuges=(outorgantes||[])
+    .filter(o=>o.tipo==='singular'&&o.estadoCivil==='casado'&&o.conjugeOutorgante==='sim'&&o.conjugeProprietario==='nao'&&o.conjugeNome)
+    .map(o=>primeiroUltimoNome(o.conjugeNome));
+  if(!conjuges.length)return'';
+  const plural=conjuges.length>1;
+  return `\n${listarComEVirgula(conjuges)}, nos termos do art.º 1682.º-A do Código Civil, expressamente presta${plural?'m':''} o seu consentimento para a plena validade do ato;`;
+}
+
+// ─── CABEÇALHO DO CONTRATO — identificação abreviada ─────────────────────────
+// A identificação completa é obrigação do Termo de Autenticação; no contrato
+// basta nome, naturalidade, NIF e estado civil. Cada item alimenta o loop
+// inline {#..._Curto} do template: **{nome}**{meio}**{conjNome}**{fim}{sep}
+function gerarItemCurto(o, ehUltimo){
+  const sep = ehUltimo ? '' : ', e ';
+  if (!o) return {nome:'',meio:'',conjNome:'',fim:'',sep:''};
+  if (o.tipo === 'empresa') {
+    const gf = o.gerGenero === 'F';
+    return {
+      nome: o.empNome,
+      meio: `, NIPC ${o.empNIF}, com sede em ${o.empSede}, neste ato representada por `,
+      conjNome: o.gerNome,
+      fim: `, na qualidade de sóci${gf?'a':'o'} e gerente`,
+      sep
+    };
+  }
+  const g = o.genero === 'F';
+  const base = `, natural de ${o.naturalidade}, NIF ${o.nif}`;
+  if (o.estadoCivil === 'casado' && o.conjugeNome) {
+    const detConj = [];
+    if (o.conjugeNaturalidade) detConj.push(`natural de ${o.conjugeNaturalidade}`);
+    if (o.conjugeNIF) detConj.push(`NIF ${o.conjugeNIF}`);
+    return {
+      nome: o.nome,
+      meio: `${base}, casad${g?'a':'o'} com `,
+      conjNome: o.conjugeNome,
+      fim: detConj.length ? `, ${detConj.join(', ')}` : '',
+      sep
+    };
+  }
+  return {nome:o.nome, meio:`${base}, ${estadoCivilTexto(o.estadoCivil,o.genero)}`, conjNome:'', fim:'', sep};
+}
+
+function gerarBlocoCurto(outorgantes){
+  return (outorgantes||[]).map((o,i)=>gerarItemCurto(o, i===outorgantes.length-1));
 }
 
 // ─── RECOLHER DADOS ───────────────────────────────────────────────────────────
@@ -2494,8 +2573,11 @@ function recolherDadosContrato() {
   const nV = vendedores.length;
   const nC = compradores.length;
 
-  const Bloco_Vendedores = vendedores.map(o => gerarTextoOutorgante(o)).join('\n');
+  const Bloco_Vendedores = vendedores.map(o => gerarTextoOutorgante(o)).join('\n')
+    + gerarLinhaConsentimentoConjugal(vendedores);
   const Bloco_Compradores = compradores.map(o => gerarTextoOutorgante(o)).join('\n');
+  const Vendedores_Curto = gerarBlocoCurto(vendedores);
+  const Compradores_Curto = gerarBlocoCurto(compradores);
 
   // Plural
   const Plural_Primeiros = nV > 1 ? 'PRIMEIROS' : 'PRIMEIRO';
@@ -2537,7 +2619,7 @@ function recolherDadosContrato() {
     : '--- Sobre o imóvel não incidem ónus ou encargos.';
 
   // ── Renúncia ──────────────────────────────────────────────────────────────
-  const TXT_Renuncia_Hipopteca = distrate === 'renuncia'
+  const TXT_Renuncia_Hipoteca = distrate === 'renuncia'
     ? `A TERCEIRA OUTORGANTE, nos termos do art.º 56.º do Código de Registo Predial, renuncia expressamente à hipoteca constituída pela "${v('distrate-ap-renuncia')}" a seu favor sobre o imóvel identificado no contrato, libertando-o de todos os ónus hipotecários. A renúncia é feita livre e incondicionalmente, sem compensação adicional, prestando a TERCEIRA consentimento expresso para o cancelamento do respetivo registo na conservatória do registo predial.` : '';
 
   // ── Impostos ──────────────────────────────────────────────────────────────
@@ -2669,6 +2751,8 @@ function recolherDadosContrato() {
     Procuracao_Procurador: procCGD ? S[procCGD].codProcuracao : '',
     Bloco_Vendedores,
     Bloco_Compradores,
+    Vendedores_Curto,
+    Compradores_Curto,
     Plural_Primeiros,
     Plural_Segundos,
     // ── Garantes e Fiadores (Quartos Outorgantes) ───────────────────────────
@@ -2736,7 +2820,7 @@ function recolherDadosContrato() {
     Hipoteca_Valor: v('hipoteca-valor'),
     Extenso_Hipoteca_Valor: valorExtenso(v('hipoteca-valor')),
     Calculo_IS: v('calculo-is') || (parseFloat((v('mutuo-valor')||'0').replace(/[\s\u00A0.]/g,'').replace(',','.')) * 6 / 1000).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}),
-    TXT_Renuncia_Hipopteca,
+    TXT_Renuncia_Hipoteca,
     TXT_Menos35A,
     TXT_Onus_Inalienabilidade,
     DATA_EXTENSO_FINAL: dataExtenso(v('data-escritura')),
@@ -2765,6 +2849,7 @@ function recolherOutorgantes(tipo) {
         estadoCivil: ec,
         regime: document.getElementById(`${id}-regime`)?.value || '',
         conjugeOutorgante: conjugeOut,
+        conjugeProprietario: document.getElementById(`${id}-conjuge-proprietario`)?.value || 'sim',
         conjugeNome: (document.getElementById(`${id}-conjuge-nome`)?.value || '').toUpperCase(),
         conjugeGenero: document.getElementById(`${id}-conjuge-genero`)?.value || 'F',
         conjugeNaturalidade: document.getElementById(`${id}-conjuge-naturalidade`)?.value || '',
@@ -2818,6 +2903,7 @@ function recolherPessoasSingulares(containerId){
       estadoCivil: ec,
       regime: document.getElementById(`${id}-regime`)?.value || '',
       conjugeOutorgante: document.getElementById(`${id}-conjuge-outorgante`)?.value || 'nao',
+      conjugeProprietario: document.getElementById(`${id}-conjuge-proprietario`)?.value || 'sim',
       conjugeNome: (document.getElementById(`${id}-conjuge-nome`)?.value || '').toUpperCase(),
       conjugeGenero: document.getElementById(`${id}-conjuge-genero`)?.value || 'F',
       conjugeNaturalidade: document.getElementById(`${id}-conjuge-naturalidade`)?.value || '',
@@ -2871,7 +2957,7 @@ function gerarTextoPessoa(o, ehUltimo){
   if (o.estadoCivil === 'casado') {
     if (o.conjugeNome) txt += ` sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}`;
     else txt += ` sob o regime da ${regimenTexto(o.regime)}`;
-    if (o.conjugeNIF) txt += `, NIF ${o.conjugeNIF}`;
+    if (o.conjugeNIF) txt += `, número de identificação fiscal ${o.conjugeNIF}`;
   }
   if (o.morada) txt += `, residente em ${o.morada}`;
   txt += ehUltimo ? '.' : ';';
@@ -3028,7 +3114,17 @@ function gerarTextoOutorgante(o) {
   if (o.estadoCivil === 'casado' && o.conjugeOutorgante === 'sim') {
     const gc = o.conjugeGenero === 'F';
     const regime = regimenTexto(o.regime);
+    if (o.conjugeProprietario !== 'nao') {
+      // Ambos proprietários — identificação conjunta em pé de igualdade
+      return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif} e ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, e número de identificação fiscal ${o.conjugeNIF}, casados entre si sob o regime da ${regime}, ambos residentes em ${o.moradaConjunta};`;
+    }
+    // Cônjuge não proprietário — outorga apenas para prestar consentimento (redação provisória; ver alteração 2)
     return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, casado${g?'a':''} sob o regime da ${regime} com ${o.conjugeNome}, natural de ${o.conjugeNaturalidade}, portador${gc?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.conjugeCC}, válido até ${fmtDataPT(o.conjugeCCVal)}, e número de identificação fiscal ${o.conjugeNIF}, ambos residentes em ${o.moradaConjunta};`;
+  }
+  if (o.estadoCivil === 'casado' && o.conjugeOutorgante !== 'sim' && o.conjugeNome) {
+    // Cônjuge não outorgante — identificação mínima do cônjuge (nome + NIF)
+    const nifConj = o.conjugeNIF ? `, número de identificação fiscal ${o.conjugeNIF}` : '';
+    return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, casado${g?'a':''} sob o regime da ${regimenTexto(o.regime)} com ${o.conjugeNome}${nifConj}, residente em ${o.morada};`;
   }
   return `${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc}, válido até ${fmtDataPT(o.ccValidade)}, e número de identificação fiscal ${o.nif}, ${ec}, residente${g?'':'(s)'} em ${o.morada};`;
 }
