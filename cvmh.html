@@ -2782,6 +2782,8 @@ function recolherDadosContrato() {
     CD_Profissional: entAut ? S[entAut].cedula : '',
     NIF_Ent_Tituladora: entAut ? S[entAut].nif : '',
     Cl_Procurador: procCGD ? S[procCGD].textoProcuradora : '',
+    Cl_Procurador_Nome: procCGD ? S[procCGD].nome : '',
+    Cl_Procurador_Resto: procCGD ? S[procCGD].textoProcuradora.slice(S[procCGD].nome.length) : '',
     Procuracao_Procurador: procCGD ? S[procCGD].codProcuracao : '',
     Bloco_Vendedores,
     Bloco_Compradores,
