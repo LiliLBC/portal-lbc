@@ -3241,11 +3241,27 @@ function nomeClienteCVMH(){
   return c.tipo==='empresa'?c.empNome:c.nome||'';
 }
 function dataEscrituraFormatada(){return fmtDataPT(document.getElementById('data-escritura')?.value||'');}
+// Lista todos os que outorgam (vendedores, compradores, garantes, fiadores e cônjuges outorgantes),
+// excluindo a procuradora da CGD (terceira outorgante)
+function listarOutorgantesEmail(){
+  const nomes=[];
+  const add=n=>{n=(n||'').trim();if(n&&!nomes.includes(n))nomes.push(n);};
+  const grupos=[recolherOutorgantes('vendedores'),recolherOutorgantes('compradores'),recolherTerceiros(),recolherFiadores()];
+  grupos.forEach(g=>(g||[]).forEach(o=>{
+    if(o.tipo==='empresa'){add(o.gerNome);return;}
+    add(o.nome);
+    if(o.estadoCivil==='casado'&&o.conjugeOutorgante==='sim')add(o.conjugeNome);
+  }));
+  return nomes;
+}
+
 function abrirModalComunicacao(){
   const nome=nomeClienteCVMH();const data=dataEscrituraFormatada();
   document.getElementById('com-email-para').value='';
   document.getElementById('com-email-assunto').value=`Compra e Venda com Mútuo e Hipoteca — ${nome||'cliente'}${data?' — '+data:''}`;
-  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de Compra e Venda com Mútuo e Hipoteca se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\nMais informamos que os cheques para pagamento devem ser solicitados na agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento do pedido.\n\n📍 LBC Solicitadora — Rua Domingos Franco de Oliveira, n.º 16, Évora\nhttps://maps.app.goo.gl/TG2cgW3Ajb64hzWZA\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
+  const outorgantes=listarOutorgantesEmail();
+  const fraseOutorgantes=`Os outorgantes ${outorgantes.length?listarComEVirgula(outorgantes)+' ':''}deverão fazer-se acompanhar dos documentos de identificação originais e, caso se façam representar por terceiros, deverão remeter-nos, com a maior brevidade possível, os respetivos documentos de identificação e procuração.`;
+  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de Compra e Venda com Mútuo e Hipoteca se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n${fraseOutorgantes}\n\nTodos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (licença de utilização, certidão de isenção, habilitações de herdeiros, certidões de nascimento/casamento e imposto do selo). Deverão ainda fazer-se acompanhar das guias de liquidação de IMT/IS impressas.\n\nMais informamos que os cheques para pagamento devem ser solicitados na agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento do pedido.\n\n📍 Localização do escritório: https://maps.app.goo.gl/TG2cgW3Ajb64hzWZA\n(LBC Solicitadora — Rua Domingos Franco de Oliveira, n.º 16, Évora)\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
   document.getElementById('com-wa-telefone').value='351';
   document.getElementById('com-wa-mensagem').value=`Bom dia${nome?' '+nome:''},\n\nInformamos que o seu processo de Compra e Venda com Mútuo e Hipoteca está em preparação para a escritura de ${data||'___'}.\n\nNota: os cheques para pagamento devem ser pedidos à agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento.\n\nQualquer dúvida, não hesite em contactar-nos.\n\nLBC Solicitadora`;
   comSetTab('email');
