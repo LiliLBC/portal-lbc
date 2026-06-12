@@ -630,16 +630,8 @@ function addOutorgante(tipo){
     </div>
     <!-- EMPRESA -->
     <div id="${id}-empresa" style="display:none">
-      <div class="form-grid form-grid-2">
-        <div class="form-group form-full"><label class="form-label">Nome do gerente <span>*</span></label><input type="text" class="form-input" id="${id}-ger-nome" style="text-transform:uppercase"></div>
-        <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-ger-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-        <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-ger-naturalidade"></div>
-        <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-ger-estado-civil"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
-        <div class="form-group"><label class="form-label">Nº CC</label><input type="text" class="form-input" id="${id}-ger-cc"></div>
-        <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-ger-cc-val"></div>
-        <div class="form-group"><label class="form-label">NIF do gerente</label><input type="text" class="form-input" id="${id}-ger-nif"></div>
-        <div class="form-group"><label class="form-label">Morada</label><input type="text" class="form-input" id="${id}-ger-morada"></div>
-      </div>
+      <div id="${id}-gerentes"></div>
+      <button class="add-outorgante-btn" type="button" style="margin-bottom:.75rem" onclick="addGerente('${id}')">+ Adicionar gerente</button>
       <div style="background:var(--blue-light);border:1px solid #B5D4F4;border-radius:8px;padding:.9rem;margin-top:.75rem">
         <div style="font-size:11px;font-weight:600;color:var(--blue);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em">Dados da empresa</div>
         <div class="form-grid form-grid-2">
@@ -653,6 +645,34 @@ function addOutorgante(tipo){
       </div>
     </div>`;
   container.appendChild(div);
+  addGerente(id);
+}
+
+// ─── GERENTES MÚLTIPLOS (empresa) ────────────────────────────────────────────
+const gerenteCnt={};
+function addGerente(id){
+  gerenteCnt[id]=(gerenteCnt[id]||0)+1;
+  const idx=gerenteCnt[id];
+  const gid=`${id}-ger-${idx}`;
+  const div=document.createElement('div');
+  div.className='gerente-block';div.id=gid;
+  div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-bottom:.6rem;background:var(--surface)';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Gerente ${idx}</span>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${gid}').remove()">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Nome do gerente <span>*</span></label><input type="text" class="form-input" id="${gid}-nome" style="text-transform:uppercase"></div>
+      <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${gid}-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+      <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${gid}-naturalidade"></div>
+      <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${gid}-estado-civil"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+      <div class="form-group"><label class="form-label">Nº CC</label><input type="text" class="form-input" id="${gid}-cc"></div>
+      <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${gid}-cc-val"></div>
+      <div class="form-group"><label class="form-label">NIF do gerente</label><input type="text" class="form-input" id="${gid}-nif"></div>
+      <div class="form-group"><label class="form-label">Morada</label><input type="text" class="form-input" id="${gid}-morada"></div>
+    </div>`;
+  document.getElementById(`${id}-gerentes`).appendChild(div);
 }
 
 function setTipo(id,tipo,btn){
@@ -852,6 +872,8 @@ function recolherDados(){
   document.querySelectorAll('input[type=checkbox]').forEach(el=>{if(el.id)dados[el.id]=el.checked;});
   dados._vendedoresCount=vendedoresCount;
   dados._compradoresCount=compradoresCount;
+  dados._gerCounts={};
+  document.querySelectorAll('[id$="-gerentes"]').forEach(c=>{dados._gerCounts[c.id.replace('-gerentes','')]=c.querySelectorAll('.gerente-block').length;});
   return dados;
 }
 
@@ -861,8 +883,10 @@ function restaurarDados(dados){
   const cc=dados._compradoresCount||1;
   document.getElementById('vendedores-container').innerHTML='';vendedoresCount=0;
   document.getElementById('compradores-container').innerHTML='';compradoresCount=0;
+  Object.keys(gerenteCnt).forEach(k=>delete gerenteCnt[k]);
   for(let i=0;i<vc;i++)addOutorgante('vendedores');
   for(let i=0;i<cc;i++)addOutorgante('compradores');
+  if(dados._gerCounts)Object.entries(dados._gerCounts).forEach(([bid,n])=>{for(let i=1;i<n;i++)if(document.getElementById(`${bid}-gerentes`))addGerente(bid);});
   // Restaurar valores
   Object.entries(dados).forEach(([id,val])=>{
     if(id.startsWith('_'))return;
@@ -1135,7 +1159,11 @@ function recolherOutorgantes(tipo){
     const id=bloco.id;
     const isEmpresa=bloco.querySelector('.type-btn.active')?.textContent?.includes('Empresa');
     if(isEmpresa){
-      return{tipo:'empresa',empNome:document.getElementById(`${id}-emp-nome`)?.value||'',empNIF:document.getElementById(`${id}-emp-nif`)?.value||'',empSede:document.getElementById(`${id}-emp-sede`)?.value||'',gerNome:document.getElementById(`${id}-ger-nome`)?.value||'',gerGenero:document.getElementById(`${id}-ger-genero`)?.value||'M',gerNatal:document.getElementById(`${id}-ger-naturalidade`)?.value||'',gerEC:document.getElementById(`${id}-ger-estado-civil`)?.value||'solteiro',gerCC:document.getElementById(`${id}-ger-cc`)?.value||'',gerCCVal:document.getElementById(`${id}-ger-cc-val`)?.value||'',gerNIF:document.getElementById(`${id}-ger-nif`)?.value||'',gerMorada:document.getElementById(`${id}-ger-morada`)?.value||'',crcCod:document.getElementById(`${id}-crc-cod`)?.value||'',crcVal:document.getElementById(`${id}-crc-val`)?.value||''};
+      const gerentes=[...bloco.querySelectorAll('.gerente-block')].map(gb=>{
+        const g=s=>document.getElementById(`${gb.id}-${s}`)?.value||'';
+        return{nome:g('nome'),genero:g('genero')||'M',natal:g('naturalidade'),ec:g('estado-civil')||'solteiro',cc:g('cc'),ccVal:g('cc-val'),nif:g('nif'),morada:g('morada')};
+      });
+      return{tipo:'empresa',empNome:document.getElementById(`${id}-emp-nome`)?.value||'',empNIF:document.getElementById(`${id}-emp-nif`)?.value||'',empSede:document.getElementById(`${id}-emp-sede`)?.value||'',gerentes,crcCod:document.getElementById(`${id}-crc-cod`)?.value||'',crcVal:document.getElementById(`${id}-crc-val`)?.value||''};
     }else{
       const ec=document.getElementById(`${id}-estado-civil`)?.value||'solteiro';
       const cojOut=document.getElementById(`${id}-conjuge-outorgante`)?.value||'nao';
@@ -1150,7 +1178,17 @@ function recolherOutorgantes(tipo){
 function textoOutorgante(o,i,total,papel){
   const isMasc=o.genero==='M';
   if(o.tipo==='empresa'){
-    return `${o.empNome}, pessoa coletiva número ${o.empNIF}, com sede em ${o.empSede}, aqui representada pelo seu gerente ${o.gerNome}, ${estadoCivilTexto(o.gerEC,o.gerGenero)}, natural de ${o.gerNatal}, portador do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${fmtDataPT(o.gerCCVal)}, e número de identificação fiscal ${o.gerNIF}`;
+    const txtGer=g=>`${g.nome}, ${estadoCivilTexto(g.ec,g.genero)}, natural de ${g.natal}, portador${g.genero==='F'?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${g.cc}, válido até ${fmtDataPT(g.ccVal)}, e número de identificação fiscal ${g.nif}`;
+    const gs=o.gerentes&&o.gerentes.length?o.gerentes:[{nome:'',genero:'M',natal:'',ec:'solteiro',cc:'',ccVal:'',nif:''}];
+    let rep;
+    if(gs.length===1){
+      rep=`aqui representada ${gs[0].genero==='F'?'pela sua gerente':'pelo seu gerente'} ${txtGer(gs[0])}`;
+    }else{
+      const todasF=gs.every(g=>g.genero==='F');
+      const lista=gs.map(txtGer);
+      rep=`aqui representada ${todasF?'pelas suas gerentes':'pelos seus gerentes'} ${lista.slice(0,-1).join(', ')}, e ${lista[lista.length-1]}`;
+    }
+    return `${o.empNome}, pessoa coletiva número ${o.empNIF}, com sede em ${o.empSede}, ${rep}`;
   }
   // Para casados com regime definido, omite-se o estado civil inicial (aparece depois
   // ligado ao regime de bens + cônjuge). Para os outros estados civis, mostra-se logo.
