@@ -102,7 +102,7 @@ mark{background:var(--amber-light);color:var(--amber);border-radius:3px;padding:
     </a>
     <div>
       <span class="page-title">Cláusulas Especiais</span>
-      <span class="page-sub">Biblioteca de minutas · v2026-06-11.1</span>
+      <span class="page-sub">Biblioteca de minutas · v2026-06-11.3</span>
     </div>
   </div>
   <button class="btn btn-primary" onclick="abrirModal()">
@@ -135,10 +135,9 @@ mark{background:var(--amber-light);color:var(--amber);border-radius:3px;padding:
       <div class="form-erro" id="erro-nome">Já existe uma cláusula com este nome. Escolha um nome diferente.</div>
     </div>
     <div class="form-group">
-      <label class="form-label">Categoria</label>
-      <input type="text" class="form-input" id="cl-categoria" list="categorias-existentes" placeholder="Ex: Verificações, Compra e Venda, Heranças...">
-      <datalist id="categorias-existentes"></datalist>
-      <div class="form-hint">Opcional — serve para a segmentação por separadores. Escreva uma nova ou escolha uma existente.</div>
+      <label class="form-label">Categorias</label>
+      <div class="chips" id="cl-categorias" style="margin-bottom:0"></div>
+      <div class="form-hint">Escolha uma ou mais. A lista é fechada para evitar variantes desencontradas; para acrescentar uma categoria nova, é uma alteração de uma linha no código.</div>
     </div>
     <div class="form-group">
       <label class="form-label">Texto da cláusula <span>*</span></label>
@@ -153,10 +152,13 @@ mark{background:var(--amber-light);color:var(--amber);border-radius:3px;padding:
 
 <script>
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
+// Categorias permitidas (lista fechada). Para acrescentar uma nova, basta editar aqui.
+const CATEGORIAS_PERMITIDAS = ['Verificações','Compra e Venda','Mútuo e Hipoteca','Heranças','Arrendamento','Procurações','Impostos','Ónus e Encargos','Outras'];
 let clausulas = [];          // {id, nome, categoria, corpo}
 let categoriaAtiva = '';     // '' = todas
 let editandoId = null;
 let cartoesAbertos = new Set();
+let catsSelecionadas = new Set();
 
 // ─── SHAREPOINT (mesmo padrão do resto do portal) ────────────────────────────
 const SP_HOST = 'lbcsolicitadorapt.sharepoint.com';
@@ -252,8 +254,13 @@ function realcar(texto, termo) {
   return out.join('');
 }
 
+// Uma cláusula pode ter várias categorias, separadas por vírgula ou ponto e vírgula
+function catsDe(c) {
+  return (c.categoria||'').split(/[,;]/).map(s=>s.trim()).filter(Boolean);
+}
+
 function categorias() {
-  return [...new Set(clausulas.map(c=>c.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+  return [...new Set(clausulas.flatMap(catsDe))].sort((a,b)=>a.localeCompare(b,'pt'));
 }
 
 function renderizar() {
@@ -262,14 +269,14 @@ function renderizar() {
   const cats = categorias();
   const chips = [`<button class="chip ${categoriaAtiva===''?'active':''}" onclick="setCategoria('')">Todas (${clausulas.length})</button>`]
     .concat(cats.map(c=>{
-      const n = clausulas.filter(x=>x.categoria===c).length;
+      const n = clausulas.filter(x=>catsDe(x).includes(c)).length;
       return `<button class="chip ${categoriaAtiva===c?'active':''}" onclick="setCategoria('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)} (${n})</button>`;
     }));
   document.getElementById('chips').innerHTML = chips.join('');
 
   // filtrar
   let vis = clausulas;
-  if (categoriaAtiva) vis = vis.filter(c=>c.categoria===categoriaAtiva);
+  if (categoriaAtiva) vis = vis.filter(c=>catsDe(c).includes(categoriaAtiva));
   if (termo) {
     const nt = normalizar(termo);
     vis = vis.filter(c => normalizar(c.nome).includes(nt) || normalizar(c.corpo).includes(nt));
@@ -288,7 +295,7 @@ function renderizar() {
     <div class="clausula-card ${cartoesAbertos.has(c.id)?'aberta':''}" onclick="toggleCartao('${c.id}')">
       <div class="clausula-top">
         <div class="clausula-nome">${realcar(c.nome, termo)}</div>
-        ${c.categoria?`<div class="clausula-cat">${escapeHtml(c.categoria)}</div>`:''}
+        ${catsDe(c).map(cat=>`<div class="clausula-cat">${escapeHtml(cat)}</div>`).join('')}
       </div>
       <div class="clausula-corpo">${realcar(c.corpo, termo)}</div>
       <div class="clausula-acoes" onclick="event.stopPropagation()">
@@ -325,13 +332,26 @@ function abrirModal(id) {
   document.getElementById('btn-guardar').textContent = id ? 'Guardar alterações' : 'Guardar cláusula';
   const c = id ? clausulas.find(x=>x.id===id) : null;
   document.getElementById('cl-nome').value = c?.nome || '';
-  document.getElementById('cl-categoria').value = c?.categoria || '';
   document.getElementById('cl-corpo').value = c?.corpo || '';
+  catsSelecionadas = new Set(c ? catsDe(c) : []);
+  renderCatsModal(c);
   document.getElementById('erro-nome').style.display = 'none';
-  document.getElementById('categorias-existentes').innerHTML =
-    categorias().map(x=>`<option value="${escapeHtml(x)}">`).join('');
   document.getElementById('modal-clausula').classList.add('show');
   setTimeout(()=>document.getElementById('cl-nome').focus(), 100);
+}
+
+function renderCatsModal(c) {
+  // lista fechada + categorias legadas da cláusula em edição (para não as perder silenciosamente)
+  const legadas = c ? catsDe(c).filter(x=>!CATEGORIAS_PERMITIDAS.includes(x)) : [];
+  const todas = [...CATEGORIAS_PERMITIDAS, ...legadas];
+  document.getElementById('cl-categorias').innerHTML = todas.map(cat=>
+    `<button type="button" class="chip ${catsSelecionadas.has(cat)?'active':''}" onclick="toggleCatModal('${escapeHtml(cat).replace(/'/g,"\\'")}')">${escapeHtml(cat)}</button>`
+  ).join('');
+}
+
+function toggleCatModal(cat) {
+  catsSelecionadas.has(cat) ? catsSelecionadas.delete(cat) : catsSelecionadas.add(cat);
+  renderCatsModal(editandoId ? clausulas.find(x=>x.id===editandoId) : null);
 }
 function fecharModal(){ document.getElementById('modal-clausula').classList.remove('show'); }
 
@@ -342,7 +362,7 @@ function nomeDuplicado(nome) {
 
 async function guardarClausula() {
   const nome = document.getElementById('cl-nome').value.trim();
-  const categoria = document.getElementById('cl-categoria').value.trim();
+  const categoria = [...catsSelecionadas].join(', ');
   const corpo = document.getElementById('cl-corpo').value.trim();
   if (!nome) { showToast('Indique o nome da cláusula', 'error'); return; }
   if (!corpo) { showToast('O texto da cláusula está vazio', 'error'); return; }
