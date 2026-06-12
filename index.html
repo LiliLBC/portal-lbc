@@ -401,7 +401,7 @@ tbody tr:hover td{background:#FAFAF8}
         <div class="user-name" id="user-name">...</div>
       </div>
       <button class="btn-logout" onclick="fazerLogout()">Sair</button>
-      <div style="margin-top:.5rem">Portal LBC · v2026-06-11.1</div>
+      <div style="margin-top:.5rem">Portal LBC · v2026-06-12.2</div>
     </div>
   </aside>
 
@@ -3557,6 +3557,34 @@ function embedSP(url){
 }
 function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
 
+// ── Transporte automático: registo de escritura → calendário de aniversários ──
+let _tSite=null,_tList=null,_tCols=null;
+async function transporteParaAniversarios(nome,dataISO,finalidade){
+  if(!nome||!dataISO)return null; // sem nome ou data não há evento
+  const GB='https://graph.microsoft.com/v1.0';
+  const hdr={Authorization:'Bearer '+graphToken,'Content-Type':'application/json'};
+  const g=async u=>{const r=await fetch(u,{headers:{Authorization:'Bearer '+graphToken}});if(!r.ok)throw new Error('Graph '+r.status);return r.json();};
+  if(!_tSite)_tSite=(await g(`${GB}/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2`)).id;
+  if(!_tList){const ls=await g(`${GB}/sites/${_tSite}/lists?$select=id,name,displayName`);
+    const l=(ls.value||[]).find(x=>(x.name||'').toLowerCase()==='listaaniversarios'||(x.displayName||'').toLowerCase()==='listaaniversarios');
+    if(!l)throw new Error('ListaAniversarios não encontrada');_tList=l.id;}
+  if(!_tCols){let cols=[];try{cols=(await g(`${GB}/sites/${_tSite}/lists/${_tList}/columns?$select=name,displayName`)).value||[];}catch(e){}
+    const f=w=>{const ww=w.toLowerCase();const c=cols.find(x=>(x.name||'').toLowerCase()===ww||(x.displayName||'').toLowerCase()===ww);return c?c.name:w;};
+    _tCols={tipo:f('TipoA'),data:f('DataReferencia'),fin:f('Finalidade'),ativo:f('Ativo')};}
+  const C=_tCols;
+  const nomeU=nome.toUpperCase().trim();
+  const dia=dataISO.substring(0,10);
+  const fields={Title:nomeU,[C.tipo]:'Escritura',[C.data]:dia+'T12:00:00Z',[C.ativo]:true};
+  if(finalidade)fields[C.fin]=finalidade;
+  const itens=((await g(`${GB}/sites/${_tSite}/lists/${_tList}/items?$expand=fields&$top=2000`)).value||[]);
+  const ex=itens.find(i=>{const fl=i.fields||{};return (fl.Title||'').toUpperCase().trim()===nomeU&&(fl[C.tipo]||'')==='Escritura'&&((fl[C.data]||'')+'').slice(0,10)===dia;});
+  let r;
+  if(ex)r=await fetch(`${GB}/sites/${_tSite}/lists/${_tList}/items/${ex.id}/fields`,{method:'PATCH',headers:hdr,body:JSON.stringify(fields)});
+  else r=await fetch(`${GB}/sites/${_tSite}/lists/${_tList}/items`,{method:'POST',headers:hdr,body:JSON.stringify({fields})});
+  if(!r.ok)throw new Error('SharePoint '+r.status);
+  return ex?'atualizado':'novo';
+}
+
 async function guardarPainel(){
   await resolverColunaFinalidade();
   const btn=document.getElementById('painel-btn-guardar');
@@ -3628,6 +3656,11 @@ async function guardarPainel(){
     try{
       await tentar(body);
       showToast(painelItemId?'Guardado!':'Registo criado!','success');
+      // Evento no calendário (HPP/Outros) — não bloqueia o registo se falhar
+      try{
+        const resT=await transporteParaAniversarios(nome,document.getElementById('p-data')?.value||'',finalidade||'');
+        if(resT)showToast(`Evento de escritura ${resT==='novo'?'adicionado ao':'atualizado no'} calendário`,'success');
+      }catch(eT){showToast('Registo guardado, mas o evento não entrou no calendário: '+eT.message,'error');}
     }catch(e){
       const msg=(e&&e.message)||'';
       if((body[F.contactos]||body[F.finalidade])&&/Contactos|Finalidade|400|invalid|not.*found|column/i.test(msg)){
@@ -8990,8 +9023,49 @@ async function servicosMudarEstado(itemId,estado,sel){
 }
 
 // ─── CLIENTES ─────────────────────────────────────────────────────────────────
-const CLI={nome:'NomeCompleto',tipo:'TipoCliente',nif:'NIF',tel:'Telefone',email:'Email',morada:'Morada',notas:'Notas',rel:'Relacionado'};
+const CLI={nome:'NomeCompleto',tipo:'TipoCliente',nif:'NIF',tel:'Telefone',email:'Email',morada:'Morada',notas:'Notas',rel:'Relacionado',nascimento:'DataNascimento',genero:'Genero'};
 let todosClientes=[],cliItemId=null,cliListaId=null;
+
+// ── LISTA TELEFÓNICA CANÓNICA ────────────────────────────────────────────────
+// Resolve a lista Clientes (partilhado por todos os módulos)
+async function cliResolverLista(){
+  if(cliListaId)return cliListaId;
+  const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name`);
+  const lista=r.value.find(l=>l.name.toLowerCase()==='clientes');
+  if(!lista)throw new Error('Lista "Clientes" não encontrada no SharePoint');
+  cliListaId=lista.id;return cliListaId;
+}
+// Insere/atualiza uma pessoa na lista Clientes (fonte única de contactos).
+// Correspondência por NIF; na falta, por nome. Nunca apaga dados existentes com vazios.
+async function upsertClienteContacto(p){
+  await cliResolverLista();
+  const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items?$expand=fields&$top=999`);
+  const itens=(r.value||[]).map(i=>({id:i.id,f:i.fields||{}}));
+  const nomeU=(p.nome||'').toUpperCase().trim();
+  const nif=(p.nif||'').trim();
+  const ex=itens.find(x=>(nif&&((x.f[CLI.nif]||'')+'').trim()===nif)||((x.f[CLI.nome]||x.f.Title||'').toUpperCase().trim()===nomeU));
+  const fields={};
+  const põe=(col,val)=>{if(val&&(!ex||!(ex.f[col]||'').toString().trim()||col===CLI.nascimento||col===CLI.genero))fields[col]=val;};
+  if(!ex){fields.Title=nomeU;fields[CLI.nome]=nomeU;fields[CLI.tipo]='Particular';}
+  põe(CLI.nif,nif);põe(CLI.tel,(p.telm||p.tel||'').trim());põe(CLI.email,(p.email||'').trim());
+  if(p.nascimento)fields[CLI.nascimento]=p.nascimento+'T12:00:00Z';
+  if(p.genero)fields[CLI.genero]=p.genero;
+  // marcar relação com Escrituras sem perder as existentes
+  const relAtual=ex?((ex.f[CLI.rel]||'')+''):'';
+  if(!/Escrituras/i.test(relAtual))fields[CLI.rel]=relAtual?relAtual+';Escrituras':'Escrituras';
+  if(ex){
+    if(Object.keys(fields).length)await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items/${ex.id}/fields`,fields);
+    return 'atualizado';
+  }
+  await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items`,{fields});
+  return 'novo';
+}
+// Fichas de cliente com data de nascimento — alimentam o calendário de aniversários
+async function lerClientesParaAniversarios(){
+  await cliResolverLista();
+  const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${cliListaId}/items?$expand=fields&$top=999`);
+  return (r.value||[]).map(i=>{const f=i.fields||{};return{id:i.id,nome:f[CLI.nome]||f.Title||'',nif:(f[CLI.nif]||'')+'',tel:f[CLI.tel]||'',email:f[CLI.email]||'',genero:f[CLI.genero]||'M',nascimento:((f[CLI.nascimento]||'')+'').slice(0,10)};});
+}
 
 async function cliInit(){
   document.getElementById('cli-loading').style.display='flex';
@@ -10901,7 +10975,7 @@ init();
     try{
       await fetch(`${GBASE}/drives/${c.driveId}/items/${c.itemId}:/${NUC.ficheiro}:/content`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(dados)});
       const r=await upsert(token,pessoas,escritura);
-      toast(`Guardado · aniversários: ${r.novos} novo(s), ${r.atual} atualizado(s)`);fechar();
+      toast(`Guardado · contactos: ${r.novos} novo(s), ${r.atual} atualizado(s)`);fechar();
     }catch(e){toast('Erro a guardar: '+e.message);}
   }
 
@@ -10916,19 +10990,12 @@ init();
       _aCols={titulo:'Title',email:f('Email'),tel:f('Telemovel'),tipo:f('TipoA'),data:f('DataReferencia'),finalidade:f('Finalidade'),nif:f('NIF'),genero:f('Genero'),ativo:f('Ativo')};}
   }
   async function upsert(token,pessoas,escritura){
-    await resolverAniv();const C=_aCols;
-    const itens=((await gGet(`${GBASE}/sites/${_aSite}/lists/${_aList}/items?$expand=fields&$top=2000`)).value||[]).map(i=>({id:i.id,f:i.fields||{}}));
+    // Fonte única: lista Clientes. A ListaAniversarios fica apenas com eventos de escritura
+    // (criados automaticamente pelo registo). Falhas são comunicadas, nunca silenciosas.
     let novos=0,atual=0;
-    const grava=async(fields,match)=>{const ex=itens.find(match);
-      if(ex){await fetch(`${GBASE}/sites/${_aSite}/lists/${_aList}/items/${ex.id}/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(fields)});ex.f={...ex.f,...fields};atual++;}
-      else{const r=await fetch(`${GBASE}/sites/${_aSite}/lists/${_aList}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});if(r.ok){const j=await r.json();itens.unshift({id:j.id,f:fields});novos++;}}};
     for(const p of pessoas){
-      const base={[C.titulo]:p.nome,[C.ativo]:true};
-      if(p.email)base[C.email]=p.email;if(p.telm)base[C.tel]=p.telm;if(p.genero)base[C.genero]=p.genero;if(p.nif)base[C.nif]=p.nif;
-      if(p.nascimento){const fl={...base,[C.tipo]:'Aniversário',[C.data]:p.nascimento+'T00:00:00Z'};
-        await grava(fl,x=>(p.nif&&((x.f[C.nif]||'')+'').trim()===p.nif&&(x.f[C.tipo]||'')==='Aniversário')||(!p.nif&&(x.f[C.titulo]||'').toUpperCase().trim()===p.nome&&(x.f[C.tipo]||'')==='Aniversário'));}
-      if(p.papel==='Comprador'&&escritura&&escritura.data){const fl={...base,[C.tipo]:'Escritura',[C.data]:escritura.data+'T00:00:00Z'};if(escritura.finalidade)fl[C.finalidade]=escritura.finalidade;
-        await grava(fl,x=>(p.nif&&((x.f[C.nif]||'')+'').trim()===p.nif&&(x.f[C.tipo]||'')==='Escritura'&&(x.f[C.data]||'').slice(0,10)===escritura.data)||(!p.nif&&(x.f[C.titulo]||'').toUpperCase().trim()===p.nome&&(x.f[C.tipo]||'')==='Escritura'&&(x.f[C.data]||'').slice(0,10)===escritura.data));}
+      const r=await window.upsertClienteContacto(p);
+      if(r==='novo')novos++;else atual++;
     }
     return {novos,atual};
   }
@@ -11124,6 +11191,19 @@ ${eye}${head}
       const espField=(fl[C.especial]===true||fl[C.especial]===1||fl[C.especial]==='1'||fl[C.especial]==='true');
       evs.push({id:row.id,tipoA,dataISO:d,finalidade:fl[C.finalidade]||'',nif:fl[C.nif]||'',tipo,nome:fl[C.titulo]||'',genero:fl[C.genero]||'M',anos,email:fl[C.email]||'',tel:fl[C.tel]||'',dias:diasAte(m,dia),especial:espField||!!espLS[row.id]});
     });
+    // ── fundir com as fichas de Clientes (fonte canónica dos nascimentos) ──
+    try{
+      const fichas=(await window.lerClientesParaAniversarios()).filter(f=>f.nascimento&&f.nome);
+      const chave=f=>((f.nif||'').trim()||('N:'+(f.nome||'').toUpperCase().trim()));
+      const temFicha=new Set(fichas.map(chave));
+      // entradas antigas de Aniversário cuja pessoa já tem ficha com nascimento → preferir a ficha
+      const filtrados=evs.filter(e=>e.tipoA!=='Aniversário'||!temFicha.has(((e.nif||'').trim()||('N:'+(e.nome||'').toUpperCase().trim()))));
+      evs.length=0;evs.push(...filtrados);
+      fichas.forEach(f=>{
+        const[,m,dia]=f.nascimento.split('-').map(Number);if(!m||!dia)return;
+        evs.push({id:'cli-'+f.id,fonte:'cliente',tipoA:'Aniversário',dataISO:f.nascimento,finalidade:'',nif:f.nif,tipo:'aniversario',nome:f.nome,genero:f.genero,anos:0,email:f.email,tel:f.tel,dias:diasAte(m,dia),especial:!!espLS['cli-'+f.id]});
+      });
+    }catch(e){console.warn('Fichas de cliente indisponíveis para o calendário:',e.message);}
     return evs;
   }
   async function alternaEspecial(ev){
@@ -11172,7 +11252,7 @@ ${eye}${head}
   let _evs=[];
   window.anivInit=async function(){
     const scr=document.getElementById('screen-aniversarios');
-    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in" style="margin-left:8px">0</span><button class="aniv-b prim" id="aniv-novo" style="margin-left:auto;padding:6px 12px">+ Adicionar aniversário</button></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div><div class="aniv-card" id="aniv-cal-card"><div class="aniv-meta">A carregar calendário…</div></div></div>`;
+    scr.innerHTML=`<div class="aniv-wrap"><div class="aniv-card"><div class="aniv-h"><h3>Aniversários de hoje</h3><span class="aniv-badge" id="aniv-badge-in" style="margin-left:8px">0</span><button class="aniv-b prim" id="aniv-novo" style="margin-left:auto;padding:6px 12px">+ Adicionar aniversário</button></div><div style="margin:.25rem 0 .75rem"><input class="form-input" id="aniv-pesq" placeholder="Pesquisa rápida de contacto — nome, NIF ou telefone…" style="width:100%;font-size:12px" oninput="window.anivPesquisar(this.value)"><div id="aniv-pesq-res"></div></div><div id="aniv-hoje"><div class="aniv-meta">A carregar…</div></div><div class="aniv-grp">Próximos 7 dias</div><div id="aniv-prox"></div></div><div class="aniv-card" id="aniv-cal-card"><div class="aniv-meta">A carregar calendário…</div></div></div>`;
     scr.querySelector('#aniv-novo').onclick=abrirNovoAniversario;
     try{_evs=await carregar();}catch(e){scr.querySelector('#aniv-hoje').innerHTML=`<div class="aniv-meta">Não foi possível ler a ListaAniversarios: ${esc(e.message)}</div>`;return;}
     const hoje=_evs.filter(e=>e.dias===0), prox=_evs.filter(e=>e.dias>0&&e.dias<=7).sort((a,b)=>a.dias-b.dias);
@@ -11268,6 +11348,7 @@ ${eye}${head}
   // ── editar / apagar aniversário ───────────────────────────────────────────
   let _edit=null;
   function abrirEditar(ev){
+    if(ev.fonte==='cliente'){toast('Este aniversário vem da ficha de cliente — edite-o em Pastas / clientes');return;}
     _edit=ev;const escr=ev.tipoA==='Escritura';
     document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 10px">Editar ${escr?'aniversário de escritura':'aniversário'}</h3>
       <input class="aniv-fld" id="ed-nome" value="${esc(ev.nome)}" placeholder="Nome">
@@ -11299,6 +11380,7 @@ ${eye}${head}
     }catch(e){toast('Erro a guardar: '+e.message);}
   }
   function abrirApagar(ev){
+    if(ev.fonte==='cliente'){toast('Este aniversário vem da ficha de cliente — remova a data de nascimento na ficha para o retirar do calendário');return;}
     document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 8px">Apagar aniversário</h3>
       <p style="font-size:13px;color:#6B6770;margin:0 0 14px">Apagar o ${ev.tipoA==='Escritura'?'aniversário de escritura':'aniversário'} de <b>${esc(ev.nome)}</b>? Isto remove a linha da lista.</p>
       <div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b" id="ap-sim" style="background:#DC3545;border-color:#DC3545;color:#fff">Apagar</button></div>`;
@@ -11316,6 +11398,16 @@ ${eye}${head}
   }
 
   // ── integração no menu / ecrã / nav() ─────────────────────────────────────
+  let _fichasPesq=null;
+  window.anivPesquisar=async function(q){
+    const res=document.getElementById('aniv-pesq-res');if(!res)return;
+    q=(q||'').trim().toLowerCase();
+    if(q.length<2){res.innerHTML='';return;}
+    if(!_fichasPesq){try{_fichasPesq=await window.lerClientesParaAniversarios();}catch(e){res.innerHTML='<div class="aniv-meta">Sem acesso à lista de Clientes.</div>';return;}}
+    const norm=s=>(s||'').toString().toLowerCase();
+    const hits=_fichasPesq.filter(f=>norm(f.nome).includes(q)||norm(f.nif).includes(q)||norm(f.tel).replace(/\s/g,'').includes(q.replace(/\s/g,''))).slice(0,6);
+    res.innerHTML=hits.length?hits.map(f=>`<div class="aniv-meta" style="padding:5px 2px;border-bottom:1px solid #eee"><b>${esc(f.nome)}</b>${f.nif?' · NIF '+esc(f.nif):''}${f.tel?' · 📞 '+esc(f.tel):''}${f.email?' · ✉ '+esc(f.email):''}</div>`).join(''):'<div class="aniv-meta">Nenhum contacto encontrado.</div>';
+  };
   function atualizarBadgeNav(n){const b=document.getElementById('aniv-badge-nav');if(b)b.style.display=n>0?'inline-flex':'none',b.textContent=n;}
   function instalar(){
     if(document.getElementById('screen-aniversarios'))return;
