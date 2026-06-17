@@ -468,6 +468,12 @@ tbody tr:hover td{background:#FAFAF8}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v8H2zM2 4l6 5 6-5"/></svg>
               Confinantes (preferência)
             </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item-label">Biblioteca</div>
+            <div class="dropdown-item" onclick="abrirContrato('clausulas')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h5a2 2 0 012 2v8a2 2 0 00-2-2H2zM14 3H9a2 2 0 00-2 2v8a2 2 0 012-2h5z"/></svg>
+              Cláusulas Especiais
+            </div>
           </div>
         </div>
       </div>
@@ -2806,7 +2812,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html'};
+  const urls={cvmh:'cvmh.html',mh:'mh.html',cpcv:'cpcv.html',cv:'cv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
