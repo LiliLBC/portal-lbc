@@ -930,6 +930,12 @@ function setTipo(id,tipo,btn){
 function onTemProcCV(id){
   const sim=document.getElementById(`${id}-tem-proc`)?.value==='sim';
   const w=document.getElementById(`${id}-proc-wrap`);if(w)w.style.display=sim?'block':'none';
+  // Representado por procurador: os dados de documento são do procurador, não do representado
+  ['tipo-doc','num-doc','val-doc'].forEach(c=>{
+    const el=document.getElementById(`${id}-${c}`);
+    const grp=el?el.closest('.form-group'):null;
+    if(grp)grp.style.display=sim?'none':'';
+  });
 }
 
 function onECChange(id){
