@@ -536,6 +536,7 @@ tbody tr:hover td{background:#FAFAF8}
               <div><div style="font-size:13px;font-weight:600">Listagem</div><div style="font-size:11px;color:var(--text-faint)" id="reg-count">A carregar...</div></div>
               <div style="display:flex;gap:.4rem">
                 <button class="btn btn-sm" onclick="carregarRegistos()">↺</button>
+                <button class="btn btn-sm" onclick="exportarMapaRegistos()" title="Extrair mapa do filtro atual para Excel">⬇ Exportar</button>
                 <button class="btn btn-primary btn-sm" onclick="abrirPainelNovo()">+ Novo</button>
               </div>
             </div>
@@ -567,6 +568,7 @@ tbody tr:hover td{background:#FAFAF8}
               <button class="filter-chip" onclick="filtrarRegistos('Depositado',this)">Depositadas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Concluido',this)">Concluídas</button>
               <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
+              <button class="filter-chip" style="color:var(--green);border-color:var(--green)" onclick="filtrarRegistosPagamento('Pago',this)">Pago</button>
               <button class="filter-chip" style="color:var(--red);border-color:var(--red)" onclick="filtrarRegistosPagamento('Não pago',this)">Não pago</button>
               <button class="btn-limpar-filtros" data-limpar-filtros="reg-search,reg-f-predio,reg-f-conserv,reg-f-apregisto,reg-f-numpedido,reg-f-numprocesso,reg-f-estado|#screen-registo .filter-row .filter-chip" onclick="limparFiltrosRegistos()">✕ Limpar filtros</button>
             </div>
@@ -3107,6 +3109,41 @@ function limparFiltrosRegistos(){
   if(chips[0])chips[0].classList.add('active');
   pesquisarRegistos();
   setTimeout(atualizarBotoesLimparFiltros,50);
+}
+
+// ─── Exportar mapa do Registo de escrituras (respeita o filtro activo) ──────────
+async function exportarMapaRegistos(){
+  const lista=(registosFiltradosAtual&&registosFiltradosAtual.length)?registosFiltradosAtual:todosRegistosReg;
+  if(!lista||!lista.length){showToast('Sem registos para exportar.','');return;}
+  const etiqueta=filtroPagamentoAtual||filtroEstadoAtual||'Todas';
+  showToast('A preparar o mapa...','');
+  try{await carregarScriptUma('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');}
+  catch(e){showToast('Não foi possível carregar o Excel.','error');return;}
+  if(!window.XLSX){showToast('Não foi possível carregar o Excel.','error');return;}
+  const txt=v=>v==null?'':String(v);
+  const dt=v=>v?new Date(v).toLocaleDateString('pt-PT'):'';
+  const n=v=>{const x=parseFloat(v);return isFinite(x)?x:'';};
+  const cols=['Cliente','Nº Processo','Data Escritura','Produto','Entidade','Procurador','Prédio','Freguesia','Concelho','AP Registo','AP Conservatória','Nº Pedido','Estado','Pago','Valor Serviço (€)','Margem Líquida (€)','Custo Suprimento (€)','Observações'];
+  const linhas=lista.map(i=>({
+    'Cliente':txt(i[F.nome]),'Nº Processo':txt(i[F.numProcesso]),'Data Escritura':dt(i[F.data]),
+    'Produto':txt(i[F.produto]),'Entidade':txt(i[F.entidade]),'Procurador':txt(i[F.procurador]),
+    'Prédio':txt(i[F.predio]),'Freguesia':txt(i[F.freguesia]),'Concelho':txt(i[F.concelho]),
+    'AP Registo':txt(i[F.apRegisto]),'AP Conservatória':txt(i[F.apConserv]),'Nº Pedido':txt(i[F.numPedido]),
+    'Estado':txt(i[F.estado]),'Pago':txt(i[F.pago]),
+    'Valor Serviço (€)':n(i[F.valorServico]),'Margem Líquida (€)':n(i[F.margemLiq]),
+    'Custo Suprimento (€)':n(i[F.custoSup]),'Observações':txt(i[F.observacoes])
+  }));
+  const soma=col=>lista.reduce((s,i)=>{const x=parseFloat(i[col]);return s+(isFinite(x)?x:0);},0);
+  linhas.push({});
+  linhas.push({'Cliente':`TOTAL (${lista.length} registos)`,'Valor Serviço (€)':soma(F.valorServico),'Margem Líquida (€)':soma(F.margemLiq),'Custo Suprimento (€)':soma(F.custoSup)});
+  const ws=XLSX.utils.json_to_sheet(linhas,{header:cols});
+  ws['!cols']=[{wch:28},{wch:13},{wch:13},{wch:14},{wch:12},{wch:20},{wch:26},{wch:18},{wch:16},{wch:12},{wch:18},{wch:12},{wch:13},{wch:10},{wch:15},{wch:16},{wch:17},{wch:40}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Mapa');
+  const hoje=new Date().toISOString().slice(0,10);
+  const safe=etiqueta.replace(/[^A-Za-z0-9À-ÿ]+/g,'_');
+  XLSX.writeFile(wb,`Mapa_Escrituras_${safe}_${hoje}.xlsx`);
+  showToast(`Mapa exportado: ${lista.length} registos (${etiqueta}).`,'success');
 }
 
 function renderRegistos(lista,q=''){
