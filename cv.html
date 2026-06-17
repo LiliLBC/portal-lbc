@@ -1441,6 +1441,58 @@ function recolherOutorgantes(tipo){
   });
 }
 
+// ─── CONCORDÂNCIA: número e género dos outorgantes ─────────────────────────────
+const GENERO_EMPRESA='F'; // sociedade tratada no feminino: "A PRIMEIRA OUTORGANTE"
+
+function sujeitosGramaticais(lista){
+  const s=[];
+  (lista||[]).forEach(o=>{
+    if(o.tipo==='empresa'){s.push({genero:GENERO_EMPRESA});return;}
+    s.push({genero:o.genero==='F'?'F':'M'});
+    const cOut=o.conjOutorgante??o.conjugeOutorgante;
+    const cProp=o.conjProprietario??o.conjugeProprietario;
+    const cNome=o.conjNome??o.conjugeNome;
+    const cGen=o.conjGenero??o.conjugeGenero;
+    const conjConta=(o.estadoCivil==='casado'||o.estadoCivil==='uniao-facto')
+      &&cOut==='sim'&&cProp!=='nao'&&cNome;
+    if(conjConta)s.push({genero:cGen==='F'?'F':'M'});
+  });
+  return s;
+}
+
+function concordar(sujeitos,ordinalBase){
+  const n=sujeitos.length||1;
+  const plural=n>1;
+  const fem=sujeitos.length>0&&sujeitos.every(x=>x.genero==='F'); // só F se TODOS forem F
+  const k=plural?(fem?'FP':'MP'):(fem?'FS':'MS');
+  const pick=(ms,fs,mp,fp)=>({MS:ms,FS:fs,MP:mp,FP:fp}[k]);
+  const v=(sing,plur)=>plural?plur:sing; // verbo: depende só do número
+  const stem=ordinalBase.replace(/[Oo]$/,''); // PRIMEIRO -> PRIMEIR
+  return {
+    n,plural,genero:fem?'F':'M',
+    Art:pick('O','A','Os','As'), art:pick('o','a','os','as'),
+    Ordinal:pick(stem+'O',stem+'A',stem+'OS',stem+'AS'),
+    Outorgante:plural?'OUTORGANTES':'OUTORGANTE',
+    Contratante:plural?'CONTRATANTES':'CONTRATANTE',
+    Este:pick('Este','Esta','Estes','Estas'), este:pick('este','esta','estes','estas'),
+    do:pick('do','da','dos','das'), ao:pick('ao','à','aos','às'),
+    pelo:pick('pelo','pela','pelos','pelas'), no:pick('no','na','nos','nas'),
+    casado:pick('casado','casada','casados','casadas'),
+    identificado:pick('identificado','identificada','identificados','identificadas'),
+    designado:pick('designado','designada','designados','designadas'),
+    residente:v('residente','residentes'),
+    Mutuario:pick('MUTUÁRIO','MUTUÁRIA','MUTUÁRIOS','MUTUÁRIAS'),
+    mutuario:pick('mutuário','mutuária','mutuários','mutuárias'),
+    devedor:pick('devedor','devedora','devedores','devedoras'),
+    // verbos do clausulado (3.ª pessoa)
+    vende:v('vende','vendem'), aceita:v('aceita','aceitam'), compra:v('compra','compram'),
+    declara:v('declara','declaram'), Declara:v('Declara','Declaram'), outorga:v('outorga','outorgam'),
+    reconhece:v('reconhece','reconhecem'), confessa:v('confessa','confessam'),
+    da:v('dá','dão'), obriga:v('obriga','obrigam'), constitui:v('constitui','constituem'),
+    requer:v('requer','requerem'), autoriza:v('autoriza','autorizam'),
+  };
+}
+
 function detalheConjCV(o){
   const gc=o.conjGenero==='F';
   const segs=[];
@@ -1525,8 +1577,11 @@ function recolherDadosContrato(){
   const nV=vendedores.length,nC=compradores.length;
   const Bloco_Vendedores=vendedores.map(textoOutorgante).join(';\n\nE\n\n')+linhaConsentimentoCV(vendedores);
   const Bloco_Compradores=compradores.map(textoOutorgante).join(';\n\nE\n\n');
-  const Plural_Primeiros=nV>1?'OS PRIMEIROS CONTRATANTES':'O PRIMEIRO CONTRATANTE';
-  const Plural_Segundos=nC>1?'OS SEGUNDOS CONTRATANTES':'O SEGUNDO CONTRATANTE';
+  const cP=concordar(sujeitosGramaticais(vendedores),'PRIMEIRO');
+  const cS=concordar(sujeitosGramaticais(compradores),'SEGUNDO');
+  const px=(p,o)=>Object.fromEntries(Object.entries(o).map(([kk,val])=>[p+kk,val]));
+  const Plural_Primeiros=`${cP.Ordinal} ${cP.Contratante}`;
+  const Plural_Segundos=`${cS.Ordinal} ${cS.Contratante}`;
 
   // Imóvel
   const tipoPredio=v('tipo-predio');
@@ -1665,6 +1720,7 @@ function recolherDadosContrato(){
     NIF_Ent_Tituladora:entAut?S[entAut].nif:'',
     Bloco_Vendedores,Bloco_Compradores,
     Plural_Primeiros,Plural_Segundos,
+    ...px('P_',cP),...px('S_',cS),
     Data_CPU:fmtDataPT(v('data-cpu')),
     Cod_CRP:v('cod-crp'),
     Data_CRP:fmtDataPT(v('data-crp')),
