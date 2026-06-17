@@ -320,6 +320,8 @@ tbody tr:hover td{background:#FAFAF8}
   .topbar{height:48px}
   .page-title{font-size:13px}
 }
+/* Acesso direto ao SharePoint removido do portal (gestão de pastas é feita diretamente no SP) */
+#painel-btn-pasta{display:none!important}
 </style>
 </head>
 <body>
@@ -2925,7 +2927,7 @@ function renderPastas(lista){
       <div class="pasta-actions">
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm" style="display:none">Abrir pasta</a>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
     </div>`).join('');
@@ -3552,7 +3554,7 @@ function embedSP(url){
   if(/[?&]env=/.test(url)) return url;
   return url + (url.indexOf('?')>=0 ? '&' : '?') + 'env=WebView';
 }
-function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
+function abrirPastaSP(){/* acesso ao SharePoint removido do portal */}
 
 async function guardarPainel(){
   await resolverColunaFinalidade();
@@ -5417,12 +5419,11 @@ async function procEscolherClienteExistente(pasta){
     } else {
       procs.innerHTML=`<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">${subPastas.length} ${subPastas.length===1?'processo':'processos'}</div>`+
         subPastas.map(s=>`
-          <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" class="reg-list-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;margin-bottom:.3rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
+          <div class="reg-list-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;margin-bottom:.3rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
             <span style="flex:1;font-size:11px;font-family:'DM Mono',monospace;font-weight:500">${escHtml(s.name)}</span>
             <span style="font-size:9px;color:var(--text-faint)">${s.lastModifiedDateTime?fmtData(s.lastModifiedDateTime):''}</span>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 1l8 7-8 7"/></svg>
-          </a>
+          </div>
         `).join('');
     }
   }catch(e){
@@ -5501,7 +5502,7 @@ function renderProcessos(lista){
         <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
         <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
         <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir</a>
+        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm" style="display:none">Abrir</a>
         <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.nome||'')}','${escHtml(p.id||'')}')">+ Processo</button>
       </div>
     </div>
@@ -5588,7 +5589,7 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
         const safeNomeProc=escHtml(s.name||'').replace(/'/g,'&#39;');
         return `<div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .55rem;margin-bottom:.3rem;background:var(--surface);border-radius:6px;border:1px solid var(--border)">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
-          <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)}</a>
+          <span style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit">${escHtml(s.name)}</span>
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
         </div>`;
@@ -8828,7 +8829,7 @@ async function carregarAnexosEscritura(){
     el.innerHTML = ficheiros.map(f=>`
       <div class="anexo-item">
         <span>📄</span>
-        <a class="anexo-nome" href="${f.webUrl}" target="_blank" title="${escHtml(f.name)}">${escHtml(f.name)}</a>
+        <span class="anexo-nome" title="${escHtml(f.name)}">${escHtml(f.name)}</span>
         <span class="anexo-data">${fmtData(f.lastModifiedDateTime)}</span>
       </div>`).join('');
   }catch(e){
@@ -9650,12 +9651,7 @@ function avRenderLista(lista){
     const dataC=i[AP.conclusao]?fmtData(i[AP.conclusao]):'—';
     const iniciais=(i[AP.fornecedor]||'?').substring(0,2);
     const cor=corForn[i[AP.fornecedor]]||'var(--text-muted)';
-    const pastaBtn=i[AP.pasta]
-      ?`<button onclick="event.stopPropagation();window.open('${escHtml(i[AP.pasta])}','_blank')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-light);color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Abrir pasta no SharePoint">
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
-          Pasta
-        </button>`
-      :'';
+    const pastaBtn=''; // acesso à pasta no SharePoint removido do portal
     // Botão CPCV directo — só para REMAX com serviço CPCV e que tenham pasta
     const ehCPCVRemax=i[AP.fornecedor]==='REMAX'&&(i[AP.servico]||'').toUpperCase()==='CPCV'&&i[AP.pasta];
     const cpcvBtn=ehCPCVRemax
@@ -9746,13 +9742,7 @@ function abrirPainelAvenca(itemId){
   document.getElementById('av-p-urgente').checked=!!i[AP.urgente];
   document.getElementById('av-p-notas').value=i[AP.notas]||'';
   const pastaWrap=document.getElementById('av-p-pasta-wrap');
-  const pastaLink=document.getElementById('av-p-pasta-link');
-  if(i[AP.pasta]){
-    pastaWrap.style.display='block';
-    const nomePasta=decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' ')||'Abrir pasta';
-    pastaLink.textContent=nomePasta;
-    pastaLink._url=i[AP.pasta];
-  }else{pastaWrap.style.display='none';}
+  pastaWrap.style.display='none'; // acesso à pasta no SharePoint removido do portal
   // Mostrar botão Gerar CPCV se for CPCV e tiver pasta
   const btnCPCV=document.getElementById('av-btn-cpcv');
   const ehCPCV=(i[AP.servico]||'').toUpperCase()==='CPCV';
@@ -9822,10 +9812,7 @@ function fecharPainelAvenca(){
   document.getElementById('av-painel').classList.remove('open');
 }
 
-function avAbrirPasta(){
-  const url=document.getElementById('av-p-pasta-link')._url;
-  if(url)window.open(url,'_blank');
-}
+function avAbrirPasta(){/* acesso ao SharePoint removido do portal */}
 
 async function guardarProcessoAvenca(){
   const titulo=document.getElementById('av-p-titulo').value.trim();
@@ -9963,8 +9950,8 @@ async function avCriarPasta(){
     if(!pastaRes.ok)throw new Error(`Erro ${pastaRes.status} ao criar pasta`);
     const pasta=await pastaRes.json();
     showToast(`Pasta "${nomePastaAv}" criada em ${forn}!`,'success');
-    // Abrir no SharePoint
-    if(pasta.webUrl)setTimeout(()=>{if(confirm('Pasta criada! Queres abrir no SharePoint?'))window.open(embedSP(pasta.webUrl),'_blank');},500);
+    // Pasta criada — sem qualquer abertura do SharePoint (gestão de pastas é direta no SP)
+    showToast('Pasta criada.','success');
     avLimpar();
   }catch(e){showToast('Erro: '+e.message,'error');}
   btn.disabled=false;btn.textContent='Criar pasta';
