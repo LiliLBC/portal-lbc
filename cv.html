@@ -866,6 +866,34 @@ function addOutorgante(tipo,label){
       <div id="${id}-morada-wrap" style="margin-top:.75rem">
         <div class="form-group"><label class="form-label">Morada <span>*</span></label><input type="text" class="form-input" id="${id}-morada"></div>
       </div>
+      <div class="casado-fields" style="margin-top:.75rem">
+        <div class="form-group" style="margin-bottom:.5rem">
+          <label class="form-label">Representado por procuração?</label>
+          <select class="form-select" id="${id}-tem-proc" onchange="onTemProcCV('${id}')">
+            <option value="nao">Não — outorga por si</option>
+            <option value="sim">Sim — outorga por procurador</option>
+          </select>
+        </div>
+        <div id="${id}-proc-wrap" style="display:none">
+          <div class="casado-fields-title">Procurador (quem comparece e assina)</div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group form-full"><label class="form-label">Nome <span>*</span></label><input type="text" class="form-input" id="${id}-proc-nome" style="text-transform:uppercase"></div>
+            <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-proc-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+            <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-proc-naturalidade"></div>
+            <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-proc-ec"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option><option value="uniao-facto">União de facto</option></select></div>
+            <div class="form-group"><label class="form-label">Nº CC</label><input type="text" class="form-input" id="${id}-proc-cc"></div>
+            <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-proc-val"></div>
+            <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-proc-nif"></div>
+            <div class="form-group form-full"><label class="form-label">Morada</label><input type="text" class="form-input" id="${id}-proc-morada"></div>
+          </div>
+          <div class="casado-fields-title" style="margin-top:.5rem">Procuração</div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="${id}-proc-tipo"><option value="outorgada">Outorgada (notarial)</option><option value="autenticada">Autenticada</option></select></div>
+            <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="${id}-proc-data"></div>
+            <div class="form-group form-full"><label class="form-label">Entidade / local <span style="font-weight:400;color:#999">(ex.: no Cartório Notarial de Évora)</span></label><input type="text" class="form-input" id="${id}-proc-entidade"></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="${id}-empresa" style="display:none">
       <div class="form-grid form-grid-2">
@@ -897,6 +925,11 @@ function setTipo(id,tipo,btn){
   btn.classList.add('active');
   document.getElementById(`${id}-singular`).style.display=tipo==='singular'?'block':'none';
   document.getElementById(`${id}-empresa`).style.display=tipo==='empresa'?'block':'none';
+}
+
+function onTemProcCV(id){
+  const sim=document.getElementById(`${id}-tem-proc`)?.value==='sim';
+  const w=document.getElementById(`${id}-proc-wrap`);if(w)w.style.display=sim?'block':'none';
 }
 
 function onECChange(id){
@@ -1417,6 +1450,9 @@ function restaurarDadosCompleto(d){
   document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{
     const id=el.id.replace('-estado-civil','');onECChange(id);
   });
+  document.querySelectorAll('[id$="-tem-proc"]').forEach(el=>{
+    const id=el.id.replace('-tem-proc','');onTemProcCV(id);
+  });
   document.querySelectorAll('[id$="-hab-tipo"]').forEach(el=>{
     const idx=el.id.replace('falecido-','').replace('-hab-tipo','');
     onHabTipoChange(idx);
@@ -1435,7 +1471,7 @@ function recolherOutorgantes(tipo){
       const conjOutorgante=ec==='casado'?(v('conj-outorgante')||'sim'):'sim';
       const conjProprietario=ec==='casado'?(v('conj-proprietario')||'sim'):'sim';
       const moradaFinal=(ec==='casado'&&conjOutorgante==='nao')?v('morada'):(casado?v('morada-conjunta'):v('morada'));
-      return{tipo:'singular',nome:v('nome').toUpperCase(),genero:v('genero'),naturalidade:v('naturalidade'),tipoDoc:tipoDocTexto(v('tipo-doc')),numDoc:v('num-doc'),valDoc:fmtDataPT(v('val-doc')),nif:v('nif'),estadoCivil:ec,regime:v('regime'),conjOutorgante,conjProprietario,conjNome:v('conj-nome').toUpperCase(),conjGenero:v('conj-genero'),conjNaturalidade:v('conj-naturalidade'),conjTipoDoc:tipoDocTexto(v('conj-tipo-doc')),conjNumDoc:v('conj-num-doc'),conjValDoc:fmtDataPT(v('conj-val-doc')),conjNif:v('conj-nif'),morada:moradaFinal,casado};
+      return{tipo:'singular',nome:v('nome').toUpperCase(),genero:v('genero'),naturalidade:v('naturalidade'),tipoDoc:tipoDocTexto(v('tipo-doc')),numDoc:v('num-doc'),valDoc:fmtDataPT(v('val-doc')),nif:v('nif'),estadoCivil:ec,regime:v('regime'),conjOutorgante,conjProprietario,conjNome:v('conj-nome').toUpperCase(),conjGenero:v('conj-genero'),conjNaturalidade:v('conj-naturalidade'),conjTipoDoc:tipoDocTexto(v('conj-tipo-doc')),conjNumDoc:v('conj-num-doc'),conjValDoc:fmtDataPT(v('conj-val-doc')),conjNif:v('conj-nif'),morada:moradaFinal,casado,temProc:v('tem-proc'),proc:{nome:v('proc-nome').toUpperCase(),genero:v('proc-genero'),naturalidade:v('proc-naturalidade'),ec:v('proc-ec'),cc:v('proc-cc'),val:fmtDataPT(v('proc-val')),nif:v('proc-nif'),morada:v('proc-morada'),tipo:v('proc-tipo'),data:fmtDataPT(v('proc-data')),entidade:v('proc-entidade')}};
     }
     return{tipo:'empresa',empNome:v('emp-nome').toUpperCase(),empNif:v('emp-nif'),empSede:v('emp-sede'),empCapital:v('emp-capital'),empCrc:v('emp-crc'),gerNome:v('ger-nome').toUpperCase(),gerGenero:v('ger-genero'),gerNaturalidade:v('ger-naturalidade'),gerCC:v('ger-cc'),gerVal:fmtDataPT(v('ger-val')),gerNif:v('ger-nif'),gerEc:v('ger-ec'),gerMorada:v('ger-morada')};
   });
@@ -1502,9 +1538,31 @@ function detalheConjCV(o){
   return segs.length?`, ${segs.join(', ')}`:'';
 }
 
+// ─── Representação por procuração (identificação) ──────────────────────────────
+function idProcuradorCV(p,ecTexto){
+  const g=p.genero==='F';
+  return `${p.nome}, natural de ${p.naturalidade}, ${ecTexto(p.ec,p.genero)}, portador${g?'a':''} do cartão de cidadão com o número ${p.cc}, válido até ${p.val}, e número de identificação fiscal ${p.nif}, residente em ${p.morada}`;
+}
+function idRepresentadoCurtoCV(o,ecTexto){
+  const isCasal=(o.estadoCivil==='casado'||o.estadoCivil==='uniao-facto')&&o.conjOutorgante==='sim'&&o.conjProprietario!=='nao'&&o.conjNome;
+  if(isCasal){
+    const vinculo=o.estadoCivil==='uniao-facto'?'em união de facto':'casados entre si';
+    return `${o.nome}, natural de ${o.naturalidade}, e de ${o.conjNome}, natural de ${o.conjNaturalidade}, ${vinculo}, com os números de identificação fiscal ${o.nif} e ${o.conjNif}, respetivamente, ambos residentes em ${o.morada}`;
+  }
+  return `${o.nome}, natural de ${o.naturalidade}, ${ecTexto(o.estadoCivil,o.genero)}, com o número de identificação fiscal ${o.nif}, residente em ${o.morada}`;
+}
+function textoOutorganteRepresentado(o,ecTexto){
+  const p=o.proc;const pg=p.genero==='F';
+  const tipoTxt=p.tipo==='autenticada'?'autenticada':'outorgada';
+  const dataTxt=p.data?` em ${p.data}`:'';
+  const ent=p.entidade?`, ${p.entidade}`:'';
+  return `${idProcuradorCV(p,ecTexto)}, que outorga na qualidade de procurador${pg?'a':''} de ${idRepresentadoCurtoCV(o,ecTexto)}, conforme procuração ${tipoTxt}${dataTxt}${ent}, que arquivo`;
+}
+
 function textoOutorgante(o){
   const regimenMap={'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','comunhao-geral':'comunhão geral'};
   const ecTexto=(ec,g)=>({solteiro:g==='F'?'solteira, maior':'solteiro, maior',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
+  if(o.tipo==='singular'&&o.temProc==='sim'&&o.proc&&o.proc.nome){return textoOutorganteRepresentado(o,ecTexto);}
   if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.empNome}, NIF ${o.empNif}, com sede em ${o.empSede}${o.empCapital?', capital social de €'+o.empCapital:''}, neste ato representada por ${o.gerNome}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão com o número ${o.gerCC}, válido até ${o.gerVal}, NIF ${o.gerNif}, residente em ${o.gerMorada}`;}
   const g=o.genero==='F';
   const regime=regimenMap[o.regime]||o.regime;
