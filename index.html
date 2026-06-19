@@ -200,6 +200,7 @@ tbody tr:hover td{background:#FAFAF8}
 .dropdown-item:hover{background:var(--accent-light);color:var(--accent-dark)}
 .dropdown-item-label{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;padding:.5rem 1rem .2rem}
 .dropdown-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0}
+#contratos-menu{max-height:calc(100vh - 96px);overflow-y:auto;overflow-x:hidden}
 
 /* CALENDÁRIO */
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
@@ -2626,12 +2627,15 @@ function toggleSidebar(){
   overlay.classList.toggle('show');
 }
 // ─── MODAL CÓDIGO DEPÓSITO ────────────────────────────────────────────────────
-function textoDeposito(cod){
-  return `Para consultar o DPA: Aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action, insira o código ${cod}, valide e continue.
+function textoDeposito(cod,canal){
+  const c=canal==='wa'?`*${cod}*`:cod;
+  return `Código de Depósito: ${c}.
 
-Para alterar a matriz na AT: Abra E-Balcão no Portal das Finanças, junte o código ${cod} e peça a atualização.
+Para consultar o seu Documento Particular Autenticado aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action e insira o código. Selecione a caixa de documentos instrutório e valide.
 
-Pode dar este código a qualquer entidade credenciada para consulta do contrato.`;
+Para pedir a alteração matricial, abra um E-Balcão → IMI / AIMI → IMI → Atualização Matriz / VPT, indique a matriz, freguesia e concelho e junte o código.
+
+Qualquer questão, não hesite em contactar-nos.`;
 }
 
 function abrirModalCodDeposito(){
@@ -2645,12 +2649,12 @@ function abrirModalCodDeposito(){
   // Preencher email
   document.getElementById('dep-email-para').value=compradorEm?compradorEm.valor:'';
   document.getElementById('dep-email-assunto').value=`Código de Depósito DPA${nome?' — '+nome:''}`;
-  document.getElementById('dep-email-corpo').value=textoDeposito(cod);
+  document.getElementById('dep-email-corpo').value=textoDeposito(cod,'email');
   // Preencher whatsapp (limpar espaços e prefixo +)
   let telWa=compradorTel?compradorTel.valor.replace(/[\s+()-]/g,''):'351';
   if(telWa&&!telWa.startsWith('351')&&telWa.length===9)telWa='351'+telWa;
   document.getElementById('dep-wa-telefone').value=telWa||'351';
-  document.getElementById('dep-wa-mensagem').value=textoDeposito(cod);
+  document.getElementById('dep-wa-mensagem').value=textoDeposito(cod,'wa');
   // Renderizar lista clicável de outros contactos disponíveis
   renderContactosNoModal(contactos);
   depSetTab('email');
