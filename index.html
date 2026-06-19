@@ -227,6 +227,11 @@ tbody tr:hover td{background:#FAFAF8}
 .cal-event-tarefa{background:var(--red-light);color:var(--red);border-left-color:var(--red)}
 .cal-more{font-size:10px;color:var(--accent-dark);padding:1px 5px;cursor:pointer;font-weight:500}
 .cal-more:hover{text-decoration:underline}
+.cal-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:3px;vertical-align:middle}
+.cal-dot-escritura{background:#1E6E3A}.cal-dot-cpcv{background:#856404}.cal-dot-reuniao{background:var(--accent)}.cal-dot-ausencia{background:#B02A37}.cal-dot-outro{background:#383D41}.cal-dot-tarefa{background:var(--red)}
+.cal-day-pop{position:absolute;z-index:1000;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:.5rem;width:290px;max-height:340px;overflow-y:auto}
+.cal-day-pop-head{font-size:11px;font-weight:600;margin-bottom:.4rem;padding-bottom:.35rem;border-bottom:1px solid var(--border)}
+.cal-day-pop .cal-event{white-space:normal;overflow:visible;text-overflow:clip;margin-bottom:3px}
 
 /* VISTA SEMANA / DIA — TIMELINE */
 .cal-timeline{display:grid;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;gap:1px}
@@ -4352,7 +4357,27 @@ function abrirTarefaDoCalendario(tarefaId,ev){
 }
 
 // ─── VISTA MÊS ────────────────────────────────────────────────────────────────
+// Popover com TODOS os eventos de um dia (vista mês), cada um com a sua cor
+function calVerDia(dateStr,ev){
+  if(ev)ev.stopPropagation();
+  const ex=document.getElementById('cal-day-pop');if(ex)ex.remove();
+  const evts=eventosNoDia(dateStr);
+  const [a,m,d]=dateStr.split('-');
+  const pop=document.createElement('div');
+  pop.id='cal-day-pop';pop.className='cal-day-pop';
+  pop.innerHTML=`<div class="cal-day-pop-head">${d}/${m}/${a} · ${evts.length} evento${evts.length!==1?'s':''}<span onclick="document.getElementById('cal-day-pop').remove()" style="float:right;cursor:pointer;color:var(--text-faint)">✕</span></div>`+(evts.map(renderEvt).join('')||'<div style="font-size:11px;color:var(--text-faint)">Sem eventos</div>');
+  document.body.appendChild(pop);
+  const r=(ev&&ev.currentTarget?ev.currentTarget:document.body).getBoundingClientRect();
+  let top=window.scrollY+r.bottom+4;
+  let left=window.scrollX+r.left;
+  const maxLeft=window.scrollX+document.documentElement.clientWidth-pop.offsetWidth-12;
+  if(left>maxLeft)left=maxLeft; if(left<window.scrollX+8)left=window.scrollX+8;
+  pop.style.top=top+'px';pop.style.left=left+'px';
+}
+document.addEventListener('click',e=>{const p=document.getElementById('cal-day-pop');if(p&&!p.contains(e.target))p.remove();});
+
 function renderMes(wrap){
+  const ex=document.getElementById('cal-day-pop');if(ex)ex.remove();
   const ano=calData.getFullYear(),mes=calData.getMonth();
   document.getElementById('cal-title').textContent=`${MESES[mes]} ${ano}`;
   const primeiro=new Date(ano,mes,1);const ultimo=new Date(ano,mes+1,0);
@@ -4371,7 +4396,8 @@ function renderMes(wrap){
     const isHoje=dateStr===hojeStr;
     const evts=eventosNoDia(dateStr);
     const evtsHtml=evts.slice(0,4).map(renderEvt).join('');
-    const mais=evts.length>4?`<div class="cal-more" onclick="event.stopPropagation();calMudarParaDia('${dateStr}')">+${evts.length-4} mais</div>`:'';
+    const dots=evts.slice(4).map(e=>`<span class="cal-dot ${(COR_EVENTO[e._tipo]||'cal-event-outro').replace('cal-event-','cal-dot-')}"></span>`).join('');
+    const mais=evts.length>4?`<div class="cal-more" onclick="event.stopPropagation();calVerDia('${dateStr}',event)">+${evts.length-4} mais${dots}</div>`:'';
     html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')">
       <div class="cal-day-num">${d}</div>
       ${evtsHtml}${mais}
