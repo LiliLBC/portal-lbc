@@ -1187,8 +1187,7 @@ function gerarNomeFicheiro(){
 }
 
 function recolherDadosContrato(){
-  const ecJust=(ec,g)=>({solteiro:g==='F'?'solteira, maior':'solteiro, maior',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
-  const idPresente=x=>`${x.nome}, ${ecJust(x.ec,x.genero)}, natural de ${x.naturalidade}, portador${x.genero==='F'?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${x.cc}, válido até ${x.val}, e número de identificação fiscal ${x.nif}, residente em ${x.morada}`;
+  const idPresente=x=>`${x.nome}, portador${x.genero==='F'?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${x.cc}, residente em ${x.morada}`;
   const concordRef=lista=>{const plural=lista.length>1;const allF=lista.every(z=>z.genero==='F');const Referido=plural?(allF?'As referidas':'Os referidos'):(lista[0].genero==='F'?'A referida':'O referido');return{Referido,verbo:plural?'intervieram':'interveio',presenca:plural?'as suas presenças necessárias e imprescindíveis':'a sua presença necessária e imprescindível',plural};};
   const v=x=>(document.getElementById(x)?.value||'').trim();
   const presentes=recolherPresentes();
@@ -1272,11 +1271,7 @@ function addPresente(){
     <div class="form-grid form-grid-2">
       <div class="form-group form-full"><label class="form-label">Nome</label><input type="text" class="form-input" id="${id}-nome" style="text-transform:uppercase"></div>
       <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="${id}-genero"><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
-      <div class="form-group"><label class="form-label">Estado civil</label><select class="form-select" id="${id}-ec"><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option><option value="uniao-facto">União de facto</option></select></div>
-      <div class="form-group"><label class="form-label">Natural de</label><input type="text" class="form-input" id="${id}-naturalidade"></div>
       <div class="form-group"><label class="form-label">Nº Cartão de Cidadão</label><input type="text" class="form-input" id="${id}-cc"></div>
-      <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="${id}-val"></div>
-      <div class="form-group"><label class="form-label">NIF</label><input type="text" class="form-input" id="${id}-nif"></div>
       <div class="form-group form-full"><label class="form-label">Morada</label><input type="text" class="form-input" id="${id}-morada"></div>
     </div>`;
   document.getElementById('presentes-container').appendChild(div);
@@ -1285,7 +1280,7 @@ function recolherPresentes(){
   const out=[];
   document.querySelectorAll('#presentes-container .outorgante-block').forEach(b=>{
     const id=b.id;const g=x=>(document.getElementById(`${id}-${x}`)?.value||'').trim();
-    out.push({papel:g('papel'),nome:g('nome').toUpperCase(),genero:g('genero'),ec:g('ec'),naturalidade:g('naturalidade'),cc:g('cc'),val:fmtDataPT(g('val')),nif:g('nif'),morada:g('morada')});
+    out.push({papel:g('papel'),nome:g('nome').toUpperCase(),genero:g('genero'),cc:g('cc'),morada:g('morada')});
   });
   return out;
 }
