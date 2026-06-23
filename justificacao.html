@@ -152,7 +152,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       Contactar cliente
     </button>
     <button class="btn btn-success btn-lg" onclick="gerarContrato()">
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Gerar contrato
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Gerar Word
+    </button>
+    <button class="btn btn-lg" onclick="gerarContratoPDF()" title="Gerar PDF (convertido via SharePoint)">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1h6l3 3v11H4z"/><path d="M7 8h3M7 11h3"/></svg>PDF
     </button>
   </div>
 </div>
@@ -273,17 +276,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div><div class="section-name">Ato</div><div class="section-desc">O ato em que a presença se justifica</div></div>
     </div>
     <div class="form-group" style="margin-bottom:.75rem">
-      <label class="form-label">Tipo de ato (completo)</label>
-      <input type="text" class="form-input" id="tipo-ato" placeholder="Ex: escritura de compra e venda sobre imóvel">
+      <label class="form-label">Tipo de ato</label>
+      <select class="form-select" id="tipo-ato" onchange="onTipoAtoChange()">
+        <option value="cv">Autenticação Contrato de Compra e Venda de Imóvel</option>
+        <option value="hip">Autenticação Contrato de Hipoteca</option>
+        <option value="outros">Outros…</option>
+      </select>
+    </div>
+    <div class="form-group" id="tipo-ato-outros-wrap" style="display:none;margin-bottom:.75rem">
+      <label class="form-label">Descreva o ato</label>
+      <input type="text" class="form-input" id="tipo-ato-outros" placeholder="Ex: escritura de partilha">
     </div>
     <div class="form-grid form-grid-2">
-      <div class="form-group"><label class="form-label">Concordância do ato</label><select class="form-select" id="ato-genero"><option value="F">Feminino (… celebrada)</option><option value="M">Masculino (… celebrado)</option></select></div>
-      <div class="form-group"><label class="form-label">Ato (forma curta)</label><input type="text" class="form-input" id="ato-curto" placeholder="Ex: compra e venda"></div>
-      <div class="form-group"><label class="form-label">Data do ato</label><input type="date" class="form-input" id="data-ato"></div>
-      <div class="form-group"><label class="form-label">&nbsp;</label><div></div></div>
+      <div class="form-group"><label class="form-label">Concordância (celebrada/celebrado)</label><select class="form-select" id="ato-genero"><option value="F">… celebrada</option><option value="M">… celebrado</option></select></div>
+      <div class="form-group"><label class="form-label">Data do ato</label><input type="date" class="form-input" id="data-ato" oninput="updateDataDeclExtenso()"></div>
       <div class="form-group"><label class="form-label">Hora de início</label><input type="time" class="form-input" id="hora-inicio"></div>
       <div class="form-group"><label class="form-label">Hora de fim</label><input type="time" class="form-input" id="hora-fim"></div>
-      <div class="form-group form-full"><label class="form-label">Local do ato</label><input type="text" class="form-input" id="local-ato" placeholder="Ex: na Av. Fialho de Almeida, Agência Century21, em Beja"></div>
+    </div>
+    <div class="form-group" style="margin-top:.75rem">
+      <label class="form-label">Local do ato</label>
+      <select class="form-select" id="local-ato" onchange="onLocalAtoChange()">
+        <option value="escritorio">Escritório — Rua Domingos Franco de Oliveira n.º 16, Villas do Alcaide, Évora</option>
+        <option value="outros">Outros…</option>
+      </select>
+    </div>
+    <div class="form-group" id="local-ato-outros-wrap" style="display:none;margin-top:.5rem">
+      <label class="form-label">Indique o local</label>
+      <input type="text" class="form-input" id="local-ato-outros" placeholder="Ex: na Av. Fialho de Almeida, Agência Century21, em Beja">
     </div>
   </div>
 
@@ -291,11 +310,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section-card">
     <div class="section-card-header">
       <div class="section-num">3</div>
-      <div><div class="section-name">Declaração</div><div class="section-desc">Local e data da declaração</div></div>
+      <div><div class="section-name">Declaração</div><div class="section-desc">Local de emissão (a data é a do ato)</div></div>
     </div>
     <div class="form-grid form-grid-2">
-      <div class="form-group"><label class="form-label">Local</label><input type="text" class="form-input" id="local-decl" placeholder="Ex: Beja"></div>
-      <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="data-decl" oninput="updateDataDeclExtenso()"></div>
+      <div class="form-group"><label class="form-label">Local de emissão</label><input type="text" class="form-input" id="local-decl" value="Évora" oninput="updateDataDeclExtenso()"></div>
       <div class="form-group form-full"><div style="font-size:12px;color:var(--text-faint)">Sairá: <span id="data-decl-extenso"></span></div></div>
     </div>
   </div>
@@ -310,7 +328,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="btn" onclick="limparFormulario()">Limpar</button>
     <button class="btn" onclick="guardarRascunho()">Guardar rascunho</button>
     <button class="btn btn-success" onclick="gerarContrato()">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Gerar contrato
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Gerar Word
+    </button>
+    <button class="btn" onclick="gerarContratoPDF()" title="Gerar PDF (convertido via SharePoint)">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1h6l3 3v11H4z"/><path d="M7 8h3M7 11h3"/></svg>Gerar PDF
     </button>
   </div>
 </div>
@@ -643,6 +664,31 @@ function showToast(msg,type=''){const t=document.getElementById('toast');t.textC
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
 function gerarContrato(){confirmarGerar('download');}
+async function gerarContratoPDF(){
+  showToast('A gerar PDF...','');
+  try{
+    const dados=recolherDadosContrato();
+    const docxBlob=await gerarBlob(await fetchTemplate(),dados);
+    const token=await getGraphToken();
+    const dr=await fetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives`,{headers:{Authorization:'Bearer '+token}});
+    const drives=await dr.json();
+    const docsDrive=drives.value.find(d=>d.name==='Documentos Partilhados'||d.webUrl?.includes('Documentos'));
+    if(!docsDrive)throw new Error('Biblioteca não encontrada');
+    const tmpName=`_tmp_justificacao_${Date.now()}.docx`;
+    const ab=await docxBlob.arrayBuffer();
+    const up=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/${tmpName}:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:ab});
+    if(!up.ok)throw new Error(`Envio falhou (${up.status})`);
+    const item=await up.json();
+    const pr=await fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/items/${item.id}/content?format=pdf`,{headers:{Authorization:'Bearer '+token}});
+    if(!pr.ok){fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/items/${item.id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}}).catch(()=>{});throw new Error(`Conversão PDF falhou (${pr.status})`);}
+    const pdfBlob=await pr.blob();
+    fetch(`https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/items/${item.id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}}).catch(()=>{});
+    const nome=gerarNomeFicheiro().replace(/\.docx$/i,'.pdf');
+    if(!window.saveAs)await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');
+    saveAs(pdfBlob,nome);
+    showToast('✓ PDF descarregado!','success');
+  }catch(e){showToast('Erro ao gerar PDF: '+e.message,'error');console.error(e);}
+}
 function toggleCheck(el){el.classList.toggle('checked');atualizarProgresso();}
 function atualizarProgresso(){
   const total=document.querySelectorAll('.checklist-item').length;
@@ -1194,20 +1240,26 @@ function recolherDadosContrato(){
   const Bloco_Presentes=presentes.map(idPresente).join(' e de ');
   const interv=presentes.filter(x=>x.papel==='interveniente');
   const acomp=presentes.filter(x=>x.papel==='acompanhante');
-  const atoCurto=v('ato-curto')||v('tipo-ato');
+  const tipoSel=v('tipo-ato');
+  const TIPOS={cv:'Autenticação Contrato de Compra e Venda de Imóvel',hip:'Autenticação Contrato de Hipoteca'};
+  const CURTO={cv:'compra e venda',hip:'hipoteca'};
+  const tipoOutros=v('tipo-ato-outros');
+  const Tipo_Ato=tipoSel==='outros'?tipoOutros:(TIPOS[tipoSel]||'');
+  const atoCurto=tipoSel==='outros'?tipoOutros:(CURTO[tipoSel]||tipoOutros);
+  const Local_Ato=v('local-ato')==='outros'?v('local-ato-outros'):'no meu escritório, sito na Rua Domingos Franco de Oliveira n.º 16, Villas do Alcaide, 7005-552 Évora';
   const frases=[];
   if(interv.length){const c=concordRef(interv);frases.push(`${c.Referido} ${c.verbo} no ato de ${atoCurto}, sendo ${c.presenca} para a plena validade e eficácia do ato.`);}
   if(acomp.length){const c=concordRef(acomp);frases.push(`${c.Referido} ${c.verbo} como acompanhante${c.plural?'s':''}.`);}
   const Frase_Intervencao=frases.join(' ');
-  const Local_Data_Decl=`${v('local-decl')}, ${dataExtenso(v('data-decl'))}`;
+  const Local_Data_Decl=`${v('local-decl')}, ${dataExtenso(v('data-ato'))}`;
   return {
     Bloco_Presentes,
-    Tipo_Ato:v('tipo-ato'),
+    Tipo_Ato,
     Celebrado:v('ato-genero')==='M'?'celebrado':'celebrada',
     Data_Ato:fmtDataPT(v('data-ato')),
     Hora_Inicio:v('hora-inicio'),
     Hora_Fim:v('hora-fim'),
-    Local_Ato:v('local-ato'),
+    Local_Ato,
     Frase_Intervencao,
     Local_Data_Decl
   };
@@ -1284,7 +1336,9 @@ function recolherPresentes(){
   });
   return out;
 }
-function updateDataDeclExtenso(){const d=document.getElementById('data-decl')?.value;const el=document.getElementById('data-decl-extenso');if(el)el.textContent=d?dataExtenso(d):'';}
+function updateDataDeclExtenso(){const d=document.getElementById('data-ato')?.value;const loc=(document.getElementById('local-decl')?.value||'').trim();const el=document.getElementById('data-decl-extenso');if(el)el.textContent=d?`${loc}, ${dataExtenso(d)}`:'';}
+function onTipoAtoChange(){const w=document.getElementById('tipo-ato-outros-wrap');if(w)w.style.display=document.getElementById('tipo-ato')?.value==='outros'?'block':'none';}
+function onLocalAtoChange(){const w=document.getElementById('local-ato-outros-wrap');if(w)w.style.display=document.getElementById('local-ato')?.value==='outros'?'block':'none';}
 
 window.onload=()=>{
   addPresente();
