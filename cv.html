@@ -1569,7 +1569,7 @@ function textoOutorgante(o){
   const regimenMap={'comunhao-adquiridos':'comunhão de adquiridos','separacao-bens':'separação de bens','comunhao-geral':'comunhão geral'};
   const ecTexto=(ec,g)=>({solteiro:g==='F'?'solteira, maior':'solteiro, maior',casado:g==='F'?'casada':'casado',divorciado:g==='F'?'divorciada':'divorciado',viuvo:g==='F'?'viúva':'viúvo','uniao-facto':'em união de facto'}[ec]||ec);
   if(o.tipo==='singular'&&o.temProc==='sim'&&o.proc&&o.proc.nome){return textoOutorganteRepresentado(o,ecTexto);}
-  if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.empNome}, NIF ${o.empNif}, com sede em ${o.empSede}${o.empCapital?', capital social de €'+o.empCapital:''}, neste ato representada por ${o.gerNome}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão com o número ${o.gerCC}, válido até ${o.gerVal}, NIF ${o.gerNif}, residente em ${o.gerMorada}`;}
+  if(o.tipo==='empresa'){const g=o.gerGenero==='F';return`${o.gerNome}, ${ecTexto(o.gerEc,o.gerGenero)}, natural de ${o.gerNaturalidade}, portador${g?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.gerCC}, válido até ${o.gerVal}, e número de identificação fiscal ${o.gerNif}, residente em ${o.gerMorada}, neste ato enquanto sóci${g?'a':'o'} e gerente em representação da sociedade comercial ${o.empNome}${o.empCapital?', com capital social de '+o.empCapital+' Euros':''}, registada na conservatória do registo comercial sob o número único de matrícula e de pessoa coletiva ${o.empNif}, com sede em ${o.empSede}`;}
   const g=o.genero==='F';
   const regime=regimenMap[o.regime]||o.regime;
   let txt=`${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do ${o.tipoDoc} emitido pela República Portuguesa com o número ${o.numDoc}, válido até ${o.valDoc}, e número de identificação fiscal ${o.nif}`;
@@ -1595,6 +1595,15 @@ function textoOutorgante(o){
   }
   txt+=`, ${ecTexto(o.estadoCivil,o.genero)}, residente em ${o.morada}`;
   return txt;
+}
+
+// Forma curta (corpo do contrato): empresa primeiro + "neste ato representada por"; restantes = forma completa
+function textoOutorganteCurto(o){
+  if(o.tipo==='empresa'){
+    const g=o.gerGenero==='F';
+    return `${o.empNome}, NIPC ${o.empNif}, com sede em ${o.empSede}, neste ato representada por ${o.gerNome}, na qualidade de sóci${g?'a':'o'} e gerente`;
+  }
+  return textoOutorgante(o);
 }
 
 // Consentimento conjugal (art.º 1682.º-A CC) — cônjuges outorgantes não proprietários
@@ -1641,6 +1650,8 @@ function recolherDadosContrato(){
   const nV=vendedores.length,nC=compradores.length;
   const Bloco_Vendedores=vendedores.map(textoOutorgante).join(';\n\nE\n\n')+linhaConsentimentoCV(vendedores);
   const Bloco_Compradores=compradores.map(textoOutorgante).join(';\n\nE\n\n');
+  const Bloco_Vendedores_Curto=vendedores.map(textoOutorganteCurto).join(';\n\nE\n\n')+linhaConsentimentoCV(vendedores);
+  const Bloco_Compradores_Curto=compradores.map(textoOutorganteCurto).join(';\n\nE\n\n');
   const cP=concordar(sujeitosGramaticais(vendedores),'PRIMEIRO');
   const cS=concordar(sujeitosGramaticais(compradores),'SEGUNDO');
   const px=(p,o)=>Object.fromEntries(Object.entries(o).map(([kk,val])=>[p+kk,val]));
@@ -1783,6 +1794,7 @@ function recolherDadosContrato(){
     CD_Profissional:entAut?S[entAut].cedula:'',
     NIF_Ent_Tituladora:entAut?S[entAut].nif:'',
     Bloco_Vendedores,Bloco_Compradores,
+    Bloco_Vendedores_Curto,Bloco_Compradores_Curto,
     Plural_Primeiros,Plural_Segundos,
     ...px('P_',cP),...px('S_',cS),
     Data_CPU:fmtDataPT(v('data-cpu')),
