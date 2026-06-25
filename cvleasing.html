@@ -474,6 +474,82 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
   </div>
 
+  <!-- ⑦ MEDIAÇÃO IMOBILIÁRIA -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">7</div>
+      <div>
+        <div class="section-name">Mediação Imobiliária</div>
+        <div class="section-desc">Declaração das partes (art. 348.º CP, por aplicação do n.º 3 do art. 40.º da Lei n.º 15/2013)</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="toggle-row">
+        <span class="toggle-label">Houve intervenção de mediação imobiliária</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-mediacao" onchange="onMediacaoChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cond-block" id="mediacao-fields" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Nome da agência <span>*</span></label>
+            <input type="text" class="form-input" id="mediacao-nome" placeholder="Ex: Mentes Positivas — Mediação Imobiliária, Lda" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Licença AMI <span>*</span></label>
+            <input type="text" class="form-input" id="mediacao-ami" placeholder="Ex: 13010">
+          </div>
+        </div>
+        <div class="form-hint">Sem mediação, o Termo regista a inexistência de intervenção de mediador.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑧ DECLARAÇÕES DO TERMO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">8</div>
+      <div>
+        <div class="section-name">Declarações do Termo</div>
+        <div class="section-desc">Certificado energético, condomínio e declarações de praxe</div>
+      </div>
+    </div>
+    <div class="form-grid">
+
+      <!-- Certificado energético -->
+      <div class="toggle-row">
+        <span class="toggle-label">Certificado energético (SCE) entregue à parte compradora</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-sce" checked onchange="onSceChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group" id="sce-fields">
+        <label class="form-label">N.º do Certificado Energético (SCE) <span>*</span></label>
+        <input type="text" class="form-input" id="sce-numero" placeholder="Ex: SCE143855127" style="max-width:280px">
+        <span class="form-hint">Decreto-Lei n.º 118/2013, de 20 de agosto</span>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Condomínio -->
+      <div class="form-group">
+        <label class="form-label">Declaração de condomínio (Lei n.º 8/2022 · art. 1424.º-A do Código Civil)</label>
+        <select class="form-select" id="condominio-opcao" onchange="onCondominioLeasingChange()" style="max-width:420px">
+          <option value="prescinde">Parte compradora prescinde da declaração</option>
+          <option value="apresenta">Apresenta declaração do administrador</option>
+          <option value="na">Não aplicável (não é fração / sem condomínio)</option>
+        </select>
+        <div class="preview-text" id="condominio-preview" style="font-size:11px;margin-top:.5rem"></div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Declarações automáticas -->
+      <div class="notice notice-info">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5h.01"/></svg>
+        <div>Incluídas automaticamente no Termo: apresentação e conhecimento do documento anexo (Compra e Venda) pelos outorgantes; veracidade da cláusula do preço, meios e datas de pagamento; leitura e explicação em voz alta; depósito eletrónico em predialonline.pt.</div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- STICKY FOOTER -->
@@ -1093,6 +1169,27 @@ function recalcResumoCheques() {
   else { dif.textContent = `Excede € ${fmt(-d)}`; dif.style.color = 'var(--red)'; box.style.borderColor = 'var(--red)'; }
 }
 
+// ─── MEDIAÇÃO / DECLARAÇÕES DO TERMO ─────────────────────────────────────────
+function onMediacaoChange() {
+  const on = document.getElementById('toggle-mediacao').checked;
+  document.getElementById('mediacao-fields').style.display = on ? 'block' : 'none';
+}
+function onSceChange() {
+  const on = document.getElementById('toggle-sce').checked;
+  document.getElementById('sce-fields').style.display = on ? 'block' : 'none';
+}
+function onCondominioLeasingChange() {
+  const v = document.getElementById('condominio-opcao').value;
+  const p = document.getElementById('condominio-preview');
+  if (v === 'prescinde') {
+    p.textContent = 'A Parte Compradora declara que prescinde da declaração do administrador do condomínio do Imóvel, referente a encargos e dívidas em vigor, e aceita, em consequência, a responsabilidade por qualquer dívida da Parte Vendedora ao referido condomínio.';
+  } else if (v === 'apresenta') {
+    p.textContent = 'É arquivada a declaração do administrador do condomínio, referente a encargos e dívidas de condomínio em vigor, em conformidade com o artigo 1424.º-A do Código Civil.';
+  } else {
+    p.textContent = 'Não aplicável — o Imóvel não está sujeito a regime de propriedade horizontal / condomínio.';
+  }
+}
+
 function limparFormulario() {
   if (!confirm('Limpar todos os campos?')) return;
   document.getElementById('vendedores-container').innerHTML = '';
@@ -1120,6 +1217,9 @@ function limparFormulario() {
   document.getElementById('cgd-gerentes-container').innerHTML = '';
   gerentesCGDCount = 0;
   document.getElementById('cgd-proc-codigo').value = CGD_PROC_CODIGO_DEFAULT;
+  const tm = document.getElementById('toggle-mediacao'); if (tm) { tm.checked = false; onMediacaoChange(); }
+  const tsce = document.getElementById('toggle-sce'); if (tsce) { tsce.checked = true; onSceChange(); }
+  onCondominioLeasingChange();
   showToast('Formulário limpo.', 'success');
 }
 
@@ -1128,6 +1228,7 @@ window.addEventListener('DOMContentLoaded', () => {
   addOutorgante('vendedores');
   addOutorgante('locatarios');
   adicionarCheque();
+  onCondominioLeasingChange();
 });
 
 </script>
