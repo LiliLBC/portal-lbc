@@ -1098,8 +1098,77 @@ function showToast(msg, type='') {
 }
 
 // ─── STUBS (a ligar nos próximos passos) ─────────────────────────────────────
-function carregarPastasSP() { showToast('Ligação ao SharePoint será adicionada no passo da geração.', ''); }
-function pesquisarPastas() { /* será ligado ao SharePoint */ }
+// ─── PASTAS DO CLIENTE (SharePoint) ───────────────────────────────────────────
+let pastasSP = [];
+let pastaSeleccionada = null;
+
+async function getGraphToken() {
+  const stored = localStorage.getItem('lbc_graph_token');
+  if (stored) return stored;
+  if (window.opener && window.opener.graphToken) return window.opener.graphToken;
+  if (window.parent && window.parent.graphToken) return window.parent.graphToken;
+  throw new Error('Sessão não encontrada. Abre este formulário a partir do portal LBC.');
+}
+
+async function carregarPastasSP() {
+  const btn = document.getElementById('btn-carregar-pastas');
+  const inp = document.getElementById('pasta-search');
+  if (btn) { btn.textContent = 'A carregar...'; btn.disabled = true; }
+  try {
+    const token = await getGraphToken();
+    const drivesRes = await fetch(
+      'https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/Escritrio:/drives',
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    const drives = await drivesRes.json();
+    const escriturasDrive = (drives.value || []).find(d => d.name === 'ESCRITURAS');
+    if (!escriturasDrive) throw new Error('Biblioteca ESCRITURAS não encontrada');
+    const pastasRes = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${escriturasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    const pastas = await pastasRes.json();
+    pastasSP = (pastas.value || []).filter(p => p.folder).map(p => ({ id: p.id, nome: p.name, driveId: escriturasDrive.id, webUrl: p.webUrl }));
+    inp.placeholder = `Pesquisar entre ${pastasSP.length} pastas...`;
+    inp.disabled = false;
+  } catch (e) {
+    if (inp) inp.placeholder = 'Erro ao carregar — abre a partir do portal e clica em Atualizar';
+    showToast('Não foi possível carregar pastas: ' + e.message, '');
+  }
+  if (btn) { btn.innerHTML = '↺ Atualizar'; btn.disabled = false; }
+}
+
+function pesquisarPastas() {
+  const q = document.getElementById('pasta-search').value.toLowerCase().trim();
+  const dropdown = document.getElementById('pasta-dropdown');
+  if (!q || pastasSP.length === 0) { dropdown.style.display = 'none'; return; }
+  const resultados = pastasSP.filter(p => p.nome.toLowerCase().includes(q)).slice(0, 8);
+  if (!resultados.length) {
+    dropdown.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada</div>';
+  } else {
+    dropdown.innerHTML = resultados.map(p => `
+      <div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g, '&quot;')})"
+           style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border)"
+           onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+        <div style="font-weight:500">${p.nome}</div>
+      </div>`).join('');
+  }
+  dropdown.style.display = 'block';
+}
+
+function selecionarPasta(pasta) {
+  pastaSeleccionada = pasta;
+  document.getElementById('pasta-search').value = pasta.nome;
+  document.getElementById('pasta-dropdown').style.display = 'none';
+  document.getElementById('pasta-selecionada-nome').textContent = pasta.nome;
+  document.getElementById('pasta-selecionada').style.display = 'block';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#pasta-search') && !e.target.closest('#pasta-dropdown')) {
+    const dd = document.getElementById('pasta-dropdown'); if (dd) dd.style.display = 'none';
+  }
+});
 function guardarRascunho() { showToast('Guardar rascunho será ligado no próximo passo.', ''); }
 function gerarContrato() {
   try {
@@ -1643,6 +1712,7 @@ window.addEventListener('DOMContentLoaded', () => {
   addOutorgante('locatarios');
   adicionarCheque();
   onCondominioLeasingChange();
+  carregarPastasSP();
 });
 
 </script>
