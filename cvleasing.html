@@ -1132,8 +1132,9 @@ async function carregarPastasSP() {
     inp.placeholder = `Pesquisar entre ${pastasSP.length} pastas...`;
     inp.disabled = false;
   } catch (e) {
-    if (inp) inp.placeholder = 'Erro ao carregar — abre a partir do portal e clica em Atualizar';
-    showToast('Não foi possível carregar pastas: ' + e.message, '');
+    // Sem sessão SharePoint (ex.: aberto localmente) — permitir escrever à mão para testar
+    if (inp) { inp.disabled = false; inp.placeholder = 'Sem ligação ao SharePoint — escreva o nome (modo de teste)'; }
+    showToast('Pastas indisponíveis fora do portal. Pode escrever o nome para testar.', '');
   }
   if (btn) { btn.innerHTML = '↺ Atualizar'; btn.disabled = false; }
 }
