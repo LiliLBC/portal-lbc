@@ -257,16 +257,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Procurador(a) da CGD <span>*</span></label>
+        <label class="form-label">Representação da CGD <span>*</span></label>
         <select class="form-select" id="procurador-cgd" onchange="onProcuradorCGDChange()">
           <option value="">Selecionar...</option>
           <option value="liliana">Liliana Isabel Pacheco Burrica Cardoso</option>
           <option value="andreia">Andreia Pessegueiro Cabanas</option>
+          <option value="outro">Outro(s) — Gerente(s) da CGD</option>
         </select>
         <span class="form-hint" id="procurador-cgd-hint" style="color:var(--red);display:none">⚠ Deve ser diferente da Entidade Autenticadora</span>
       </div>
+
+      <!-- Procurador interno (Liliana/Andreia) -->
       <div id="procurador-cgd-preview" style="display:none">
         <div class="preview-text" id="procurador-cgd-texto"></div>
+      </div>
+
+      <!-- Gerente(s) da CGD (quando "Outro") -->
+      <div id="cgd-outro-fields" style="display:none">
+        <div class="notice notice-info" style="margin-bottom:.75rem">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5h.01"/></svg>
+          <div>Gerentes da CGD ao abrigo da procuração interna. Para a compra e venda de imóvel (ponto Segundo, alínea 12), regra 2.ª) é exigida a intervenção de dois procuradores, sendo um da CLASSE A.</div>
+        </div>
+        <div class="form-group" style="max-width:360px">
+          <label class="form-label">N.º da procuração interna da CGD <span>*</span></label>
+          <input type="text" class="form-input" id="cgd-proc-codigo" value="PR-82574-78071-23851" oninput="atualizarVerifCGD()">
+        </div>
+        <div id="cgd-gerentes-container"></div>
+        <button class="add-outorgante-btn" type="button" onclick="adicionarGerenteCGD()">+ Adicionar gerente (máx. 2)</button>
+      </div>
+
+      <!-- Verificação de poderes (irá para o Termo) -->
+      <div id="cgd-verif-preview" class="form-group form-full" style="display:none">
+        <label class="form-label">Verificação de poderes (irá para o Termo)</label>
+        <div class="preview-text" id="cgd-verif-texto" style="font-size:11px"></div>
       </div>
     </div>
   </div>
@@ -859,18 +882,112 @@ function updateDataExtenso() {
   document.getElementById('data-extenso-preview').textContent = d ? dataExtenso(d) : '';
 }
 
+const CGD_PROC_CODIGO_DEFAULT = 'PR-82574-78071-23851';
+let gerentesCGDCount = 0;
+
 function onProcuradorCGDChange() {
   const val = document.getElementById('procurador-cgd').value;
   const s = SOLICITADORAS[val];
   const preview = document.getElementById('procurador-cgd-preview');
   const texto = document.getElementById('procurador-cgd-texto');
+  const outro = document.getElementById('cgd-outro-fields');
   if (s) {
     texto.textContent = s.textoProcuradora;
     preview.style.display = 'block';
+    outro.style.display = 'none';
+  } else if (val === 'outro') {
+    preview.style.display = 'none';
+    outro.style.display = 'block';
+    if (!document.querySelectorAll('#cgd-gerentes-container .gerente-cgd-block').length) adicionarGerenteCGD();
   } else {
     preview.style.display = 'none';
+    outro.style.display = 'none';
   }
+  atualizarVerifCGD();
   validarConflitoCGD();
+}
+
+function adicionarGerenteCGD() {
+  const c = document.getElementById('cgd-gerentes-container');
+  if (c.querySelectorAll('.gerente-cgd-block').length >= 2) { showToast('Máximo de dois gerentes', ''); return; }
+  const idx = ++gerentesCGDCount;
+  const id = 'gerente-cgd-' + idx;
+  const n = c.querySelectorAll('.gerente-cgd-block').length + 1;
+  const div = document.createElement('div');
+  div.className = 'gerente-cgd-block outorgante-block';
+  div.id = id;
+  div.innerHTML = `
+    <div class="outorgante-header">
+      <span class="outorgante-title">Gerente CGD ${n}</span>
+      ${n > 1 ? `<button class="remove-btn" type="button" onclick="removerGerenteCGD('${id}')">×</button>` : ''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Nome completo <span>*</span></label>
+        <input type="text" class="form-input" id="${id}-nome" placeholder="Em maiúsculas" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Género <span>*</span></label>
+        <select class="form-select" id="${id}-genero">
+          <option value="M">Masculino</option>
+          <option value="F">Feminino</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado civil <span>*</span></label>
+        <select class="form-select" id="${id}-estado-civil">
+          <option value="solteiro">Solteiro(a)</option>
+          <option value="casado">Casado(a)</option>
+          <option value="divorciado">Divorciado(a)</option>
+          <option value="viuvo">Viúvo(a)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Natural de (freguesia, concelho) <span>*</span></label>
+        <input type="text" class="form-input" id="${id}-naturalidade" placeholder="Ex: Lapa, Lisboa">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NIF <span>*</span></label>
+        <input type="text" class="form-input" id="${id}-nif" placeholder="Ex: 166584517">
+      </div>
+      <div class="form-group">
+        <label class="form-label">N.º Cartão de Cidadão <span>*</span></label>
+        <input type="text" class="form-input" id="${id}-cc" placeholder="Ex: 06059375 0 ZX5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Válido até <span>*</span></label>
+        <input type="date" class="form-input" id="${id}-cc-val">
+      </div>
+      <div class="form-group form-full">
+        <label class="form-label">Qualidade <span>*</span></label>
+        <input type="text" class="form-input" id="${id}-qualidade" placeholder="Ex: procurador CLASSE A / membro do Conselho de Administração">
+      </div>
+    </div>`;
+  c.appendChild(div);
+  atualizarVerifCGD();
+}
+
+function removerGerenteCGD(id) {
+  const el = document.getElementById(id); if (el) el.remove();
+  document.querySelectorAll('#cgd-gerentes-container .gerente-cgd-block .outorgante-title').forEach((t, i) => t.textContent = 'Gerente CGD ' + (i + 1));
+  atualizarVerifCGD();
+}
+
+function atualizarVerifCGD() {
+  const val = document.getElementById('procurador-cgd').value;
+  const box = document.getElementById('cgd-verif-preview');
+  const txt = document.getElementById('cgd-verif-texto');
+  if (val === 'liliana' || val === 'andreia') {
+    const s = SOLICITADORAS[val];
+    txt.textContent = `Verifiquei a qualidade e os poderes da procuradora da CGD pela consulta da procuração com o código ${s.codProcuracao}.`;
+    box.style.display = 'block';
+  } else if (val === 'outro') {
+    const cod = (document.getElementById('cgd-proc-codigo').value || '').trim() || CGD_PROC_CODIGO_DEFAULT;
+    txt.textContent = `Verifiquei a qualidade e os poderes dos representantes da Caixa Geral de Depósitos, S.A. pela consulta da procuração com o código ${cod}, ao abrigo do disposto no ponto Segundo, alínea 12), da referida procuração.`;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
 }
 
 function validarConflitoCGD() {
@@ -998,6 +1115,11 @@ function limparFormulario() {
   document.getElementById('fracao-letra-group').style.display = 'none';
   document.getElementById('ap-ph-group').style.display = 'none';
   document.getElementById('procurador-cgd-preview').style.display = 'none';
+  document.getElementById('cgd-outro-fields').style.display = 'none';
+  document.getElementById('cgd-verif-preview').style.display = 'none';
+  document.getElementById('cgd-gerentes-container').innerHTML = '';
+  gerentesCGDCount = 0;
+  document.getElementById('cgd-proc-codigo').value = CGD_PROC_CODIGO_DEFAULT;
   showToast('Formulário limpo.', 'success');
 }
 
