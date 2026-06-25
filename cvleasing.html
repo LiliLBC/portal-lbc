@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CV + Locação Financeira — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--blue:#1A5FA0;--blue-light:#E6F0FB;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);transition:all .15s;text-decoration:none}
+.back-btn:hover{background:var(--surface2);color:var(--text)}
+.page-title{font-size:14px;font-weight:600}
+.page-sub{font-size:11px;color:var(--text-faint);margin-left:.5rem}
+.topbar-actions{display:flex;gap:.5rem;align-items:center}
+
+/* LAYOUT */
+.container{max-width:860px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
+
+/* SECTION CARDS */
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.section-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600}
+.section-desc{font-size:11px;color:var(--text-faint);margin-top:1px}
+
+/* FORM ELEMENTS */
+.form-grid{display:grid;gap:.9rem}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;transition:border .15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-select{padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%236B6860' d='M8 10L3 5h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.form-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)}
+.toggle-label{font-size:12px;font-weight:500;flex:1}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border-strong);border-radius:20px;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+
+/* OUTORGANTE BLOCK */
+.outorgante-block{border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-bottom:.75rem;position:relative;background:var(--surface2)}
+.outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.outorgante-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.outorgante-type{display:flex;gap:.4rem}
+.type-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.type-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.remove-btn{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.remove-btn:hover{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.add-outorgante-btn{width:100%;padding:.6rem;border:1px dashed var(--border-strong);border-radius:8px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.add-outorgante-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+
+/* CASADO FIELDS */
+.casado-fields{background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.casado-fields-title{font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+
+/* EMPRESA FIELDS */
+.empresa-fields{background:var(--blue-light);border:1px solid #B5D4F4;border-radius:8px;padding:.9rem;margin-top:.75rem}
+.empresa-fields-title{font-size:11px;font-weight:600;color:var(--blue);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+
+/* CONDITIONAL BLOCK */
+.cond-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-top:.75rem}
+.cond-block-amber{background:var(--amber-light);border-color:#FAC775}
+.cond-block-title{font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.05em}
+
+/* NOTICE */
+.notice{display:flex;align-items:flex-start;gap:9px;padding:.65rem .9rem;border-radius:7px;font-size:12px;margin-bottom:1rem;line-height:1.5}
+.notice-info{background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
+.notice-warning{background:var(--amber-light);color:var(--amber);border:1px solid #FAC775}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#236040}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-lg{padding:10px 20px;font-size:13px}
+
+/* STICKY FOOTER */
+.sticky-footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;z-index:99;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.footer-info{font-size:11px;color:var(--text-faint)}
+.footer-actions{display:flex;gap:.5rem}
+
+/* RASCUNHO INFO */
+.rascunho-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:var(--amber-light);border:1px solid #FAC775;color:var(--amber);font-size:11px;font-weight:500}
+
+/* PREVIEW TEXT */
+.preview-text{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 7px 7px 0;padding:.65rem .9rem;font-size:11px;color:var(--text-muted);line-height:1.7;margin-top:.5rem;font-family:'DM Mono',monospace}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:.5rem 0}
+
+/* TOAST */
+.toast{position:fixed;bottom:5rem;right:1.5rem;background:var(--text);color:#fff;padding:.75rem 1.25rem;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+
+/* MODAL CHECKLIST */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:14px;padding:1.75rem;max-width:480px;width:90%;box-shadow:var(--shadow-md);transform:translateY(8px);transition:transform .2s}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:.35rem}
+.modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.5}
+.checklist-item{display:flex;align-items:flex-start;gap:.75rem;padding:.65rem .75rem;border-radius:8px;border:1px solid var(--border);margin-bottom:.5rem;cursor:pointer;transition:all .15s;user-select:none}
+.checklist-item:hover{border-color:var(--accent);background:var(--accent-light)}
+.checklist-item.checked{background:var(--green-light);border-color:var(--green)}
+.checklist-box{width:18px;height:18px;border:2px solid var(--border-strong);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
+.checklist-item.checked .checklist-box{background:var(--green);border-color:var(--green)}
+.checklist-check{display:none;color:#fff}
+.checklist-item.checked .checklist-check{display:block}
+.checklist-text{font-size:12px;line-height:1.5}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid var(--border)}
+.modal-progress{font-size:11px;color:var(--text-faint);margin-top:.75rem;text-align:center}
+
+@media(max-width:640px){
+  .form-grid-2,.form-grid-3,.form-grid-4{grid-template-columns:1fr}
+  .container{padding:1rem 1rem 5rem}
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:window.close()" class="back-btn">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+      Fechar
+    </a>
+    <div>
+      <span class="page-title">Compra e Venda + Locação Financeira — CGD</span>
+      <span class="page-sub">Casca (passo 1) · v2026-06-25.1</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span class="rascunho-badge" id="rascunho-status" style="display:none">
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 5v3.5l2 1.5"/></svg>
+      Rascunho guardado
+    </span>
+    <button class="btn" onclick="guardarRascunho()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>
+      Guardar rascunho
+    </button>
+    <button class="btn btn-success btn-lg" onclick="gerarContrato()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
+      Gerar contrato Word
+    </button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- SELECTOR DE PASTA -->
+  <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div class="form-label" style="margin-bottom:4px">Pasta do cliente <span style="color:var(--red)">*</span></div>
+        <div style="position:relative">
+          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" style="padding-right:2rem" disabled>
+          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+        </div>
+        <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8l4 4 8-8"/></svg>
+          <span id="pasta-selecionada-nome"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;padding-top:1.1rem">
+        <button class="btn btn-sm" onclick="carregarPastasSP()" id="btn-carregar-pastas">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+          Carregar pastas
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ① ENTIDADE AUTENTICADORA -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">1</div>
+      <div>
+        <div class="section-name">Entidade Autenticadora</div>
+        <div class="section-desc">Solicitadora que preside ao ato</div>
+      </div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full">
+        <label class="form-label">Entidade Autenticadora <span>*</span></label>
+        <select class="form-select" id="ent-autenticadora" onchange="onEntAutenticadoraChange()">
+          <option value="">Selecionar...</option>
+          <option value="liliana">Liliana Isabel Pacheco Burrica Cardoso</option>
+          <option value="andreia">Andreia Pessegueiro Cabanas</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data da escritura <span>*</span></label>
+        <input type="date" class="form-input" id="data-escritura" oninput="updateDataExtenso()">
+        <span class="form-hint" id="data-extenso-preview"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cédula profissional</label>
+        <input type="text" class="form-input" id="cedula" readonly style="background:var(--surface2);color:var(--text);font-weight:500">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NIF</label>
+        <input type="text" class="form-input" id="nif-ent" readonly style="background:var(--surface2);color:var(--text);font-weight:500">
+      </div>
+    </div>
+  </div>
+
+  <!-- ② PRIMEIRA PARTE — VENDEDOR(ES) -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">2</div>
+      <div>
+        <div class="section-name">Primeira(s) Parte(s) — Vendedor(es)</div>
+        <div class="section-desc">Primeiro Contratante. Pessoa singular ou empresa. Clica + para adicionar mais.</div>
+      </div>
+    </div>
+    <div id="vendedores-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('vendedores')">+ Adicionar vendedor</button>
+  </div>
+
+  <!-- ③ SEGUNDA PARTE — CGD (COMPRADORA) -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">3</div>
+      <div>
+        <div class="section-name">Segunda Parte — Caixa Geral de Depósitos (Compradora)</div>
+        <div class="section-desc">A CGD adquire o imóvel para cedência em locação financeira, representada por procurador(a)</div>
+      </div>
+    </div>
+    <div class="notice notice-info">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7"/><path d="M8 7v4M8 5h.01"/></svg>
+      <div>Dados da CGD (sede, NIPC 500960046, capital social) são fixos no template. Indica apenas quem a representa neste ato.</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Procurador(a) da CGD <span>*</span></label>
+        <select class="form-select" id="procurador-cgd" onchange="onProcuradorCGDChange()">
+          <option value="">Selecionar...</option>
+          <option value="liliana">Liliana Isabel Pacheco Burrica Cardoso</option>
+          <option value="andreia">Andreia Pessegueiro Cabanas</option>
+        </select>
+        <span class="form-hint" id="procurador-cgd-hint" style="color:var(--red);display:none">⚠ Deve ser diferente da Entidade Autenticadora</span>
+      </div>
+      <div id="procurador-cgd-preview" style="display:none">
+        <div class="preview-text" id="procurador-cgd-texto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ LOCATÁRIO (LOCAÇÃO FINANCEIRA) -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">4</div>
+      <div>
+        <div class="section-name">Locatário — Locação Financeira</div>
+        <div class="section-desc">Entidade a quem o imóvel será cedido em locação financeira (cláusula «Destino»). Obrigatório.</div>
+      </div>
+    </div>
+    <div id="locatarios-container"></div>
+    <button class="add-outorgante-btn" onclick="addOutorgante('locatarios')">+ Adicionar locatário</button>
+  </div>
+
+</div>
+
+<!-- STICKY FOOTER -->
+<div class="sticky-footer">
+  <div class="footer-info" id="footer-info">Casca em revisão — cláusulas e geração nos próximos passos</div>
+  <div class="footer-actions">
+    <button class="btn" onclick="limparFormulario()">Limpar tudo</button>
+    <button class="btn" onclick="guardarRascunho()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/><path d="M9 2v3h4M5 9h6M5 12h4"/></svg>
+      Guardar rascunho
+    </button>
+    <button class="btn btn-success" onclick="gerarContrato()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>
+      Gerar contrato Word
+    </button>
+  </div>
+</div>
+
+<script>
+
+// ─── DADOS FIXOS ─────────────────────────────────────────────────────────────
+const SOLICITADORAS = {
+  liliana: {
+    nome: 'LILIANA ISABEL PACHECO BURRICA CARDOSO',
+    nomeAbrev: 'Liliana Isabel Pacheco Burrica Cardoso',
+    cedula: '08733',
+    nif: '219.126.658',
+    cc: '11841008 3ZU4',
+    ccValidade: '09/05/2035',
+    estadoCivil: 'casada',
+    naturalidade: 'Évora (Sé)',
+    domicilio: 'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
+    codProcuracao: 'PR-65440-42413-78710 (2026/01/01 23:54:29)',
+    textoProcuradora: 'LILIANA ISABEL PACHECO BURRICA CARDOSO, casada, natural de Évora (Sé), Solicitadora com a cédula profissional número 08733 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 11841008 3ZU4, válido até 09/05/2035 e número de identificação fiscal 219.126.658, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  },
+  andreia: {
+    nome: 'ANDREIA PESSEGUEIRO CABANAS',
+    nomeAbrev: 'Andreia Pessegueiro Cabanas',
+    cedula: '10126',
+    nif: '249.651.378',
+    cc: '30756227 1ZX4',
+    ccValidade: '16/08/2027',
+    estadoCivil: 'solteira',
+    naturalidade: 'Évora (Sé)',
+    domicilio: 'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
+    codProcuracao: 'PR-65440-42413-78710 (21/01/2026 15:28)',
+    textoProcuradora: 'ANDREIA PESSEGUEIRO CABANAS, solteira, maior, natural de Évora (Sé), Solicitadora com a cédula profissional número 10126 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 30756227 1ZX4, válido até 16/08/2027 e número de identificação fiscal 249.651.378, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  }
+};
+
+// CGD — dados fixos (compradora neste template)
+const CGD = {
+  nome: 'CAIXA GERAL DE DEPÓSITOS, S.A.',
+  sede: 'Lisboa, na Avenida João XXI, n.º 63',
+  nipc: '500960046',
+  capital: '4.525.714.495,00'
+};
+
+// ─── EXTENSO ─────────────────────────────────────────────────────────────────
+const UNIDADES = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+const DEZENAS = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const CENTENAS = ['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+
+function numExtensoInt(n) {
+  if (n === 0) return 'zero';
+  if (n < 0) return 'menos ' + numExtensoInt(-n);
+  if (n < 20) return UNIDADES[n];
+  if (n < 100) return DEZENAS[Math.floor(n/10)] + (n%10 ? ' e ' + UNIDADES[n%10] : '');
+  if (n === 100) return 'cem';
+  if (n < 1000) return CENTENAS[Math.floor(n/100)] + (n%100 ? ' e ' + numExtensoInt(n%100) : '');
+  if (n < 2000) return 'mil' + (n%1000 ? ' e ' + numExtensoInt(n%1000) : '');
+  if (n < 1000000) return numExtensoInt(Math.floor(n/1000)) + ' mil' + (n%1000 ? ' e ' + numExtensoInt(n%1000) : '');
+  if (n < 2000000) return 'um milhão' + (n%1000000 ? ' e ' + numExtensoInt(n%1000000) : '');
+  return numExtensoInt(Math.floor(n/1000000)) + ' milhões' + (n%1000000 ? ' e ' + numExtensoInt(n%1000000) : '');
+}
+
+function numExtenso(n) {
+  const inteiro = Math.floor(Math.abs(n));
+  const decimal = Math.round((Math.abs(n) - inteiro) * 100);
+  let resultado = '';
+  if (inteiro === 0 && decimal === 0) return 'zero';
+  if (inteiro > 0) resultado = numExtensoInt(inteiro);
+  if (decimal > 0) resultado += (resultado ? ' vírgula ' : '') + numExtensoInt(decimal) + (decimal === 1 ? ' centésimo' : ' centésimos');
+  return (n < 0 ? 'menos ' : '') + resultado;
+}
+
+function valorExtenso(str) {
+  if (!str) return '';
+  const s = String(str).trim();
+  let num;
+  if (s.includes(',')) num = parseFloat(s.replace(/\s/g,'').replace(/\./g,'').replace(',','.'));
+  else num = parseFloat(s.replace(/\s/g,''));
+  if (isNaN(num)) return '';
+  const inteiro = Math.floor(num);
+  const cents = Math.round((num - inteiro) * 100);
+  let txt = numExtensoInt(inteiro) + (inteiro === 1 ? ' euro' : ' euros');
+  if (cents > 0) txt += ' e ' + numExtensoInt(cents) + (cents === 1 ? ' cêntimo' : ' cêntimos');
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+// ─── DATA POR EXTENSO ─────────────────────────────────────────────────────────
+const MESES_EXT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS_EXT = ['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove','vinte','vinte e um','vinte e dois','vinte e três','vinte e quatro','vinte e cinco','vinte e seis','vinte e sete','vinte e oito','vinte e nove','trinta','trinta e um'];
+const ANOS_EXT = {2024:'dois mil e vinte e quatro',2025:'dois mil e vinte e cinco',2026:'dois mil e vinte e seis',2027:'dois mil e vinte e sete',2028:'dois mil e vinte e oito',2029:'dois mil e vinte e nove',2030:'dois mil e trinta'};
+
+function dataExtenso(isoDate) {
+  if (!isoDate) return '';
+  const [ano, mes, dia] = isoDate.split('-').map(Number);
+  return `${DIAS_EXT[dia]} de ${MESES_EXT[mes-1]} de ${ANOS_EXT[ano] || ano}`;
+}
+
+function fmtDataPT(isoDate) {
+  if (!isoDate) return '';
+  const [ano, mes, dia] = isoDate.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+// ─── OUTORGANTES ──────────────────────────────────────────────────────────────
+let vendedoresCount = 0;
+let locatariosCount = 0;
+
+function addOutorgante(tipo) {
+  const container = document.getElementById(`${tipo}-container`);
+  const labels = { vendedores: 'Vendedor', locatarios: 'Locatário' };
+  const label = labels[tipo] || 'Outorgante';
+  let idx;
+  if (tipo === 'vendedores') idx = ++vendedoresCount;
+  else idx = ++locatariosCount;
+  const id = `${tipo}-${idx}`;
+  const idxLocal = (container ? container.querySelectorAll('.outorgante-block').length : 0) + 1;
+  const permiteEmpresa = true; // vendedores e locatários podem ser empresa ou particular
+
+  const div = document.createElement('div');
+  div.className = 'outorgante-block';
+  div.id = id;
+  div.innerHTML = `
+    <div class="outorgante-header">
+      <span class="outorgante-title">${label} ${idxLocal}</span>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="outorgante-type">
+          <button class="type-btn active" onclick="setTipoOutorgante('${id}','singular',this)">Pessoa singular</button>
+          <button class="type-btn" onclick="setTipoOutorgante('${id}','empresa',this)">Empresa</button>
+        </div>
+        ${idxLocal > 1 ? `<button class="remove-btn" onclick="removeOutorgante('${id}','${tipo}')">×</button>` : ''}
+      </div>
+    </div>
+
+    <!-- SINGULAR -->
+    <div id="${id}-singular">
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full">
+          <label class="form-label">Nome completo <span>*</span></label>
+          <input type="text" class="form-input" id="${id}-nome" placeholder="Em maiúsculas" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Género <span>*</span></label>
+          <select class="form-select" id="${id}-genero" onchange="onEstadoCivilChange('${id}')">
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Natural de <span>*</span></label>
+          <input type="text" class="form-input" id="${id}-naturalidade" placeholder="Ex: Évora ou Santa Maria, Évora">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nº Cartão de Cidadão <span>*</span></label>
+          <input type="text" class="form-input" id="${id}-cc" placeholder="Ex: 12345678 9ZX0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Válido até <span>*</span></label>
+          <input type="date" class="form-input" id="${id}-cc-val">
+        </div>
+        <div class="form-group">
+          <label class="form-label">NIF <span>*</span></label>
+          <input type="text" class="form-input" id="${id}-nif" placeholder="Ex: 123.456.789">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado civil <span>*</span></label>
+          <select class="form-select" id="${id}-estado-civil" onchange="onEstadoCivilChange('${id}')">
+            <option value="solteiro">Solteiro(a)</option>
+            <option value="casado">Casado(a)</option>
+            <option value="divorciado">Divorciado(a)</option>
+            <option value="viuvo">Viúvo(a)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CASADO -->
+      <div class="casado-fields" id="${id}-casado-fields" style="display:none">
+        <div class="casado-fields-title">Dados do casamento</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Regime de casamento <span>*</span></label>
+            <select class="form-select" id="${id}-regime">
+              <option value="comunhao-adquiridos">Comunhão de adquiridos</option>
+              <option value="separacao-bens">Separação de bens</option>
+              <option value="comunhao-geral">Comunhão geral</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cônjuge é também outorgante?</label>
+            <select class="form-select" id="${id}-conjuge-outorgante" onchange="onConjugeOutorganteChange('${id}')">
+              <option value="sim">Sim — ambos outorgam</option>
+              <option value="nao">Não</option>
+            </select>
+          </div>
+        </div>
+        <div id="${id}-conjuge-dados" style="margin-top:.75rem">
+          <div class="form-grid form-grid-2" style="margin-bottom:.75rem" id="${id}-conjuge-prop-wrap">
+            <div class="form-group form-full">
+              <label class="form-label">Cônjuge é também proprietário? <span>*</span></label>
+              <select class="form-select" id="${id}-conjuge-proprietario">
+                <option value="sim">Sim — ambos proprietários (vendem ambos)</option>
+                <option value="nao">Não — apenas presta consentimento conjugal</option>
+              </select>
+              <div class="form-hint">Se ambos constam do registo, a identificação é conjunta. Se só um é proprietário, o cônjuge outorga para consentir (art.º 1682.º-A CC).</div>
+            </div>
+          </div>
+          <div class="cond-block-title" style="margin-bottom:.6rem">Dados do cônjuge</div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group form-full">
+              <label class="form-label">Nome completo do cônjuge <span>*</span></label>
+              <input type="text" class="form-input" id="${id}-conjuge-nome" placeholder="Em maiúsculas" style="text-transform:uppercase">
+            </div>
+            <div class="form-group conj-extra">
+              <label class="form-label">Género <span>*</span></label>
+              <select class="form-select" id="${id}-conjuge-genero">
+                <option value="M">Masculino</option>
+                <option value="F">Feminino</option>
+              </select>
+            </div>
+            <div class="form-group conj-extra">
+              <label class="form-label">Natural de <span>*</span></label>
+              <input type="text" class="form-input" id="${id}-conjuge-naturalidade">
+            </div>
+            <div class="form-group conj-extra">
+              <label class="form-label">Nº Cartão de Cidadão <span>*</span></label>
+              <input type="text" class="form-input" id="${id}-conjuge-cc">
+            </div>
+            <div class="form-group conj-extra">
+              <label class="form-label">Válido até <span>*</span></label>
+              <input type="date" class="form-input" id="${id}-conjuge-cc-val">
+            </div>
+            <div class="form-group">
+              <label class="form-label">NIF <span>*</span></label>
+              <input type="text" class="form-input" id="${id}-conjuge-nif">
+            </div>
+            <div class="form-group form-full conj-extra">
+              <label class="form-label">Morada (partilhada) <span>*</span></label>
+              <input type="text" class="form-input" id="${id}-morada-conjunta" placeholder="Morada comum do casal">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MORADA (não casado ou casado sem cônjuge outorgante) -->
+      <div id="${id}-morada-individual" style="margin-top:.75rem">
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Morada <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-morada" placeholder="Rua, n.º, localidade">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESA -->
+    <div id="${id}-empresa" style="display:none">
+      <div class="cond-block-title" style="margin-bottom:.6rem;color:var(--blue)">Dados do gerente (representante)</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full">
+          <label class="form-label">Nome do gerente <span>*</span></label>
+          <input type="text" class="form-input" id="${id}-ger-nome" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Género</label>
+          <select class="form-select" id="${id}-ger-genero">
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Natural de</label>
+          <input type="text" class="form-input" id="${id}-ger-naturalidade">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado civil</label>
+          <select class="form-select" id="${id}-ger-estado-civil">
+            <option value="solteiro">Solteiro(a)</option>
+            <option value="casado">Casado(a)</option>
+            <option value="divorciado">Divorciado(a)</option>
+            <option value="viuvo">Viúvo(a)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nº CC</label>
+          <input type="text" class="form-input" id="${id}-ger-cc">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Válido até</label>
+          <input type="date" class="form-input" id="${id}-ger-cc-val">
+        </div>
+        <div class="form-group">
+          <label class="form-label">NIF do gerente</label>
+          <input type="text" class="form-input" id="${id}-ger-nif">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Qualidade (ex: único sócio e gerente)</label>
+          <input type="text" class="form-input" id="${id}-ger-qualidade" placeholder="Ex: ÚNICO SÓCIO E GERENTE">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Morada</label>
+          <input type="text" class="form-input" id="${id}-ger-morada">
+        </div>
+      </div>
+      <div class="empresa-fields">
+        <div class="empresa-fields-title">Dados da empresa</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-full">
+            <label class="form-label">Nome da empresa <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-emp-nome" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capital social (€)</label>
+            <input type="text" class="form-input" id="${id}-emp-capital" placeholder="Ex: 5.000,00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nº único de matrícula / NIF <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-emp-nif" placeholder="Ex: 516.003.437">
+          </div>
+          <div class="form-group form-full">
+            <label class="form-label">Sede <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-emp-sede" placeholder="Morada da empresa">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Código CRC (eportugal.gov.pt) <span>*</span></label>
+            <input type="text" class="form-input" id="${id}-crc-cod" placeholder="Ex: 8334-6558-7156">
+          </div>
+          <div class="form-group">
+            <label class="form-label">CRC válida até <span>*</span></label>
+            <input type="date" class="form-input" id="${id}-crc-val">
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function removeOutorgante(id, tipo) {
+  document.getElementById(id).remove();
+}
+
+function setTipoOutorgante(id, tipo, btn) {
+  btn.closest('.outorgante-type').querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`${id}-singular`).style.display = tipo === 'singular' ? 'block' : 'none';
+  document.getElementById(`${id}-empresa`).style.display = tipo === 'empresa' ? 'block' : 'none';
+}
+
+function onEstadoCivilChange(id) {
+  const ec = document.getElementById(`${id}-estado-civil`)?.value;
+  const casadoFields = document.getElementById(`${id}-casado-fields`);
+  const moradaIndividual = document.getElementById(`${id}-morada-individual`);
+  if (!casadoFields) return;
+  if (ec === 'casado') {
+    casadoFields.style.display = 'block';
+    onConjugeOutorganteChange(id);
+  } else {
+    casadoFields.style.display = 'none';
+    moradaIndividual.style.display = 'block';
+  }
+}
+
+function onConjugeOutorganteChange(id) {
+  const val = document.getElementById(`${id}-conjuge-outorgante`)?.value;
+  const conjDados = document.getElementById(`${id}-conjuge-dados`);
+  const propWrap = document.getElementById(`${id}-conjuge-prop-wrap`);
+  const moradaIndividual = document.getElementById(`${id}-morada-individual`);
+  if (!conjDados) return;
+  conjDados.style.display = 'block';
+  const extras = conjDados.querySelectorAll('.conj-extra');
+  if (val === 'sim') {
+    if (propWrap) propWrap.style.display = '';
+    extras.forEach(el => el.style.display = '');
+    moradaIndividual.style.display = 'none';
+  } else {
+    if (propWrap) propWrap.style.display = 'none';
+    extras.forEach(el => el.style.display = 'none');
+    moradaIndividual.style.display = 'block';
+  }
+}
+
+// ─── ENTIDADE AUTENTICADORA / PROCURADOR CGD ──────────────────────────────────
+function onEntAutenticadoraChange() {
+  const val = document.getElementById('ent-autenticadora').value;
+  const s = SOLICITADORAS[val];
+  document.getElementById('cedula').value = s ? s.cedula : '';
+  document.getElementById('nif-ent').value = s ? s.nif : '';
+  validarConflitoCGD();
+}
+
+function updateDataExtenso() {
+  const d = document.getElementById('data-escritura').value;
+  document.getElementById('data-extenso-preview').textContent = d ? dataExtenso(d) : '';
+}
+
+function onProcuradorCGDChange() {
+  const val = document.getElementById('procurador-cgd').value;
+  const s = SOLICITADORAS[val];
+  const preview = document.getElementById('procurador-cgd-preview');
+  const texto = document.getElementById('procurador-cgd-texto');
+  if (s) {
+    texto.textContent = s.textoProcuradora;
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+  validarConflitoCGD();
+}
+
+function validarConflitoCGD() {
+  const ent = document.getElementById('ent-autenticadora').value;
+  const proc = document.getElementById('procurador-cgd').value;
+  const hint = document.getElementById('procurador-cgd-hint');
+  hint.style.display = (ent && proc && ent === proc) ? 'block' : 'none';
+}
+
+// ─── UTIL ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+// ─── STUBS (a ligar nos próximos passos) ─────────────────────────────────────
+function carregarPastasSP() { showToast('Ligação ao SharePoint será adicionada no passo da geração.', ''); }
+function pesquisarPastas() { /* será ligado ao SharePoint */ }
+function guardarRascunho() { showToast('Guardar rascunho será ligado no próximo passo.', ''); }
+function gerarContrato() { showToast('Geração do Word será construída depois das cláusulas.', ''); }
+function limparFormulario() {
+  if (!confirm('Limpar todos os campos?')) return;
+  document.getElementById('vendedores-container').innerHTML = '';
+  document.getElementById('locatarios-container').innerHTML = '';
+  vendedoresCount = 0; locatariosCount = 0;
+  document.querySelectorAll('input, select').forEach(el => {
+    if (el.type === 'date' || el.type === 'text' || el.type === 'email') el.value = '';
+    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+  });
+  addOutorgante('vendedores');
+  addOutorgante('locatarios');
+  document.getElementById('procurador-cgd-preview').style.display = 'none';
+  showToast('Formulário limpo.', 'success');
+}
+
+// ─── ARRANQUE ─────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  addOutorgante('vendedores');
+  addOutorgante('locatarios');
+});
+
+</script>
+</body>
+</html>
