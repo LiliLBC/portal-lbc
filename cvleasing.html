@@ -552,6 +552,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
 </div>
 
+<!-- MODAL PRÉ-VISUALIZAÇÃO -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal" style="max-width:800px;width:92%;max-height:88vh;display:flex;flex-direction:column">
+    <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;gap:1rem">
+      <span>Pré-visualização — Termo de Autenticação + Compra e Venda</span>
+      <button class="btn btn-sm" onclick="fecharPreview()">Fechar</button>
+    </div>
+    <div class="modal-sub" style="margin-bottom:.5rem">Rascunho gerado a partir do formulário, para validação. A formatação final virá do template Word.</div>
+    <pre id="preview-texto" style="white-space:pre-wrap;font-family:Georgia,'Times New Roman',serif;font-size:12.5px;line-height:1.65;overflow-y:auto;flex:1;margin:0;padding:.6rem .2rem;color:var(--text);border-top:1px solid var(--border);border-bottom:1px solid var(--border)"></pre>
+    <div class="modal-actions">
+      <button class="btn" onclick="copiarPreview()">Copiar texto</button>
+      <button class="btn" onclick="fecharPreview()" style="flex:1">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- STICKY FOOTER -->
 <div class="sticky-footer">
   <div class="footer-info" id="footer-info">Casca em revisão — cláusulas e geração nos próximos passos</div>
@@ -1084,7 +1100,15 @@ function showToast(msg, type='') {
 function carregarPastasSP() { showToast('Ligação ao SharePoint será adicionada no passo da geração.', ''); }
 function pesquisarPastas() { /* será ligado ao SharePoint */ }
 function guardarRascunho() { showToast('Guardar rascunho será ligado no próximo passo.', ''); }
-function gerarContrato() { showToast('Geração do Word será construída depois das cláusulas.', ''); }
+function gerarContrato() {
+  try {
+    const txt = gerarTextoCompletoLeasing();
+    document.getElementById('preview-texto').textContent = txt;
+    document.getElementById('preview-modal').classList.add('show');
+  } catch (e) {
+    showToast('Erro ao gerar pré-visualização: ' + e.message, 'error');
+  }
+}
 // ─── IMÓVEL ───────────────────────────────────────────────────────────────────
 function onTipoPredioChange() {
   const t = document.getElementById('tipo-predio').value;
@@ -1188,6 +1212,329 @@ function onCondominioLeasingChange() {
   } else {
     p.textContent = 'Não aplicável — o Imóvel não está sujeito a regime de propriedade horizontal / condomínio.';
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MOTOR DE COMPOSIÇÃO DO TEXTO (Termo de Autenticação + Compra e Venda)
+// ═══════════════════════════════════════════════════════════════════════════
+const GENERO_EMPRESA = 'F';
+
+function estadoCivilTexto(ec, genero) {
+  const f = genero === 'F';
+  switch (ec) {
+    case 'casado': return f ? 'casada' : 'casado';
+    case 'divorciado': return f ? 'divorciada' : 'divorciado';
+    case 'viuvo': return f ? 'viúva' : 'viúvo';
+    default: return f ? 'solteira, maior' : 'solteiro, maior';
+  }
+}
+function regimenTexto(r) {
+  if (r === 'separacao-bens') return 'separação de bens';
+  if (r === 'comunhao-geral') return 'comunhão geral de bens';
+  return 'comunhão de adquiridos';
+}
+function fmtEur(n) { return (Number(n) || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+// ── Concordância gramatical (motor reutilizado do CVMH) ────────────────────
+function sujeitosGramaticais(lista) {
+  const s = [];
+  (lista || []).forEach(o => {
+    if (o.tipo === 'empresa') { s.push({ genero: GENERO_EMPRESA }); return; }
+    s.push({ genero: o.genero === 'F' ? 'F' : 'M' });
+    const conjConta = o.estadoCivil === 'casado' && o.conjOutorgante === 'sim' && o.conjProprietario !== 'nao' && o.conjNome;
+    if (conjConta) s.push({ genero: o.conjGenero === 'F' ? 'F' : 'M' });
+  });
+  return s;
+}
+function concordar(sujeitos, ordinalBase) {
+  const n = sujeitos.length || 1;
+  const plural = n > 1;
+  const fem = sujeitos.length > 0 && sujeitos.every(x => x.genero === 'F');
+  const k = plural ? (fem ? 'FP' : 'MP') : (fem ? 'FS' : 'MS');
+  const pick = (ms, fs, mp, fp) => ({ MS: ms, FS: fs, MP: mp, FP: fp }[k]);
+  const v = (sing, plur) => plural ? plur : sing;
+  const stem = ordinalBase.replace(/[Oo]$/, '');
+  return {
+    n, plural,
+    Ordinal: pick(stem + 'O', stem + 'A', stem + 'OS', stem + 'AS'),
+    Contratante: plural ? 'Contratantes' : 'Contratante',
+    designado: pick('designado', 'designada', 'designados', 'designadas'),
+    Art: pick('O', 'A', 'Os', 'As'), art: pick('o', 'a', 'os', 'as'),
+    vende: v('vende', 'vendem'), declara: v('declara', 'declaram'), da: v('dá', 'dão'),
+  };
+}
+
+// ── Leitura dos outorgantes do formulário ──────────────────────────────────
+function lerOutorgante(id) {
+  const g = sfx => { const e = document.getElementById(id + sfx); return e ? e.value.trim() : ''; };
+  const empDiv = document.getElementById(id + '-empresa');
+  const ehEmpresa = empDiv && empDiv.style.display === 'block';
+  if (ehEmpresa) {
+    return {
+      tipo: 'empresa',
+      empNome: g('-emp-nome'), empCapital: g('-emp-capital'), empNif: g('-emp-nif'), empSede: g('-emp-sede'),
+      crcCod: g('-crc-cod'), crcVal: g('-crc-val'),
+      gerNome: g('-ger-nome'), gerGenero: g('-ger-genero'), gerNaturalidade: g('-ger-naturalidade'),
+      gerEstadoCivil: g('-ger-estado-civil'), gerCc: g('-ger-cc'), gerCcVal: g('-ger-cc-val'),
+      gerNif: g('-ger-nif'), gerQualidade: g('-ger-qualidade')
+    };
+  }
+  const ec = g('-estado-civil'), conjOut = g('-conjuge-outorgante');
+  return {
+    tipo: 'singular',
+    nome: g('-nome'), genero: g('-genero'), naturalidade: g('-naturalidade'),
+    cc: g('-cc'), ccVal: g('-cc-val'), nif: g('-nif'), estadoCivil: ec, regime: g('-regime'),
+    conjOutorgante: conjOut, conjProprietario: g('-conjuge-proprietario'),
+    conjNome: g('-conjuge-nome'), conjGenero: g('-conjuge-genero'), conjNaturalidade: g('-conjuge-naturalidade'),
+    conjCc: g('-conjuge-cc'), conjCcVal: g('-conjuge-cc-val'), conjNif: g('-conjuge-nif'),
+    morada: (ec === 'casado' && conjOut === 'sim') ? g('-morada-conjunta') : g('-morada')
+  };
+}
+function recolherOutorgantes(containerId) {
+  return [...document.querySelectorAll('#' + containerId + ' .outorgante-block')].map(b => lerOutorgante(b.id));
+}
+function lerGerentesCGD() {
+  return [...document.querySelectorAll('#cgd-gerentes-container .gerente-cgd-block')].map(b => {
+    const id = b.id, g = sfx => { const e = document.getElementById(id + sfx); return e ? e.value.trim() : ''; };
+    return { nome: g('-nome'), genero: g('-genero'), estadoCivil: g('-estado-civil'), naturalidade: g('-naturalidade'), nif: g('-nif'), cc: g('-cc'), ccVal: g('-cc-val'), qualidade: g('-qualidade') };
+  });
+}
+
+// ── Descrição (identificação) de cada parte ────────────────────────────────
+function descreverSingular(o) {
+  let t = `${o.nome}, ${estadoCivilTexto(o.estadoCivil, o.genero)}`;
+  if (o.estadoCivil === 'casado') {
+    t += o.conjNome ? ` com ${o.conjNome}, sob o regime da ${regimenTexto(o.regime)}` : `, sob o regime da ${regimenTexto(o.regime)}`;
+  }
+  t += `, natural da freguesia de ${o.naturalidade || '…'}, titular do Cartão de Cidadão n.º ${o.cc || '…'}, válido até ${o.ccVal ? fmtDataPT(o.ccVal) : '…'}, e número de identificação fiscal ${o.nif || '…'}`;
+  if (o.morada) t += `, residente em ${o.morada}`;
+  if (o.estadoCivil === 'casado' && o.conjOutorgante === 'sim' && o.conjProprietario !== 'nao' && o.conjNome) {
+    t += `; e ${o.conjNome}, natural da freguesia de ${o.conjNaturalidade || '…'}, titular do Cartão de Cidadão n.º ${o.conjCc || '…'}, válido até ${o.conjCcVal ? fmtDataPT(o.conjCcVal) : '…'}, e número de identificação fiscal ${o.conjNif || '…'}`;
+  }
+  return t;
+}
+function descreverEmpresa(o) {
+  let t = `${o.empNome}, sociedade comercial, com sede em ${o.empSede || '…'}, matriculada na Conservatória do Registo Comercial e com o número único de matrícula e de identificação de pessoa coletiva ${o.empNif || '…'}`;
+  if (o.empCapital) t += `, com o capital social de ${o.empCapital} €`;
+  t += `, devidamente representada neste ato por ${o.gerNome || '…'}, contribuinte fiscal n.º ${o.gerNif || '…'}, ${estadoCivilTexto(o.gerEstadoCivil, o.gerGenero)}, natural da freguesia de ${o.gerNaturalidade || '…'}, titular do Cartão de Cidadão n.º ${o.gerCc || '…'}, válido até ${o.gerCcVal ? fmtDataPT(o.gerCcVal) : '…'}, com domicílio profissional na sede da sua representada`;
+  if (o.gerQualidade) t += `, na qualidade de ${o.gerQualidade}`;
+  return t;
+}
+function descreverParte(o) { return o.tipo === 'empresa' ? descreverEmpresa(o) : descreverSingular(o); }
+
+// ── Representação da CGD (compradora) ──────────────────────────────────────
+function descreverCGD(d) {
+  let rep;
+  if (d.cgdModo === 'liliana' || d.cgdModo === 'andreia') {
+    rep = `${SOLICITADORAS[d.cgdModo].textoProcuradora}, na qualidade de sua procuradora`;
+  } else {
+    const gs = d.cgdGerentes;
+    const corpo = gs.map(g => `${g.nome || '…'}, ${estadoCivilTexto(g.estadoCivil, g.genero)}, natural da freguesia de ${g.naturalidade || '…'}, contribuinte fiscal n.º ${g.nif || '…'}, titular do Cartão de Cidadão n.º ${g.cc || '…'}, válido até ${g.ccVal ? fmtDataPT(g.ccVal) : '…'}`).join('; e ');
+    const qual = gs[0] && gs[0].qualidade ? gs[0].qualidade : 'membros do Conselho de Administração';
+    const ambos = gs.length > 1 ? 'ambos com domicílio profissional na sede da sua representada' : 'com domicílio profissional na sede da sua representada';
+    rep = `${corpo}, ${ambos}, na qualidade de ${qual}`;
+  }
+  return `CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de 4.525.714.495,00 Euros, devidamente representada neste ato por ${rep}`;
+}
+function verifCGDTexto(d) {
+  if (d.cgdModo === 'liliana' || d.cgdModo === 'andreia') {
+    return `a qualidade e os poderes da Segunda Outorgante, para o presente ato, pela consulta da procuração com o código de acesso ${SOLICITADORAS[d.cgdModo].codProcuracao}`;
+  }
+  return `a qualidade e os poderes da Segunda Outorgante, para o presente ato, pela consulta da procuração com o código de acesso ${d.cgdProcCodigo || CGD_PROC_CODIGO_DEFAULT}, ao abrigo do disposto no ponto Segundo, alínea 12), da referida procuração`;
+}
+
+// ── Recolha global ─────────────────────────────────────────────────────────
+function recolherDadosLeasing() {
+  const ent = document.getElementById('ent-autenticadora').value;
+  const cgdModo = document.getElementById('procurador-cgd').value;
+  return {
+    entidade: SOLICITADORAS[ent] || null,
+    local: SOLICITADORAS[ent] ? SOLICITADORAS[ent].domicilio : '…',
+    dataEsc: document.getElementById('data-escritura').value,
+    vendedores: recolherOutorgantes('vendedores-container'),
+    cgdModo, cgdGerentes: lerGerentesCGD(), cgdProcCodigo: (document.getElementById('cgd-proc-codigo') ? document.getElementById('cgd-proc-codigo').value.trim() : ''),
+    locatarios: recolherOutorgantes('locatarios-container'),
+    imovel: {
+      direito: document.getElementById('direito-predio').value,
+      tipo: document.getElementById('tipo-predio').value,
+      fracaoLetra: document.getElementById('fracao-letra').value.trim(),
+      apPH: document.getElementById('ap-ph').value.trim(),
+      descricao: document.getElementById('descricao-predio').value.trim(),
+      localizacao: document.getElementById('localizacao-predio').value.trim(),
+      conservatoria: document.getElementById('conservatoria').value.trim(),
+      numDescricao: document.getElementById('num-descricao').value.trim(),
+      freguesiaConservatoria: document.getElementById('freguesia-conservatoria').value.trim(),
+      semAquisicao: document.getElementById('toggle-sem-aquisicao').checked,
+      apAquisicao: document.getElementById('ap-aquisicao').value.trim(),
+      artMatricial: document.getElementById('art-matricial').value.trim(),
+      freguesiaMatriz: document.getElementById('freguesia-matriz').value.trim(),
+      vpt: document.getElementById('vpt-valor').value.trim(),
+      licencaNum: document.getElementById('licenca-numero').value.trim(),
+      licencaData: document.getElementById('licenca-data').value,
+      licencaCamara: document.getElementById('licenca-camara').value.trim(),
+      livreOnus: document.getElementById('toggle-livre-onus').checked,
+      onusDescricao: document.getElementById('onus-descricao').value.trim(),
+    },
+    preco: {
+      valor: document.getElementById('preco-compra').value.trim(),
+      extenso: document.getElementById('preco-extenso').value.trim(),
+      quitacao: document.getElementById('toggle-quitacao').checked,
+      banco: document.getElementById('cheques-banco').value.trim(),
+      cheques: [...document.querySelectorAll('#cheques-container .cheque-block')].map(b => ({
+        valor: b.querySelector('.cheque-valor').value.trim(),
+        num: b.querySelector('.cheque-num').value.trim()
+      }))
+    },
+    mediacao: { tem: document.getElementById('toggle-mediacao').checked, nome: document.getElementById('mediacao-nome').value.trim(), ami: document.getElementById('mediacao-ami').value.trim() },
+    sce: { tem: document.getElementById('toggle-sce').checked, numero: document.getElementById('sce-numero').value.trim() },
+    condominio: document.getElementById('condominio-opcao').value,
+  };
+}
+
+// ── Identificação do imóvel (cláusula Primeira) ────────────────────────────
+function descreverImovel(im) {
+  let obj;
+  if (im.tipo === 'fracao') {
+    obj = `a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${im.fracaoLetra || '…'}», correspondente a ${im.descricao || '…'}, com tudo o que a compõe, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${im.apPH || '…'}`;
+  } else {
+    obj = `o prédio urbano ${im.descricao || '…'}`;
+  }
+  let t = `${obj}, sito em ${im.localizacao || '…'}, descrito na Conservatória do Registo Predial de ${im.conservatoria || '…'} sob o número ${im.numDescricao || '…'} da freguesia de ${im.freguesiaConservatoria || '…'}`;
+  t += im.semAquisicao
+    ? `, sem registo de aquisição a favor da parte vendedora por ter sido adquirido em momento imediatamente anterior ao presente ato`
+    : `, com aquisição registada a favor da parte vendedora pela inscrição ${im.apAquisicao || '…'}`;
+  t += `, inscrito na respetiva matriz predial urbana sob o artigo ${im.artMatricial || '…'}, da Freguesia de ${im.freguesiaMatriz || '…'}, com o valor patrimonial atribuído de ${im.vpt || '…'} Euros, adiante designado abreviadamente por Imóvel`;
+  return t;
+}
+
+// ── Cláusula do preço (cheques) ────────────────────────────────────────────
+function descreverPagamento(p) {
+  const chs = (p.cheques || []).filter(c => c.valor);
+  if (!chs.length) return 'O pagamento foi efetuado integralmente na presente data.';
+  const lista = chs.map(c => {
+    const ext = valorExtenso(c.valor);
+    return `no valor de ${c.valor} Euros (${ext.charAt(0).toLowerCase() + ext.slice(1)}), com o n.º ${c.num || '…'}`;
+  });
+  const corpo = lista.length === 1 ? lista[0] : lista.slice(0, -1).join(', ') + ' e ' + lista[lista.length - 1];
+  const palavra = chs.length > 1 ? `${chs.length} cheques bancários` : 'um cheque bancário';
+  return `O pagamento foi efetuado integralmente na presente data através de ${palavra}, ${corpo}, ${chs.length > 1 ? 'todos sacados' : 'sacado'} sobre ${p.banco || 'a Caixa Geral de Depósitos, S.A.'}.`;
+}
+
+// ── Destino (cláusula Quinta) ──────────────────────────────────────────────
+function descreverDestino(locs) {
+  if (!locs || !locs.length) return 'O Imóvel destina-se a ser cedido em Locação Financeira.';
+  const partes = locs.map(o => {
+    if (o.tipo === 'empresa') return `${o.empNome || '…'}, com sede em ${o.empSede || '…'}, e o NIPC ${o.empNif || '…'}`;
+    return `${o.nome || '…'}, contribuinte fiscal n.º ${o.nif || '…'}, residente em ${o.morada || '…'}`;
+  });
+  const corpo = partes.length === 1 ? partes[0] : partes.slice(0, -1).join('; ') + '; e ' + partes[partes.length - 1];
+  return `O Imóvel destina-se a ser cedido em Locação Financeira a ${corpo}.`;
+}
+
+// ── TERMO DE AUTENTICAÇÃO ──────────────────────────────────────────────────
+function composTermo(d) {
+  const L = [];
+  const dEx = d.dataEsc ? dataExtenso(d.dataEsc) : '…';
+  const e = d.entidade;
+  L.push('TERMO DE AUTENTICAÇÃO');
+  L.push('');
+  L.push(`No dia ${dEx}, no domicílio profissional sito na ${d.local}, perante mim, ${e ? e.nome : '…'}, Solicitadora, titular da cédula profissional n.º ${e ? e.cedula : '…'}, contribuinte fiscal ${e ? e.nif : '…'}, com domicílio profissional na morada supra mencionada, compareceram como Outorgantes:`);
+  L.push('');
+  const sujV = sujeitosGramaticais(d.vendedores);
+  const cV = concordar(sujV, 'PRIMEIRO');
+  const ordTitV = cV.Ordinal.charAt(0) + cV.Ordinal.slice(1).toLowerCase();
+  L.push(cV.Ordinal);
+  L.push(`${d.vendedores.map(descreverParte).join('; e ')}, adiante ${cV.designado} por ${ordTitV} Contratante${cV.plural ? 's' : ''}.`);
+  L.push('');
+  L.push('SEGUNDA');
+  L.push(`${descreverCGD(d)}, adiante designada por Segunda Contratante, CGD ou CAIXA.`);
+  L.push('');
+  L.push('Verifiquei:');
+  L.push('— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;');
+  const vendEmp = d.vendedores.find(o => o.tipo === 'empresa');
+  if (vendEmp) L.push(`— as qualidades e poderes do Primeiro Outorgante, para o presente ato, através da consulta da certidão permanente do registo comercial com o código de acesso ${vendEmp.crcCod || '…'};`);
+  L.push(`— ${verifCGDTexto(d)}.`);
+  L.push('');
+  L.push('Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.');
+  L.push('');
+  L.push('Os Outorgantes declararam que corresponde inteiramente à verdade o teor da cláusula constante do contrato que aqui se autentica relativa ao valor do preço e respetivos meios e datas de pagamento, a qual aqui se tem por integralmente reproduzida para todos os efeitos legais.');
+  L.push('');
+  if (d.mediacao.tem) {
+    L.push(`Pelos Outorgantes foi declarado que as partes recorreram a mediação imobiliária, prestada por ${d.mediacao.nome || '…'}, titular da licença n.º ${d.mediacao.ami || '…'} - AMI, tendo-lhes sido feita advertência de que a omissão ou a prestação de falsas declarações sobre a intervenção de mediador imobiliário no contrato faz incorrer as partes na pena aplicável ao crime de desobediência, prevista no artigo 348.º do Código Penal, por aplicação do n.º 3 do artigo 40.º, da Lei n.º 15/2013, de 8 de Fevereiro.`);
+    L.push('');
+  } else {
+    L.push('Pelos Outorgantes foi declarado que não houve intervenção de mediação imobiliária na presente transação.');
+    L.push('');
+  }
+  if (d.sce.tem) {
+    L.push(`A Parte Compradora declara que recebeu nesta data da Parte Vendedora o Certificado emitido no âmbito do SCE (Certificado Energético n.º ${d.sce.numero || '…'}), nos termos do Decreto-Lei 118/2013 de 20 de Agosto, relativamente ao IMÓVEL objeto da Compra e Venda contratada.`);
+    L.push('');
+  }
+  if (d.condominio === 'prescinde') {
+    L.push('A Parte Compradora declara, para efeitos da Lei n.º 8/2022, de 10 de Janeiro e do artigo 1424.º-A do Código Civil, que prescinde da declaração do administrador do condomínio do Imóvel objeto do contrato que aqui se autentica, referente a encargos e dívidas de condomínio em vigor, e que aceita, em consequência, a responsabilidade por qualquer dívida da Parte Vendedora ao referido condomínio.');
+    L.push('');
+  } else if (d.condominio === 'apresenta') {
+    L.push('É arquivada a declaração do administrador do condomínio, referente a encargos e dívidas de condomínio em vigor, em conformidade com o artigo 1424.º-A do Código Civil.');
+    L.push('');
+  }
+  L.push('Arquivados:');
+  L.push('— «CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA» com as assinaturas reconhecidas presencialmente por mim, nesta data;');
+  L.push('— (documentos fiscais — DUC de IMT e Imposto do Selo — a anexar.)');
+  L.push('');
+  L.push('A leitura e explicação do Documento Particular que aqui se autentica e deste Termo de Autenticação foram efetuadas em voz alta e na presença dos Outorgantes, com a advertência de que de seguida, e nesta mesma data, o mesmo vai ser depositado eletronicamente, para sua plena validade, em www.predialonline.pt.');
+  return L.join('\n');
+}
+
+// ── COMPRA E VENDA ─────────────────────────────────────────────────────────
+function composCV(d) {
+  const L = [];
+  const sujV = sujeitosGramaticais(d.vendedores);
+  const cV = concordar(sujV, 'PRIMEIRO');
+  L.push('COMPRA E VENDA');
+  L.push('');
+  const ordTitV = cV.Ordinal.charAt(0) + cV.Ordinal.slice(1).toLowerCase();
+  L.push(cV.Ordinal);
+  L.push(`${d.vendedores.map(descreverParte).join('; e ')}, adiante ${cV.designado} por ${ordTitV} Contratante${cV.plural ? 's' : ''}.`);
+  L.push('');
+  L.push('SEGUNDA');
+  L.push(`${descreverCGD(d)}, adiante designada por Segunda Contratante, CGD ou CAIXA.`);
+  L.push('');
+  L.push('Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:');
+  L.push('');
+  L.push('Primeira (Objeto)');
+  const vendEmpresa = d.vendedores.length > 0 && d.vendedores.every(o => o.tipo === 'empresa');
+  const repV = vendEmpresa ? ', em nome da sua representada,' : '';
+  const objPron = d.imovel.tipo === 'fracao' ? 'a' : 'o';
+  L.push(`${cV.Art} ${ordTitV} Contratante${repV} ${cV.vende} à representada da Segunda Contratante, que ${objPron} aceita, ${descreverImovel(d.imovel)}.`);
+  L.push('');
+  L.push('Segunda (Preço)');
+  L.push(`1. O Imóvel é vendido pelo preço de ${d.preco.valor || '…'} Euros (${d.preco.extenso || '…'})${d.preco.quitacao ? `, que ${cV.art} ${ordTitV} Contratante${repV} ${cV.declara} já ter recebido e de que ${cV.da} aqui quitação` : ''}.`);
+  L.push(`2. ${descreverPagamento(d.preco)}`);
+  L.push('');
+  L.push('Terceira (Ónus e encargos)');
+  L.push(d.imovel.livreOnus ? 'O Imóvel é vendido livre de quaisquer ónus ou encargos.' : `O Imóvel é vendido com os seguintes ónus ou encargos: ${d.imovel.onusDescricao || '…'}.`);
+  L.push('');
+  L.push('Quarta (Licenciamento camarário)');
+  L.push(`O Imóvel tem a Licença de Utilização n.º ${d.imovel.licencaNum || '…'}, emitida em ${d.imovel.licencaData ? fmtDataPT(d.imovel.licencaData) : '…'} pela Câmara Municipal de ${d.imovel.licencaCamara || '…'}, para o prédio de que faz parte integrante.`);
+  L.push('');
+  L.push('Quinta (Destino do Imóvel adquirido)');
+  L.push(descreverDestino(d.locatarios));
+  L.push('');
+  const dEx = d.dataEsc ? dataExtenso(d.dataEsc) : '…';
+  L.push(`${(d.local || '').split(',').pop().replace(/^\s*em\s*/i, '').trim() || 'Évora'}, ${dEx}`);
+  return L.join('\n');
+}
+
+function gerarTextoCompletoLeasing() {
+  const d = recolherDadosLeasing();
+  return composTermo(d) + '\n\n\n' + '═══════════════════════════════════════\n\n' + composCV(d);
+}
+
+// ── Pré-visualização ───────────────────────────────────────────────────────
+function fecharPreview() { document.getElementById('preview-modal').classList.remove('show'); }
+function copiarPreview() {
+  const t = document.getElementById('preview-texto').textContent;
+  navigator.clipboard.writeText(t).then(() => showToast('Texto copiado.', 'success')).catch(() => showToast('Não foi possível copiar.', ''));
 }
 
 function limparFormulario() {
