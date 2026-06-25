@@ -2025,6 +2025,10 @@ tbody tr:hover td{background:#FAFAF8}
                   <option value="">Selecionar fornecedor primeiro...</option>
                 </select>
               </div>
+              <div class="field-group field-full" id="av-p-servico-outro-wrap" style="display:none">
+                <div class="field-label">Descrição do serviço (Outros) *</div>
+                <input class="form-input" id="av-p-servico-outro" placeholder="Descreve o serviço">
+              </div>
               <div class="field-group">
                 <div class="field-label">Data início</div>
                 <input class="form-input" id="av-p-inicio" type="date">
@@ -2420,54 +2424,8 @@ tbody tr:hover td{background:#FAFAF8}
 
         </div>
 
-        <!-- LINHA 2: AVENÇAS POR FORNECEDOR -->
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:.75rem">
-
-          <!-- CARD 5: AVENÇAS REMAX -->
-          <div class="metric-card" style="padding:.7rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
-              <div class="metric-label" style="margin:0;font-size:10px">Avenças REMAX</div>
-              <div style="display:flex;gap:.2rem">
-                <select class="form-select" id="dash-c5-ano" onchange="dashRenderCard5()" style="font-size:10px;padding:2px 4px;width:60px"></select>
-                <select class="form-select" id="dash-c5-mes" onchange="dashRenderCard5()" style="font-size:10px;padding:2px 4px;width:74px">
-                  <option value="">Ano todo</option>
-                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
-                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
-                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
-                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
-                </select>
-              </div>
-            </div>
-            <div style="display:flex;gap:.6rem;align-items:baseline;margin-bottom:.3rem">
-              <div class="metric-value" id="dash-c5-total" style="font-size:22px;color:#dc2626;line-height:1">—</div>
-              <div id="dash-c5-subtotais" style="font-size:11px;color:var(--text-muted)"></div>
-            </div>
-            <canvas id="dash-c5-chart" style="width:100%;height:120px;display:block"></canvas>
-          </div>
-
-          <!-- CARD 6: AVENÇAS CM MONFORTE -->
-          <div class="metric-card" style="padding:.7rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
-              <div class="metric-label" style="margin:0;font-size:10px">Avenças CM Monforte</div>
-              <div style="display:flex;gap:.2rem">
-                <select class="form-select" id="dash-c6-ano" onchange="dashRenderCard6()" style="font-size:10px;padding:2px 4px;width:60px"></select>
-                <select class="form-select" id="dash-c6-mes" onchange="dashRenderCard6()" style="font-size:10px;padding:2px 4px;width:74px">
-                  <option value="">Ano todo</option>
-                  <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
-                  <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
-                  <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
-                  <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
-                </select>
-              </div>
-            </div>
-            <div style="display:flex;gap:.6rem;align-items:baseline;margin-bottom:.3rem">
-              <div class="metric-value" id="dash-c6-total" style="font-size:22px;color:#7c3aed;line-height:1">—</div>
-              <div id="dash-c6-subtotais" style="font-size:11px;color:var(--text-muted)"></div>
-            </div>
-            <canvas id="dash-c6-chart" style="width:100%;height:120px;display:block"></canvas>
-          </div>
-
-        </div>
+        <!-- LINHA 2: AVENÇAS POR ENTIDADE — cards gerados a partir de AVENCAS_ENTIDADES -->
+        <div id="dash-avencas-cards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:.75rem"></div>
       </div>
 
     </div>
@@ -4988,6 +4946,7 @@ async function _formatarColunasData(driveId,itemId,sheetName,rowNum){
 
 // Listener para o input do nº processo (atualiza aviso em tempo real)
 document.addEventListener('DOMContentLoaded',()=>{
+  try{ avInitEntidades(); dashConstruirCardsAvencas(); }catch(e){console.warn('avInitEntidades:',e);}
   const inp=document.getElementById('ev-num-processo');
   if(inp){
     inp.addEventListener('input',onEvEntidadeChange);
@@ -9363,7 +9322,7 @@ function dashPopularAnos(){
   const anos=[...anosUnicos].sort((a,b)=>b-a);
   if(anos.length===0)anos.push(new Date().getFullYear());
   const anoCorrente=new Date().getFullYear();
-  ['dash-c1-ano','dash-c2-ano','dash-c3-ano','dash-c4-ano','dash-c5-ano','dash-c6-ano'].forEach(id=>{
+  ['dash-c1-ano','dash-c2-ano','dash-c3-ano','dash-c4-ano',...avEntidadesDashboard().map(e=>`dash-c${e.idx}-ano`)].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel)return;
     sel.innerHTML='';
@@ -9529,8 +9488,34 @@ function dashRenderCard3(){
   dashRenderBreakdown('dash-c3-breakdown',labels,eurs,totalMargem,cores);
 }
 
-function dashRenderCard5(){return dashRenderAvencas('REMAX',5,'#dc2626',['CPCV','ARRENDAMENTO','CARTAS CONFINANTES','ANÁLISE','PARECER','CADASTRO','OUTRO']);}
-function dashRenderCard6(){return dashRenderAvencas('CM MONFORTE',6,'#7c3aed',['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']);}
+// Cards de avenças do dashboard — construídos a partir de AVENCAS_ENTIDADES
+function dashConstruirCardsAvencas(){
+  const cont=document.getElementById('dash-avencas-cards');
+  if(!cont)return;
+  const meses=`<option value="">Ano todo</option><option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option><option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option><option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option><option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>`;
+  cont.innerHTML=avEntidadesDashboard().map(e=>`
+    <div class="metric-card" style="padding:.7rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.3rem">
+        <div class="metric-label" style="margin:0;font-size:10px">Avenças ${e.nome}</div>
+        <div style="display:flex;gap:.2rem">
+          <select class="form-select" id="dash-c${e.idx}-ano" onchange="dashRenderAvencaEntidade(${e.idx})" style="font-size:10px;padding:2px 4px;width:60px"></select>
+          <select class="form-select" id="dash-c${e.idx}-mes" onchange="dashRenderAvencaEntidade(${e.idx})" style="font-size:10px;padding:2px 4px;width:74px">${meses}</select>
+        </div>
+      </div>
+      <div style="display:flex;gap:.6rem;align-items:baseline;margin-bottom:.3rem">
+        <div class="metric-value" id="dash-c${e.idx}-total" style="font-size:22px;color:${e.corDash};line-height:1">—</div>
+        <div id="dash-c${e.idx}-subtotais" style="font-size:11px;color:var(--text-muted)"></div>
+      </div>
+      <canvas id="dash-c${e.idx}-chart" style="width:100%;height:120px;display:block"></canvas>
+    </div>`).join('');
+}
+function dashRenderAvencaEntidade(idx){
+  const e=avEntidadesDashboard().find(x=>x.idx===idx);
+  if(e)dashRenderAvencas(e.nome,e.idx,e.corDash,e.servicos);
+}
+function dashRenderCardsAvencas(){
+  avEntidadesDashboard().forEach(e=>dashRenderAvencas(e.nome,e.idx,e.corDash,e.servicos));
+}
 
 function dashRenderAvencas(fornecedor,cardIdx,corBase,tiposServico){
   const ano=document.getElementById(`dash-c${cardIdx}-ano`).value;
@@ -9558,7 +9543,7 @@ function dashRenderAvencas(fornecedor,cardIdx,corBase,tiposServico){
     const t=(i[AP.servico]||'').toString().trim().toUpperCase();
     const match=tiposServico.find(s=>s.toUpperCase()===t);
     if(match)cont[match]++;
-    else if(cont['OUTRO']!==undefined)cont['OUTRO']++;
+    else{const ok=tiposServico.find(s=>/^outr/i.test(s));if(ok)cont[ok]++;}
   });
   // Sub-totais por estado
   const emCurso=lista.filter(i=>{
@@ -9630,13 +9615,13 @@ function dashRenderCard4(){
 function dashSincronizarFiltros(){
   const ano=document.getElementById('dash-c1-ano').value;
   const mes=document.getElementById('dash-c1-mes').value;
-  ['dash-c2','dash-c3','dash-c4','dash-c5','dash-c6'].forEach(c=>{
+  ['dash-c2','dash-c3','dash-c4',...avEntidadesDashboard().map(e=>`dash-c${e.idx}`)].forEach(c=>{
     const a=document.getElementById(c+'-ano'),m=document.getElementById(c+'-mes');
     if(a)a.value=ano;
     if(m)m.value=mes;
   });
   dashRenderCard1();dashRenderCard2();dashRenderCard3();dashRenderCard4();
-  dashRenderCard5();dashRenderCard6();
+  dashRenderCardsAvencas();
 }
 
 async function dashRenderTudo(){
@@ -9645,23 +9630,56 @@ async function dashRenderTudo(){
   if(!todosProcessosAv||!todosProcessosAv.length){
     try{await carregarAvencas();}catch(e){console.warn('Erro ao carregar avenças no dashboard:',e);}
   }
+  dashConstruirCardsAvencas();
   dashPopularAnos();
   dashRenderCard1();
   dashRenderCard2();
   dashRenderCard3();
   dashRenderCard4();
-  dashRenderCard5();
-  dashRenderCard6();
+  dashRenderCardsAvencas();
 }
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
-const AVENCAS_FORNECEDORES={
-  'REMAX':['CPCV','ARRENDAMENTO','CARTAS CONFINANTES','ANÁLISE','PARECER','CADASTRO','OUTRO'],
-  'CM MONFORTE':['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']
+// ── FONTE ÚNICA DAS ENTIDADES DE AVENÇA ──────────────────────────────────────
+// Para juntar uma nova entidade basta acrescentar UMA linha aqui. Os dropdowns
+// (painel e filtros), as cores da lista e o card do dashboard são gerados
+// automaticamente a partir desta configuração.
+//   cor      → cor do avatar na lista (variável CSS)
+//   corDash  → cor do total/gráfico no card do dashboard (hex)
+//   dashboard→ true para ter card próprio no dashboard
+//   servicos → tipos de serviço próprios da entidade
+const AVENCAS_ENTIDADES={
+  'REMAX':       {cor:'var(--blue)',  corDash:'#dc2626', dashboard:true, servicos:['CPCV','ARRENDAMENTO','CARTAS CONFINANTES','ANÁLISE','PARECER','CADASTRO','OUTRO']},
+  'CM MONFORTE': {cor:'var(--amber)', corDash:'#7c3aed', dashboard:true, servicos:['REGISTO','PARECER','ANÁLISE','INTERNO','OUTRO']},
+  'MOTEVORA':    {cor:'var(--green)', corDash:'#0d9488', dashboard:true, servicos:['Autenticação documentos','Registo Auto','Contratos','Outros']}
 };
+// Derivados (mantêm compatibilidade com o restante código)
+const AVENCAS_FORNECEDORES=Object.fromEntries(
+  Object.entries(AVENCAS_ENTIDADES).map(([nome,cfg])=>[nome,cfg.servicos])
+);
 const AVENCAS_HINTS={
   'REMAX|CARTAS CONFINANTES':'Indica a localização do prédio (ex: "Rua do Pinheiro, Carapuções, Coruche")'
 };
+// Lista de entidades com card no dashboard, numeradas a partir do card 5
+function avEntidadesDashboard(){
+  let idx=5;
+  return Object.entries(AVENCAS_ENTIDADES)
+    .filter(([,c])=>c.dashboard)
+    .map(([nome,c])=>({nome,idx:idx++,corDash:c.corDash,servicos:c.servicos}));
+}
+// Popula os dropdowns do painel e dos filtros a partir da fonte única
+function avInitEntidades(){
+  const nomes=Object.keys(AVENCAS_ENTIDADES);
+  const selP=document.getElementById('av-p-fornecedor');
+  if(selP)selP.innerHTML='<option value="">Selecionar...</option>'+nomes.map(n=>`<option>${n}</option>`).join('');
+  const selF=document.getElementById('av-f-fornecedor');
+  if(selF)selF.innerHTML='<option value="">Todos os fornecedores</option>'+nomes.map(n=>`<option>${n}</option>`).join('');
+  const selS=document.getElementById('av-f-servico');
+  if(selS){
+    const servicos=[...new Set(nomes.flatMap(n=>AVENCAS_ENTIDADES[n].servicos))];
+    selS.innerHTML='<option value="">Tipo de serviço...</option>'+servicos.map(s=>`<option>${s}</option>`).join('');
+  }
+}
 const AP={titulo:'Title',fornecedor:'Fornecedor',servico:'Servico',inicio:'Data_Inicio',conclusao:'Data_Conclusao',estado:'Estado',urgente:'Urgente',responsavel:'Responsavel',notas:'Notas',pasta:'Ligacao_Pasta'};
 let todosProcessosAv=[],filtroEstadoAv='activos',avPainelItemId=null;
 
@@ -9729,7 +9747,7 @@ function avRenderLista(lista){
   const el=document.getElementById('av-list');
   el.style.display='block';
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhum processo encontrado.</div>';return;}
-  const corForn={'REMAX':'var(--blue)','CM MONFORTE':'var(--amber)'};
+  const corForn=Object.fromEntries(Object.entries(AVENCAS_ENTIDADES).map(([k,v])=>[k,v.cor]));
   const corBadge={
     'Em curso':'background:var(--accent-light);color:var(--accent)',
     'Aguarda resposta':'background:#FEF3C7;color:#92400E',
@@ -9795,6 +9813,12 @@ function avPainelServicoChange(){
   const serv=document.getElementById('av-p-servico').value;
   const hint=document.getElementById('av-p-titulo-hint');
   const titulo=document.getElementById('av-p-titulo');
+  // Caixa de escrita livre quando o serviço é "Outros"
+  const outroWrap=document.getElementById('av-p-servico-outro-wrap');
+  if(outroWrap){
+    if(/^outr/i.test(serv)){outroWrap.style.display='';}
+    else{outroWrap.style.display='none';const livre=document.getElementById('av-p-servico-outro');if(livre)livre.value='';}
+  }
   const chave=`${forn}|${serv}`;
   if(AVENCAS_HINTS[chave]){
     hint.textContent='⚠ '+AVENCAS_HINTS[chave];
@@ -9813,6 +9837,7 @@ function abrirPainelAvencaNovo(){
   ['av-p-titulo','av-p-notas'].forEach(id=>document.getElementById(id).value='');
   ['av-p-fornecedor','av-p-servico','av-p-estado','av-p-responsavel'].forEach(id=>document.getElementById(id).selectedIndex=0);
   document.getElementById('av-p-servico').disabled=true;
+  {const ow=document.getElementById('av-p-servico-outro-wrap');if(ow){ow.style.display='none';document.getElementById('av-p-servico-outro').value='';}}
   document.getElementById('av-p-inicio').value='';
   document.getElementById('av-p-conclusao').value='';
   document.getElementById('av-p-urgente').checked=false;
@@ -9831,8 +9856,22 @@ function abrirPainelAvenca(itemId){
   document.getElementById('av-p-titulo').value=i[AP.titulo]||'';
   document.getElementById('av-p-fornecedor').value=i[AP.fornecedor]||'';
   avPainelFornecedorChange();
-  document.getElementById('av-p-servico').value=i[AP.servico]||'';
-  avPainelServicoChange();
+  {
+    const _forn=i[AP.fornecedor]||'';
+    const _sv=i[AP.servico]||'';
+    const _known=(AVENCAS_ENTIDADES[_forn]&&AVENCAS_ENTIDADES[_forn].servicos)||[];
+    const _selSv=document.getElementById('av-p-servico');
+    if(_sv && !_known.includes(_sv)){
+      const _outroOpt=_known.find(s=>/^outr/i.test(s))||'';
+      _selSv.value=_outroOpt;
+      avPainelServicoChange();
+      const _livre=document.getElementById('av-p-servico-outro');
+      if(_livre)_livre.value=_sv;
+    }else{
+      _selSv.value=_sv;
+      avPainelServicoChange();
+    }
+  }
   document.getElementById('av-p-inicio').value=i[AP.inicio]?i[AP.inicio].substring(0,10):'';
   document.getElementById('av-p-conclusao').value=i[AP.conclusao]?i[AP.conclusao].substring(0,10):'';
   document.getElementById('av-p-estado').value=i[AP.estado]||'Em curso';
@@ -9925,18 +9964,22 @@ async function guardarProcessoAvenca(){
   const titulo=document.getElementById('av-p-titulo').value.trim();
   const forn=document.getElementById('av-p-fornecedor').value;
   const serv=document.getElementById('av-p-servico').value;
+  // "Outros" → usar a descrição livre como serviço efetivo
+  const servLivre=(document.getElementById('av-p-servico-outro')?.value||'').trim();
+  const servEfetivo=(/^outr/i.test(serv)&&servLivre)?servLivre:serv;
   if(!titulo){showToast('Preenche o título/descrição','error');return;}
   // Para NOVOS processos, fornecedor e tipo de serviço são obrigatórios (precisos para criar pasta)
   if(!avPainelItemId){
-    if(!forn){showToast('Escolhe o fornecedor (REMAX ou CM Monforte)','error');return;}
+    if(!forn){showToast('Escolhe o fornecedor','error');return;}
     if(!serv){showToast('Escolhe o tipo de serviço','error');return;}
   }
+  if(/^outr/i.test(serv)&&!servLivre){showToast('Descreve o serviço no campo "Outros"','error');return;}
   const btn=document.getElementById('av-btn-guardar');
   btn.disabled=true;btn.textContent='A guardar...';
   const body={};
   body[AP.titulo]=titulo;
   if(forn)body[AP.fornecedor]=forn;
-  if(serv)body[AP.servico]=serv;
+  if(servEfetivo)body[AP.servico]=servEfetivo;
   const ini=document.getElementById('av-p-inicio').value;if(ini)body[AP.inicio]=ini+'T12:00:00Z';
   const conc=document.getElementById('av-p-conclusao').value;if(conc)body[AP.conclusao]=conc+'T12:00:00Z';
   body[AP.estado]=document.getElementById('av-p-estado').value;
@@ -9955,7 +9998,7 @@ async function guardarProcessoAvenca(){
       if(!driveIdAvencas)throw new Error('Biblioteca AVENCAS não disponível — recarrega a página');
       // Nome da pasta: AAAAMMDD TITULO SERVICO (em maiúsculas)
       const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
-      const nomePasta=sanitizarNomePasta(`${dataStr} ${titulo.substring(0,40).trim()}${serv?' '+serv:''}`.toUpperCase());
+      const nomePasta=sanitizarNomePasta(`${dataStr} ${titulo.substring(0,40).trim()}${servEfetivo?' '+servEfetivo:''}`.toUpperCase());
       const fornPath=encodeURIComponent(forn);
       const pastaRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
         method:'POST',
