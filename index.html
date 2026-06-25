@@ -2426,6 +2426,59 @@ tbody tr:hover td{background:#FAFAF8}
 
         <!-- LINHA 2: AVENÇAS POR ENTIDADE — cards gerados a partir de AVENCAS_ENTIDADES -->
         <div id="dash-avencas-cards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:.75rem"></div>
+
+        <!-- RUBRICA: AVENÇAS MENSAIS (receita recorrente) -->
+        <div class="metric-card" style="padding:1rem;margin-bottom:.75rem">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.7rem;flex-wrap:wrap;gap:.6rem">
+            <div>
+              <div class="metric-label" style="margin:0;font-size:11px">Avenças (mensais)</div>
+              <div style="font-size:10px;color:var(--text-faint)">Contratos de avença &middot; receita recorrente</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap">
+              <div style="text-align:right">
+                <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Total mensal</div>
+                <div class="metric-value" id="avm-total-mensal" style="font-size:20px;color:var(--green);line-height:1.1">&mdash;</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Anualizado</div>
+                <div class="metric-value" id="avm-total-anual" style="font-size:15px;color:var(--text-muted);line-height:1.1">&mdash;</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="avmAbrirPainelNovo()">+ Nova avença</button>
+            </div>
+          </div>
+          <div id="avm-loading" style="display:none;justify-content:center;padding:1rem"><div class="spinner"></div></div>
+          <div id="avm-lista"></div>
+        </div>
+
+        <!-- MODAL NOVA/EDITAR AVENÇA MENSAL -->
+        <div class="modal-overlay" id="avm-modal">
+          <div class="modal-box" style="max-width:440px">
+            <div class="modal-box-title" id="avm-modal-titulo">Nova avença</div>
+            <div class="field-grid" style="margin-top:.6rem">
+              <div class="field-group field-full">
+                <div class="field-label">Empresa *</div>
+                <input class="form-input" id="avm-empresa" placeholder="Nome da empresa">
+              </div>
+              <div class="field-group">
+                <div class="field-label">NIF *</div>
+                <input class="form-input" id="avm-nif" placeholder="Ex: 516 569 031">
+              </div>
+              <div class="field-group">
+                <div class="field-label">Data de início *</div>
+                <input class="form-input" id="avm-inicio" type="date">
+              </div>
+              <div class="field-group field-full">
+                <div class="field-label">Valor mensal (&euro;) *</div>
+                <input class="form-input" id="avm-valor" placeholder="Ex: 150,00" inputmode="decimal">
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button class="btn" id="avm-btn-eliminar" onclick="avmEliminar()" style="display:none;color:var(--red);border-color:var(--red)">Eliminar</button>
+              <button class="btn" onclick="avmFecharPainel()" style="flex:1">Cancelar</button>
+              <button class="btn btn-success" id="avm-btn-guardar" onclick="avmGuardar()" style="flex:2">Guardar</button>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -2766,7 +2819,7 @@ function nav(id,el){
   if(id==='processos')carregarProcessos();
   if(id==='contacorrente')carregarContaCorrente();
   if(id==='contabilidade')carregarContabilidade();
-  if(id==='financeiro'){carregarDashboard();setTimeout(()=>{if(typeof dashRenderTudo==='function')dashRenderTudo();},150);}
+  if(id==='financeiro'){carregarDashboard();carregarAvencasMensais();setTimeout(()=>{if(typeof dashRenderTudo==='function')dashRenderTudo();},150);}
   if(id==='avencas')carregarAvencas();
   if(id==='clientes')cliInit();
   if(id==='servicos')servicosInit();
@@ -9622,6 +9675,147 @@ function dashSincronizarFiltros(){
   });
   dashRenderCard1();dashRenderCard2();dashRenderCard3();dashRenderCard4();
   dashRenderCardsAvencas();
+}
+
+// ─── AVENÇAS MENSAIS (rubrica financeira — receita recorrente) ────────────────
+// Guardadas na lista SharePoint "Avencas_Mensais" (colunas: NIF, Data_Inicio, Valor_Mensal).
+const AVM={empresa:'Title', nif:'NIF', inicio:'Data_Inicio', valor:'Valor_Mensal'};
+let listaIdAvencasMensais=null, todasAvencasMensais=[], avmItemId=null;
+
+function avmFmtEur(n){ return (Number(n)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'}); }
+function avmParseValor(str){
+  if(str==null) return 0;
+  let s=String(str).trim().replace(/[€\s]/g,'');
+  if(s.includes(',')) s=s.replace(/\./g,'').replace(',','.');
+  const n=parseFloat(s); return isNaN(n)?0:n;
+}
+function avmNotaSetup(){
+  return '<div class="notice notice-info" style="font-size:11px">Para ativar esta rubrica, cria no SharePoint (site lbcsolicitadora2) uma lista chamada <b>Avencas_Mensais</b> com as colunas <b>NIF</b> (texto), <b>Data_Inicio</b> (data) e <b>Valor_Mensal</b> (número). O nome da empresa fica na coluna padrão Título.</div>';
+}
+
+async function carregarAvencasMensais(){
+  const lista=document.getElementById('avm-lista');
+  const loading=document.getElementById('avm-loading');
+  if(!lista) return;
+  try{
+    await renovarToken();
+    if(!siteIdDados){ return; }
+    if(!listaIdAvencasMensais){
+      const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name`);
+      listaIdAvencasMensais=(r.value||[]).find(l=>l.name==='Avencas_Mensais')?.id||null;
+    }
+    if(!listaIdAvencasMensais){ lista.innerHTML=avmNotaSetup(); avmRenderTotais([]); return; }
+    if(loading)loading.style.display='flex';
+    const sel=Object.values(AVM).join(',');
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasMensais}/items?$expand=fields($select=${sel})&$top=300`);
+    todasAvencasMensais=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    avmRender();
+  }catch(e){
+    lista.innerHTML=`<div class="notice notice-error" style="font-size:11px">Erro ao carregar avenças mensais: ${e.message}</div>`;
+  }finally{ if(loading)loading.style.display='none'; }
+}
+
+function avmRender(){
+  const el=document.getElementById('avm-lista');
+  const items=[...todasAvencasMensais].sort((a,b)=>avmParseValor(b[AVM.valor])-avmParseValor(a[AVM.valor]));
+  if(!items.length){
+    el.innerHTML='<div class="notice notice-info" style="font-size:11px">Ainda não há avenças registadas. Usa &ldquo;+ Nova avença&rdquo; para adicionar.</div>';
+    avmRenderTotais(items); return;
+  }
+  el.innerHTML=`
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="text-align:left;color:var(--text-faint);font-size:10px;text-transform:uppercase;letter-spacing:.04em">
+        <th style="padding:6px 8px">Empresa</th>
+        <th style="padding:6px 8px">NIF</th>
+        <th style="padding:6px 8px">Início</th>
+        <th style="padding:6px 8px;text-align:right">Valor mensal</th>
+        <th style="padding:6px 8px"></th>
+      </tr></thead>
+      <tbody>${items.map(i=>`
+        <tr style="border-top:1px solid var(--border)">
+          <td style="padding:7px 8px;font-weight:500">${escHtml(i[AVM.empresa]||'—')}</td>
+          <td style="padding:7px 8px;color:var(--text-muted)">${escHtml(i[AVM.nif]||'—')}</td>
+          <td style="padding:7px 8px;color:var(--text-muted)">${i[AVM.inicio]?fmtData(i[AVM.inicio]):'—'}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:600">${avmFmtEur(avmParseValor(i[AVM.valor]))}</td>
+          <td style="padding:7px 8px;text-align:right"><button class="btn btn-sm" onclick="avmAbrirPainelEditar('${i.id}')" style="padding:2px 9px;font-size:11px">Editar</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+  avmRenderTotais(items);
+}
+
+function avmRenderTotais(items){
+  const mensal=items.reduce((s,i)=>s+avmParseValor(i[AVM.valor]),0);
+  const tm=document.getElementById('avm-total-mensal');
+  const ta=document.getElementById('avm-total-anual');
+  if(tm)tm.textContent=avmFmtEur(mensal);
+  if(ta)ta.textContent=avmFmtEur(mensal*12);
+}
+
+function avmAbrirPainelNovo(){
+  avmItemId=null;
+  document.getElementById('avm-modal-titulo').textContent='Nova avença';
+  ['avm-empresa','avm-nif','avm-inicio','avm-valor'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('avm-btn-eliminar').style.display='none';
+  document.getElementById('avm-modal').classList.add('show');
+}
+function avmAbrirPainelEditar(id){
+  const i=todasAvencasMensais.find(x=>x.id===id); if(!i)return;
+  avmItemId=id;
+  document.getElementById('avm-modal-titulo').textContent='Editar avença';
+  document.getElementById('avm-empresa').value=i[AVM.empresa]||'';
+  document.getElementById('avm-nif').value=i[AVM.nif]||'';
+  document.getElementById('avm-inicio').value=i[AVM.inicio]?String(i[AVM.inicio]).substring(0,10):'';
+  document.getElementById('avm-valor').value=(i[AVM.valor]!=null&&i[AVM.valor]!=='')?String(i[AVM.valor]).replace('.',','):'';
+  document.getElementById('avm-btn-eliminar').style.display='inline-flex';
+  document.getElementById('avm-modal').classList.add('show');
+}
+function avmFecharPainel(){ document.getElementById('avm-modal').classList.remove('show'); }
+
+async function avmGuardar(){
+  const empresa=document.getElementById('avm-empresa').value.trim();
+  const nif=document.getElementById('avm-nif').value.trim();
+  const inicio=document.getElementById('avm-inicio').value;
+  const valor=avmParseValor(document.getElementById('avm-valor').value);
+  if(!empresa){showToast('Indica a empresa','error');return;}
+  if(!valor){showToast('Indica o valor mensal','error');return;}
+  if(!listaIdAvencasMensais){showToast('Lista Avencas_Mensais não encontrada no SharePoint','error');return;}
+  const btn=document.getElementById('avm-btn-guardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='A guardar...';
+  const body={};
+  body[AVM.empresa]=empresa;
+  body[AVM.nif]=nif;
+  if(inicio)body[AVM.inicio]=inicio+'T12:00:00Z';
+  body[AVM.valor]=valor;
+  try{
+    await renovarToken();
+    if(avmItemId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasMensais}/items/${avmItemId}/fields`,body);
+      const idx=todasAvencasMensais.findIndex(x=>x.id===avmItemId); if(idx>-1)Object.assign(todasAvencasMensais[idx],body);
+    }else{
+      const res=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasMensais}/items`,{fields:body});
+      if(res&&res.id)todasAvencasMensais.push({id:res.id,...body});
+    }
+    showToast('Avença guardada','success');
+    avmFecharPainel(); avmRender();
+  }catch(e){ showToast('Erro ao guardar: '+e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+async function avmEliminar(){
+  if(!avmItemId)return;
+  if(!confirm('Eliminar esta avença mensal?'))return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasMensais}/items/${avmItemId}`,{
+      method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
+    });
+    if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
+    todasAvencasMensais=todasAvencasMensais.filter(x=>x.id!==avmItemId);
+    showToast('Avença eliminada','');
+    avmFecharPainel(); avmRender();
+  }catch(e){ showToast('Erro ao eliminar: '+e.message,'error'); }
 }
 
 async function dashRenderTudo(){
