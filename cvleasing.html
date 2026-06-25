@@ -563,6 +563,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <pre id="preview-texto" style="white-space:pre-wrap;font-family:Georgia,'Times New Roman',serif;font-size:12.5px;line-height:1.65;overflow-y:auto;flex:1;margin:0;padding:.6rem .2rem;color:var(--text);border-top:1px solid var(--border);border-bottom:1px solid var(--border)"></pre>
     <div class="modal-actions">
       <button class="btn" onclick="copiarPreview()">Copiar texto</button>
+      <button class="btn btn-success" id="btn-descarregar-word" onclick="gerarDocxLeasing()">Descarregar Word (.docx)</button>
       <button class="btn" onclick="fecharPreview()" style="flex:1">Fechar</button>
     </div>
   </div>
@@ -1528,6 +1529,72 @@ function composCV(d) {
 function gerarTextoCompletoLeasing() {
   const d = recolherDadosLeasing();
   return composTermo(d) + '\n\n\n' + '═══════════════════════════════════════\n\n' + composCV(d);
+}
+
+// ── Geração do Word (.docx) no cliente, para testes ───────────────────────
+function carregarScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('Falha a carregar ' + src));
+    document.head.appendChild(s);
+  });
+}
+function nomeFicheiroLeasing(d) {
+  const dt = (d.dataEsc || '').replace(/-/g, '') || 'data';
+  let cliente = '';
+  const v = (d.vendedores || [])[0];
+  if (v) cliente = v.tipo === 'empresa' ? (v.empNome || '') : (v.nome || '');
+  cliente = (cliente || 'cliente').replace(/[^a-zA-Z0-9À-ÿ ]/g, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'cliente';
+  return `CV_Leasing_${dt}_${cliente}.docx`;
+}
+async function gerarDocxLeasing() {
+  const btn = document.getElementById('btn-descarregar-word');
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'A gerar…'; }
+    if (!window.docx) await carregarScript('https://unpkg.com/docx@8.5.0/build/index.js');
+    if (!window.saveAs) await carregarScript('https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js');
+    const D = window.docx;
+    if (!D || !D.Document) throw new Error('Biblioteca docx não carregou (sem internet?).');
+    const d = recolherDadosLeasing();
+    const linhas = gerarTextoCompletoLeasing().split('\n');
+    const P = (text, opts) => {
+      opts = opts || {};
+      return new D.Paragraph({
+        children: text ? [new D.TextRun(Object.assign({ text, font: 'Georgia', size: 22 }, opts.run || {}))] : [],
+        alignment: opts.align || D.AlignmentType.JUSTIFIED,
+        spacing: { after: (opts.after != null ? opts.after : 160), line: 276 }
+      });
+    };
+    const children = [];
+    linhas.forEach(ln => {
+      const t = ln.trim();
+      if (t === '') { children.push(P('', { after: 80 })); return; }
+      if (t === 'TERMO DE AUTENTICAÇÃO' || t === 'COMPRA E VENDA') {
+        children.push(P(t, { align: D.AlignmentType.CENTER, after: 220, run: { bold: true, size: 26 } })); return;
+      }
+      if (/^═+/.test(t)) { children.push(new D.Paragraph({ children: [], pageBreakBefore: true })); return; }
+      if (/^(PRIMEIR[OA]S?|SEGUNDA|TERCEIR[OA]S?|QUART[OA]S?)$/.test(t)) {
+        children.push(P(t, { align: D.AlignmentType.LEFT, after: 60, run: { bold: true } })); return;
+      }
+      if (/^(Primeira|Segunda|Terceira|Quarta|Quinta) \(/.test(t)) {
+        children.push(P(t, { align: D.AlignmentType.LEFT, after: 60, run: { bold: true } })); return;
+      }
+      if (t === 'Verifiquei:' || t === 'Arquivados:') {
+        children.push(P(t, { align: D.AlignmentType.LEFT, run: { bold: true } })); return;
+      }
+      children.push(P(ln));
+    });
+    const doc = new D.Document({
+      sections: [{ properties: { page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children }]
+    });
+    const blob = await D.Packer.toBlob(doc);
+    saveAs(blob, nomeFicheiroLeasing(d));
+    showToast('Word gerado e descarregado.', 'success');
+  } catch (e) {
+    showToast('Erro ao gerar Word: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Descarregar Word (.docx)'; }
+  }
 }
 
 // ── Pré-visualização ───────────────────────────────────────────────────────
