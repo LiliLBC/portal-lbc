@@ -284,6 +284,173 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="add-outorgante-btn" onclick="addOutorgante('locatarios')">+ Adicionar locatário</button>
   </div>
 
+  <!-- ⑤ IDENTIFICAÇÃO DO IMÓVEL -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">5</div>
+      <div>
+        <div class="section-name">Identificação do Imóvel</div>
+        <div class="section-desc">Cláusula Primeira (Objeto) — dados da certidão permanente e caderneta predial</div>
+      </div>
+    </div>
+    <div class="form-grid">
+
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Direito transmitido <span>*</span></label>
+          <select class="form-select" id="direito-predio">
+            <option value="propriedade">Propriedade plena</option>
+            <option value="usufruto">Usufruto</option>
+            <option value="superficie">Direito de superfície</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de prédio <span>*</span></label>
+          <select class="form-select" id="tipo-predio" onchange="onTipoPredioChange()">
+            <option value="">Selecionar...</option>
+            <option value="fracao">Fração autónoma</option>
+            <option value="habitacao">Prédio urbano — habitação</option>
+            <option value="comercio">Prédio urbano — serviço/comércio</option>
+            <option value="garagem">Garagem</option>
+            <option value="armazem">Armazém</option>
+            <option value="rustico">Prédio rústico</option>
+          </select>
+        </div>
+        <div class="form-group" id="fracao-letra-group" style="display:none">
+          <label class="form-label">Letra da fração <span>*</span></label>
+          <input type="text" class="form-input" id="fracao-letra" placeholder="Ex: A" style="text-transform:uppercase">
+        </div>
+      </div>
+
+      <div class="form-group" id="ap-ph-group" style="display:none">
+        <label class="form-label">AP da constituição da propriedade horizontal <span>*</span></label>
+        <input type="text" class="form-input" id="ap-ph" placeholder="Ex: AP. 6 de 1991/06/28">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Descrição do prédio / fração <span>*</span></label>
+        <input type="text" class="form-input" id="descricao-predio" placeholder="Ex: Loja no rés-do-chão, com tudo o que a compõe">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Localização (morada do prédio) <span>*</span></label>
+        <input type="text" class="form-input" id="localizacao-predio" placeholder="Ex: Rua Bernardo Santareno, n.º 1, Brandoa, Amadora">
+      </div>
+
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Conservatória <span>*</span></label>
+          <input type="text" class="form-input" id="conservatoria" placeholder="Ex: Amadora">
+        </div>
+        <div class="form-group">
+          <label class="form-label">N.º de descrição <span>*</span></label>
+          <input type="text" class="form-input" id="num-descricao" placeholder="Ex: 386/19900215">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Freguesia (conservatória) <span>*</span></label>
+          <input type="text" class="form-input" id="freguesia-conservatoria" placeholder="Ex: Brandoa">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="toggle-row">
+        <span class="toggle-label">Sem registo de aquisição a favor da parte vendedora<span class="form-hint" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">por ter sido adquirido em momento imediatamente anterior ao presente ato</span></span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-sem-aquisicao" onchange="onApAquisicaoChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group" id="ap-aquisicao-group">
+        <label class="form-label">AP da aquisição (a favor da parte vendedora) <span>*</span></label>
+        <input type="text" class="form-input" id="ap-aquisicao" placeholder="Ex: AP. 12 de 2015/04/20">
+      </div>
+
+      <hr class="divider">
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Artigo matricial <span>*</span></label>
+          <input type="text" class="form-input" id="art-matricial" placeholder="Ex: 1443">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Freguesia (matriz) <span>*</span></label>
+          <input type="text" class="form-input" id="freguesia-matriz" placeholder="Ex: Encosta do Sol">
+        </div>
+        <div class="form-group">
+          <label class="form-label">VPT (€) <span>*</span></label>
+          <input type="text" class="form-input" id="vpt-valor" placeholder="Ex: 248.692,37">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="cond-block-title" style="margin-bottom:.6rem">Licenciamento camarário (cláusula Quarta)</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Licença de utilização n.º <span>*</span></label>
+          <input type="text" class="form-input" id="licenca-numero" placeholder="Ex: 140">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de emissão <span>*</span></label>
+          <input type="date" class="form-input" id="licenca-data">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Câmara Municipal <span>*</span></label>
+          <input type="text" class="form-input" id="licenca-camara" placeholder="Ex: Amadora">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="toggle-row">
+        <span class="toggle-label">Vendido livre de ónus e encargos (cláusula Terceira)</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-livre-onus" checked onchange="onOnusChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group" id="onus-descricao-group" style="display:none">
+        <label class="form-label">Ónus / encargos a mencionar <span>*</span></label>
+        <input type="text" class="form-input" id="onus-descricao" placeholder="Descreve os ónus existentes sobre o imóvel">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ⑥ PREÇO -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-num">6</div>
+      <div>
+        <div class="section-name">Preço</div>
+        <div class="section-desc">Cláusula Segunda — valor e forma de pagamento</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Preço de compra (€) <span>*</span></label>
+          <input type="text" class="form-input" id="preco-compra" placeholder="Ex: 285.000,00" oninput="updatePrecoExtenso();recalcResumoCheques()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Por extenso (automático)</label>
+          <input type="text" class="form-input" id="preco-extenso" readonly style="background:var(--surface2);color:var(--text);font-weight:500">
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Preço já recebido — dá-se quitação na presente data</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-quitacao" checked><span class="toggle-slider"></span></label>
+      </div>
+
+      <hr class="divider">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+        <div class="cond-block-title" style="margin-bottom:0">Cheques bancários</div>
+        <button class="btn btn-sm" type="button" onclick="adicionarCheque()">+ Adicionar cheque</button>
+      </div>
+      <div class="form-group" style="max-width:340px">
+        <label class="form-label">Banco sacado (comum a todos os cheques)</label>
+        <input type="text" class="form-input" id="cheques-banco" value="Caixa Geral de Depósitos, S.A.">
+      </div>
+      <div id="cheques-container"></div>
+
+      <div id="resumo-cheques" style="display:none;background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:.6rem .9rem;font-size:12px;margin-top:.4rem">
+        <span id="resumo-cheques-txt" style="color:var(--text-muted)"></span>
+        <span id="resumo-cheques-dif" style="font-weight:600"></span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- STICKY FOOTER -->
@@ -725,6 +892,90 @@ function carregarPastasSP() { showToast('Ligação ao SharePoint será adicionad
 function pesquisarPastas() { /* será ligado ao SharePoint */ }
 function guardarRascunho() { showToast('Guardar rascunho será ligado no próximo passo.', ''); }
 function gerarContrato() { showToast('Geração do Word será construída depois das cláusulas.', ''); }
+// ─── IMÓVEL ───────────────────────────────────────────────────────────────────
+function onTipoPredioChange() {
+  const t = document.getElementById('tipo-predio').value;
+  const fracao = (t === 'fracao');
+  document.getElementById('fracao-letra-group').style.display = fracao ? 'block' : 'none';
+  document.getElementById('ap-ph-group').style.display = fracao ? 'block' : 'none';
+}
+function onApAquisicaoChange() {
+  const sem = document.getElementById('toggle-sem-aquisicao').checked;
+  document.getElementById('ap-aquisicao-group').style.display = sem ? 'none' : 'block';
+}
+function onOnusChange() {
+  const livre = document.getElementById('toggle-livre-onus').checked;
+  document.getElementById('onus-descricao-group').style.display = livre ? 'none' : 'block';
+}
+
+// ─── PREÇO ────────────────────────────────────────────────────────────────────
+function valorNum(str) {
+  if (!str) return 0;
+  let s = String(str).trim().replace(/[€\s]/g, '');
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s); return isNaN(n) ? 0 : n;
+}
+function updatePrecoExtenso() {
+  const v = document.getElementById('preco-compra').value;
+  document.getElementById('preco-extenso').value = v ? valorExtenso(v) : '';
+}
+
+let chequesCount = 0;
+function adicionarCheque() {
+  const c = document.getElementById('cheques-container');
+  const idx = ++chequesCount;
+  const id = 'cheque-' + idx;
+  const n = c.querySelectorAll('.cheque-block').length + 1;
+  const div = document.createElement('div');
+  div.className = 'cheque-block';
+  div.id = id;
+  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:.6rem .75rem;margin-bottom:.5rem';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <span class="cheque-rotulo" style="font-size:11px;font-weight:600;color:var(--text-muted)">Cheque ${n}</span>
+      <button class="remove-btn" type="button" onclick="removerCheque('${id}')">×</button>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Valor (€) <span>*</span></label>
+        <input type="text" class="form-input cheque-valor" placeholder="Ex: 103.937,25" oninput="recalcResumoCheques()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">N.º do cheque <span>*</span></label>
+        <input type="text" class="form-input cheque-num" placeholder="Ex: 9341814612">
+      </div>
+    </div>`;
+  c.appendChild(div);
+  recalcResumoCheques();
+}
+function removerCheque(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  renumerarCheques();
+  recalcResumoCheques();
+}
+function renumerarCheques() {
+  document.querySelectorAll('#cheques-container .cheque-block .cheque-rotulo').forEach((lbl, i) => {
+    lbl.textContent = 'Cheque ' + (i + 1);
+  });
+}
+function recalcResumoCheques() {
+  const preco = valorNum(document.getElementById('preco-compra').value);
+  let soma = 0;
+  document.querySelectorAll('#cheques-container .cheque-valor').forEach(inp => { soma += valorNum(inp.value); });
+  const box = document.getElementById('resumo-cheques');
+  const txt = document.getElementById('resumo-cheques-txt');
+  const dif = document.getElementById('resumo-cheques-dif');
+  const fmt = v => v.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!preco && !soma) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  txt.textContent = `Soma dos cheques: € ${fmt(soma)} · Preço: € ${fmt(preco)}. `;
+  const d = Math.round((preco - soma) * 100) / 100;
+  if (Math.abs(d) < 0.005) { dif.textContent = '✓ Coincide'; dif.style.color = 'var(--green)'; box.style.borderColor = 'var(--green)'; }
+  else if (d > 0) { dif.textContent = `Falta € ${fmt(d)}`; dif.style.color = 'var(--amber)'; box.style.borderColor = 'var(--amber)'; }
+  else { dif.textContent = `Excede € ${fmt(-d)}`; dif.style.color = 'var(--red)'; box.style.borderColor = 'var(--red)'; }
+}
+
 function limparFormulario() {
   if (!confirm('Limpar todos os campos?')) return;
   document.getElementById('vendedores-container').innerHTML = '';
@@ -736,6 +987,16 @@ function limparFormulario() {
   });
   addOutorgante('vendedores');
   addOutorgante('locatarios');
+  document.getElementById('cheques-container').innerHTML = '';
+  chequesCount = 0;
+  adicionarCheque();
+  document.getElementById('cheques-banco').value = 'Caixa Geral de Depósitos, S.A.';
+  document.getElementById('preco-extenso').value = '';
+  const tlo = document.getElementById('toggle-livre-onus'); if (tlo) { tlo.checked = true; onOnusChange(); }
+  const tq = document.getElementById('toggle-quitacao'); if (tq) tq.checked = true;
+  const tsa = document.getElementById('toggle-sem-aquisicao'); if (tsa) { tsa.checked = false; onApAquisicaoChange(); }
+  document.getElementById('fracao-letra-group').style.display = 'none';
+  document.getElementById('ap-ph-group').style.display = 'none';
   document.getElementById('procurador-cgd-preview').style.display = 'none';
   showToast('Formulário limpo.', 'success');
 }
@@ -744,6 +1005,7 @@ function limparFormulario() {
 window.addEventListener('DOMContentLoaded', () => {
   addOutorgante('vendedores');
   addOutorgante('locatarios');
+  adicionarCheque();
 });
 
 </script>
