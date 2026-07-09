@@ -445,11 +445,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
 
       <!-- Descrição prédio (não fração) -->
-      <div class="form-group" id="predio-desc-group" style="display:none">
-        <label class="form-label">Descrição do prédio <span>*</span></label>
-        <input type="text" class="form-input" id="descricao-predio" placeholder="Ex: Lote de terreno destinado a construção urbana">
+      <!-- Prédios dinâmicos (não fração): 1 ou mais prédios, cada um com 1 ou mais matrizes -->
+      <div id="predios-dinamicos" style="display:none">
+        <div id="predios-container"></div>
+        <button class="add-outorgante-btn" type="button" onclick="addPredio()">+ Adicionar prédio</button>
       </div>
 
+      <!-- Menção obrigatória — prédio misto (arts. 1376.º e 1377.º CC) -->
+      <div class="cond-block" id="predio-misto-mencao" style="display:none">
+        <div class="cond-block-title">Menção obrigatória — prédio misto (consta do contrato, a seguir à identificação do prédio)</div>
+        <div class="preview-text">Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.</div>
+      </div>
+
+      <!-- Campos do prédio único (usados apenas para fração autónoma) -->
+      <div id="predio-estatico">
       <div class="form-grid form-grid-2">
         <div class="form-group">
           <label class="form-label">Localização <span>*</span></label>
@@ -492,6 +501,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
           <input type="text" class="form-input" id="vpt-ano" placeholder="Ex: 2024">
         </div>
       </div>
+      </div><!-- /predio-estatico -->
 
       <hr class="divider">
 
@@ -639,6 +649,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
             <input type="text" class="form-input" id="entrada-iban-destino" placeholder="PT50 ...">
           </div>
         </div>
+        <div id="sinais-extra-container" style="margin-top:.75rem"></div>
+        <button class="add-outorgante-btn" type="button" onclick="addSinalExtra()" style="margin-top:.5rem">+ Adicionar sinal</button>
       </div>
 
       <!-- Remanescente / pagamento total -->
@@ -1001,14 +1013,186 @@ function onIsentoLUChange(){}
 function onIsentoCEChange(){}
 function onTipoPredioChange(){
   const val=document.getElementById('tipo-predio').value;
+  const naoFracao=!!val&&val!=='fracao';
   document.getElementById('fracao-fields').style.display=val==='fracao'?'block':'none';
-  document.getElementById('predio-desc-group').style.display=val&&val!=='fracao'?'block':'none';
+  document.getElementById('predios-dinamicos').style.display=naoFracao?'block':'none';
+  document.getElementById('predio-estatico').style.display=naoFracao?'none':'block';
+  if(naoFracao&&!document.querySelector('#predios-container .predio-block'))addPredio();
+  document.getElementById('predio-misto-mencao').style.display=val==='misto'?'block':'none';
   // Condomínio só para fração
   document.getElementById('condominig-section').style.display=val==='fracao'?'block':'none';
   if(val!=='fracao'){
     document.getElementById('condominig-existe').style.display='none';
     document.getElementById('condominig-nao-existe').style.display='none';
   }
+}
+
+// ─── PRÉDIOS DINÂMICOS (1+ prédios, cada um com 1+ matrizes) ──────────────────
+let predioCnt=0,matrizCnt={};
+function addPredio(dados){
+  const container=document.getElementById('predios-container');
+  const idx=++predioCnt;
+  const pid=`predio-${idx}`;
+  matrizCnt[pid]=0;
+  const div=document.createElement('div');
+  div.className='outorgante-block predio-block';div.id=pid;
+  div.innerHTML=`
+    <div class="outorgante-header">
+      <span class="outorgante-title predio-title">Prédio ${container.querySelectorAll('.predio-block').length+1}</span>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="removePredio('${pid}')">×</button>`:''}
+    </div>
+    <div class="form-group form-full">
+      <label class="form-label">Descrição do prédio <span>*</span></label>
+      <input type="text" class="form-input" id="${pid}-descricao" placeholder="Ex: Lote de terreno destinado a construção urbana">
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Localização <span>*</span></label>
+        <input type="text" class="form-input" id="${pid}-localizacao" placeholder='Ex: "Rua Pablo Neruda, n.º 12, Beja"'>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conservatória <span>*</span></label>
+        <input type="text" class="form-input" id="${pid}-conservatoria" placeholder="Ex: Beja">
+      </div>
+    </div>
+    <div class="form-grid form-grid-3">
+      <div class="form-group">
+        <label class="form-label">Nº de descrição <span>*</span></label>
+        <input type="text" class="form-input" id="${pid}-num-descricao" placeholder="Ex: 102">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Freguesia (conservatória) <span>*</span></label>
+        <input type="text" class="form-input" id="${pid}-freguesia-cons" placeholder="Ex: Beja (Santiago Maior)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">AP de aquisição (vendedor) <span>*</span></label>
+        <input type="text" class="form-input" id="${pid}-ap-aquisicao" placeholder="Ex: AP. 2873 de 2021/12/22">
+      </div>
+    </div>
+    <div class="cond-block-title" style="margin-top:.8rem">Matrizes deste prédio</div>
+    <div id="${pid}-matrizes"></div>
+    <button class="add-outorgante-btn" type="button" onclick="addMatriz('${pid}')" style="margin-top:.25rem">+ Adicionar matriz</button>
+  `;
+  container.appendChild(div);
+  if(dados){
+    document.getElementById(`${pid}-descricao`).value=dados.descricao||'';
+    document.getElementById(`${pid}-localizacao`).value=dados.localizacao||'';
+    document.getElementById(`${pid}-conservatoria`).value=dados.conservatoria||'';
+    document.getElementById(`${pid}-num-descricao`).value=dados.numDescricao||'';
+    document.getElementById(`${pid}-freguesia-cons`).value=dados.freguesiaCons||'';
+    document.getElementById(`${pid}-ap-aquisicao`).value=dados.apAquisicao||'';
+    (dados.matrizes&&dados.matrizes.length?dados.matrizes:[null]).forEach(m=>addMatriz(pid,m));
+  }else{
+    addMatriz(pid);
+  }
+  renumerarPredios();
+}
+function removePredio(pid){
+  document.getElementById(pid)?.remove();
+  renumerarPredios();
+}
+function renumerarPredios(){
+  document.querySelectorAll('#predios-container .predio-block').forEach((b,i)=>{
+    const t=b.querySelector('.predio-title');if(t)t.textContent=`Prédio ${i+1}`;
+  });
+}
+function addMatriz(pid,dados){
+  const container=document.getElementById(`${pid}-matrizes`);
+  if(!container)return;
+  const idx=++matrizCnt[pid];
+  const mid=`${pid}-matriz-${idx}`;
+  const tipoPredio=document.getElementById('tipo-predio').value;
+  const nMatrizes=container.querySelectorAll('.matriz-block').length;
+  // Natureza por defeito: rústico → rústica; misto → 1ª rústica, seguintes urbana; restantes → urbana
+  const naturezaDefault=tipoPredio==='rustico'?'rustica':(tipoPredio==='misto'&&nMatrizes===0)?'rustica':'urbana';
+  const div=document.createElement('div');
+  div.className='cond-block matriz-block';div.id=mid;div.style.marginBottom='.5rem';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <span class="cond-block-title matriz-title" style="margin-bottom:0">Matriz</span>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${mid}').remove();renumerarMatrizes('${pid}')">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-4" style="align-items:end">
+      <div class="form-group">
+        <label class="form-label">Natureza <span>*</span></label>
+        <select class="form-select" id="${mid}-natureza">
+          <option value="urbana">Urbana</option>
+          <option value="rustica">Rústica</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Artigo matricial <span>*</span></label>
+        <input type="text" class="form-input" id="${mid}-artigo" placeholder="Ex: 2800">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Freguesia (matriz) <span>*</span></label>
+        <input type="text" class="form-input" id="${mid}-freguesia" placeholder="Ex: União de Freguesias de Beja">
+      </div>
+      <div class="form-group">
+        <label class="form-label">VPT (€) <span>*</span></label>
+        <input type="text" class="form-input" id="${mid}-vpt" placeholder="Ex: 33.786,48">
+      </div>
+    </div>
+    <div class="form-grid form-grid-4" style="margin-top:.4rem">
+      <div class="form-group">
+        <label class="form-label">Ano do VPT <span>*</span></label>
+        <input type="text" class="form-input" id="${mid}-ano" placeholder="Ex: 2024">
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  document.getElementById(`${mid}-natureza`).value=dados?.natureza||naturezaDefault;
+  if(dados){
+    document.getElementById(`${mid}-artigo`).value=dados.artigo||'';
+    document.getElementById(`${mid}-freguesia`).value=dados.freguesia||'';
+    document.getElementById(`${mid}-vpt`).value=dados.vpt||'';
+    document.getElementById(`${mid}-ano`).value=dados.ano||'';
+  }
+  renumerarMatrizes(pid);
+}
+function renumerarMatrizes(pid){
+  const blocos=document.querySelectorAll(`#${pid}-matrizes .matriz-block`);
+  blocos.forEach((b,i)=>{
+    const t=b.querySelector('.matriz-title');if(t)t.textContent=blocos.length>1?`Matriz ${i+1}`:'Matriz';
+  });
+}
+function recolherPredios(){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return [...document.querySelectorAll('#predios-container .predio-block')].map(b=>{
+    const pid=b.id;
+    return{
+      descricao:g(`${pid}-descricao`),
+      localizacao:g(`${pid}-localizacao`),
+      conservatoria:g(`${pid}-conservatoria`),
+      numDescricao:g(`${pid}-num-descricao`),
+      freguesiaCons:g(`${pid}-freguesia-cons`),
+      apAquisicao:g(`${pid}-ap-aquisicao`),
+      matrizes:[...b.querySelectorAll('.matriz-block')].map(m=>({
+        natureza:document.getElementById(`${m.id}-natureza`)?.value||'urbana',
+        artigo:g(`${m.id}-artigo`),
+        freguesia:g(`${m.id}-freguesia`),
+        vpt:g(`${m.id}-vpt`),
+        ano:g(`${m.id}-ano`)
+      }))
+    };
+  });
+}
+function designacaoTipoPredio(tipo){
+  return tipo==='misto'?'o prédio misto':tipo==='rustico'?'o prédio rústico':'o prédio urbano';
+}
+function textoMatriz(m){
+  return `na matriz predial ${m.natureza==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo}, da freguesia de ${m.freguesia}, com o valor patrimonial tributário de € ${m.vpt}, determinado no ano de ${m.ano}`;
+}
+function textoIdentificacaoPredio(p,tipo,dtoSobre){
+  const matrizes=p.matrizes.map(textoMatriz);
+  const txtMatrizes=matrizes.length>1?matrizes.slice(0,-1).join(', ')+' e '+matrizes[matrizes.length-1]:matrizes[0]||'';
+  return `${dtoSobre}${designacaoTipoPredio(tipo)}, ${p.descricao}, sito em ${p.localizacao}, descrito na Conservatória do Registo Predial de ${p.conservatoria} sob o número ${p.numDescricao}, da freguesia de ${p.freguesiaCons}, aí registado a favor da parte vendedora pela ${p.apAquisicao}, inscrito ${txtMatrizes}`;
+}
+function textoIdentificacaoPredios(predios,tipo,dtoSobre){
+  if(!predios.length)return'';
+  if(predios.length===1)return textoIdentificacaoPredio(predios[0],tipo,dtoSobre);
+  const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+  return predios.map((p,i)=>`${CARD[i]||i+1} — ${textoIdentificacaoPredio(p,tipo,dtoSobre)}`).join(';\n');
 }
 function onCondominioChange(){
   const tem=document.getElementById('toggle-condominig').checked;
@@ -1025,6 +1209,89 @@ function onDistrateTipoChange(){
 }
 function onEntradaChange(){
   document.getElementById('entrada-fields').style.display=document.getElementById('toggle-entrada').checked?'block':'none';
+}
+
+// ─── SINAIS ADICIONAIS (2º sinal em diante) ───────────────────────────────────
+let sinalExtraCnt=0;
+function addSinalExtra(dados){
+  const container=document.getElementById('sinais-extra-container');
+  const idx=++sinalExtraCnt;
+  const sid=`sinal-extra-${idx}`;
+  const div=document.createElement('div');
+  div.className='cond-block sinal-extra-block';div.id=sid;div.style.marginBottom='.5rem';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <span class="cond-block-title sinal-extra-title" style="margin-bottom:0">Sinal</span>
+      <button class="remove-btn" type="button" onclick="document.getElementById('${sid}').remove();renumerarSinaisExtra()">×</button>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Valor (€) <span>*</span></label>
+        <input type="text" class="form-input" id="${sid}-valor" placeholder="Ex: 5.000,00" oninput="document.getElementById('${sid}-extenso').value=valorExtenso(this.value)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Por extenso</label>
+        <input type="text" class="form-input" id="${sid}-extenso" readonly style="background:var(--surface2);font-size:12px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meio de pagamento</label>
+        <select class="form-select" id="${sid}-meio" onchange="onSinalExtraMeioChange('${sid}')">
+          <option value="transferencia">Transferência bancária</option>
+          <option value="cheque">Cheque bancário</option>
+          <option value="numerario">Numerário</option>
+        </select>
+      </div>
+      <div class="form-group" id="${sid}-contas-group">
+        <label class="form-label">Contas utilizadas</label>
+        <select class="form-select" id="${sid}-contas" onchange="onSinalExtraMeioChange('${sid}')">
+          <option value="mesmas">As mesmas contas (supracitadas)</option>
+          <option value="diferentes">Contas diferentes</option>
+        </select>
+      </div>
+      <div class="form-group" id="${sid}-iban-group" style="display:none">
+        <label class="form-label">IBAN comprador (origem) <span>*</span></label>
+        <input type="text" class="form-input" id="${sid}-iban" placeholder="PT50 ...">
+      </div>
+      <div class="form-group" id="${sid}-iban-destino-group" style="display:none">
+        <label class="form-label">IBAN vendedor (destino) <span>*</span></label>
+        <input type="text" class="form-input" id="${sid}-iban-destino" placeholder="PT50 ...">
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  if(dados){
+    document.getElementById(`${sid}-valor`).value=dados.valor||'';
+    document.getElementById(`${sid}-extenso`).value=valorExtenso(dados.valor||'');
+    document.getElementById(`${sid}-meio`).value=dados.meio||'transferencia';
+    document.getElementById(`${sid}-contas`).value=dados.contas||'mesmas';
+    document.getElementById(`${sid}-iban`).value=dados.iban||'';
+    document.getElementById(`${sid}-iban-destino`).value=dados.ibanDestino||'';
+  }
+  onSinalExtraMeioChange(sid);
+  renumerarSinaisExtra();
+}
+function onSinalExtraMeioChange(sid){
+  const isTrans=document.getElementById(`${sid}-meio`).value==='transferencia';
+  const difs=isTrans&&document.getElementById(`${sid}-contas`).value==='diferentes';
+  document.getElementById(`${sid}-contas-group`).style.display=isTrans?'block':'none';
+  document.getElementById(`${sid}-iban-group`).style.display=difs?'block':'none';
+  document.getElementById(`${sid}-iban-destino-group`).style.display=difs?'block':'none';
+}
+function renumerarSinaisExtra(){
+  const blocos=document.querySelectorAll('#sinais-extra-container .sinal-extra-block');
+  blocos.forEach((b,i)=>{
+    const t=b.querySelector('.sinal-extra-title');if(t)t.textContent=`Sinal ${i+2}`;
+  });
+}
+function lerSinaisExtra(){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return [...document.querySelectorAll('#sinais-extra-container .sinal-extra-block')].map(b=>({
+    valor:g(`${b.id}-valor`),
+    meio:document.getElementById(`${b.id}-meio`)?.value||'transferencia',
+    contas:document.getElementById(`${b.id}-contas`)?.value||'mesmas',
+    iban:g(`${b.id}-iban`),
+    ibanDestino:g(`${b.id}-iban-destino`)
+  })).filter(s=>s.valor);
 }
 function onEntradaValorChange(){
   document.getElementById('entrada-extenso').value=valorExtenso(document.getElementById('entrada-valor').value);
@@ -1422,6 +1689,12 @@ function recolherDadosCompleto(){
   // Outorgantes múltiplos
   d._vendedores=recolherOutorgantes('vendedores').length;
   d._compradores=recolherOutorgantes('compradores').length;
+  // Prédios dinâmicos (com matrizes)
+  const preds=recolherPredios();
+  if(preds.length)d._predios=preds;
+  // Sinais adicionais
+  const sx=lerSinaisExtra();
+  if(sx.length)d._sinais_extra=sx;
   // Trato sucessivo
   const ts=recolherTratoSuc();
   if(ts)d._trato_suc=ts;
@@ -1447,6 +1720,18 @@ function restaurarDadosCompleto(d){
     falecidoCnt=0;herdeiroCnt={};
     document.getElementById('falecidos-container').innerHTML='';
     d._trato_suc.forEach(f=>addFalecido(f));
+  }
+  // Restaurar prédios dinâmicos (antes de onTipoPredioChange, para não criar bloco vazio)
+  if(d._predios&&d._predios.length){
+    document.getElementById('predios-container').innerHTML='';
+    predioCnt=0;matrizCnt={};
+    d._predios.forEach(p=>addPredio(p));
+  }
+  // Restaurar sinais adicionais
+  if(d._sinais_extra&&d._sinais_extra.length){
+    document.getElementById('sinais-extra-container').innerHTML='';
+    sinalExtraCnt=0;
+    d._sinais_extra.forEach(s=>addSinalExtra(s));
   }
   // Disparar condicionais
   onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();
@@ -1663,8 +1948,34 @@ function recolherDadosContrato(){
   const isFracao=tipoPredio==='fracao';
   const direito=v('direito-predio');
   const DtoSobrePredio=direito==='usufruto'?'o usufruto sobre ':direito==='superficie'?'o direito de superfície sobre ':'';
-  const TXT_Fracao=isFracao?`a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')}, composta por ${v('fracao-composicao')}`:'o prédio urbano';
-  const Descricao_Predio=isFracao?'':v('descricao-predio');
+  const predios=isFracao?[]:recolherPredios();
+  const p1=predios[0]||{matrizes:[]};
+  const TXT_Fracao=isFracao?`a fração autónoma designada pela letra "${v('fracao-letra')}", do prédio em regime de propriedade horizontal constituída pela ${v('ap-ph')}, composta por ${v('fracao-composicao')}`:designacaoTipoPredio(tipoPredio);
+  const Descricao_Predio=isFracao?'':(p1.descricao||'');
+
+  // Texto completo de identificação (1+ prédios, 1+ matrizes) — tag {TXT_Identificacao_Predios}
+  const TXT_Identificacao_Predios=isFracao?'':textoIdentificacaoPredios(predios,tipoPredio,DtoSobrePredio);
+  const CARD_PREDIO=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+  const Predios=predios.map((p,i)=>({
+    Numero:predios.length>1?(CARD_PREDIO[i]||String(i+1)):'',
+    Descricao:p.descricao,Localizacao:p.localizacao,Conservatoria:p.conservatoria,
+    Num_Descricao:p.numDescricao,Freguesia_Conservatoria:p.freguesiaCons,AP_Aquisicao:p.apAquisicao,
+    TXT_Matrizes:p.matrizes.map(textoMatriz).join(' e '),
+    TXT_Identificacao:textoIdentificacaoPredio(p,tipoPredio,DtoSobrePredio)
+  }));
+
+  // Compatibilidade com as tags antigas do template (prédio 1; matrizes agregadas)
+  const m1=p1.matrizes||[];
+  const natAdj=m=>m.natureza==='rustica'?'rústico':'urbano';
+  const Art_Matricial_Legacy=m1.length>1?m1.map(m=>`${m.artigo} (${natAdj(m)})`).join(' e '):(m1[0]?.artigo||'');
+  const Freguesia_Matriz_Legacy=[...new Set(m1.map(m=>m.freguesia).filter(Boolean))].join(' e ');
+  const VPT_Valor_Legacy=m1.length>1?m1.map(m=>m.vpt).join(' e '):(m1[0]?.vpt||'');
+  const VPT_Ano_Legacy=[...new Set(m1.map(m=>m.ano).filter(Boolean))].join(' e ');
+
+  // Menção obrigatória — prédio misto (arts. 1376.º e 1377.º do Código Civil)
+  const TXT_Predio_Misto=tipoPredio==='misto'
+    ?'--- Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.'
+    :'';
 
   // Distrate
   let TXTDistrate='';
@@ -1744,18 +2055,25 @@ function recolherDadosContrato(){
       TXT_Sem_Ent_Inicial=`--- O preço é pago na sua totalidade neste ato em numerário.`;
     }
   }else{
-    // Com entrada inicial
+    // Com entrada inicial (1 ou mais sinais)
+    const meioTextoSinal=(meio,iban,ibanDest,mesmas)=>{
+      if(meio==='transferencia')return mesmas
+        ?'mediante transferência bancária através das supracitadas contas'
+        :`mediante transferência bancária${iban?' da conta com o IBAN '+iban:''}${ibanDest?' para a conta com o IBAN '+ibanDest:''}`;
+      if(meio==='cheque')return 'mediante cheque bancário';
+      return 'em numerário';
+    };
     const entValor=v('entrada-valor');
-    const entMeio=v('entrada-meio');
-    let entMeioTexto='';
-    if(entMeio==='transferencia'){
-      entMeioTexto=`mediante transferência bancária${v('entrada-iban')?' da conta com o IBAN '+v('entrada-iban'):''}${v('entrada-iban-destino')?' para a conta com o IBAN '+v('entrada-iban-destino'):''}`;
-    }else if(entMeio==='cheque'){
-      entMeioTexto='mediante cheque bancário';
+    const parcelas=[];
+    if(entValor)parcelas.push(`a quantia de ${entValor} EUROS (${valorExtensoMaiusculas(entValor)}), ${meioTextoSinal(v('entrada-meio'),v('entrada-iban'),v('entrada-iban-destino'),false)}`);
+    lerSinaisExtra().forEach(s=>{
+      parcelas.push(`a quantia de ${s.valor} EUROS (${valorExtensoMaiusculas(s.valor)}), ${meioTextoSinal(s.meio,s.iban,s.ibanDestino,s.contas==='mesmas')}`);
+    });
+    if(parcelas.length<=1){
+      TXT_Com_Ent_Inicial=`--- A título de entrada inicial e antes deste ato, a parte compradora já entregou ${parcelas[0]||''}, da qual a parte vendedora dá quitação.`;
     }else{
-      entMeioTexto='em numerário';
+      TXT_Com_Ent_Inicial=`--- A título de entrada inicial/sinal e antes deste ato, a parte compradora já entregou as seguintes quantias: ${parcelas.slice(0,-1).join('; ')}; e ${parcelas[parcelas.length-1]}, das quais a parte vendedora dá quitação.`;
     }
-    TXT_Com_Ent_Inicial=`--- A título de entrada inicial e antes deste ato, a parte compradora já entregou a quantia de ${entValor} EUROS (${valorExtensoMaiusculas(entValor)}), ${entMeioTexto}, da qual a parte vendedora dá quitação.`;
     // Remanescente
     if(meioRest==='apb'){
       TXT_APB=`--- O remanescente do preço é pago ao abrigo do protocolo APB, mediante transferência bancária da conta ${v('apb-conta-origem')} a creditar na conta ${v('apb-conta-destino')}, no montante de ${v('apb-valor')} EUROS (${valorExtensoMaiusculas(v('apb-valor'))}).`;
@@ -1803,15 +2121,17 @@ function recolherDadosContrato(){
     TXTDistrate,Verificacao_Empresa_V,Verificacao_Empresa_C,
     TXT_TA_LU,TXTImpostos,TXTAdvert_Condominio,
     DtoSobrePredio,TXT_Fracao,Descricao_Predio,
-    Localizacao_Predio:v('localizacao-predio'),
-    Conservatoria:v('conservatoria'),
-    Num_Descricao:v('num-descricao'),
-    Freguesia_Conservatoria:v('freguesia-conservatoria'),
-    AP_Aquisicao:v('ap-aquisicao'),
-    Art_Matricial:v('art-matricial'),
-    Freguesia_Matriz:v('freguesia-matriz'),
-    VPT_Valor:v('vpt-valor'),
-    VPT_Ano:v('vpt-ano'),
+    TXT_Predio_Misto,
+    TXT_Identificacao_Predios,Predios,
+    Localizacao_Predio:isFracao?v('localizacao-predio'):(p1.localizacao||''),
+    Conservatoria:isFracao?v('conservatoria'):(p1.conservatoria||''),
+    Num_Descricao:isFracao?v('num-descricao'):(p1.numDescricao||''),
+    Freguesia_Conservatoria:isFracao?v('freguesia-conservatoria'):(p1.freguesiaCons||''),
+    AP_Aquisicao:isFracao?v('ap-aquisicao'):(p1.apAquisicao||''),
+    Art_Matricial:isFracao?v('art-matricial'):Art_Matricial_Legacy,
+    Freguesia_Matriz:isFracao?v('freguesia-matriz'):Freguesia_Matriz_Legacy,
+    VPT_Valor:isFracao?v('vpt-valor'):VPT_Valor_Legacy,
+    VPT_Ano:isFracao?v('vpt-ano'):VPT_Ano_Legacy,
     TXT_CasaPronta_Bloco:'',
     TXT_Canc_Hipoteca,
     Destino_do_Imovel:v('destino-imovel'),
