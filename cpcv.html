@@ -355,6 +355,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <!-- Cláusula penal (só quando NÃO há sinal) -->
       <div class="cond-block" id="clausula-penal-block" style="display:none">
         <div class="cond-block-title">Cláusula penal por incumprimento (sem sinal)</div>
+        <div class="toggle-row" style="margin-bottom:.75rem">
+          <span class="toggle-label" style="font-size:12px">Financiamento a 100% do preço com garantia pessoal do Estado (DL n.º 44/2024)</span>
+          <label class="toggle-switch"><input type="checkbox" id="cp-garantia-estado"><span class="toggle-slider"></span></label>
+        </div>
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Modo de fixação do valor <span>*</span></label>
@@ -685,8 +689,6 @@ function addMatrizUrbana(){
     <div class="form-grid form-grid-3">
       <div class="form-group"><label class="form-label">Artigo matricial <span>*</span></label><input type="text" class="form-input" id="mu-${idx}-artigo" placeholder="Ex: 1234"></div>
       <div class="form-group"><label class="form-label">Freguesia <span>*</span></label><input type="text" class="form-input" id="mu-${idx}-freguesia" placeholder="Ex: Évora (Sé)"></div>
-      <div class="form-group"><label class="form-label">VPT (€) <span>*</span></label><input type="text" class="form-input" id="mu-${idx}-vpt" placeholder="Ex: 85.000,00"></div>
-      <div class="form-group"><label class="form-label">Ano do VPT</label><input type="text" class="form-input" id="mu-${idx}-ano" placeholder="Ex: 2024"></div>
     </div>`;
   document.getElementById('matrizes-urbanas-container').appendChild(div);
 }
@@ -704,8 +706,6 @@ function addMatrizRustica(){
       <div class="form-group"><label class="form-label">Artigo matricial <span>*</span></label><input type="text" class="form-input" id="mr-${idx}-artigo" placeholder="Ex: 511"></div>
       <div class="form-group"><label class="form-label">Secção</label><input type="text" class="form-input" id="mr-${idx}-seccao" placeholder="Ex: S"></div>
       <div class="form-group"><label class="form-label">Freguesia <span>*</span></label><input type="text" class="form-input" id="mr-${idx}-freguesia" placeholder="Ex: Nossa Senhora da Vila"></div>
-      <div class="form-group"><label class="form-label">VPT (€) <span>*</span></label><input type="text" class="form-input" id="mr-${idx}-vpt" placeholder="Ex: 106,21"></div>
-      <div class="form-group"><label class="form-label">Ano do VPT</label><input type="text" class="form-input" id="mr-${idx}-ano" placeholder="Ex: 1989"></div>
     </div>`;
   document.getElementById('matrizes-rusticas-container').appendChild(div);
 }
@@ -992,8 +992,13 @@ async function gerarContrato(){
       } else {
         valorTexto='a quantia de € [_______] ([_______ euros])';
       }
+      // Enquadramento: financiamento a 100% com garantia pessoal do Estado (DL 44/2024)
+      const garantiaEstado=chk('cp-garantia-estado');
+      const n1=garantiaEstado
+        ? '1. As Partes reconhecem que a aquisição prometida será integralmente financiada por instituição de crédito, correspondendo o empréstimo a 100% (cem por cento) do preço da transação, com prestação de garantia pessoal do Estado ao abrigo do Decreto-Lei n.º 44/2024, de 10 de julho, regulamentado pela Portaria n.º 236-A/2024/1, de 27 de setembro, razão pela qual não há lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento. Nestes termos, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, as Partes acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.\n\n'
+        : '1. Não tendo havido lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento no presente contrato, as Partes, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.\n\n';
       TXT_Incumprimento =
-        '1. Não tendo havido lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento no presente contrato, as Partes, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.\n\n'+
+        n1+
         `2. Em caso de incumprimento definitivo do presente contrato imputável à Promitente Parte Compradora, obriga-se esta a pagar à Promitente Parte Vendedora, a título de cláusula penal, ${valorTexto}.\n\n`+
         `3. Em caso de incumprimento definitivo do presente contrato imputável à Promitente Parte Vendedora, obriga-se esta a pagar à Promitente Parte Compradora, a título de cláusula penal, quantia de igual montante.\n\n`+
         '4. As Partes acordam expressamente que a presente cláusula penal tem natureza compulsória e não substitui a indemnização pelos danos efetivamente sofridos pela parte não faltosa, acrescendo a esta nos termos gerais de direito, sem prejuízo do disposto no artigo 811.º, n.º 2, do Código Civil.\n\n'+
@@ -1157,8 +1162,7 @@ function gerarTextoImovel(){
     const idx=el.id.replace('mu-','').replace('-artigo','');
     const art=(el.value||'').trim();if(!art)return null;
     const fregM=document.getElementById(`mu-${idx}-freguesia`)?.value||'';
-    const vpt=document.getElementById(`mu-${idx}-vpt`)?.value||'';const ano=document.getElementById(`mu-${idx}-ano`)?.value||'';
-    return `artigo matricial ${art}, da freguesia de ${fregM}, a que corresponde o valor patrimonial tributário de ${vpt} EUROS, determinado no ano de ${ano}`;
+    return `artigo matricial ${art}, da freguesia de ${fregM}`;
   }).filter(Boolean):[];
   const mrsEl=document.querySelectorAll('[id^="mr-"][id$="-artigo"]');
   const mrs=incRus?[...mrsEl].map(el=>{
@@ -1166,8 +1170,7 @@ function gerarTextoImovel(){
     const art=(el.value||'').trim();if(!art)return null;
     const sec=document.getElementById(`mr-${idx}-seccao`)?.value||'';
     const fregM=document.getElementById(`mr-${idx}-freguesia`)?.value||'';
-    const vpt=document.getElementById(`mr-${idx}-vpt`)?.value||'';const ano=document.getElementById(`mr-${idx}-ano`)?.value||'';
-    return `artigo matricial ${art}${sec?', secção '+sec:''}, da freguesia de ${fregM}, a que corresponde o valor patrimonial tributário de ${vpt} EUROS, determinado no ano de ${ano}`;
+    return `artigo matricial ${art}${sec?', secção '+sec:''}, da freguesia de ${fregM}`;
   }).filter(Boolean):[];
 
   let txt='';
