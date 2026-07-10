@@ -109,7 +109,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <div class="form-label" style="margin-bottom:4px">Pasta do cliente</div>
         <div style="position:relative">
           <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" disabled>
-          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:280px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
         </div>
         <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="pasta-selecionada-nome"></span></div>
       </div>
@@ -926,15 +926,14 @@ function restaurarDados(dados){
   updateDataAssinaturaExtenso();
 }
 
-// ─── PASTA DO CLIENTE / RASCUNHO NA PASTA (como nas escrituras) ──────────────
-let pastasSP=[],pastaSeleccionada=null;
+// Navegador de pastas: começa na pasta REMAX e permite entrar em subpastas a qualquer nível
+let pastasSP=[],pastaSeleccionada=null,navDriveId=null,navStack=[];
 
 async function carregarPastasSP(){
   const btn=document.getElementById('btn-carregar-pastas');
   const input=document.getElementById('pasta-search');
   btn.textContent='A carregar...';btn.disabled=true;
   try{
-    // O CPCV usa as pastas de clientes DENTRO da pasta REMAX (subpasta CPCV, se existir)
     const normName=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
     const sites=['Escritrio','lbcsolicitadora2'];
     let alvo=null;const nomesVistos=[];
@@ -943,46 +942,83 @@ async function carregarPastasSP(){
       if(!dr.ok)continue;
       const drives=(await dr.json()).value||[];
       nomesVistos.push(...drives.map(d=>d.name));
-      // Prioridade às bibliotecas de avenças, mas procura em todas
       const ordenadas=[...drives].sort((a,b)=>(normName(b.name).includes('AVENC')?1:0)-(normName(a.name).includes('AVENC')?1:0));
       for(const d of ordenadas){
         const rc=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${d.id}/root/children?$top=200`);
         if(!rc.ok)continue;
         const filhos=(await rc.json()).value||[];
         const remax=filhos.find(f=>f.folder&&normName(f.name).includes('REMAX'));
-        if(remax){alvo={driveId:d.id,folder:remax,driveName:d.name};break;}
+        if(remax){alvo={driveId:d.id,folder:remax};break;}
       }
       if(alvo)break;
     }
-    if(!alvo)throw new Error('Pasta REMAX não encontrada em nenhuma biblioteca. Bibliotecas vistas: '+nomesVistos.join(', '));
-    // Listar o conteúdo da pasta REMAX; se existir subpasta CPCV, descer para ela
-    let baseId=alvo.folder.id,caminho=alvo.folder.name;
-    let rc2=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${alvo.driveId}/items/${baseId}/children?$top=500`);
-    let filhos=rc2.ok?((await rc2.json()).value||[]):[];
-    const subCPCV=filhos.find(f=>f.folder&&normName(f.name).includes('CPCV'));
-    if(subCPCV){
-      baseId=subCPCV.id;caminho+='/'+subCPCV.name;
-      const rc3=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${alvo.driveId}/items/${baseId}/children?$top=500`);
-      filhos=rc3.ok?((await rc3.json()).value||[]):[];
-    }
-    pastasSP=filhos.filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:alvo.driveId,webUrl:p.webUrl}));
-    pastasSP.sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
-    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas (${caminho})...`;input.disabled=false;
-    showToast(`${pastasSP.length} pastas carregadas de ${caminho}`,'success');
+    if(!alvo)throw new Error('Pasta REMAX não encontrada. Bibliotecas vistas: '+nomesVistos.join(', '));
+    navDriveId=alvo.driveId;
+    navStack=[{id:alvo.folder.id,nome:alvo.folder.name}];
+    await listarNivel();
+    input.disabled=false;
+    input.addEventListener('focus',()=>renderDropdown());
   }catch(e){input.placeholder='Erro ao carregar';showToast('Erro: '+e.message,'error');}
   btn.textContent='↺ Atualizar';btn.disabled=false;
 }
-function pesquisarPastas(){
-  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
+
+async function listarNivel(){
+  const atual=navStack[navStack.length-1];
+  const rc=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${navDriveId}/items/${atual.id}/children?$top=999`);
+  const filhos=rc.ok?((await rc.json()).value||[]):[];
+  pastasSP=filhos.filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:navDriveId,webUrl:p.webUrl,nFilhos:p.folder.childCount}));
+  pastasSP.sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  const input=document.getElementById('pasta-search');
+  input.value='';
+  input.placeholder=`${navStack.map(n=>n.nome).join(' / ')} — ${pastasSP.length} subpastas`;
+  renderDropdown();
+}
+
+function renderDropdown(filtro){
   const dd=document.getElementById('pasta-dropdown');
-  if(!q||!pastasSP.length){dd.style.display='none';return;}
-  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
-  dd.innerHTML=res.length?res.map(p=>`<div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">${p.nome}</div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Sem resultados</div>';
+  const q=(filtro||'').toLowerCase().trim();
+  const res=q?pastasSP.filter(p=>p.nome.toLowerCase().includes(q)):pastasSP;
+  const linhaEstilo='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;font-size:12px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace';
+  let html='';
+  // Cabeçalho de navegação: voltar + usar a pasta atual
+  const caminho=navStack.map(n=>n.nome).join(' / ');
+  html+=`<div style="${linhaEstilo};background:var(--surface2)">
+    <span style="display:flex;align-items:center;gap:6px;min-width:0">
+      ${navStack.length>1?`<button type="button" onclick="event.stopPropagation();navVoltar()" class="btn btn-sm" style="padding:2px 8px">⬅</button>`:''}
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${caminho}">📂 ${caminho}</span>
+    </span>
+    <button type="button" onclick="event.stopPropagation();selecionarPasta({id:'${navStack[navStack.length-1].id}',nome:'${caminho.replace(/'/g,"\\'")}',driveId:navDriveId})" class="btn btn-sm btn-primary" style="padding:2px 8px;flex-shrink:0">✓ Usar esta pasta</button>
+  </div>`;
+  html+=res.length?res.map((p,i)=>`<div style="${linhaEstilo};cursor:pointer" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();navEntrar(${i},'${(filtro||'').replace(/'/g,"\\'")}')">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 ${p.nome}${p.nFilhos?` <span style="color:var(--text-faint)">(${p.nFilhos})</span>`:''}</span>
+      <button type="button" onclick="event.stopPropagation();selecionarPastaIdx(${i},'${(filtro||'').replace(/'/g,"\\'")}')" class="btn btn-sm" style="padding:2px 8px;flex-shrink:0">✓ Escolher</button>
+    </div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Sem subpastas</div>';
+  dd.innerHTML=html;
   dd.style.display='block';
+}
+function _resFiltrado(filtro){
+  const q=(filtro||'').toLowerCase().trim();
+  return q?pastasSP.filter(p=>p.nome.toLowerCase().includes(q)):pastasSP;
+}
+async function navEntrar(i,filtro){
+  const p=_resFiltrado(filtro)[i];if(!p)return;
+  navStack.push({id:p.id,nome:p.nome});
+  await listarNivel();
+}
+function selecionarPastaIdx(i,filtro){
+  const p=_resFiltrado(filtro)[i];if(!p)return;
+  selecionarPasta({...p,nome:navStack.map(n=>n.nome).join(' / ')+' / '+p.nome});
+}
+async function navVoltar(){
+  if(navStack.length>1)navStack.pop();
+  await listarNivel();
+}
+function pesquisarPastas(){
+  renderDropdown(document.getElementById('pasta-search').value);
 }
 function selecionarPasta(p){
   pastaSeleccionada=p;
-  document.getElementById('pasta-search').value=p.nome;
+  document.getElementById('pasta-search').value='';
   document.getElementById('pasta-dropdown').style.display='none';
   document.getElementById('pasta-selecionada-nome').textContent=p.nome;
   document.getElementById('pasta-selecionada').style.display='block';
