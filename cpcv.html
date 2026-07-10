@@ -102,6 +102,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 
 <div class="container">
 
+  <!-- PASTA DO CLIENTE (rascunho + gravação do contrato) -->
+  <div class="section-card" style="margin-bottom:1.25rem;border-color:var(--accent)">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div class="form-label" style="margin-bottom:4px">Pasta do cliente</div>
+        <div style="position:relative">
+          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" disabled>
+          <div id="pasta-dropdown" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)"></div>
+        </div>
+        <div id="pasta-selecionada" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="pasta-selecionada-nome"></span></div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;padding-top:1.1rem">
+        <button class="btn btn-sm" onclick="carregarPastasSP()" id="btn-carregar-pastas" type="button">↺ Atualizar</button>
+        <button class="btn btn-sm btn-primary" onclick="carregarRascunho(true)" id="btn-carregar-rascunho" type="button" disabled>📄 Carregar rascunho</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ① VENDEDORES -->
   <div class="section-card">
     <div class="section-card-header">
@@ -356,7 +374,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="cond-block" id="clausula-penal-block" style="display:none">
         <div class="cond-block-title">Cláusula penal por incumprimento (sem sinal)</div>
         <div class="toggle-row" style="margin-bottom:.75rem">
-          <span class="toggle-label" style="font-size:12px">Financiamento a 100% do preço com garantia pessoal do Estado (DL n.º 44/2024)</span>
+          <span class="toggle-label" style="font-size:12px">Crédito jovem — financiamento a 100% do preço com garantia pessoal do Estado (DL n.º 44/2024)</span>
           <label class="toggle-switch"><input type="checkbox" id="cp-garantia-estado"><span class="toggle-slider"></span></label>
         </div>
         <div class="form-grid">
@@ -516,6 +534,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="footer-info" id="footer-info">Preenche o formulário e gera o contrato</div>
   <div class="footer-actions">
     <button class="btn" onclick="limparFormulario()">Limpar tudo</button>
+    <button class="btn" onclick="guardarRascunho()">Guardar rascunho</button>
     <button class="btn btn-success" onclick="gerarContrato()">Gerar contrato Word</button>
   </div>
 </div>
@@ -849,6 +868,15 @@ function recolherDados(){
   dados._compradoresCount=compradoresCount;
   dados._gerCounts={};
   document.querySelectorAll('[id$="-gerentes"]').forEach(c=>{dados._gerCounts[c.id.replace('-gerentes','')]=c.querySelectorAll('.gerente-block').length;});
+  // Matrizes múltiplas (urbanas e rústicas)
+  dados._matrizesUrb=[...document.querySelectorAll('[id^="mu-"][id$="-artigo"]')].map(el=>{
+    const idx=el.id.replace('mu-','').replace('-artigo','');
+    return{artigo:el.value||'',freguesia:document.getElementById(`mu-${idx}-freguesia`)?.value||''};
+  });
+  dados._matrizesRus=[...document.querySelectorAll('[id^="mr-"][id$="-artigo"]')].map(el=>{
+    const idx=el.id.replace('mr-','').replace('-artigo','');
+    return{artigo:el.value||'',seccao:document.getElementById(`mr-${idx}-seccao`)?.value||'',freguesia:document.getElementById(`mr-${idx}-freguesia`)?.value||''};
+  });
   return dados;
 }
 
@@ -862,9 +890,29 @@ function restaurarDados(dados){
   for(let i=0;i<vc;i++)addOutorgante('vendedores');
   for(let i=0;i<cc;i++)addOutorgante('compradores');
   if(dados._gerCounts)Object.entries(dados._gerCounts).forEach(([bid,n])=>{for(let i=1;i<n;i++)if(document.getElementById(`${bid}-gerentes`))addGerente(bid);});
+  // Recriar matrizes múltiplas
+  if(Array.isArray(dados._matrizesUrb)){
+    document.getElementById('matrizes-urbanas-container').innerHTML='';matrizUrbanaCnt=0;
+    (dados._matrizesUrb.length?dados._matrizesUrb:[{}]).forEach(m=>{
+      addMatrizUrbana();
+      const idx=matrizUrbanaCnt;
+      const set=(suf,val)=>{const el=document.getElementById(`mu-${idx}-${suf}`);if(el)el.value=val||'';};
+      set('artigo',m.artigo);set('freguesia',m.freguesia);
+    });
+  }
+  if(Array.isArray(dados._matrizesRus)){
+    document.getElementById('matrizes-rusticas-container').innerHTML='';matrizRusticaCnt=0;
+    (dados._matrizesRus.length?dados._matrizesRus:[{}]).forEach(m=>{
+      addMatrizRustica();
+      const idx=matrizRusticaCnt;
+      const set=(suf,val)=>{const el=document.getElementById(`mr-${idx}-${suf}`);if(el)el.value=val||'';};
+      set('artigo',m.artigo);set('seccao',m.seccao);set('freguesia',m.freguesia);
+    });
+  }
   // Restaurar valores
   Object.entries(dados).forEach(([id,val])=>{
     if(id.startsWith('_'))return;
+    if(/^m[ur]-\d+-/.test(id))return; // matrizes já tratadas acima
     const el=document.getElementById(id);
     if(!el)return;
     if(el.type==='checkbox')el.checked=val;
@@ -874,12 +922,67 @@ function restaurarDados(dados){
   document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{if(el.id)onEstadoCivil(el.id.replace('-estado-civil',''));});
   document.querySelectorAll('[id$="-conjuge-outorgante"]').forEach(el=>{if(el.id)onConjugeOutorgante(el.id.replace('-conjuge-outorgante',''));});
   onTipoPredioChange();onOnusChange();updatePrecoExtenso();onTipoCertChange();onMediacaoChange();onSinalFormaChange();
+  onToggleSinal();onCPModoChange();
   updateDataAssinaturaExtenso();
 }
 
-// ─── PASTA NÃO USADA NESTE FORMULÁRIO ────────────────────────────────────────
-// O CPCV autónomo não guarda na pasta — só faz download
-let pastaSeleccionada=null;
+// ─── PASTA DO CLIENTE / RASCUNHO NA PASTA (como nas escrituras) ──────────────
+let pastasSP=[],pastaSeleccionada=null;
+
+async function carregarPastasSP(){
+  const btn=document.getElementById('btn-carregar-pastas');
+  const input=document.getElementById('pasta-search');
+  btn.textContent='A carregar...';btn.disabled=true;
+  try{
+    const dr=await graphFetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/Escritrio:/drives`);
+    const drives=await dr.json();
+    const escriturasDrive=drives.value.find(d=>d.name==='ESCRITURAS');
+    if(!escriturasDrive)throw new Error('Biblioteca ESCRITURAS não encontrada');
+    const pr=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${escriturasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    const pastas=await pr.json();
+    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:escriturasDrive.id,webUrl:p.webUrl}));
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;input.disabled=false;
+    showToast(`${pastasSP.length} pastas carregadas`,'success');
+  }catch(e){input.placeholder='Erro ao carregar';showToast('Erro: '+e.message,'error');}
+  btn.textContent='↺ Atualizar';btn.disabled=false;
+}
+function pesquisarPastas(){
+  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
+  const dd=document.getElementById('pasta-dropdown');
+  if(!q||!pastasSP.length){dd.style.display='none';return;}
+  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.length?res.map(p=>`<div onclick="selecionarPasta(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">${p.nome}</div>`).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--text-faint)">Sem resultados</div>';
+  dd.style.display='block';
+}
+function selecionarPasta(p){
+  pastaSeleccionada=p;
+  document.getElementById('pasta-search').value=p.nome;
+  document.getElementById('pasta-dropdown').style.display='none';
+  document.getElementById('pasta-selecionada-nome').textContent=p.nome;
+  document.getElementById('pasta-selecionada').style.display='block';
+  document.getElementById('btn-carregar-rascunho').disabled=false;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search')&&!e.target.closest('#pasta-dropdown')){const dd=document.getElementById('pasta-dropdown');if(dd)dd.style.display='none';}});
+
+async function guardarRascunho(){
+  if(!pastaSeleccionada){showToast('Seleciona a pasta do cliente','error');return;}
+  const json=JSON.stringify(recolherDados(),null,2);
+  try{
+    const r=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});
+    if(!r.ok)throw new Error(`Erro ${r.status}`);
+    document.getElementById('footer-info').textContent='Rascunho guardado às '+new Date().toLocaleTimeString('pt-PT');
+    showToast('Rascunho guardado na pasta!','success');
+  }catch(e){localStorage.setItem('cpcv_rascunho',json);showToast('Sem ligação — guardado localmente','');}
+}
+async function carregarRascunho(daPasta=false){
+  if(daPasta&&pastaSeleccionada){
+    try{
+      const r=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_CPCV.json:/content`);
+      if(r.ok){restaurarDados(await r.json());showToast('Rascunho carregado!','success');return;}
+      showToast('Esta pasta não tem rascunho de CPCV','');
+    }catch(e){showToast('Erro ao carregar rascunho: '+e.message,'error');}
+  }
+}
 
 function limparFormulario(){if(!confirm('Tens a certeza?'))return;localStorage.removeItem('cpcv_rascunho');location.reload();}
 
@@ -1272,6 +1375,8 @@ window.onload=()=>{
   addMatrizUrbana();
   addMatrizRustica();
   document.getElementById('matriz-rustica-fields').style.display='none';
+  onToggleSinal(); // mostra a cláusula penal quando não há sinal (estado inicial)
+  carregarPastasSP();
 };
 </script>
 </body>
