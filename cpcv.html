@@ -934,15 +934,24 @@ async function carregarPastasSP(){
   const input=document.getElementById('pasta-search');
   btn.textContent='A carregar...';btn.disabled=true;
   try{
-    const dr=await graphFetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/Escritrio:/drives`);
-    const drives=await dr.json();
-    const escriturasDrive=drives.value.find(d=>d.name==='ESCRITURAS');
-    if(!escriturasDrive)throw new Error('Biblioteca ESCRITURAS não encontrada');
-    const pr=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${escriturasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    // O CPCV trabalha com as pastas de AVENÇAS (não as de escrituras)
+    const normName=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+    const sites=['Escritrio','lbcsolicitadora2'];
+    let avencasDrive=null,nomesVistos=[];
+    for(const site of sites){
+      const dr=await graphFetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/${site}:/drives`);
+      if(!dr.ok)continue;
+      const drives=await dr.json();
+      nomesVistos.push(...(drives.value||[]).map(d=>d.name));
+      avencasDrive=(drives.value||[]).find(d=>normName(d.name).includes('AVENC'));
+      if(avencasDrive)break;
+    }
+    if(!avencasDrive)throw new Error('Biblioteca de AVENÇAS não encontrada. Bibliotecas disponíveis: '+nomesVistos.join(', '));
+    const pr=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
     const pastas=await pr.json();
-    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:escriturasDrive.id,webUrl:p.webUrl}));
-    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;input.disabled=false;
-    showToast(`${pastasSP.length} pastas carregadas`,'success');
+    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:avencasDrive.id,webUrl:p.webUrl}));
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas de avenças...`;input.disabled=false;
+    showToast(`${pastasSP.length} pastas de avenças carregadas`,'success');
   }catch(e){input.placeholder='Erro ao carregar';showToast('Erro: '+e.message,'error');}
   btn.textContent='↺ Atualizar';btn.disabled=false;
 }
