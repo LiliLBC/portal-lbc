@@ -934,24 +934,41 @@ async function carregarPastasSP(){
   const input=document.getElementById('pasta-search');
   btn.textContent='A carregar...';btn.disabled=true;
   try{
-    // O CPCV trabalha com as pastas de AVENÇAS (não as de escrituras)
+    // O CPCV usa as pastas de clientes DENTRO da pasta REMAX (subpasta CPCV, se existir)
     const normName=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
     const sites=['Escritrio','lbcsolicitadora2'];
-    let avencasDrive=null,nomesVistos=[];
+    let alvo=null;const nomesVistos=[];
     for(const site of sites){
       const dr=await graphFetch(`https://graph.microsoft.com/v1.0/sites/lbcsolicitadorapt.sharepoint.com:/sites/${site}:/drives`);
       if(!dr.ok)continue;
-      const drives=await dr.json();
-      nomesVistos.push(...(drives.value||[]).map(d=>d.name));
-      avencasDrive=(drives.value||[]).find(d=>normName(d.name).includes('AVENC'));
-      if(avencasDrive)break;
+      const drives=(await dr.json()).value||[];
+      nomesVistos.push(...drives.map(d=>d.name));
+      // Prioridade às bibliotecas de avenças, mas procura em todas
+      const ordenadas=[...drives].sort((a,b)=>(normName(b.name).includes('AVENC')?1:0)-(normName(a.name).includes('AVENC')?1:0));
+      for(const d of ordenadas){
+        const rc=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${d.id}/root/children?$top=200`);
+        if(!rc.ok)continue;
+        const filhos=(await rc.json()).value||[];
+        const remax=filhos.find(f=>f.folder&&normName(f.name).includes('REMAX'));
+        if(remax){alvo={driveId:d.id,folder:remax,driveName:d.name};break;}
+      }
+      if(alvo)break;
     }
-    if(!avencasDrive)throw new Error('Biblioteca de AVENÇAS não encontrada. Bibliotecas disponíveis: '+nomesVistos.join(', '));
-    const pr=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${avencasDrive.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
-    const pastas=await pr.json();
-    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:avencasDrive.id,webUrl:p.webUrl}));
-    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas de avenças...`;input.disabled=false;
-    showToast(`${pastasSP.length} pastas de avenças carregadas`,'success');
+    if(!alvo)throw new Error('Pasta REMAX não encontrada em nenhuma biblioteca. Bibliotecas vistas: '+nomesVistos.join(', '));
+    // Listar o conteúdo da pasta REMAX; se existir subpasta CPCV, descer para ela
+    let baseId=alvo.folder.id,caminho=alvo.folder.name;
+    let rc2=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${alvo.driveId}/items/${baseId}/children?$top=500`);
+    let filhos=rc2.ok?((await rc2.json()).value||[]):[];
+    const subCPCV=filhos.find(f=>f.folder&&normName(f.name).includes('CPCV'));
+    if(subCPCV){
+      baseId=subCPCV.id;caminho+='/'+subCPCV.name;
+      const rc3=await graphFetch(`https://graph.microsoft.com/v1.0/drives/${alvo.driveId}/items/${baseId}/children?$top=500`);
+      filhos=rc3.ok?((await rc3.json()).value||[]):[];
+    }
+    pastasSP=filhos.filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:alvo.driveId,webUrl:p.webUrl}));
+    pastasSP.sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas (${caminho})...`;input.disabled=false;
+    showToast(`${pastasSP.length} pastas carregadas de ${caminho}`,'success');
   }catch(e){input.placeholder='Erro ao carregar';showToast('Erro: '+e.message,'error');}
   btn.textContent='↺ Atualizar';btn.disabled=false;
 }
