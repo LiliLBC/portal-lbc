@@ -382,6 +382,10 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('servicos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 7h6M5 10h4"/></svg></span>Serviços em curso
     </div>
+    <div class="nav-section">Recursos</div>
+    <div class="nav-item" onclick="nav('material',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3a2 2 0 00-2-2H1v11h5a2 2 0 012 2zM8 3a2 2 0 012-2h5v11h-5a2 2 0 00-2 2zM8 3v11"/></svg></span>Material de apoio
+    </div>
     <div class="nav-section" id="nav-section-financeiro">Financeiro</div>
     <div class="nav-item" id="nav-fin-desbloquear" onclick="abrirModalFinanceiro()">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4.5a3 3 0 016 0V7"/></svg></span>🔒 Área financeira
@@ -882,6 +886,54 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="screen" id="screen-suprimentos">
         <div id="sup-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar suprimentos...</div></div>
         <div id="sup-list" style="display:none"></div>
+      </div>
+
+      <!-- MATERIAL DE APOIO -->
+      <div class="screen" id="screen-material">
+        <div class="section-header">
+          <div><div class="section-title">Material de apoio</div><div class="section-sub">Minutas, contratos exemplo, legislação e notas úteis do escritório</div></div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalMaterial()">+ Adicionar material</button>
+        </div>
+        <div id="mat-aviso" style="display:none;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:7px;padding:.8rem 1rem;font-size:12.5px;line-height:1.7;margin-bottom:1rem"></div>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="filtrarMaterialTipo('',this)">Todos</button>
+          <button class="filter-chip" onclick="filtrarMaterialTipo('Minuta',this)">Minutas</button>
+          <button class="filter-chip" onclick="filtrarMaterialTipo('Contrato exemplo',this)">Contratos exemplo</button>
+          <button class="filter-chip" onclick="filtrarMaterialTipo('Legislação',this)">Legislação</button>
+          <button class="filter-chip" onclick="filtrarMaterialTipo('Jurisprudência',this)">Jurisprudência</button>
+          <button class="filter-chip" onclick="filtrarMaterialTipo('Nota prática',this)">Notas práticas</button>
+        </div>
+        <div style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap">
+          <input class="search-input" id="mat-search" placeholder="Pesquisar por título, tema, descrição, tags..." oninput="renderMaterial()" style="padding-left:12px;flex:1;min-width:220px">
+          <select class="form-select" id="mat-filtro-categoria" onchange="renderMaterial()" style="max-width:230px"><option value="">Todas as categorias</option></select>
+        </div>
+        <div id="mat-loading" class="loading-overlay" style="display:none"><div class="spinner"></div><div class="loading-text">A carregar material...</div></div>
+        <div id="mat-list"></div>
+      </div>
+
+      <!-- MODAL MATERIAL DE APOIO -->
+      <div class="modal-overlay" id="modal-material">
+        <div class="modal-box" style="max-width:580px;width:95%">
+          <div class="modal-box-title" id="modal-material-titulo">Adicionar material</div>
+          <div class="form-grid-2" style="gap:.65rem">
+            <div class="form-group form-full"><label class="form-label">Título <span>*</span></label><input class="form-input" id="mat-f-titulo" placeholder="Ex: Minuta de CPCV com cláusula penal (crédito jovem)"></div>
+            <div class="form-group"><label class="form-label">Tipo <span>*</span></label>
+              <select class="form-select" id="mat-f-tipo">
+                <option>Minuta</option><option>Contrato exemplo</option><option>Legislação</option><option>Jurisprudência</option><option>Nota prática</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Categoria <span>*</span></label><input class="form-input" id="mat-f-categoria" list="mat-categorias-list" placeholder="Ex: Compra e venda"><datalist id="mat-categorias-list"></datalist></div>
+            <div class="form-group form-full"><label class="form-label">Tema</label><input class="form-input" id="mat-f-tema" placeholder="Ex: Direito de preferência de confinantes"></div>
+            <div class="form-group form-full"><label class="form-label">Descrição / nota de utilização</label><textarea class="form-textarea" id="mat-f-descricao" placeholder="Quando usar, cuidados a ter, contexto..."></textarea></div>
+            <div class="form-group form-full"><label class="form-label">Tags (separadas por vírgula)</label><input class="form-input" id="mat-f-tags" placeholder="Ex: IMT, art. 1380.º CC, RAN"></div>
+            <div class="form-group form-full"><label class="form-label">Ligação (DRE, dgsi, site...)</label><input class="form-input" id="mat-f-ligacao" placeholder="https://..."></div>
+            <div class="form-group form-full"><label class="form-label">Ficheiro (Word, PDF...)</label><input class="form-input" type="file" id="mat-f-ficheiro"><div id="mat-f-ficheiro-atual" style="font-size:11px;color:var(--text-muted);margin-top:3px"></div></div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn" onclick="fecharModalMaterial()">Cancelar</button>
+            <button class="btn btn-primary" id="mat-btn-guardar" onclick="guardarMaterial()">Guardar</button>
+          </div>
+        </div>
       </div>
 
       <!-- TAREFAS -->
@@ -2510,6 +2562,8 @@ const CC={titulo:'Processo',cliente:'Cliente',honorarios:'Honorarios',gastos:'Ga
 const BIBLIOTECA='ESCRITURAS';
 const BIBLIOTECA_PROCESSOS='PROCESSOS';
 const BIBLIOTECA_SUPRIMENTOS='SUPRIMENTOS_ANEXOS';
+const LISTA_MATERIAL='MaterialApoio';
+const BIBLIOTECA_MATERIAL='MATERIAL_APOIO';
 
 const F={
   titulo:'Title',nome:'Nome_Cliente',data:'DataEscritura',produto:'Produto',
@@ -2637,7 +2691,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios'};
+const pageTitles={financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
 
 function toggleSidebar(){
   const sidebar=document.querySelector('.sidebar');
@@ -2827,10 +2881,177 @@ function nav(id,el){
   if(id==='contabilidade')carregarContabilidade();
   if(id==='financeiro'){carregarDashboard();carregarAvencasMensais();setTimeout(()=>{if(typeof dashRenderTudo==='function')dashRenderTudo();},150);}
   if(id==='avencas')carregarAvencas();
+  if(id==='material')carregarMaterial();
   if(id==='clientes')cliInit();
   if(id==='servicos')servicosInit();
   if(id==='relatorios')carregarRelatorios();
   if(id==='calendario'){carregarCalendario();carregarDashboard();carregarLembretes();}
+}
+
+// ─── MATERIAL DE APOIO ────────────────────────────────────────────────────────
+let listaIdMaterial=null,driveIdMaterial=null,materialItens=[],materialCarregado=false,materialFiltroTipo='',materialEditId=null;
+
+async function resolverMaterialIds(){
+  try{
+    if(!siteIdDados)return;
+    if(!listaIdMaterial){
+      const mt=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_MATERIAL}'`);
+      listaIdMaterial=mt.value[0]?.id||null;
+    }
+    if(!driveIdMaterial){
+      const dd=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
+      driveIdMaterial=dd.value.find(d=>d.name===BIBLIOTECA_MATERIAL)?.id||null;
+    }
+  }catch(e){console.error('Material IDs:',e);}
+}
+
+async function carregarMaterial(force=false){
+  const aviso=document.getElementById('mat-aviso');
+  if(materialCarregado&&!force){renderMaterial();return;}
+  document.getElementById('mat-loading').style.display='flex';
+  await resolverMaterialIds();
+  if(!listaIdMaterial){
+    document.getElementById('mat-loading').style.display='none';
+    aviso.style.display='block';
+    aviso.innerHTML=`<b>Configuração em falta.</b> Para ativar este módulo, cria no site <b>lbcsolicitadora2</b>:<br>
+      1) Uma <b>lista</b> chamada <b>MaterialApoio</b> com as colunas (todas "Uma linha de texto", exceto Descricao que é "Várias linhas de texto"): <b>Categoria</b>, <b>Tema</b>, <b>Tipo</b>, <b>Ligacao</b>, <b>FicheiroUrl</b>, <b>Descricao</b>, <b>Tags</b> — sem acentos nem cedilhas nos nomes das colunas;<br>
+      2) Uma <b>biblioteca de documentos</b> chamada <b>MATERIAL_APOIO</b> (para os ficheiros carregados).<br>
+      Depois volta a abrir este separador.`;
+    return;
+  }
+  aviso.style.display=driveIdMaterial?'none':'block';
+  if(!driveIdMaterial)aviso.innerHTML='<b>Nota:</b> a lista MaterialApoio existe, mas falta a biblioteca <b>MATERIAL_APOIO</b> — sem ela, não é possível carregar ficheiros (ligações e notas funcionam na mesma).';
+  try{
+    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items?$expand=fields&$top=999`);
+    materialItens=(data.value||[]).map(it=>{
+      const f=it.fields||{};
+      return{id:it.id,titulo:f.Title||'',categoria:f.Categoria||'',tema:f.Tema||'',tipo:f.Tipo||'Nota prática',ligacao:f.Ligacao||'',ficheiro:f.FicheiroUrl||'',descricao:f.Descricao||'',tags:f.Tags||'',modificado:it.lastModifiedDateTime};
+    }).sort((a,b)=>a.titulo.localeCompare(b.titulo,'pt'));
+    materialCarregado=true;
+    // Preencher filtro e datalist de categorias
+    const cats=[...new Set(materialItens.map(i=>i.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+    document.getElementById('mat-filtro-categoria').innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option>${escHtml(c)}</option>`).join('');
+    document.getElementById('mat-categorias-list').innerHTML=cats.map(c=>`<option value="${escHtml(c)}">`).join('');
+    renderMaterial();
+  }catch(e){showToast('Erro ao carregar material: '+e.message,'error');}
+  document.getElementById('mat-loading').style.display='none';
+}
+
+function filtrarMaterialTipo(tipo,el){
+  materialFiltroTipo=tipo;
+  document.querySelectorAll('#screen-material .filter-chip').forEach(c=>c.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderMaterial();
+}
+
+function tipoMaterialBadge(t){
+  const m={'Minuta':'badge-blue','Contrato exemplo':'badge-purple','Legislação':'badge-green','Jurisprudência':'badge-amber','Nota prática':'badge-gray'};
+  return`<span class="badge ${m[t]||'badge-gray'}">${escHtml(t)}</span>`;
+}
+
+function renderMaterial(){
+  const list=document.getElementById('mat-list');
+  const q=(document.getElementById('mat-search').value||'').toLowerCase().trim();
+  const cat=document.getElementById('mat-filtro-categoria').value;
+  let res=materialItens;
+  if(materialFiltroTipo)res=res.filter(i=>i.tipo===materialFiltroTipo);
+  if(cat)res=res.filter(i=>i.categoria===cat);
+  if(q)res=res.filter(i=>[i.titulo,i.tema,i.descricao,i.tags,i.categoria].join(' ').toLowerCase().includes(q));
+  if(!res.length){list.innerHTML='<div style="text-align:center;padding:2.5rem;color:var(--text-faint);font-size:13px">Sem material para os filtros escolhidos.<br>Usa "+ Adicionar material" para começar a construir a base.</div>';return;}
+  list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:.75rem">'+res.map(i=>{
+    const tags=(i.tags||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,6);
+    return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.85rem .95rem;display:flex;flex-direction:column;gap:.45rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">${tipoMaterialBadge(i.tipo)}
+        <span style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-sm" style="padding:2px 7px" title="Editar" onclick="abrirModalMaterial('${i.id}')">✏️</button>
+          <button class="btn btn-sm" style="padding:2px 7px" title="Apagar" onclick="apagarMaterial('${i.id}')">🗑</button>
+        </span>
+      </div>
+      <div style="font-weight:600;font-size:13.5px;line-height:1.35">${highlight(i.titulo,q)}</div>
+      <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(i.categoria)}${i.tema?' • '+highlight(i.tema,q):''}</div>
+      ${i.descricao?`<div style="font-size:12px;color:var(--text-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${highlight(i.descricao,q)}</div>`:''}
+      ${tags.length?`<div style="display:flex;gap:4px;flex-wrap:wrap">${tags.map(t=>`<span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:1px 8px;color:var(--text-muted)">${escHtml(t)}</span>`).join('')}</div>`:''}
+      <div style="display:flex;gap:.4rem;margin-top:auto;padding-top:.3rem">
+        ${i.ficheiro?`<a class="btn btn-sm btn-primary" style="text-decoration:none" href="${escHtml(i.ficheiro)}" target="_blank">📄 Abrir ficheiro</a>`:''}
+        ${i.ligacao?`<a class="btn btn-sm" style="text-decoration:none" href="${escHtml(i.ligacao)}" target="_blank">🔗 Ligação</a>`:''}
+      </div>
+    </div>`;}).join('')+'</div>';
+}
+
+function abrirModalMaterial(id){
+  materialEditId=id||null;
+  const i=id?materialItens.find(x=>x.id===id):null;
+  document.getElementById('modal-material-titulo').textContent=i?'Editar material':'Adicionar material';
+  document.getElementById('mat-f-titulo').value=i?.titulo||'';
+  document.getElementById('mat-f-tipo').value=i?.tipo||'Minuta';
+  document.getElementById('mat-f-categoria').value=i?.categoria||'';
+  document.getElementById('mat-f-tema').value=i?.tema||'';
+  document.getElementById('mat-f-descricao').value=i?.descricao||'';
+  document.getElementById('mat-f-tags').value=i?.tags||'';
+  document.getElementById('mat-f-ligacao').value=i?.ligacao||'';
+  document.getElementById('mat-f-ficheiro').value='';
+  document.getElementById('mat-f-ficheiro-atual').textContent=i?.ficheiro?'Já tem ficheiro associado — carrega um novo para o substituir.':'';
+  document.getElementById('modal-material').classList.add('show');
+}
+function fecharModalMaterial(){document.getElementById('modal-material').classList.remove('show');}
+
+async function uploadFicheiroMaterial(file,tipo){
+  // Garantir subpasta por tipo (409 = já existe, tolerado pelo graphPost)
+  await graphPost(`${GRAPH_BASE}/drives/${driveIdMaterial}/root/children`,{name:tipo,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
+  const caminho=`${tipo}/${file.name}`;
+  await renovarToken();
+  if(file.size<=4*1024*1024){
+    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${encodeURIComponent(tipo)}/${encodeURIComponent(file.name)}:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+graphToken},body:file});
+    if(!r.ok)throw new Error('Upload falhou ('+r.status+')');
+    return(await r.json()).webUrl;
+  }
+  // Ficheiros grandes: sessão de upload por blocos
+  const sess=await graphPost(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${encodeURIComponent(caminho)}:/createUploadSession`,{item:{'@microsoft.graph.conflictBehavior':'replace'}});
+  const chunk=3932160;let pos=0,resp=null;
+  while(pos<file.size){
+    const fim=Math.min(pos+chunk,file.size);
+    resp=await fetch(sess.uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${pos}-${fim-1}/${file.size}`},body:file.slice(pos,fim)});
+    if(!resp.ok&&resp.status!==202)throw new Error('Upload falhou ('+resp.status+')');
+    pos=fim;
+  }
+  return(await resp.json()).webUrl;
+}
+
+async function guardarMaterial(){
+  const titulo=document.getElementById('mat-f-titulo').value.trim();
+  const tipo=document.getElementById('mat-f-tipo').value;
+  const categoria=document.getElementById('mat-f-categoria').value.trim();
+  if(!titulo||!categoria){showToast('Título e categoria são obrigatórios','error');return;}
+  const btn=document.getElementById('mat-btn-guardar');btn.disabled=true;btn.textContent='A guardar...';
+  try{
+    const campos={Title:titulo,Categoria:categoria,Tema:document.getElementById('mat-f-tema').value.trim(),Tipo:tipo,Ligacao:document.getElementById('mat-f-ligacao').value.trim(),Descricao:document.getElementById('mat-f-descricao').value.trim(),Tags:document.getElementById('mat-f-tags').value.trim()};
+    const file=document.getElementById('mat-f-ficheiro').files[0];
+    if(file){
+      if(!driveIdMaterial)throw new Error('Falta criar a biblioteca MATERIAL_APOIO para carregar ficheiros');
+      campos.FicheiroUrl=await uploadFicheiroMaterial(file,tipo);
+    }
+    if(materialEditId){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items/${materialEditId}/fields`,campos);
+    }else{
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items`,{fields:campos});
+    }
+    fecharModalMaterial();
+    showToast('Material guardado!','success');
+    await carregarMaterial(true);
+  }catch(e){showToast('Erro: '+e.message,'error');}
+  btn.disabled=false;btn.textContent='Guardar';
+}
+
+async function apagarMaterial(id){
+  const i=materialItens.find(x=>x.id===id);
+  if(!confirm(`Apagar "${i?.titulo||'este material'}"?${i?.ficheiro?'\n(O ficheiro na biblioteca não é apagado.)':''}`))return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
+    if(!r.ok)throw new Error('Erro '+r.status);
+    showToast('Material apagado','success');
+    await carregarMaterial(true);
+  }catch(e){showToast('Erro ao apagar: '+e.message,'error');}
 }
 
 // ─── DROPDOWN CONTRATOS ────────────────────────────────────────────────────────
