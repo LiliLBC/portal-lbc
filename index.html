@@ -2914,7 +2914,7 @@ async function carregarMaterial(force=false){
     document.getElementById('mat-loading').style.display='none';
     aviso.style.display='block';
     aviso.innerHTML=`<b>Configuração em falta.</b> Para ativar este módulo, cria no site <b>lbcsolicitadora2</b>:<br>
-      1) Uma <b>lista</b> chamada <b>MaterialApoio</b> com as colunas (todas "Uma linha de texto", exceto Descricao que é "Várias linhas de texto"): <b>Categoria</b>, <b>Tema</b>, <b>Tipo</b>, <b>Ligacao</b>, <b>FicheiroUrl</b>, <b>Descricao</b>, <b>Tags</b> — sem acentos nem cedilhas nos nomes das colunas;<br>
+      1) Uma <b>lista</b> chamada <b>MaterialApoio</b> com as colunas (todas "Uma linha de texto", exceto Descricao que é "Várias linhas de texto"): <b>Categoria</b>, <b>Tema</b>, <b>TipoMaterial</b>, <b>Ligacao</b>, <b>FicheiroUrl</b>, <b>Descricao</b>, <b>Tags</b> — sem acentos nem cedilhas nos nomes das colunas;<br>
       2) Uma <b>biblioteca de documentos</b> chamada <b>MATERIAL_APOIO</b> (para os ficheiros carregados).<br>
       Depois volta a abrir este separador.`;
     return;
@@ -2925,7 +2925,7 @@ async function carregarMaterial(force=false){
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items?$expand=fields&$top=999`);
     materialItens=(data.value||[]).map(it=>{
       const f=it.fields||{};
-      return{id:it.id,titulo:f.Title||'',categoria:f.Categoria||'',tema:f.Tema||'',tipo:f.Tipo||'Nota prática',ligacao:f.Ligacao||'',ficheiro:f.FicheiroUrl||'',descricao:f.Descricao||'',tags:f.Tags||'',modificado:it.lastModifiedDateTime};
+      return{id:it.id,titulo:f.Title||'',categoria:f.Categoria||'',tema:f.Tema||'',tipo:f.TipoMaterial||f.Tipo||'Nota prática',ligacao:f.Ligacao||'',ficheiro:f.FicheiroUrl||'',descricao:f.Descricao||'',tags:f.Tags||'',modificado:it.lastModifiedDateTime};
     }).sort((a,b)=>a.titulo.localeCompare(b.titulo,'pt'));
     materialCarregado=true;
     // Preencher filtro e datalist de categorias
@@ -3024,7 +3024,7 @@ async function guardarMaterial(){
   if(!titulo||!categoria){showToast('Título e categoria são obrigatórios','error');return;}
   const btn=document.getElementById('mat-btn-guardar');btn.disabled=true;btn.textContent='A guardar...';
   try{
-    const campos={Title:titulo,Categoria:categoria,Tema:document.getElementById('mat-f-tema').value.trim(),Tipo:tipo,Ligacao:document.getElementById('mat-f-ligacao').value.trim(),Descricao:document.getElementById('mat-f-descricao').value.trim(),Tags:document.getElementById('mat-f-tags').value.trim()};
+    const campos={Title:titulo,Categoria:categoria,Tema:document.getElementById('mat-f-tema').value.trim(),TipoMaterial:tipo,Ligacao:document.getElementById('mat-f-ligacao').value.trim(),Descricao:document.getElementById('mat-f-descricao').value.trim(),Tags:document.getElementById('mat-f-tags').value.trim()};
     const file=document.getElementById('mat-f-ficheiro').files[0];
     if(file){
       if(!driveIdMaterial)throw new Error('Falta criar a biblioteca MATERIAL_APOIO para carregar ficheiros');
