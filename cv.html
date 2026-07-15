@@ -535,6 +535,37 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         </div>
       </div>
 
+      <!-- Casa Pronta (direitos de preferência) -->
+      <hr class="divider">
+      <div class="toggle-row">
+        <span class="toggle-label">Casa Pronta (direitos de preferência)</span>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-casa-pronta" onchange="onCasaProntaChange()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cond-block" id="casa-pronta-fields" style="display:none">
+        <div class="cond-block-title">Dados Casa Pronta</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-group">
+            <label class="form-label">Nº do pedido <span>*</span></label>
+            <input type="text" class="form-input" id="cp-numero">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data <span>*</span></label>
+            <input type="date" class="form-input" id="cp-data">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Câmara Municipal <span>*</span></label>
+            <input type="text" class="form-input" id="cp-camara" placeholder="Ex: Évora">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:.75rem">
+          <label class="form-label">Pronúncia da Câmara Municipal</label>
+          <select class="form-select" id="cp-pronuncia">
+            <option value="nao">Não se pronunciou</option>
+            <option value="sim">Pronunciou-se — não pretende exercer preferência</option>
+          </select>
+        </div>
+      </div>
+
       <hr class="divider">
 
       <div class="form-group">
@@ -983,6 +1014,9 @@ function onConjOutorganteCV(id){
 // ─── CONDICIONAIS ─────────────────────────────────────────────────────────────
 function onOnusChange(){
   document.getElementById('onus-fields').style.display=document.getElementById('toggle-onus').checked?'block':'none';
+}
+function onCasaProntaChange(){
+  document.getElementById('casa-pronta-fields').style.display=document.getElementById('toggle-casa-pronta').checked?'block':'none';
 }
 function onLUChange(){
   const val=document.getElementById('tipo-lu').value;
@@ -1438,7 +1472,7 @@ function restaurarDados(d){
   onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();
   onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();
   onMediacaoChange();onRemaxChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
-  onOnusChange();onLUChange();onCertEnergeticoChange();
+  onOnusChange();onCasaProntaChange();onLUChange();onCertEnergeticoChange();
   // Restaurar estado civil de cada outorgante (mostra/esconde cônjuge)
   document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{
     const id=el.id.replace('-estado-civil','');
@@ -1737,7 +1771,7 @@ function restaurarDadosCompleto(d){
   onTipoPredioChange();onDistrateToggle();onDistrateTipoChange();
   onEntradaChange();onEntradaMeioChange();onPagamentoRestanteChange();
   onMediacaoChange();updateDataExtenso();onPrecoChange();onEntAutenticadoraChange();
-  onOnusChange();onLUChange();onCertEnergeticoChange();onCondominioChange();
+  onOnusChange();onCasaProntaChange();onLUChange();onCertEnergeticoChange();onCondominioChange();
   document.querySelectorAll('[id$="-estado-civil"]').forEach(el=>{
     const id=el.id.replace('-estado-civil','');onECChange(id);
   });
@@ -1977,6 +2011,25 @@ function recolherDadosContrato(){
     ?'--- Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.'
     :'';
 
+  // Casa Pronta — direitos de preferência (Lei 83/2019 art. 37.º/3 + Lei 89/2021 art. 7.º)
+  let TXT_CasaPronta_Bloco='',CP_Ini='',CP_Numero='',CP_Meio='',CP_Camara='',CP_Fim='';
+  if(document.getElementById('toggle-casa-pronta')?.checked){
+    const camaraCP=v('cp-camara');
+    const pronunciaCP=v('cp-pronuncia');
+    CP_Ini=`--- Foi requerido para efeitos dos direitos de preferência nos termos do número 3 do artigo 37º da Lei 83/2019, de 3 de setembro (Lei De Bases Da Habitação), conjugado com o art.º 7º da Lei 89/2021, de 03 de novembro, com o número `;
+    CP_Numero=v('cp-numero');
+    CP_Camara=camaraCP;
+    const cpComum=`, disponibilizado em ${fmtDataPT(v('cp-data'))} através do sítio www.casapronta.pt, onde o Instituto da Habitação e da Reabilitação Urbana (IHRU), o Património Cultural, I. P., a ESTAMO – Participações Imobiliárias `;
+    if(pronunciaCP==='sim'){
+      CP_Meio=cpComum+`e Câmara Municipal de "`;
+      CP_Fim=`" não pretende exercer o direito que legalmente lhe assiste na preferência de compra sobre o imóvel;`;
+    }else{
+      CP_Meio=cpComum+`e a Câmara Municipal de "`;
+      CP_Fim=`" nada disseram sobre o direito que legalmente lhe assiste na preferência de compra sobre o imóvel.`;
+    }
+    TXT_CasaPronta_Bloco=`${CP_Ini}${CP_Numero}${CP_Meio}${CP_Camara}${CP_Fim}`;
+  }
+
   // Distrate
   let TXTDistrate='';
   if(chk('toggle-distrate')){
@@ -2122,6 +2175,9 @@ function recolherDadosContrato(){
     TXT_TA_LU,TXTImpostos,TXTAdvert_Condominio,
     DtoSobrePredio,TXT_Fracao,Descricao_Predio,
     TXT_Predio_Misto,
+    TXT_CasaPronta_Bloco,CP_Ini,CP_Numero,CP_Meio,CP_Camara,CP_Fim,
+    Pedido_CasaPronta:v('cp-numero'),
+    Data_CasaPronta:fmtDataPT(v('cp-data')),
     TXT_Identificacao_Predios,Predios,
     Localizacao_Predio:isFracao?v('localizacao-predio'):(p1.localizacao||''),
     Conservatoria:isFracao?v('conservatoria'):(p1.conservatoria||''),
