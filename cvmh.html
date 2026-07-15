@@ -3508,13 +3508,14 @@ function gerarSlotsOutorgante(o) {
     };
   }
   if (o.estadoCivil === 'casado' && o.conjugeOutorgante !== 'sim' && o.conjugeNome) {
-    // Cônjuge não outorgante — identificação mínima do cônjuge (nome + NIF)
+    // Cônjuge não outorgante — nome, naturalidade e NIF
+    const natConj = o.conjugeNaturalidade ? `, natural de ${o.conjugeNaturalidade}` : '';
     const nifConj = o.conjugeNIF ? `, número de identificação fiscal ${o.conjugeNIF}` : '';
     return {
       nome: o.nome,
       meio: `${idBase}, casad${g?'a':'o'} sob o regime da ${regimenTexto(o.regime)} com `,
       conjNome: o.conjugeNome,
-      fim: `${nifConj}, residente em ${o.morada};`
+      fim: `${natConj}${nifConj}, residente em ${o.morada};`
     };
   }
   return {nome:o.nome, meio:`${idBase}, ${ec}, residente${g?'':'(s)'} em ${o.morada};`, conjNome:'', fim:''};

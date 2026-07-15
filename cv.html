@@ -1893,8 +1893,8 @@ function textoOutorgante(o){
   const regime=regimenMap[o.regime]||o.regime;
   let txt=`${o.nome}, natural de ${o.naturalidade}, portador${g?'a':''} do ${o.tipoDoc} emitido pela República Portuguesa com o número ${o.numDoc}, válido até ${o.valDoc}, e número de identificação fiscal ${o.nif}`;
   if(o.estadoCivil==='casado'&&o.conjOutorgante!=='sim'&&o.conjNome){
-    // Cônjuge não outorgante — identificação mínima (nome + NIF)
-    txt+=`, ${g?'casada':'casado'} no regime de ${regime} com ${o.conjNome}${o.conjNif?`, NIF ${o.conjNif}`:''}, residente em ${o.morada}`;
+    // Cônjuge não outorgante — nome, naturalidade e NIF
+    txt+=`, ${g?'casada':'casado'} no regime de ${regime} com ${o.conjNome}${o.conjNaturalidade?`, natural de ${o.conjNaturalidade}`:''}${o.conjNif?`, NIF ${o.conjNif}`:''}, residente em ${o.morada}`;
     return txt;
   }
   if(o.estadoCivil==='casado'&&o.conjOutorgante==='sim'&&o.conjProprietario!=='nao'){
