@@ -595,6 +595,7 @@ tbody tr:hover td{background:#FAFAF8}
               <button class="filter-chip" style="color:var(--green);border-color:var(--green)" onclick="filtrarRegistosPagamento('Pago',this)">Pago</button>
               <button class="filter-chip" style="color:var(--red);border-color:var(--red)" onclick="filtrarRegistosPagamento('Não pago',this)">Não pago</button>
               <button class="btn-limpar-filtros" data-limpar-filtros="reg-search,reg-f-predio,reg-f-conserv,reg-f-apregisto,reg-f-numpedido,reg-f-numprocesso,reg-f-estado|#screen-registo .filter-row .filter-chip" onclick="limparFiltrosRegistos()">✕ Limpar filtros</button>
+              <button class="filter-chip" style="color:var(--accent);border-color:var(--accent);font-weight:600" onclick="abrirConferenciaCGD()">⚖ Conferir listagem CGD</button>
             </div>
             <div id="reg-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
             <div id="reg-list" style="display:none;overflow-y:auto;flex:1"></div>
@@ -909,6 +910,20 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
         <div id="mat-loading" class="loading-overlay" style="display:none"><div class="spinner"></div><div class="loading-text">A carregar material...</div></div>
         <div id="mat-list"></div>
+      </div>
+
+      <!-- MODAL CONFERÊNCIA LISTAGEM CGD -->
+      <div class="modal-overlay" id="modal-conferencia-cgd">
+        <div class="modal-box" style="max-width:760px;width:95%;max-height:88vh;overflow-y:auto">
+          <div class="modal-box-title">Conferir listagem de processos a pagamento (CGD CH)</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:.6rem">Cola abaixo a listagem do email da Costa Freitas (podes colar várias listagens de meses diferentes de uma vez). A ferramenta compara os números de processo com o registo de escrituras e diz-te o que está por assinalar como pago.</div>
+          <textarea class="form-textarea" id="conf-cgd-texto" style="min-height:140px;font-family:'DM Mono',monospace;font-size:11px" placeholder="798364/2026  92&#10;2026026244-1-F84974  110&#10;..."></textarea>
+          <div class="modal-actions" style="margin-top:.6rem">
+            <button class="btn" onclick="document.getElementById('modal-conferencia-cgd').classList.remove('show')">Fechar</button>
+            <button class="btn btn-primary" onclick="conferirListagemCGD()">Conferir</button>
+          </div>
+          <div id="conf-cgd-resultado" style="margin-top:1rem"></div>
+        </div>
       </div>
 
       <!-- MODAL MATERIAL DE APOIO -->
@@ -2886,6 +2901,64 @@ function nav(id,el){
   if(id==='servicos')servicosInit();
   if(id==='relatorios')carregarRelatorios();
   if(id==='calendario'){carregarCalendario();carregarDashboard();carregarLembretes();}
+}
+
+// ─── CONFERÊNCIA DE LISTAGENS CGD (processos a pagamento) ─────────────────────
+let confCGDPendentes=[];
+function abrirConferenciaCGD(){
+  document.getElementById('conf-cgd-resultado').innerHTML='';
+  document.getElementById('modal-conferencia-cgd').classList.add('show');
+}
+function normProcCGD(s){return (s||'').toUpperCase().replace(/[^0-9F]/g,'');}
+function conferirListagemCGD(){
+  const txt=document.getElementById('conf-cgd-texto').value||'';
+  const out=document.getElementById('conf-cgd-resultado');
+  // Formatos aceites: 123456/2026 e 2026xxxxxx-x-Fxxxxx (com ou sem valor à frente)
+  const encontrados=[...txt.matchAll(/((?:\d{6,7}\s*\/\s*20\d\d)|(?:20\d{8}-\d-F\d{5}))(?:\s+(\d{2,3})\b)?/g)]
+    .map(m=>({proc:m[1].replace(/\s/g,''),valor:m[2]?parseInt(m[2]):null}));
+  // Remover duplicados dentro do texto colado
+  const vistos=new Set();const lista=[];
+  for(const e of encontrados){const n=normProcCGD(e.proc);if(!vistos.has(n)){vistos.add(n);lista.push({...e,norm:n});}}
+  if(!lista.length){out.innerHTML='<div style="color:var(--red);font-size:12.5px">Não encontrei números de processo no texto colado. Confirma que colaste a listagem (formatos: 123456/2026 ou 2026xxxxxx-x-Fxxxxx).</div>';return;}
+  if(!todosRegistos.length){out.innerHTML='<div style="color:var(--red);font-size:12.5px">O registo de escrituras ainda não está carregado — abre primeiro o separador "Registo de escrituras" e volta a tentar.</div>';return;}
+  // Indexar registos por processo normalizado
+  const regs=todosRegistos.map(r=>({r,norm:normProcCGD(r[F.numProcesso]||'')})).filter(x=>x.norm.length>=8);
+  const casa=p=>regs.filter(x=>x.norm===p.norm||x.norm.includes(p.norm)||p.norm.includes(x.norm));
+  const jaPagos=[],porMarcar=[],semRegisto=[];
+  for(const p of lista){
+    const matches=casa(p);
+    if(!matches.length){semRegisto.push(p);continue;}
+    const naoPagos=matches.filter(x=>(x.r[F.pago]||'')!=='Pago');
+    if(naoPagos.length)porMarcar.push({p,itens:naoPagos.map(x=>x.r)});
+    else jaPagos.push(p);
+  }
+  confCGDPendentes=porMarcar.flatMap(x=>x.itens.map(r=>r.id));
+  const totalListagem=lista.reduce((s,p)=>s+(p.valor||0),0);
+  const linha=(cor,icone,titulo,corpo)=>`<div style="border:1px solid var(--border);border-left:3px solid ${cor};border-radius:7px;padding:.6rem .8rem;margin-bottom:.5rem;font-size:12px"><b>${icone} ${titulo}</b>${corpo}</div>`;
+  let html='';
+  html+=`<div style="font-size:12.5px;margin-bottom:.6rem"><b>${lista.length}</b> processos na listagem${totalListagem?` · <b>${totalListagem.toLocaleString('pt-PT')} €</b> (sem IVA)`:''} · comparados com <b>${regs.length}</b> escrituras com nº de processo no portal.</div>`;
+  html+=linha('var(--green)','✅',`${jaPagos.length} já marcados como pagos`,jaPagos.length?'':'<div style="color:var(--text-muted)">—</div>');
+  html+=linha('var(--amber,#d97706)','⚠️',`${porMarcar.length} na listagem mas "Não pago" no portal`,
+    porMarcar.length?'<div style="margin-top:.4rem;font-family:\'DM Mono\',monospace;font-size:11px">'+porMarcar.map(x=>`• ${x.p.proc}${x.p.valor?` (${x.p.valor} €)`:''} — ${x.itens.map(r=>escHtml(r.Title||r[F.nome]||('item '+r.id))).join(', ')}`).join('<br>')+'</div>'+
+    `<div style="margin-top:.6rem"><button class="btn btn-sm btn-primary" onclick="marcarConfCGDPagos()">✓ Marcar estes ${confCGDPendentes.length} registos como Pagos</button></div>`:'<div style="color:var(--text-muted)">Nada por assinalar — está tudo em dia 🎉</div>');
+  html+=linha('var(--red)','❓',`${semRegisto.length} na listagem sem escritura correspondente no portal`,
+    semRegisto.length?'<div style="margin-top:.4rem;font-family:\'DM Mono\',monospace;font-size:11px">'+semRegisto.map(p=>`• ${p.proc}${p.valor?` (${p.valor} €)`:''}`).join('<br>')+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:.3rem">Ou o nº de processo não foi preenchido no registo, ou está escrito de forma diferente, ou a escritura não foi registada no portal.</div>':'<div style="color:var(--text-muted)">—</div>');
+  out.innerHTML=html;
+}
+async function marcarConfCGDPagos(){
+  if(!confCGDPendentes.length)return;
+  if(!confirm(`Marcar ${confCGDPendentes.length} registos como "Pago"?`))return;
+  let ok=0,erros=0;
+  for(const id of confCGDPendentes){
+    try{await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${id}/fields`,{[F.pago]:'Pago'});ok++;}
+    catch(e){erros++;}
+  }
+  showToast(`${ok} registos marcados como pagos${erros?` · ${erros} erros`:''}`,erros?'':'success');
+  // Atualizar cache local e re-conferir
+  todosRegistos.forEach(r=>{if(confCGDPendentes.includes(r.id))r[F.pago]='Pago';});
+  confCGDPendentes=[];
+  conferirListagemCGD();
+  if(typeof pesquisarRegistos==='function')pesquisarRegistos();
 }
 
 // ─── MATERIAL DE APOIO ────────────────────────────────────────────────────────
