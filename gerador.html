@@ -97,6 +97,19 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 .pasta-dd div{padding:7px 11px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace}
 .pasta-dd div:hover{background:var(--accent-light)}
 
+/* ANOTAÇÕES DE VALIDAÇÃO */
+.mark-hl{background:#FFE58A;border-radius:2px}
+.bloco.com-nota{border-left:3px solid #E8C440;margin-left:calc(-.6rem - 3px)}
+.nota-bloco{font-family:'DM Sans';font-size:11.5px;background:#FFF7DB;border:1px solid #E8D5B5;border-radius:7px;padding:.4rem .6rem .4rem 1.6rem;margin:.25rem 0 .35rem;color:#7A5C10;position:relative;line-height:1.45}
+.nota-bloco::before{content:'📌';position:absolute;left:.45rem;top:.35rem;font-size:11px}
+.nota-texto{outline:none;min-height:1em;white-space:pre-wrap}
+.nota-texto:empty::before{content:'Escreve a nota de validação...';color:#C4A94F}
+.nota-remover{position:absolute;right:.35rem;top:.25rem;border:none;background:none;color:#B08D2A;cursor:pointer;font-size:12px}
+.nota-remover:hover{color:var(--red)}
+.sel-toolbar{position:fixed;display:none;gap:2px;background:var(--text);border-radius:8px;padding:3px;box-shadow:var(--shadow-md);z-index:500}
+.sel-toolbar button{font-family:'DM Sans';font-size:11.5px;border:none;background:none;color:#fff;padding:4px 9px;border-radius:6px;cursor:pointer}
+.sel-toolbar button:hover{background:rgba(255,255,255,.18)}
+
 /* TOAST */
 .toast{position:fixed;bottom:1.2rem;right:1.2rem;background:var(--text);color:#fff;font-size:12.5px;padding:.7rem 1.1rem;border-radius:9px;box-shadow:var(--shadow-md);z-index:999;opacity:0;transform:translateY(8px);transition:.25s;max-width:380px}
 .toast.show{opacity:1;transform:none}
@@ -302,6 +315,11 @@ documentos fiscais — DUC de IMT e Imposto do Selo.</textarea></div>
 <div class="pane-doc"><div class="folha" id="folha"></div></div>
 </div>
 
+<div class="sel-toolbar" id="sel-toolbar">
+  <button onmousedown="event.preventDefault();aplicarMarca('hl')">🖍 Marcador</button>
+  <button onmousedown="event.preventDefault();aplicarMarca('bold')"><b>B</b> Negrito</button>
+  <button onmousedown="event.preventDefault();criarNotaSel()">📌 Nota</button>
+</div>
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
@@ -537,33 +555,93 @@ function compor(){
 }
 
 /* ═══════════ RENDER + EDIÇÃO POR BLOCO ═══════════ */
-let manuais={};
+let manuais={},notas={};
+function sanitizarHTML(html){
+  const t=document.createElement('div');t.innerHTML=html;
+  t.querySelectorAll('script,style,iframe,object').forEach(e=>e.remove());
+  t.querySelectorAll('*').forEach(e=>{[...e.attributes].forEach(a=>{if(/^on/i.test(a.name)||a.name==='href'&&/^javascript:/i.test(a.value))e.removeAttribute(a.name);});});
+  return t.innerHTML;
+}
+function manualHTML(id){
+  const m=manuais[id];
+  if(m===undefined)return undefined;
+  return typeof m==='string'?esc(m):sanitizarHTML(m.html||'');
+}
 function render(){
   const{termo,contrato}=compor();
   const folha=document.getElementById('folha');
   const blocoHTML=b=>{
     const manual=manuais[b.id]!==undefined;
-    const texto=manual?manuais[b.id]:b.X;
-    return`<div class="bloco${manual?' manual':''}" data-id="${b.id}">
-      <div class="b-ferr">${manual?`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Repor texto automático">↺ repor</button>`:''}</div>
+    const conteudo=manual?manualHTML(b.id):esc(b.X);
+    const nota=notas[b.id];
+    return`<div class="bloco${manual?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
+      <div class="b-ferr">${manual?`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Repor texto automático">↺ repor</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}</div>
       ${b.T?`<div class="b-titulo${b.id.endsWith('-cab')?'" style="text-align:center':''}">${esc(b.T)}</div>`:''}
-      ${(texto||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="plaintext-only" data-id="${b.id}">${esc(texto)}</div>`:''}
+      ${nota!==undefined?`<div class="nota-bloco"><button class="nota-remover" onclick="removerNota('${b.id}')" title="Remover nota">✕</button><div class="nota-texto" contenteditable="plaintext-only" data-nota="${b.id}">${esc(nota)}</div></div>`:''}
+      ${(b.X||manual||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="true" data-id="${b.id}">${conteudo}</div>`:''}
     </div>`;
   };
   folha.innerHTML=termo.map(blocoHTML).join('')
     +`<hr class="quebra-pagina">`
     +contrato.map(blocoHTML).join('');
   folha.querySelectorAll('.b-texto').forEach(el=>{
-    el.addEventListener('input',()=>{
-      const id=el.dataset.id;
-      manuais[id]=el.innerText;
-      el.closest('.bloco').classList.add('manual');
-      const f=el.closest('.bloco').querySelector('.b-ferr');
-      if(f&&!f.querySelector('.b-badge'))f.innerHTML=`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${id}')">↺ repor</button>`;
+    el.addEventListener('input',()=>marcarManual(el));
+    el.addEventListener('paste',e=>{
+      e.preventDefault();
+      document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text'));
     });
   });
+  folha.querySelectorAll('.nota-texto').forEach(el=>{
+    el.addEventListener('input',()=>{notas[el.dataset.nota]=el.innerText;});
+  });
+}
+function marcarManual(el){
+  const id=el.dataset.id;
+  manuais[id]={html:el.innerHTML};
+  const bloco=el.closest('.bloco');
+  bloco.classList.add('manual');
+  const f=bloco.querySelector('.b-ferr');
+  if(f&&!f.querySelector('.b-badge'))f.insertAdjacentHTML('afterbegin',`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${id}')">↺ repor</button>`);
 }
 function reporBloco(id){delete manuais[id];render();}
+function criarNota(id){notas[id]='';render();const n=document.querySelector(`.nota-texto[data-nota="${id}"]`);if(n)n.focus();}
+function removerNota(id){delete notas[id];render();}
+
+/* ── barra de seleção: marcador / negrito / nota ── */
+let selBlocoAtual=null;
+document.addEventListener('selectionchange',()=>{
+  const tb=document.getElementById('sel-toolbar');
+  const sel=window.getSelection();
+  if(!sel.rangeCount||sel.isCollapsed){tb.style.display='none';selBlocoAtual=null;return;}
+  const range=sel.getRangeAt(0);
+  const el=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
+  const btexto=el.closest?el.closest('.b-texto'):null;
+  if(!btexto){tb.style.display='none';selBlocoAtual=null;return;}
+  selBlocoAtual=btexto;
+  const r=range.getBoundingClientRect();
+  tb.style.display='flex';
+  tb.style.left=Math.max(8,r.left+r.width/2-90)+'px';
+  tb.style.top=Math.max(8,r.top-38)+'px';
+});
+function aplicarMarca(tipo){
+  if(!selBlocoAtual)return;
+  const el=selBlocoAtual;
+  el.focus();
+  if(tipo==='bold')document.execCommand('bold');
+  else{document.execCommand('styleWithCSS',false,true);document.execCommand('hiliteColor',false,'#FFE58A');}
+  marcarManual(el);
+  document.getElementById('sel-toolbar').style.display='none';
+}
+function criarNotaSel(){
+  if(!selBlocoAtual)return;
+  const id=selBlocoAtual.dataset.id;
+  const sel=window.getSelection();
+  const trecho=sel&&!sel.isCollapsed?sel.toString().trim().slice(0,80):'';
+  if(notas[id]===undefined)notas[id]=trecho?`Validar: «${trecho}»`:'';
+  render();
+  const n=document.querySelector(`.nota-texto[data-nota="${id}"]`);
+  if(n){n.focus();const r=document.createRange();r.selectNodeContents(n);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}
+}
 function atualizar(){
   // visibilidade condicional
   document.getElementById('g-onus-txt').style.display=chk('t-onus-livre')?'none':'block';
@@ -639,7 +717,7 @@ function estadoCompleto(){
     if(!el.id||el.id==='pasta-search')return;
     campos[el.id]=el.type==='checkbox'?el.checked:el.value;
   });
-  return{tipo:'cvleasing',campos,vendedores:lerVendedores(),cheques:lerCheques(),manuais};
+  return{tipo:'cvleasing',campos,vendedores:lerVendedores(),cheques:lerCheques(),manuais,notas};
 }
 function restaurarEstado(d){
   if(d.vendedores&&d.vendedores.length){document.getElementById('vendedores-container').innerHTML='';vendCnt=0;d.vendedores.forEach(x=>addVendedor(x));}
@@ -649,6 +727,7 @@ function restaurarEstado(d){
     if(el.type==='checkbox')el.checked=val;else el.value=val;
   });
   manuais=d.manuais||{};
+  notas=d.notas||{};
   atualizar();
 }
 async function guardarRascunho(){
@@ -676,13 +755,37 @@ async function carregarRascunho(){
 }
 
 /* ═══════════ GERAR WORD (template-casca) ═══════════ */
+function htmlParaTexto(html){
+  const t=document.createElement('div');
+  t.innerHTML=sanitizarHTML(html).replace(/<br\s*\/?>/gi,'\n').replace(/<\/div>\s*<div[^>]*>/gi,'\n');
+  return t.innerText.replace(/\u00a0/g,' ');
+}
 function blocosFinais(){
   const{termo,contrato}=compor();
-  const aplicar=b=>({T:b.T,X:manuais[b.id]!==undefined?manuais[b.id]:b.X});
+  const aplicar=b=>{
+    const m=manuais[b.id];
+    const X=m===undefined?b.X:(typeof m==='string'?m:htmlParaTexto(m.html||''));
+    return{T:b.T,X};
+  };
   return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar)};
+}
+function pendentesValidacao(){
+  const nNotas=Object.keys(notas).length;
+  let nMarcas=0;
+  document.querySelectorAll('.b-texto').forEach(el=>{
+    if(el.querySelector('[style*="background"],b,strong,.mark-hl'))nMarcas++;
+  });
+  return{nNotas,nMarcas};
 }
 async function gerarWord(){
   try{
+    const p=pendentesValidacao();
+    if(p.nNotas||p.nMarcas){
+      const partes=[];
+      if(p.nNotas)partes.push(`${p.nNotas} nota${p.nNotas>1?'s':''} de validação`);
+      if(p.nMarcas)partes.push(`${p.nMarcas} bloco${p.nMarcas>1?'s':''} com texto marcado/negrito`);
+      if(!confirm(`Atenção: o contrato ainda tem ${partes.join(' e ')} por resolver.\n\nAs notas e as marcas NÃO saem no Word — são só de trabalho.\n\nGerar mesmo assim?`))return;
+    }
     if(typeof PizZip==='undefined'||typeof docxtemplater==='undefined')throw new Error('bibliotecas de geração não carregaram — verifica a ligação à internet');
     await renovarToken();
     const dr=await graphFetch(`${GRAPH_BASE}/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives`);
