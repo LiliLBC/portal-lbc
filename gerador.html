@@ -343,6 +343,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group"><label class="form-label">CC válido até</label><input class="form-input" id="f-locrep-ccval"></div>
         <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-locrep-nif"></div>
         <div class="form-group"><label class="form-label">Qualidade</label><input class="form-input" id="f-locrep-qual" value="gerente"></div>
+        <div class="form-group"><label class="form-label">Certidão permanente (código)</label><input class="form-input" id="f-loc-certidao" placeholder="Ex: 1234-5678-9012"></div>
+        <div class="form-group"><label class="form-label">Certidão válida até</label><input class="form-input" id="f-loc-certval"></div>
+        <div class="form-group"><label class="form-label">RCBE (código de acesso)</label><input class="form-input" id="f-loc-rcbe"></div>
       </div>
     </div>
 
@@ -841,6 +844,12 @@ function compor(){
   anexo.push({id:'a-cab',T:'RECONHECIMENTO DE ASSINATURAS',X:''});
   const rep=`${v('f-locrep-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}${v('f-locrep-nif')?`, e número de identificação fiscal ${v('f-locrep-nif')}`:''}`;
   anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de ${p1||'…'} e de ${p2||'…'}, feitas pelo próprio punho, na qualidade de Procuradores e em representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}; e de ${locParticular?`${v('f-loc-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}, e número de identificação fiscal ${v('f-loc-nipc')||'…'}, feita pelo próprio punho, na qualidade de Locatário`:`${rep}, feita pelo próprio punho, na qualidade de ${v('f-locrep-qual')||'gerente'} e em representação de ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`}, apostas no «CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}», relativo ao Imóvel atrás identificado, que tem a Licença de Utilização (alvará) n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}.`});
+  const verifs=[];
+  if(!locParticular){
+    verifs.push(`a qualidade e os poderes de representação da locatária pela consulta da certidão permanente com o código de acesso ${v('f-loc-certidao')||'…'}${v('f-loc-certval')?`, válida até ${v('f-loc-certval')}`:''}`);
+    verifs.push(`a declaração do Registo Central do Beneficiário Efetivo da locatária, mediante o código de acesso RCBE ${v('f-loc-rcbe')||'…'}`);
+  }
+  anexo.push({id:'a-verif',T:'',X:`Verifiquei ainda${verifs.length?`: ${verifs.join('; e ')}`:' a identidade dos signatários pela exibição dos respetivos documentos de identificação'}, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`});
   anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
   return{termo,contrato,anexo};
 }
