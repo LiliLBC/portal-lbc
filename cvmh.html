@@ -3007,6 +3007,12 @@ function recolherDadosContrato() {
   const VPT_Ano_Legacy = [...new Set(m1.map(m => m.ano).filter(Boolean))].join(' e ');
 
   // ── Menção obrigatória — prédio misto (arts. 1376.º e 1377.º do Código Civil)
+  // ── Objeto da hipoteca: sobre o DIREITO quando ≠ propriedade plena (evita suprimentos) ──
+  const _dto=v('direito-predio');
+  const _dtoNome=_dto==='superficie'?'o direito de superfície que incide sobre o referido imóvel':_dto==='usufruto'?'o usufruto que incide sobre o referido imóvel':'';
+  const Objeto_Hipoteca=_dtoNome||'o referido imóvel';
+  const Objeto_Hipotecado=_dtoNome?_dtoNome.replace(' referido ',' ')+', hipotecado,':'o imóvel hipotecado';
+
   const TXT_Predio_Misto = tipoPredio === 'misto'
     ? '--- Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.'
     : '';
@@ -3139,6 +3145,7 @@ function recolherDadosContrato() {
     DtoSobrePredio,
     TXT_Fracao,
     TXT_Predio_Misto,
+    Objeto_Hipoteca,Objeto_Hipotecado,
     Descricao_Predio: isFracao ? v('descricao-predio') : (p1.descricao || ''),
     Localizacao_Predio: isFracao ? v('localizacao-predio') : (p1.localizacao || ''),
     Conservatoria: isFracao ? v('conservatoria') : (p1.conservatoria || ''),
@@ -3508,14 +3515,13 @@ function gerarSlotsOutorgante(o) {
     };
   }
   if (o.estadoCivil === 'casado' && o.conjugeOutorgante !== 'sim' && o.conjugeNome) {
-    // Cônjuge não outorgante — nome, naturalidade e NIF
-    const natConj = o.conjugeNaturalidade ? `, natural de ${o.conjugeNaturalidade}` : '';
+    // Cônjuge não outorgante — identificação mínima do cônjuge (nome + NIF)
     const nifConj = o.conjugeNIF ? `, número de identificação fiscal ${o.conjugeNIF}` : '';
     return {
       nome: o.nome,
       meio: `${idBase}, casad${g?'a':'o'} sob o regime da ${regimenTexto(o.regime)} com `,
       conjNome: o.conjugeNome,
-      fim: `${natConj}${nifConj}, residente em ${o.morada};`
+      fim: `${nifConj}, residente em ${o.morada};`
     };
   }
   return {nome:o.nome, meio:`${idBase}, ${ec}, residente${g?'':'(s)'} em ${o.morada};`, conjNome:'', fim:''};
