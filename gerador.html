@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerador de Contratos — LBC</title>
+<title>Gerador CT Compra e Venda Imóveis — LBC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
@@ -21,7 +21,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .page-title{font-size:14px;font-weight:600;white-space:nowrap}
 .page-sub{font-size:11px;color:var(--text-faint);white-space:nowrap}
 .topbar-actions{display:flex;gap:.5rem;align-items:center;flex-shrink:0}
-select.tipo-contrato{font-family:'DM Sans';font-size:12.5px;font-weight:600;color:var(--accent-dark);background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;padding:5px 10px;cursor:pointer}
+span.tipo-contrato{display:inline-block}
+select.tipo-contrato,span.tipo-contrato{font-family:'DM Sans';font-size:12.5px;font-weight:600;color:var(--accent-dark);background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;padding:5px 10px;cursor:pointer}
 
 /* LAYOUT DIVIDIDO */
 .split{flex:1;display:flex;min-height:0}
@@ -100,6 +101,10 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 /* ANOTAÇÕES DE VALIDAÇÃO */
 .mark-hl{background:#FFE58A;border-radius:2px}
 .bloco.com-nota{border-left:3px solid #E8C440;margin-left:calc(-.6rem - 3px)}
+.bloco.inserido{background:#F3F7F3;outline:1px solid #CBDFCB}
+.bloco.inserido .b-titulo:empty:before{content:'(título / numeração — escreve aqui)';color:#9AB09A;font-weight:400}
+.bloco.inserido .b-texto:empty:before{content:'(texto do bloco)';color:#9AB09A}
+.b-badge-ins{background:#DCEBDC;color:#3A5A3A;font-size:10px;padding:1px 5px;border-radius:3px;font-weight:600}
 .nota-bloco{font-family:'DM Sans';font-size:11.5px;background:#FFF7DB;border:1px solid #E8D5B5;border-radius:7px;padding:.4rem .6rem .4rem 1.6rem;margin:.25rem 0 .35rem;color:#7A5C10;position:relative;line-height:1.45}
 .nota-bloco::before{content:'📌';position:absolute;left:.45rem;top:.35rem;font-size:11px}
 .nota-texto{outline:none;min-height:1em;white-space:pre-wrap}
@@ -111,6 +116,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 .sel-toolbar button:hover{background:rgba(255,255,255,.18)}
 
 /* TOAST */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:14px;padding:1.75rem;max-width:480px;width:90%;box-shadow:var(--shadow-md);transform:translateY(8px);transition:transform .2s}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:.35rem}
+.modal-actions{display:flex;gap:.5rem;margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid var(--border)}
 .toast{position:fixed;bottom:1.2rem;right:1.2rem;background:var(--text);color:#fff;font-size:12.5px;padding:.7rem 1.1rem;border-radius:9px;box-shadow:var(--shadow-md);z-index:999;opacity:0;transform:translateY(8px);transition:.25s;max-width:380px}
 .toast.show{opacity:1;transform:none}
 .toast.success{background:var(--green)}
@@ -130,16 +141,58 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 <div class="topbar">
   <div class="topbar-left">
     <a class="back-btn" href="index.html">‹ Portal</a>
-    <span class="page-title">Gerador de Contratos</span>
-    <select class="tipo-contrato" id="tipo-contrato">
-      <option value="cvleasing">CV + Locação Financeira — CGD</option>
-    </select>
+    <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
+    <span class="tipo-contrato" id="tipo-badge">—</span>
     <span class="page-sub">piloto · v2026-07-27.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
     <button class="btn btn-sm" onclick="guardarRascunho()">💾 Guardar rascunho</button>
+    <button class="btn btn-sm" onclick="abrirModalComunicacao()" title="Enviar email ou WhatsApp ao cliente">✉ Contactar cliente</button>
     <button class="btn btn-sm btn-success" onclick="gerarWord()">⬇ Gerar Word</button>
+  </div>
+</div>
+
+<!-- MODAL COMUNICAÇÃO (porte do cvmh.html) -->
+<div class="modal-overlay" id="modal-comunicacao">
+  <div class="modal" style="max-width:520px;width:95%">
+    <div class="modal-title">Contactar cliente</div>
+    <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:.75rem">
+      <button id="com-tab-email" onclick="comSetTab('email')" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer">✉ Email (Outlook)</button>
+      <button id="com-tab-whatsapp" onclick="comSetTab('whatsapp')" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer">💬 WhatsApp</button>
+    </div>
+    <div id="com-panel-email">
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Para (email do cliente)</label>
+        <input type="email" class="form-input" id="com-email-para" placeholder="cliente@email.com">
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Assunto</label>
+        <input type="text" class="form-input" id="com-email-assunto">
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Mensagem</label>
+        <textarea class="form-input" id="com-email-corpo" rows="8" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.5"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="fecharModalComunicacao()" style="flex:1">Cancelar</button>
+        <button class="btn btn-primary" onclick="enviarEmail()" style="flex:2">Abrir no Outlook</button>
+      </div>
+    </div>
+    <div id="com-panel-whatsapp" style="display:none">
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">N.º de telemóvel (com indicativo)</label>
+        <input type="tel" class="form-input" id="com-wa-telefone" placeholder="Ex: 351912345678">
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem">
+        <label class="form-label">Mensagem</label>
+        <textarea class="form-input" id="com-wa-mensagem" rows="7" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.5"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="fecharModalComunicacao()" style="flex:1">Cancelar</button>
+        <button class="btn btn-primary" onclick="abrirWhatsApp()" style="flex:2;background:#25D366;border-color:#25D366">Abrir no WhatsApp</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -160,6 +213,24 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
       <button class="btn btn-sm" onclick="carregarPastasSP()" type="button">↺</button>
       <button class="btn btn-sm btn-primary" id="btn-carregar-rascunho" onclick="carregarRascunho()" type="button" disabled>📄 Carregar rascunho</button>
+    </div>
+  </div>
+
+  <!-- ◆ FUNIL — o tipo de ato deduz-se dos intervenientes -->
+  <div class="section-card" style="border-color:var(--accent)">
+    <div class="section-card-header"><div class="section-num">◆</div><div><div class="section-name">Tipo de ato</div><div class="section-desc">Não se escolhe — deduz-se do que responderes aqui</div></div></div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Parte compradora <span>*</span></label>
+        <select class="form-select" id="f-compradora" onchange="atualizar()">
+          <option value="outorgantes">Particulares e/ou empresas (identificados abaixo)</option>
+          <option value="cgd">CAIXA GERAL DE DEPÓSITOS — locação financeira</option>
+        </select></div>
+      <div class="form-group" id="g-financiamento"><label class="form-label">Financiamento no mesmo ato</label>
+        <select class="form-select" id="f-financiamento" onchange="atualizar()">
+          <option value="nao">Não — só compra e venda</option>
+          <option value="sim">Sim — mútuo com hipoteca</option>
+        </select></div>
+      <div class="form-group form-full"><div id="funil-aviso" style="display:none;font-size:11.5px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20"></div></div>
     </div>
   </div>
 
@@ -188,8 +259,29 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <button class="add-btn" type="button" onclick="addVendedor()">+ Adicionar vendedor</button>
   </div>
 
+  <!-- ⚖ TRATO SUCESSIVO / HERANÇA (porte do cvmh.html) -->
+  <div class="section-card" id="card-trato-suc">
+    <div class="section-card-header">
+      <div class="section-num" style="background:var(--amber-light);color:var(--amber)">⚖</div>
+      <div style="flex:1"><div class="section-name">Trato Sucessivo / Herança</div>
+        <div class="section-desc">Venda por herdeiros — falecidos, habilitação e imposto do selo por óbito</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="t-trato-suc" onchange="onTratoSucChange()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="trato-suc-fields" style="display:none;margin-top:.75rem">
+      <div id="falecidos-container"></div>
+      <button class="add-btn" type="button" onclick="addFalecido()">+ Adicionar falecido</button>
+    </div>
+  </div>
+
+  <!-- ③ SEGUNDA — compradores (particulares/empresas) -->
+  <div class="section-card" id="card-compradores">
+    <div class="section-card-header"><div class="section-num">3</div><div><div class="section-name">Segunda Contratante</div><div class="section-desc">Parte compradora</div></div></div>
+    <div id="compradores-container"></div>
+    <button class="add-btn" type="button" onclick="addComprador()">+ Adicionar comprador</button>
+  </div>
+
   <!-- ③ SEGUNDA — CGD -->
-  <div class="section-card">
+  <div class="section-card" id="card-cgd">
     <div class="section-card-header"><div class="section-num">3</div><div><div class="section-name">Segunda Contratante — CGD</div><div class="section-desc">Compradora / locadora</div></div></div>
     <div class="cond-block">
       <div class="cond-block-title">Procurador 1</div>
@@ -324,7 +416,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
     </div>
 
-    <div class="cond-block">
+    <div class="cond-block" id="g-locatario">
       <div class="cond-block-title">Locatário (destino — locação financeira)</div>
       <div class="form-grid form-grid-2">
         <div class="form-group"><label class="form-label">Tipo de locatário</label>
@@ -470,14 +562,23 @@ function dataExtenso(iso){
 
 /* ═══════════ VENDEDORES DINÂMICOS ═══════════ */
 let vendCnt=0;
-function addVendedor(dados){
-  const c=document.getElementById('vendedores-container');
-  const idx=++vendCnt,id=`vend-${idx}`;
+/* ── MOTOR DE OUTORGANTES (tronco) ──
+   Um único motor, instanciado por PAPEL. O papel só muda o contentor, a etiqueta
+   e o prefixo dos ids; a lógica de pessoa singular/empresa, estado civil, regime,
+   cônjuge e procurador é rigorosamente a mesma para vendedores e compradores. */
+const PAPEIS={vend:{label:'Vendedor',cont:'vendedores-container'},comp:{label:'Comprador',cont:'compradores-container'}};
+let compCnt=0;
+function addVendedor(dados){return addOutorgante('vend',dados);}
+function addComprador(dados){return addOutorgante('comp',dados);}
+function addOutorgante(pref,dados){
+  const P=PAPEIS[pref];
+  const c=document.getElementById(P.cont);
+  const idx=(pref==='vend'?++vendCnt:++compCnt),id=`${pref}-${idx}`;
   const div=document.createElement('div');
-  div.className='outorgante-block vend-block';div.id=id;
+  div.className='outorgante-block '+pref+'-block';div.id=id;
   div.innerHTML=`
-    <div class="outorgante-header"><span class="outorgante-title vend-title">Vendedor</span>
-      ${idx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();renumVend();atualizar()">×</button>`:''}</div>
+    <div class="outorgante-header"><span class="outorgante-title ${pref}-title">${P.label}</span>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();renumOut('${pref}');atualizar()">×</button>`:''}</div>
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Tipo</label>
         <select class="form-select" id="${id}-tipo" onchange="onVendTipo('${id}');atualizar()">
@@ -548,7 +649,7 @@ function addVendedor(dados){
     if(!el)return;
     if(el.type==='checkbox')el.checked=!!v;else el.value=v;
   });
-  onVendTipo(id);onVendEC(id);renumVend();
+  onVendTipo(id);onVendEC(id);renumOut(pref);
 }
 function onVendTipo(id){
   const emp=document.getElementById(`${id}-tipo`).value==='empresa';
@@ -565,14 +666,18 @@ function onVendEC(id){
   const temproc=!!document.getElementById(`${id}-temproc`)?.checked;
   document.querySelectorAll(`.${id}-proc`).forEach(e=>e.style.display=temproc?'block':'none');
 }
-function renumVend(){
-  const bs=document.querySelectorAll('.vend-block');
-  bs.forEach((b,i)=>{const t=b.querySelector('.vend-title');if(t)t.textContent=bs.length>1?`Vendedor ${i+1}`:'Vendedor';});
+function renumOut(pref){
+  const P=PAPEIS[pref];
+  const bs=document.querySelectorAll(`.${pref}-block`);
+  bs.forEach((b,i)=>{const t=b.querySelector(`.${pref}-title`);if(t)t.textContent=bs.length>1?`${P.label} ${i+1}`:P.label;});
 }
-function lerVendedores(){
+function renumVend(){renumOut('vend');}
+function lerVendedores(){return lerOutorgantes('vend');}
+function lerCompradores(){return lerOutorgantes('comp');}
+function lerOutorgantes(pref){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   const gc=id=>!!document.getElementById(id)?.checked;
-  return[...document.querySelectorAll('.vend-block')].map(b=>{
+  return[...document.querySelectorAll(`.${pref}-block`)].map(b=>{
     const id=b.id;
     return{tipo:g(`${id}-tipo`)||'singular',genero:g(`${id}-genero`)||'M',nome:g(`${id}-nome`),ec:g(`${id}-ec`)||'solteiro',natural:g(`${id}-natural`),cc:g(`${id}-cc`),ccval:g(`${id}-ccval`),nif:g(`${id}-nif`),morada:g(`${id}-morada`),
       regime:g(`${id}-regime`),'conj-out':g(`${id}-conj-out`)||'sim','conj-nome':g(`${id}-conj-nome`),'conj-natural':g(`${id}-conj-natural`),'conj-nif':g(`${id}-conj-nif`),'conj-cc':g(`${id}-conj-cc`),'conj-ccval':g(`${id}-conj-ccval`),
@@ -587,6 +692,7 @@ function ecTexto(v){
 function idSingularBase(v){
   return`${v.nome||'…'}${v.natural?`, natural da ${v.natural}`:''}${v.cc?`, titular do Cartão de Cidadão n.º ${v.cc}`:''}${v.ccval?`, válido até ${v.ccval}`:''}${v.nif?`, e número de identificação fiscal ${v.nif}`:''}`;
 }
+function textoOutorgante(v){return textoVendedor(v);}
 function textoVendedor(v){
   let base;
   if(v.tipo==='empresa'){
@@ -607,6 +713,129 @@ function textoVendedor(v){
   }
   return base;
 }
+/* ═══════════ TRATO SUCESSIVO (porte do cvmh.html) ═══════════
+   Cláusula do tronco: aplica-se a qualquer compra e venda em que a parte
+   vendedora adquiriu por sucessão. Produz dois textos em sítios diferentes:
+   — legitimidade + imposto do selo por óbito  → TERMO DE AUTENTICAÇÃO
+   — narrativa do óbito e dos herdeiros        → CORPO DO CONTRATO           */
+let falecidoCnt=0;const herdeiroCnt={};
+function onTratoSucChange(){
+  const on=chk('t-trato-suc');
+  document.getElementById('trato-suc-fields').style.display=on?'block':'none';
+  if(on&&falecidoCnt===0)addFalecido();
+  atualizar();
+}
+function addFalecido(dados={}){
+  const idx=++falecidoCnt;
+  const div=document.createElement('div');
+  div.className='outorgante-block falecido-block';div.id=`falecido-${idx}`;div.style.marginBottom='1rem';
+  div.innerHTML=`
+    <div class="outorgante-header"><span class="outorgante-title">Falecido ${idx}</span>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="removerFalecido(${idx})">×</button>`:''}</div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Nome do falecido <span>*</span></label>
+        <input class="form-input" id="falecido-${idx}-nome" value="${dados.nome||''}" style="text-transform:uppercase"></div>
+      <div class="form-group"><label class="form-label">Data de falecimento <span>*</span></label>
+        <input type="date" class="form-input" id="falecido-${idx}-data-obito" value="${dados.dataObito||''}"></div>
+      <div class="form-group"><label class="form-label">Freguesia de óbito <span>*</span></label>
+        <input class="form-input" id="falecido-${idx}-freguesia" value="${dados.freguesia||''}" placeholder="Ex: Évora (Sé e São Pedro)"></div>
+    </div>
+    <div class="cond-block" style="margin-top:.5rem">
+      <div class="cond-block-title">Habilitação de herdeiros</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <select class="form-select" id="falecido-${idx}-hab-tipo" onchange="onHabTipoChange(${idx});atualizar()">
+            <option value="copia"${dados.habTipo==='copia'?' selected':''}>Cópia certificada (arquivo)</option>
+            <option value="codigo"${dados.habTipo==='codigo'?' selected':''}>Com código de acesso</option>
+            <option value="simplificado"${dados.habTipo==='simplificado'?' selected':''}>Procedimento Simplificado (conservatória)</option>
+          </select></div>
+        <div class="form-group"><label class="form-label">Data da habilitação <span>*</span></label>
+          <input type="date" class="form-input" id="falecido-${idx}-hab-data" value="${dados.habData||''}"></div>
+        <div class="form-group" id="falecido-${idx}-cod-group" style="display:none"><label class="form-label">Código de acesso</label>
+          <input class="form-input" id="falecido-${idx}-hab-codigo" value="${dados.habCodigo||''}"></div>
+        <div class="form-group" id="falecido-${idx}-copia-group" style="display:none"><label class="form-label">Referência da cópia</label>
+          <input class="form-input" id="falecido-${idx}-hab-copia" value="${dados.habCopia||''}"></div>
+        <div class="form-group" id="falecido-${idx}-simp-group" style="display:none"><label class="form-label">N.º do procedimento</label>
+          <input class="form-input" id="falecido-${idx}-hab-numero" value="${dados.habNumero||''}" placeholder="Ex: 1234/2026"></div>
+        <div class="form-group form-full"><label class="form-label">Notário / Conservatória <span style="font-weight:400;color:var(--text-faint)">(só o nome — o texto já diz «cartório notarial de»)</span></label>
+          <input class="form-input" id="falecido-${idx}-hab-notario" value="${dados.habNotario||''}" placeholder="Ex: Évora — ou: Maria Silva"></div>
+      </div>
+    </div>
+    <div class="cond-block" style="margin-top:.5rem">
+      <div class="cond-block-title">Participação de Imposto do Selo (óbito) — art. 26.º CIS</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label class="form-label">N.º da participação</label>
+          <input class="form-input" id="falecido-${idx}-is-numero" value="${dados.isNumero||''}"></div>
+        <div class="form-group"><label class="form-label">Data de entrega</label>
+          <input type="date" class="form-input" id="falecido-${idx}-is-data" value="${dados.isData||''}"></div>
+        <div class="form-group"><label class="form-label">Serviço de Finanças</label>
+          <input class="form-input" id="falecido-${idx}-is-sf" value="${dados.isSF||''}" placeholder="Ex: Évora"></div>
+      </div>
+    </div>
+    <div class="cond-block" style="margin-top:.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div class="cond-block-title" style="margin-bottom:0">Herdeiros</div>
+        <button class="btn btn-sm" type="button" onclick="addHerdeiro(${idx})" style="font-size:10px;padding:2px 8px">+ Herdeiro</button>
+      </div>
+      <div id="falecido-${idx}-herdeiros"></div>
+    </div>`;
+  document.getElementById('falecidos-container').appendChild(div);
+  if(dados.herdeiros&&dados.herdeiros.length)dados.herdeiros.forEach(x=>addHerdeiro(idx,x));
+  else addHerdeiro(idx);
+  onHabTipoChange(idx);
+}
+function addHerdeiro(fIdx,dados={}){
+  if(!herdeiroCnt[fIdx])herdeiroCnt[fIdx]=0;
+  const hidx=++herdeiroCnt[fIdx];
+  const c=document.getElementById(`falecido-${fIdx}-herdeiros`);if(!c)return;
+  const div=document.createElement('div');
+  div.id=`falecido-${fIdx}-herdeiro-${hidx}`;
+  div.style.cssText='display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;margin-bottom:.4rem';
+  div.innerHTML=`<input class="form-input" id="falecido-${fIdx}-herdeiro-${hidx}-nome" value="${dados.nome||''}" placeholder="Nome do herdeiro" style="font-size:12px;text-transform:uppercase">
+    ${hidx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('falecido-${fIdx}-herdeiro-${hidx}').remove();atualizar()">×</button>`:'<div></div>'}`;
+  c.appendChild(div);
+}
+function removerFalecido(idx){document.getElementById(`falecido-${idx}`)?.remove();atualizar();}
+function onHabTipoChange(idx){
+  const t=document.getElementById(`falecido-${idx}-hab-tipo`)?.value;
+  const set=(sfx,on)=>{const e=document.getElementById(`falecido-${idx}-${sfx}`);if(e)e.style.display=on?'flex':'none';};
+  set('cod-group',t==='codigo');set('copia-group',t==='copia');set('simp-group',t==='simplificado');
+}
+function lerFalecidos(){
+  if(!chk('t-trato-suc'))return[];
+  return[...document.querySelectorAll('.falecido-block')].map(b=>{
+    const idx=b.id.replace('falecido-','');
+    const g=s=>document.getElementById(`falecido-${idx}-${s}`)?.value?.trim()||'';
+    const herdeiros=[];
+    b.querySelectorAll(`[id^="falecido-${idx}-herdeiro-"][id$="-nome"]`).forEach(el=>{if(el.value.trim())herdeiros.push({nome:el.value.trim()});});
+    return{nome:g('nome'),dataObito:g('data-obito'),freguesia:g('freguesia'),habTipo:g('hab-tipo'),habData:g('hab-data'),
+      habCodigo:g('hab-codigo'),habCopia:g('hab-copia'),habNumero:g('hab-numero'),habNotario:g('hab-notario'),
+      isNumero:g('is-numero'),isData:g('is-data'),isSF:g('is-sf'),herdeiros};
+  });
+}
+function dPT(iso){if(!iso)return'…';const[a,m,d]=iso.split('-');return`${d}/${m}/${a}`;}
+function listaEVirgula(arr){
+  if(!arr.length)return'…';
+  if(arr.length===1)return arr[0];
+  return arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1];
+}
+/* Devolve {legitimidade, narrativa} — vazios se o trato sucessivo estiver desligado */
+function textosTratoSuc(){
+  const fs=lerFalecidos();
+  if(!fs.length)return{legitimidade:'',narrativa:''};
+  const legit=fs.map(f=>{
+    const d=dPT(f.habData),n=f.habNotario||'…';
+    if(f.habTipo==='codigo')return`— a legitimidade dos outorgantes pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, através do código ${f.habCodigo||'…'};`;
+    if(f.habTipo==='simplificado')return`— a legitimidade dos outorgantes pelo Procedimento Simplificado de Habilitação de Herdeiros n.º ${f.habNumero||'…'}, lavrado em ${d}, na Conservatória de ${n};`;
+    return`— a legitimidade dos outorgantes pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, que arquivo;`;
+  });
+  const selo=fs.filter(f=>f.isNumero||f.isData||f.isSF).map(f=>
+    `— nos termos e para os efeitos do disposto no artigo 63.º-A do Código do Imposto do Selo, o cumprimento das obrigações declarativas relativas ao Imposto do Selo devido pela transmissão gratuita por óbito de ${(f.nome||'…').toUpperCase()}, mediante a exibição da participação a que se refere o artigo 26.º do mesmo Código, registada sob o n.º ${f.isNumero||'…'}, apresentada no Serviço de Finanças de ${f.isSF||'…'} em ${dPT(f.isData)}, da qual consta a relação dos bens objeto do presente contrato;`);
+  const narr=fs.map(f=>
+    `${(f.nome||'…').toUpperCase()} faleceu em ${dPT(f.dataObito)}, na freguesia de ${f.freguesia||'…'}, sem deixar testamento ou disposição de última vontade, sucedendo-lhe como herdeiros ${listaEVirgula(f.herdeiros.map(x=>(x.nome||'').toUpperCase()).filter(Boolean))}.`);
+  return{legitimidade:[...legit,...selo].join('\n'),narrativa:narr.join('\n')};
+}
+
 /* ═══════════ MATRIZES DINÂMICAS ═══════════ */
 let matCnt=0;
 function addMatriz(dados,pid){
@@ -724,7 +953,23 @@ function compor(){
   let reprCGD;
   if(p1&&p2)reprCGD=`devidamente representada neste ato por ${procTxt(1)}; e ${procTxt(2)}, ambos com domicílio profissional na sede da sua representada, na qualidade de Procuradora com poderes para o ato`;
   else reprCGD=`devidamente representada neste ato por ${procTxt(1)}, com domicílio profissional na sede da sua representada, na qualidade de Procuradora com poderes para o ato`;
-  const txtSegunda=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de 4.525.714.495,00 Euros, ${reprCGD}, adiante designada por Segunda Contratante, CGD ou CAIXA.`;
+  const txtSegundaCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de 4.525.714.495,00 Euros, ${reprCGD}, adiante designada por Segunda Contratante, CGD ou CAIXA.`;
+
+  /* ── FUNIL · A parte compradora determina o ramo ──
+     compradora = CGD  → locação financeira (leasing): destino + anexo de reconhecimento
+     compradora = outorgantes → CV; com financiamento no mesmo ato → CVMH (por concluir) */
+  const compCGD=v('f-compradora')==='cgd';
+  const comps=compCGD?[]:lerCompradores();
+  const pluralC=comps.length>1;
+  const genC=(()=>{if(compCGD)return'f';if(pluralC)return'p';const c=comps[0];if(!c)return'm';if(c.tipo==='empresa')return'f';return c.genero==='F'?'f':'m';})();
+  const desigSeg=genC==='p'?'Segundos Contratantes':genC==='f'?'Segunda Contratante':'Segundo Contratante';
+  const tituloSeg=genC==='p'?'SEGUNDOS':genC==='f'?'SEGUNDA':'SEGUNDO';
+  const prepSeg=genC==='p'?'aos':genC==='f'?'à':'ao';
+  const aceitaSeg=genC==='p'?'que aceitam':'que aceita';
+  const txtSegundaGen=comps.length
+    ?comps.map(textoOutorgante).join(';\n')+`, adiante designad${genC==='p'?'os':genC==='f'?'a':'o'} por ${desigSeg}.`
+    :'…';
+  const txtSegunda=compCGD?txtSegundaCGD:txtSegundaGen;
 
   /* Imóvel */
   const isFr=v('f-im-tipo')==='fracao';
@@ -780,8 +1025,14 @@ function compor(){
   const localTxt=sol?`no domicílio profissional sito na ${sol.domicilio}`:'no domicílio profissional sito na …';
   termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, com domicílio profissional na morada supra mencionada, compareceram como Outorgantes:`});
   termo.push({id:'t-primeiro',T:plural?'PRIMEIROS':'PRIMEIRO',X:txtPrimeiro});
-  termo.push({id:'t-segunda',T:'SEGUNDA',X:txtSegunda});
-  termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;\n— a qualidade e os poderes da Segunda Outorgante, para o presente ato, pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}, ao abrigo do disposto no ${v('f-proc-poderes')||'…'}, da referida procuração.`});
+  termo.push({id:'t-segunda',T:compCGD?'SEGUNDA':tituloSeg,X:txtSegunda});
+  const ts=textosTratoSuc();
+  const temRepresentacao=[...vend,...comps].some(c=>c.tipo==='empresa'||c.temproc);
+  termo.push({id:'t-verifiquei',T:'',X:compCGD
+    ?`Verifiquei:\n— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;\n— a qualidade e os poderes da Segunda Outorgante, para o presente ato, pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}, ao abrigo do disposto no ${v('f-proc-poderes')||'…'}, da referida procuração.`
+    :`Verifiquei:\n— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;${temRepresentacao?`\n— a qualidade e os poderes dos representantes, pela consulta das respetivas procurações e certidões, que se encontram em conformidade e válidas.`:''}`});
+  /* ── TRATO SUCESSIVO · legitimidade e imposto do selo por óbito (termo) ── */
+  if(ts.legitimidade)termo.push({id:'t-trato-suc',T:'',X:`Verifiquei ainda:\n${ts.legitimidade}`});
   termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
   termo.push({id:'t-preco-decl',T:'',X:`Os Outorgantes declararam que corresponde inteiramente à verdade o teor da cláusula constante do contrato que aqui se autentica relativa ao valor do preço e respetivos meios e datas de pagamento, a qual aqui se tem por integralmente reproduzida para todos os efeitos legais.`});
   if(chk('t-mediacao'))termo.push({id:'t-mediacao',T:'',X:`Pelos Outorgantes foi declarado que as partes recorreram a mediação imobiliária, prestada por ${v('f-med-nome')||'…'}, titular da licença n.º ${v('f-med-ami')||'…'} - AMI, tendo-lhes sido feita advertência de que a omissão ou a prestação de falsas declarações sobre a intervenção de mediador imobiliário no contrato faz incorrer as partes na pena aplicável ao crime de desobediência, prevista no artigo 348.º do Código Penal, por aplicação do n.º 3 do artigo 40.º, da Lei n.º 15/2013, de 8 de Fevereiro.`});
@@ -802,9 +1053,13 @@ function compor(){
   const contrato=[];
   contrato.push({id:'c-cab',T:'COMPRA E VENDA',X:''});
   contrato.push({id:'c-primeiro',T:plural?'PRIMEIROS':'PRIMEIRO',X:txtPrimeiro});
-  contrato.push({id:'c-segunda',T:'SEGUNDA',X:txtSegunda});
+  contrato.push({id:'c-segunda',T:compCGD?'SEGUNDA':tituloSeg,X:txtSegunda});
   contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
-  contrato.push({id:'c-cl1',T:'Primeira (Objeto)',X:`O Primeiro Contratante vende à representada da Segunda Contratante, que a aceita, ${txtImovel}`});
+  /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
+  if(ts.narrativa)contrato.push({id:'c-trato-suc',T:'',X:ts.narrativa});
+  contrato.push({id:'c-cl1',T:'Primeira (Objeto)',X:compCGD
+    ?`O Primeiro Contratante vende à representada da Segunda Contratante, que a aceita, ${txtImovel}`
+    :`${plural?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`});
   /* ── CLÁUSULAS GENÉRICAS · Matriz rústica identificada ──
      Regra do tronco: sempre que exista matriz rústica, entram (1) a declaração sobre a
      preferência de confinantes (art. 1380.º CC — asseguradas OU excluída pelo 1381.º/a)
@@ -831,11 +1086,14 @@ function compor(){
   contrato.push({id:'c-cl3',T:'Terceira (Ónus e encargos)',X:txtOnus});
   let n=4;
   if(chk('t-lu')){contrato.push({id:'c-cl-lu',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Licenciamento camarário)`,X:txtLU});n++;}
-  contrato.push({id:'c-cl-destino',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Destino do Imóvel adquirido)`,X:txtDestino});
+  if(compCGD){contrato.push({id:'c-cl-destino',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Destino do Imóvel adquirido)`,X:txtDestino});n++;}
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
 
-  /* ── FOLHA AUTÓNOMA · Reconhecimento de assinaturas (locação financeira) ── */
+  /* ── FOLHA AUTÓNOMA · Reconhecimento de assinaturas (só locação financeira) ──
+     Não faz parte da escritura de compra e venda: é acessório do contrato de locação
+     que a CAIXA celebra com o locatário. Nos ramos CV/CVMH não existe. */
   const anexo=[];
+  if(compCGD){
   anexo.push({id:'a-cab',T:'RECONHECIMENTO DE ASSINATURAS',X:''});
   const rep=`${v('f-locrep-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}${v('f-locrep-nif')?`, e número de identificação fiscal ${v('f-locrep-nif')}`:''}`;
   anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de ${p1||'…'} e de ${p2||'…'}, feitas pelo próprio punho, na qualidade de Procuradores e em representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}; e de ${locParticular?`${v('f-loc-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}, e número de identificação fiscal ${v('f-loc-nipc')||'…'}, feita pelo próprio punho, na qualidade de Locatário`:`${rep}, feita pelo próprio punho, na qualidade de ${v('f-locrep-qual')||'gerente'} e em representação de ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`}, apostas no «CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}», relativo ao Imóvel atrás identificado, que tem a Licença de Utilização (alvará) n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}.`});
@@ -844,11 +1102,12 @@ function compor(){
     :`Verifiquei ainda a qualidade e os poderes de representação da locatária pela consulta da respetiva certidão permanente, que se encontra em conformidade e válida, bem como que se encontram cumpridas as obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da mesma Lei.`;
   anexo.push({id:'a-verif',T:'',X:txtVerif});
   anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
+  }
   return{termo,contrato,anexo};
 }
 
 /* ═══════════ RENDER + EDIÇÃO POR BLOCO ═══════════ */
-let manuais={},notas={};
+let manuais={},notas={},inseridos={},titulos={},insCnt=0;
 function sanitizarHTML(html){
   const t=document.createElement('div');t.innerHTML=html;
   t.querySelectorAll('script,style,iframe,object').forEach(e=>e.remove());
@@ -867,9 +1126,10 @@ function render(){
     const manual=manuais[b.id]!==undefined;
     const conteudo=manual?manualHTML(b.id):esc(b.X);
     const nota=notas[b.id];
-    return`<div class="bloco${manual?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
-      <div class="b-ferr">${manual?`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Repor texto automático">↺ repor</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}</div>
-      ${b.T?`<div class="b-titulo${b.id.endsWith('-cab')?'" style="text-align:center':''}">${esc(b.T)}</div>`:''}
+    const titMan=titulos[b.id]!==undefined;
+    return`<div class="bloco${manual||titMan?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
+      <div class="b-ferr">${manual||titMan?`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Repor texto e título automáticos">↺ repor</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}<button class="b-repor" onclick="inserirBloco('${b.id}')" title="Inserir bloco novo por baixo deste">+ bloco</button></div>
+      ${b.T?`<div class="b-titulo" contenteditable="true" data-tit="${b.id}"${b.id.endsWith('-cab')?' style="text-align:center"':''}>${esc(titMan?titulos[b.id]:b.T)}</div>`:''}
       ${nota!==undefined?`<div class="nota-bloco"><button class="nota-remover" onclick="removerNota('${b.id}')" title="Remover nota">✕</button><div class="nota-texto" contenteditable="plaintext-only" data-nota="${b.id}">${esc(nota)}</div></div>`:''}
       ${(b.X||manual||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="true" data-id="${b.id}">${conteudo}</div>`:''}
     </div>`;
@@ -877,11 +1137,33 @@ function render(){
   const{anexo}=compor();
   const solA=SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana;
   const assin=`<div style="text-align:right;font-family:'Monotype Corsiva',cursive;font-style:italic;color:#404040;font-size:14px;line-height:1.35;margin-top:1.2rem"><b>ENTIDADE AUTENTICADORA</b><br>${esc(solA.assinNome||solA.nomeAbrev||solA.nome)}<br>${esc(solA.cargo)}</div>`;
-  folha.innerHTML=termo.map(blocoHTML).join('')+assin
+  const insHTML=x=>`<div class="bloco inserido" data-id="${x.id}">
+      <div class="b-ferr"><span class="b-badge-ins">bloco inserido</span><button class="b-repor" onclick="inserirBloco('${x.id}')" title="Inserir outro por baixo">+ bloco</button><button class="b-repor" onclick="removerInserido('${x.id}')" title="Eliminar este bloco">✕ eliminar</button></div>
+      <div class="b-titulo" contenteditable="true" data-tit-ins="${x.id}">${esc(x.T)}</div>
+      <div class="b-texto" contenteditable="true" data-ins="${x.id}">${x.htmlX!==undefined?sanitizarHTML(x.htmlX):esc(x.X)}</div>
+    </div>`;
+  const cadeia=id=>(inseridos[id]||[]).map(x=>insHTML(x)+cadeia(x.id)).join('');
+  const seq=arr=>arr.map(b=>blocoHTML(b)+cadeia(b.id)).join('');
+  folha.innerHTML=seq(termo)+assin
     +`<hr class="quebra-pagina">`
-    +contrato.map(blocoHTML).join('')
-    +`<hr class="quebra-pagina">`
-    +anexo.map(blocoHTML).join('');
+    +seq(contrato)
+    +(anexo.length?`<hr class="quebra-pagina">`+seq(anexo):'');
+  const colarTexto=el=>el.addEventListener('paste',e=>{
+    e.preventDefault();
+    document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text'));
+  });
+  folha.querySelectorAll('[data-tit]').forEach(el=>{
+    el.addEventListener('input',()=>{titulos[el.dataset.tit]=el.innerText;el.closest('.bloco').classList.add('manual');});
+    colarTexto(el);
+  });
+  folha.querySelectorAll('[data-tit-ins]').forEach(el=>{
+    el.addEventListener('input',()=>{const x=acharIns(el.dataset.titIns);if(x)x.T=el.innerText;});
+    colarTexto(el);
+  });
+  folha.querySelectorAll('[data-ins]').forEach(el=>{
+    el.addEventListener('input',()=>{const x=acharIns(el.dataset.ins);if(x)x.htmlX=el.innerHTML;});
+    colarTexto(el);
+  });
   folha.querySelectorAll('.b-texto').forEach(el=>{
     el.addEventListener('input',()=>marcarManual(el));
     el.addEventListener('paste',e=>{
@@ -901,7 +1183,27 @@ function marcarManual(el){
   const f=bloco.querySelector('.b-ferr');
   if(f&&!f.querySelector('.b-badge'))f.insertAdjacentHTML('afterbegin',`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${id}')">↺ repor</button>`);
 }
-function reporBloco(id){delete manuais[id];render();}
+function reporBloco(id){delete manuais[id];delete titulos[id];render();}
+function acharIns(id){
+  for(const k in inseridos){const x=inseridos[k].find(y=>y.id===id);if(x)return x;}
+  return null;
+}
+function inserirBloco(ancoraId){
+  const id='ins'+(++insCnt)+'-'+Date.now().toString(36);
+  (inseridos[ancoraId]=inseridos[ancoraId]||[]).push({id,T:'',X:''});
+  render();
+  const el=document.querySelector(`[data-tit-ins="${id}"]`);
+  if(el){el.focus();el.scrollIntoView({block:'center',behavior:'smooth'});}
+}
+function removerInserido(id){
+  const apagarCadeia=k=>{(inseridos[k]||[]).forEach(y=>apagarCadeia(y.id));delete inseridos[k];};
+  for(const k in inseridos){
+    const i=inseridos[k].findIndex(y=>y.id===id);
+    if(i>-1){inseridos[k].splice(i,1);if(!inseridos[k].length)delete inseridos[k];break;}
+  }
+  apagarCadeia(id);
+  render();
+}
 function criarNota(id){notas[id]='';render();const n=document.querySelector(`.nota-texto[data-nota="${id}"]`);if(n)n.focus();}
 function removerNota(id){delete notas[id];render();}
 
@@ -940,7 +1242,25 @@ function criarNotaSel(){
   const n=document.querySelector(`.nota-texto[data-nota="${id}"]`);
   if(n){n.focus();const r=document.createRange();r.selectNodeContents(n);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}
 }
+function tipoDeduzido(){
+  if(v('f-compradora')==='cgd')return{cod:'LEASING',rot:'Leasing — CV + Locação Financeira (CGD)',nome:'Compra e Venda com Locação Financeira',pronto:true};
+  if(v('f-financiamento')==='sim')return{cod:'CVMH',rot:'CVMH — Compra e Venda com Mútuo e Hipoteca',nome:'Compra e Venda com Mútuo e Hipoteca',pronto:false};
+  return{cod:'CV',rot:'CV — Compra e Venda',nome:'Compra e Venda',pronto:true};
+}
 function atualizar(){
+  // ── funil: o tipo deduz-se dos intervenientes ──
+  const compCGD=v('f-compradora')==='cgd';
+  const t=tipoDeduzido();
+  document.getElementById('tipo-badge').textContent=t.rot;
+  document.getElementById('g-financiamento').style.display=compCGD?'none':'flex';
+  document.getElementById('card-cgd').style.display=compCGD?'block':'none';
+  document.getElementById('card-compradores').style.display=compCGD?'none':'block';
+  document.getElementById('g-locatario').style.display=compCGD?'block':'none';
+  document.getElementById('trato-suc-fields').style.display=chk('t-trato-suc')?'block':'none';
+  const av=document.getElementById('funil-aviso');
+  if(t.pronto){av.style.display='none';}
+  else{av.style.display='block';av.textContent='Ramo CVMH ainda por concluir: falta portar do cvmh.html as cláusulas de mútuo e hipoteca, o Terceiro Contratante (entidade financiadora) e os Quartos Outorgantes (fiadores). Por agora este ato gera como compra e venda simples.';}
+  if(!compCGD&&!document.querySelectorAll('.comp-block').length)addComprador();
   // visibilidade condicional
   document.getElementById('g-onus-txt').style.display=chk('t-onus-livre')?'none':'block';
   document.getElementById('g-lu').style.display=chk('t-lu')?'block':'none';
@@ -1038,10 +1358,15 @@ function estadoCompleto(){
     if(!el.id||el.id==='pasta-search')return;
     campos[el.id]=el.type==='checkbox'?el.checked:el.value;
   });
-  return{tipo:'cvleasing',campos,vendedores:lerVendedores(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),manuais,notas};
+  return{tipo:tipoDeduzido().cod,campos,vendedores:lerVendedores(),compradores:lerCompradores(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),manuais,notas,inseridos,titulos,insCnt};
 }
 function restaurarEstado(d){
+  /* Compatibilidade: rascunhos gravados antes do funil não têm f-compradora.
+     Eram todos leasing, por isso repõem-se no ramo CGD. */
+  if(d.campos&&d.campos['f-compradora']===undefined&&(d.tipo==='cvleasing'||d.tipo==='LEASING'))d.campos['f-compradora']='cgd';
   if(d.vendedores&&d.vendedores.length){document.getElementById('vendedores-container').innerHTML='';vendCnt=0;d.vendedores.forEach(x=>addVendedor(x));}
+  if(d.compradores&&d.compradores.length){document.getElementById('compradores-container').innerHTML='';compCnt=0;d.compradores.forEach(x=>addComprador(x));}
+  if(d.falecidos&&d.falecidos.length){document.getElementById('falecidos-container').innerHTML='';falecidoCnt=0;Object.keys(herdeiroCnt).forEach(k=>delete herdeiroCnt[k]);d.falecidos.forEach(x=>addFalecido(x));}
   if(d.cheques&&d.cheques.length){document.getElementById('cheques-container').innerHTML='';cheqCnt=0;d.cheques.forEach(x=>addCheque(x));}
   if(d.matrizes&&d.matrizes.length){document.getElementById('matrizes-container').innerHTML='';matCnt=0;d.matrizes.forEach(x=>addMatriz(x));}
   if(d.prediosExtra&&d.prediosExtra.length){document.getElementById('predios-extra-container').innerHTML='';predCnt=0;d.prediosExtra.forEach(x=>addPredioExtra(x));}
@@ -1051,6 +1376,9 @@ function restaurarEstado(d){
   });
   manuais=d.manuais||{};
   notas=d.notas||{};
+  inseridos=d.inseridos||{};
+  titulos=d.titulos||{};
+  insCnt=d.insCnt||0;
   atualizar();
 }
 async function guardarRascunho(){
@@ -1088,10 +1416,19 @@ function blocosFinais(){
   const aplicar=b=>{
     const m=manuais[b.id];
     const X=m===undefined?b.X:(typeof m==='string'?m:htmlParaTexto(m.html||''));
-    return{T:b.T,X};
+    return{T:titulos[b.id]!==undefined?titulos[b.id]:b.T,X};
   };
+  const cadeiaDados=id=>{
+    const out=[];
+    (inseridos[id]||[]).forEach(x=>{
+      out.push({T:x.T||'',X:x.htmlX!==undefined?htmlParaTexto(x.htmlX):(x.X||'')});
+      out.push(...cadeiaDados(x.id));
+    });
+    return out;
+  };
+  const expandir=arr=>arr.flatMap(b=>[aplicar(b),...cadeiaDados(b.id)]);
   const{anexo}=compor();
-  return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar),BlocosAnexo:anexo.map(aplicar),Assin_Nome:((SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).assinNome||(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).nomeAbrev),Assin_Cargo:(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).cargo};
+  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),Assin_Nome:((SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).assinNome||(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).nomeAbrev),Assin_Cargo:(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).cargo};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
@@ -1126,7 +1463,7 @@ async function gerarWord(){
     const blob=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const vend=lerVendedores()[0]||{};
     const nomeBase=(vend.nome||vend.denom||'CONTRATO').split(/\s+/);
-    const nomeFich=`CV_LEASING_${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'')+'.docx';
+    const nomeFich=`${tipoDeduzido().cod}_${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'')+'.docx';
     // download
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nomeFich;a.click();
     // gravar na pasta, se houver
@@ -1137,10 +1474,92 @@ async function gerarWord(){
   }catch(e){showToast('Erro ao gerar Word: '+e.message,'error');}
 }
 
+/* ═══════════ CONTACTAR CLIENTE (porte do cvmh.html) ═══════════
+   Adaptado ao tronco: o nome do ato, o cliente e a lista de outorgantes
+   são deduzidos do ramo em vigor, em vez de fixos em CVMH. */
+function listarComEVirgula(arr){
+  if(!arr.length)return'';
+  if(arr.length===1)return arr[0];
+  if(arr.length===2)return`${arr[0]} e ${arr[1]}`;
+  return arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1];
+}
+function dataAtoPT(){
+  const d=v('f-data-ato');if(!d)return'';
+  const[a,m,dd]=d.split('-');return`${dd}/${m}/${a}`;
+}
+function nomeCliente(){
+  /* No leasing o cliente é o locatário; nos restantes ramos é o primeiro comprador. */
+  if(v('f-compradora')==='cgd')return v('f-loc-nome')||'';
+  const c=lerCompradores()[0]||{};
+  return c.tipo==='empresa'?(c.denom||''):(c.nome||'');
+}
+/* Quem tem de comparecer: vendedores, compradores e cônjuges que outorgam.
+   Exclui as procuradoras da CGD; no leasing inclui o representante do locatário. */
+function listarOutorgantesEmail(){
+  const nomes=[];
+  const add=n=>{n=(n||'').trim();if(n&&!nomes.includes(n))nomes.push(n);};
+  const cgd=v('f-compradora')==='cgd';
+  [...lerVendedores(),...(cgd?[]:lerCompradores())].forEach(o=>{
+    /* Empresa: quem assina é o gerente. Enquanto a representação for texto livre
+       (ver «gerentes estruturados»), não há nome isolável — só o procurador, se houver. */
+    if(o.tipo==='empresa'){if(o.temproc)add(o['proc-nome']);return;}
+    add(o.nome);
+    if(o.ec==='casado'&&o['conj-out']==='sim')add(o['conj-nome']);
+    if(o.temproc)add(o['proc-nome']);
+  });
+  if(cgd)add(v('f-locrep-nome'));
+  return nomes.filter(Boolean);
+}
+function abrirModalComunicacao(){
+  const t=tipoDeduzido(),nome=nomeCliente(),data=dataAtoPT();
+  const cgd=v('f-compradora')==='cgd';
+  const comCaixa=cgd||v('f-financiamento')==='sim';
+  document.getElementById('com-email-para').value='';
+  document.getElementById('com-email-assunto').value=`${t.nome} — ${nome||'cliente'}${data?' — '+data:''}`;
+  const outorgantes=listarOutorgantesEmail();
+  const fraseOutorgantes=`Os outorgantes ${outorgantes.length?listarComEVirgula(outorgantes)+' ':''}deverão fazer-se acompanhar dos documentos de identificação originais e, caso se façam representar por terceiros, deverão remeter-nos, com a maior brevidade possível, os respetivos documentos de identificação e procuração.`;
+  const fraseCheques=comCaixa?`\n\nMais informamos que os cheques para pagamento devem ser solicitados na agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento do pedido.`:'';
+  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de ${t.nome} se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n${fraseOutorgantes}\n\nTodos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (licença de utilização, certidão de isenção, habilitações de herdeiros, certidões de nascimento/casamento e imposto do selo). Deverão ainda fazer-se acompanhar das guias de liquidação de IMT/IS impressas.${fraseCheques}\n\n📍 Localização do escritório: https://maps.app.goo.gl/TG2cgW3Ajb64hzWZA\n(LBC Solicitadora — Rua Domingos Franco de Oliveira, n.º 16, Évora)\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
+  document.getElementById('com-wa-telefone').value='351';
+  document.getElementById('com-wa-mensagem').value=`Bom dia${nome?' '+nome:''},\n\nInformamos que o seu processo de ${t.nome} está em preparação para a escritura de ${data||'___'}.${comCaixa?`\n\nNota: os cheques para pagamento devem ser pedidos à agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento.`:''}\n\nQualquer dúvida, não hesite em contactar-nos.\n\nLBC Solicitadora`;
+  comSetTab('email');
+  document.getElementById('modal-comunicacao').classList.add('show');
+}
+function fecharModalComunicacao(){document.getElementById('modal-comunicacao').classList.remove('show');}
+function comSetTab(tab){
+  const isEmail=tab==='email';
+  document.getElementById('com-panel-email').style.display=isEmail?'block':'none';
+  document.getElementById('com-panel-whatsapp').style.display=isEmail?'none':'block';
+  const on='flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer';
+  const off='flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer';
+  const onWA='flex:1;padding:.5rem;border-radius:8px;border:1px solid #25D366;background:#25D366;color:#fff;font-size:13px;cursor:pointer';
+  document.getElementById('com-tab-email').style.cssText=isEmail?on:off;
+  document.getElementById('com-tab-whatsapp').style.cssText=isEmail?off:onWA;
+}
+function enviarEmail(){
+  const para=document.getElementById('com-email-para').value.trim();
+  const assunto=document.getElementById('com-email-assunto').value.trim();
+  const corpo=document.getElementById('com-email-corpo').value.trim();
+  if(!para){showToast('Preenche o email do destinatário','error');return;}
+  window.open(`https://outlook.cloud.microsoft/mail/deeplink/compose?to=${encodeURIComponent(para)}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`,'_blank');
+  fecharModalComunicacao();
+}
+function abrirWhatsApp(){
+  const tel=(document.getElementById('com-wa-telefone').value||'').replace(/\D/g,'');
+  const msg=document.getElementById('com-wa-mensagem').value.trim();
+  if(!tel){showToast('Preenche o número de telemóvel','error');return;}
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+  fecharModalComunicacao();
+}
+document.getElementById('modal-comunicacao')?.addEventListener('click',e=>{
+  if(e.target.id==='modal-comunicacao')fecharModalComunicacao();
+});
+
 /* ═══════════ INIT ═══════════ */
 window.addEventListener('load',()=>{
   document.getElementById('f-data-ato').value=new Date().toISOString().slice(0,10);
   addVendedor();addCheque();addCheque();
+  document.getElementById('f-compradora').value='cgd';
   atualizar();
   carregarPastasSP();
 });
