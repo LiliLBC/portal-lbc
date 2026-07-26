@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Contratos — LBC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.42.0/docxtemplater.js"></script>
+<style>
+:root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.25rem;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:var(--shadow);z-index:50}
+.topbar-left{display:flex;align-items:center;gap:.9rem;min-width:0}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);text-decoration:none;flex-shrink:0}
+.back-btn:hover{background:var(--surface2);color:var(--text)}
+.page-title{font-size:14px;font-weight:600;white-space:nowrap}
+.page-sub{font-size:11px;color:var(--text-faint);white-space:nowrap}
+.topbar-actions{display:flex;gap:.5rem;align-items:center;flex-shrink:0}
+select.tipo-contrato{font-family:'DM Sans';font-size:12.5px;font-weight:600;color:var(--accent-dark);background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;padding:5px 10px;cursor:pointer}
+
+/* LAYOUT DIVIDIDO */
+.split{flex:1;display:flex;min-height:0}
+.pane-form{width:500px;min-width:380px;max-width:56vw;overflow-y:auto;padding:1.1rem 1.1rem 5rem;border-right:1px solid var(--border);background:var(--bg)}
+.pane-doc{flex:1;overflow-y:auto;background:#DEDCD5;padding:1.4rem;display:flex;justify-content:center}
+body.doc-oculto .pane-doc{display:none}
+body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
+
+/* A FOLHA */
+.folha{background:#fff;max-width:820px;width:100%;box-shadow:0 2px 14px rgba(0,0,0,.18);padding:3.2rem 3rem 4rem;font-family:'Courier New',monospace;font-size:12.5px;line-height:1.75;color:#111;height:fit-content}
+.folha .doc-titulo{text-align:center;font-weight:700;margin:0 0 1.1rem}
+.quebra-pagina{border:none;border-top:2px dashed var(--border-strong);margin:2.2rem -1rem;position:relative}
+.quebra-pagina::after{content:'quebra de página';position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#fff;color:var(--text-faint);font-family:'DM Mono';font-size:9px;padding:0 8px;letter-spacing:.08em;text-transform:uppercase}
+
+/* BLOCOS DO DOCUMENTO */
+.bloco{position:relative;border-radius:6px;margin:0 -.6rem;padding:.15rem .6rem}
+.bloco:hover{background:#FBFAF6;outline:1px solid var(--border)}
+.bloco .b-titulo{font-weight:700;white-space:pre-wrap}
+.bloco .b-texto{white-space:pre-wrap;text-align:justify;outline:none;min-height:1em}
+.bloco.manual{background:var(--amber-light);outline:1px solid #E8D5B5}
+.bloco .b-ferr{position:absolute;top:2px;right:4px;display:none;gap:4px;align-items:center}
+.bloco:hover .b-ferr,.bloco.manual .b-ferr{display:flex}
+.b-badge{font-family:'DM Mono';font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);background:#fff;border:1px solid #E8D5B5;border-radius:10px;padding:1px 7px}
+.b-repor{font-family:'DM Sans';font-size:10px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:1px 7px;cursor:pointer;color:var(--text-muted)}
+.b-repor:hover{color:var(--red);border-color:var(--red)}
+
+/* CARTÕES DO FORMULÁRIO */
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.15rem;margin-bottom:.9rem;box-shadow:var(--shadow)}
+.section-card-header{display:flex;align-items:center;gap:.65rem;margin-bottom:.9rem;padding-bottom:.65rem;border-bottom:1px solid var(--border)}
+.section-num{width:22px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600}
+.section-desc{font-size:11px;color:var(--text-faint)}
+.form-grid{display:grid;gap:.65rem}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:3px}
+.form-label{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.form-label span{color:var(--red)}
+.form-input,.form-select,.form-textarea{font-family:'DM Sans';font-size:13px;padding:7px 9px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface);color:var(--text);width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.form-textarea{min-height:64px;resize:vertical}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:8px;padding:.55rem .8rem;margin-bottom:.55rem}
+.toggle-label{font-size:12.5px;font-weight:500}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border-strong);border-radius:20px;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+.cond-block{background:var(--surface2);border-radius:9px;padding:.8rem .9rem;margin-bottom:.6rem}
+.cond-block-title{font-size:10.5px;font-weight:600;color:var(--text-muted);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.05em}
+.outorgante-block{border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem;margin-bottom:.6rem;background:var(--surface)}
+.outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.outorgante-title{font-size:11px;font-weight:600;color:var(--accent-dark);text-transform:uppercase;letter-spacing:.05em}
+.remove-btn{width:20px;height:20px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-faint);cursor:pointer;font-size:13px;line-height:1}
+.remove-btn:hover{color:var(--red);border-color:var(--red)}
+.add-btn{font-family:'DM Sans';font-size:12px;font-weight:500;color:var(--accent-dark);background:var(--accent-light);border:1px dashed var(--accent);border-radius:8px;padding:6px 12px;cursor:pointer;width:100%}
+.add-btn:hover{background:#E3DDF5}
+
+/* BOTÕES */
+.btn{font-family:'DM Sans';font-size:12.5px;font-weight:500;padding:7px 13px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#22633E}
+.btn-sm{font-size:11.5px;padding:4px 9px}
+
+/* PASTA */
+.pasta-dd{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;max-height:180px;overflow-y:auto;z-index:200;display:none;box-shadow:var(--shadow-md)}
+.pasta-dd div{padding:7px 11px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace}
+.pasta-dd div:hover{background:var(--accent-light)}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.2rem;right:1.2rem;background:var(--text);color:#fff;font-size:12.5px;padding:.7rem 1.1rem;border-radius:9px;box-shadow:var(--shadow-md);z-index:999;opacity:0;transform:translateY(8px);transition:.25s;max-width:380px}
+.toast.show{opacity:1;transform:none}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+
+@media (max-width:980px){
+  body{overflow:auto;height:auto}
+  .split{flex-direction:column}
+  .pane-form{width:100%;max-width:none;border-right:none;border-bottom:1px solid var(--border)}
+  .pane-doc{padding:.8rem}
+  .folha{padding:1.6rem 1.2rem}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a class="back-btn" href="index.html">‹ Portal</a>
+    <span class="page-title">Gerador de Contratos</span>
+    <select class="tipo-contrato" id="tipo-contrato">
+      <option value="cvleasing">CV + Locação Financeira — CGD</option>
+    </select>
+    <span class="page-sub">piloto · v2026-07-27.1</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
+    <button class="btn btn-sm" onclick="guardarRascunho()">💾 Guardar rascunho</button>
+    <button class="btn btn-sm btn-success" onclick="gerarWord()">⬇ Gerar Word</button>
+  </div>
+</div>
+
+<div class="split">
+<!-- ══════════════ FORMULÁRIO ══════════════ -->
+<div class="pane-form" id="pane-form">
+
+  <!-- PASTA -->
+  <div class="section-card" style="border-color:var(--accent)">
+    <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <div class="form-label" style="margin-bottom:3px">Pasta do cliente (ESCRITURAS)</div>
+        <div style="position:relative">
+          <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" disabled>
+          <div class="pasta-dd" id="pasta-dropdown"></div>
+        </div>
+        <div id="pasta-sel" style="font-size:11px;color:var(--green);margin-top:3px;display:none">✓ <span id="pasta-sel-nome"></span></div>
+      </div>
+      <button class="btn btn-sm" onclick="carregarPastasSP()" type="button">↺</button>
+      <button class="btn btn-sm btn-primary" id="btn-carregar-rascunho" onclick="carregarRascunho()" type="button" disabled>📄 Carregar rascunho</button>
+    </div>
+  </div>
+
+  <!-- ① ATO -->
+  <div class="section-card">
+    <div class="section-card-header"><div class="section-num">1</div><div><div class="section-name">Entidade Autenticadora</div><div class="section-desc">Solicitadora que preside ao ato</div></div></div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Entidade Autenticadora <span>*</span></label>
+        <select class="form-select" id="f-solicitadora" onchange="onEntChange()">
+          <option value="">Selecionar...</option>
+          <option value="liliana">Liliana Isabel Pacheco Burrica Cardoso</option>
+          <option value="andreia">Andreia Pessegueiro Cabanas</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Data do ato <span>*</span></label><input type="date" class="form-input" id="f-data-ato"></div>
+      <div class="form-group"><label class="form-label">Cédula profissional</label><input class="form-input" id="f-ent-cedula" readonly style="background:var(--surface2);font-weight:500"></div>
+      <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-ent-nif" readonly style="background:var(--surface2);font-weight:500"></div>
+      <div class="form-group"><label class="form-label">Domicílio profissional</label><input class="form-input" id="f-ent-domicilio" readonly style="background:var(--surface2)"></div>
+    </div>
+  </div>
+
+  <!-- ② PRIMEIRO CONTRATANTE -->
+  <div class="section-card">
+    <div class="section-card-header"><div class="section-num">2</div><div><div class="section-name">Primeiro Contratante</div><div class="section-desc">Parte vendedora</div></div></div>
+    <div id="vendedores-container"></div>
+    <button class="add-btn" type="button" onclick="addVendedor()">+ Adicionar vendedor</button>
+  </div>
+
+  <!-- ③ SEGUNDA — CGD -->
+  <div class="section-card">
+    <div class="section-card-header"><div class="section-num">3</div><div><div class="section-name">Segunda Contratante — CGD</div><div class="section-desc">Compradora / locadora</div></div></div>
+    <div class="cond-block">
+      <div class="cond-block-title">Procurador 1</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome</label><input class="form-input" id="f-p1-nome" value="CÁTIA CRISTINA DIAS PORFÍRIO MOUZINHO"></div>
+        <div class="form-group"><label class="form-label">Estado civil</label><input class="form-input" id="f-p1-estado" value="solteira, maior"></div>
+        <div class="form-group"><label class="form-label">Naturalidade</label><input class="form-input" id="f-p1-natural" value="freguesia de São Sebastião da Pedreira, Lisboa"></div>
+        <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-p1-nif" placeholder="…"></div>
+        <div class="form-group"><label class="form-label">CC n.º</label><input class="form-input" id="f-p1-cc" value="11462876"></div>
+        <div class="form-group"><label class="form-label">CC válido até</label><input class="form-input" id="f-p1-ccval" placeholder="…"></div>
+      </div>
+    </div>
+    <div class="cond-block">
+      <div class="cond-block-title">Procurador 2 (deixar nome vazio se só um)</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome</label><input class="form-input" id="f-p2-nome" value="JORGE MIGUEL DA SILVA PRATES GOUVEIA CHAMBEL"></div>
+        <div class="form-group"><label class="form-label">Estado civil</label><input class="form-input" id="f-p2-estado" value="casado"></div>
+        <div class="form-group"><label class="form-label">Naturalidade</label><input class="form-input" id="f-p2-natural" value="freguesia de Évora (Sé)"></div>
+        <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-p2-nif" placeholder="…"></div>
+        <div class="form-group"><label class="form-label">CC n.º</label><input class="form-input" id="f-p2-cc" value="11494597"></div>
+        <div class="form-group"><label class="form-label">CC válido até</label><input class="form-input" id="f-p2-ccval" placeholder="…"></div>
+      </div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Código da procuração</label><input class="form-input" id="f-proc-codigo" value="PR-82574-78071-23851"></div>
+      <div class="form-group"><label class="form-label">Poderes (ponto/alínea)</label><input class="form-input" id="f-proc-poderes" value="ponto Segundo, alínea 12)"></div>
+    </div>
+  </div>
+
+  <!-- ④ IMÓVEL -->
+  <div class="section-card">
+    <div class="section-card-header"><div class="section-num">4</div><div><div class="section-name">Imóvel</div><div class="section-desc">Objeto da compra e venda</div></div></div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Tipo</label>
+        <select class="form-select" id="f-im-tipo">
+          <option value="fracao">Fração autónoma</option>
+          <option value="urbano">Prédio urbano</option>
+        </select>
+      </div>
+      <div class="form-group" id="g-im-letra"><label class="form-label">Letra da fração</label><input class="form-input" id="f-im-letra" placeholder="Ex: E"></div>
+      <div class="form-group form-full"><label class="form-label">Descrição / correspondência <span>*</span></label><textarea class="form-textarea" id="f-im-descricao" placeholder="Ex: correspondente a 1º esquerdo destinado a habitação com 5 divisões, cozinha e 2 casas de banho. Área coberta - 112,40 m2, com tudo o que a compõe"></textarea></div>
+      <div class="form-group" id="g-im-apph"><label class="form-label">AP da propriedade horizontal</label><input class="form-input" id="f-im-apph" placeholder="Ex: AP. 49 de 1995/06/07"></div>
+      <div class="form-group"><label class="form-label">Sito em <span>*</span></label><input class="form-input" id="f-im-sito" placeholder="Ex: Rua Luis Stau Monteiro, 2"></div>
+      <div class="form-group"><label class="form-label">Conservatória <span>*</span></label><input class="form-input" id="f-im-crp" placeholder="Ex: Évora"></div>
+      <div class="form-group"><label class="form-label">Nº de descrição <span>*</span></label><input class="form-input" id="f-im-num" placeholder="Ex: 497"></div>
+      <div class="form-group"><label class="form-label">Freguesia (conservatória) <span>*</span></label><input class="form-input" id="f-im-freg-crp" placeholder="Ex: Horta das Figueiras"></div>
+      <div class="form-group"><label class="form-label">AP aquisição (vendedor) <span>*</span></label><input class="form-input" id="f-im-apaq" placeholder="Ex: AP. 761 de 2012/06/26"></div>
+      <div class="form-group"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
+      <div class="form-group"><label class="form-label">Freguesia (matriz) <span>*</span></label><input class="form-input" id="f-im-freg-mat" placeholder="Ex: União das Freguesias de Malagueira e Horta das Figueiras"></div>
+      <div class="form-group"><label class="form-label">VPT (€) <span>*</span></label><input class="form-input" id="f-im-vpt" placeholder="Ex: 39314,90"></div>
+    </div>
+  </div>
+
+  <!-- ⑤ PREÇO -->
+  <div class="section-card">
+    <div class="section-card-header"><div class="section-num">5</div><div><div class="section-name">Preço e pagamento</div><div class="section-desc">Cheques bancários</div></div></div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Preço (€) <span>*</span></label><input class="form-input" id="f-preco" placeholder="Ex: 290000"></div>
+      <div class="form-group"><label class="form-label">Banco sacado</label><input class="form-input" id="f-banco" value="Caixa Geral de Depósitos, S.A."></div>
+    </div>
+    <div class="cond-block" style="margin-top:.65rem">
+      <div class="cond-block-title">Cheques</div>
+      <div id="cheques-container"></div>
+      <button class="add-btn" type="button" onclick="addCheque()">+ Adicionar cheque</button>
+    </div>
+  </div>
+
+  <!-- ⑥ CLÁUSULAS -->
+  <div class="section-card">
+    <div class="section-card-header"><div class="section-num">6</div><div><div class="section-name">Cláusulas e declarações</div><div class="section-desc">Ligar/desligar; o texto entra logo no documento</div></div></div>
+
+    <div class="toggle-row"><span class="toggle-label">Imóvel livre de ónus e encargos</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-onus-livre" checked onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+    <div class="cond-block" id="g-onus-txt" style="display:none">
+      <div class="form-group"><label class="form-label">Redação da cláusula de ónus</label><textarea class="form-textarea" id="f-onus-txt" placeholder="Redigir a cláusula (ex: cancelamento de hipoteca...)"></textarea></div>
+    </div>
+
+    <div class="toggle-row"><span class="toggle-label">Licença de utilização</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-lu" checked onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+    <div class="cond-block" id="g-lu">
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label class="form-label">Nº</label><input class="form-input" id="f-lu-num" placeholder="Ex: 313"></div>
+        <div class="form-group"><label class="form-label">Emitida em</label><input class="form-input" id="f-lu-data" placeholder="Ex: 17/08/1995"></div>
+        <div class="form-group"><label class="form-label">Câmara Municipal</label><input class="form-input" id="f-lu-camara" placeholder="Ex: Évora"></div>
+      </div>
+    </div>
+
+    <div class="cond-block">
+      <div class="cond-block-title">Locatário (destino — locação financeira)</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Denominação <span>*</span></label><input class="form-input" id="f-loc-nome" placeholder="Ex: IDEIAS PRIORITÁRIAS DECORAÇÕES UNIPESSOAL LDA"></div>
+        <div class="form-group"><label class="form-label">Sede <span>*</span></label><input class="form-input" id="f-loc-sede" placeholder="Ex: Rua Luis Stau Monteiro nº4, R/C Dto, 7005-545, Évora"></div>
+        <div class="form-group"><label class="form-label">NIPC <span>*</span></label><input class="form-input" id="f-loc-nipc" placeholder="Ex: 509265391"></div>
+      </div>
+    </div>
+
+    <div class="toggle-row"><span class="toggle-label">Mediação imobiliária (declaração no termo)</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-mediacao" onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+    <div class="cond-block" id="g-mediacao" style="display:none">
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Mediadora</label><input class="form-input" id="f-med-nome" placeholder="Ex: ONLYWAY - SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA UNIPESSOAL LDA"></div>
+        <div class="form-group"><label class="form-label">Licença AMI</label><input class="form-input" id="f-med-ami" placeholder="Ex: 7547"></div>
+      </div>
+    </div>
+
+    <div class="toggle-row"><span class="toggle-label">Certificado energético (declaração no termo)</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-ce" onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+    <div class="cond-block" id="g-ce" style="display:none">
+      <div class="form-group"><label class="form-label">Nº SCE</label><input class="form-input" id="f-ce-num" placeholder="Ex: SCE 392562633"></div>
+    </div>
+
+    <div class="toggle-row"><span class="toggle-label">Declaração do condomínio (art. 1424.º-A CC)</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-condominio" onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+
+    <div class="form-group" style="margin-top:.6rem"><label class="form-label">Documentos arquivados (um por linha)</label>
+      <textarea class="form-textarea" id="f-arquivados">«CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA» com as assinaturas reconhecidas presencialmente por mim, nesta data;
+documentos fiscais — DUC de IMT e Imposto do Selo.</textarea></div>
+  </div>
+
+</div>
+
+<!-- ══════════════ DOCUMENTO ══════════════ -->
+<div class="pane-doc"><div class="folha" id="folha"></div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+'use strict';
+/* ═══════════ CONFIG ═══════════ */
+const GRAPH_BASE='https://graph.microsoft.com/v1.0';
+const SOLICITADORAS={
+  liliana:{
+    nome:'LILIANA ISABEL PACHECO BURRICA CARDOSO',
+    nomeAbrev:'Liliana Isabel Pacheco Burrica Cardoso',
+    cedula:'08733',
+    nif:'219.126.658',
+    cc:'11841008 3ZU4',
+    ccValidade:'09/05/2035',
+    estadoCivil:'casada',
+    naturalidade:'Évora (Sé)',
+    domicilio:'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
+    codProcuracao:'PR-65440-42413-78710 (2026/01/01 23:54:29)',
+    textoProcuradora:'LILIANA ISABEL PACHECO BURRICA CARDOSO, casada, natural de Évora (Sé), Solicitadora com a cédula profissional número 08733 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 11841008 3ZU4, válido até 09/05/2035 e número de identificação fiscal 219.126.658, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  },
+  andreia:{
+    nome:'ANDREIA PESSEGUEIRO CABANAS',
+    nomeAbrev:'Andreia Pessegueiro Cabanas',
+    cedula:'10126',
+    nif:'249.651.378',
+    cc:'30756227 1ZX4',
+    ccValidade:'16/08/2027',
+    estadoCivil:'solteira',
+    naturalidade:'Évora (Sé)',
+    domicilio:'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
+    codProcuracao:'PR-65440-42413-78710 (21/01/2026 15:28)',
+    textoProcuradora:'ANDREIA PESSEGUEIRO CABANAS, solteira, maior, natural de Évora (Sé), Solicitadora com a cédula profissional número 10126 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 30756227 1ZX4, válido até 16/08/2027 e número de identificação fiscal 249.651.378, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+  }
+};
+function onEntChange(){
+  const S=SOLICITADORAS[document.getElementById('f-solicitadora').value];
+  document.getElementById('f-ent-cedula').value=S?S.cedula:'';
+  document.getElementById('f-ent-nif').value=S?S.nif:'';
+  document.getElementById('f-ent-domicilio').value=S?S.domicilio:'';
+  atualizar();
+}
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ═══════════ EXTENSO ═══════════ */
+const U=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+const D=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const C=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+function ext999(n){
+  if(n===0)return'';if(n===100)return'cem';
+  let s='';const c=Math.floor(n/100),r=n%100;
+  if(c)s=C[c]+(r?' e ':'');
+  if(r<20)s+=U[r];else{s+=D[Math.floor(r/10)];if(r%10)s+=' e '+U[r%10];}
+  return s;
+}
+function extInt(n){
+  n=Math.floor(Math.abs(n));
+  if(n===0)return'zero';
+  const grupos=[[1000000000,'mil milhões','mil milhões'],[1000000,'milhão','milhões'],[1000,'mil','mil']];
+  let s='',resto=n;
+  for(const[v,sg,pl]of grupos){
+    const q=Math.floor(resto/v);
+    if(q){
+      s+=(s?' ':'')+((v===1000&&q===1)?'':ext999(q)+' ')+(q===1?sg:pl);
+      resto%=v;
+    }
+  }
+  if(resto){const lig=(resto<100||resto%100===0)?' e ':' ';s+=(s?lig:'')+ext999(resto);}
+  return s.replace(/\s+/g,' ').trim();
+}
+function parseValor(v){return parseFloat(String(v||'').replace(/\./g,'').replace(',','.'))||0;}
+function fmtValor(n){return n.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function valorExtenso(v){
+  const n=parseValor(v);const e=Math.floor(n);const c=Math.round((n-e)*100);
+  let s=extInt(e)+(e===1?' euro':' euros');
+  if(c)s+=' e '+extInt(c)+(c===1?' cêntimo':' cêntimos');
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function dataExtenso(iso){
+  if(!iso)return'…';
+  const[a,m,d]=iso.split('-').map(Number);
+  return`${extInt(d)} de ${MESES[m-1]} de ${extInt(a)}`;
+}
+
+/* ═══════════ VENDEDORES DINÂMICOS ═══════════ */
+let vendCnt=0;
+function addVendedor(dados){
+  const c=document.getElementById('vendedores-container');
+  const idx=++vendCnt,id=`vend-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block vend-block';div.id=id;
+  div.innerHTML=`
+    <div class="outorgante-header"><span class="outorgante-title vend-title">Vendedor</span>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();renumVend();atualizar()">×</button>`:''}</div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Tipo</label>
+        <select class="form-select" id="${id}-tipo" onchange="onVendTipo('${id}');atualizar()">
+          <option value="singular">Pessoa singular</option>
+          <option value="empresa">Empresa</option>
+        </select></div>
+      <div class="form-group form-full ${id}-sing"><label class="form-label">Nome <span>*</span></label><input class="form-input" id="${id}-nome" placeholder="Ex: ARLINDO DOS SANTOS NOBRE"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">Estado civil (redigido)</label><input class="form-input" id="${id}-estado" placeholder='Ex: divorciado — ou: casado no regime de comunhão de adquiridos com MARIA …'></div>
+      <div class="form-group ${id}-sing"><label class="form-label">Naturalidade</label><input class="form-input" id="${id}-natural" placeholder="Ex: freguesia de Évora (Sé)"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">CC n.º</label><input class="form-input" id="${id}-cc" placeholder="Ex: 04909345 2ZY4"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">CC válido até</label><input class="form-input" id="${id}-ccval" placeholder="Ex: 03/01/2031"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">NIF</label><input class="form-input" id="${id}-nif" placeholder="Ex: 112784879"></div>
+      <div class="form-group form-full ${id}-sing"><label class="form-label">Morada</label><input class="form-input" id="${id}-morada" placeholder="Ex: Rua Eng. Tomás Silva nº 6, 1º Esq, 7005-263, Évora"></div>
+      <div class="form-group form-full ${id}-emp" style="display:none"><label class="form-label">Denominação <span>*</span></label><input class="form-input" id="${id}-denom" placeholder="Ex: SOCIEDADE X, LDA"></div>
+      <div class="form-group ${id}-emp" style="display:none"><label class="form-label">Sede</label><input class="form-input" id="${id}-sede"></div>
+      <div class="form-group ${id}-emp" style="display:none"><label class="form-label">NIPC</label><input class="form-input" id="${id}-nipc"></div>
+      <div class="form-group ${id}-emp" style="display:none"><label class="form-label">Capital social (€)</label><input class="form-input" id="${id}-capital"></div>
+      <div class="form-group form-full ${id}-emp" style="display:none"><label class="form-label">Representação (redigida)</label><input class="form-input" id="${id}-repr" placeholder="Ex: representada neste ato pelo seu gerente FULANO, com poderes para o ato"></div>
+    </div>`;
+  c.appendChild(div);
+  if(dados)Object.entries(dados).forEach(([k,v])=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=v;});
+  onVendTipo(id);renumVend();
+}
+function onVendTipo(id){
+  const emp=document.getElementById(`${id}-tipo`).value==='empresa';
+  document.querySelectorAll(`.${id}-sing`).forEach(e=>e.style.display=emp?'none':'flex');
+  document.querySelectorAll(`.${id}-emp`).forEach(e=>e.style.display=emp?'flex':'none');
+}
+function renumVend(){
+  const bs=document.querySelectorAll('.vend-block');
+  bs.forEach((b,i)=>{const t=b.querySelector('.vend-title');if(t)t.textContent=bs.length>1?`Vendedor ${i+1}`:'Vendedor';});
+}
+function lerVendedores(){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return[...document.querySelectorAll('.vend-block')].map(b=>{
+    const id=b.id;
+    return{tipo:g(`${id}-tipo`)||'singular',nome:g(`${id}-nome`),estado:g(`${id}-estado`),natural:g(`${id}-natural`),cc:g(`${id}-cc`),ccval:g(`${id}-ccval`),nif:g(`${id}-nif`),morada:g(`${id}-morada`),denom:g(`${id}-denom`),sede:g(`${id}-sede`),nipc:g(`${id}-nipc`),capital:g(`${id}-capital`),repr:g(`${id}-repr`)};
+  });
+}
+function textoVendedor(v){
+  if(v.tipo==='empresa')
+    return`${v.denom||'…'}, com sede em ${v.sede||'…'}, matriculada na Conservatória do Registo Comercial com o número único de matrícula e de identificação de pessoa coletiva ${v.nipc||'…'}${v.capital?`, com o capital social de ${v.capital} Euros`:''}, ${v.repr||'devidamente representada neste ato'}`;
+  return`${v.nome||'…'}${v.estado?`, ${v.estado}`:''}${v.natural?`, natural da ${v.natural}`:''}${v.cc?`, titular do Cartão de Cidadão n.º ${v.cc}`:''}${v.ccval?`, válido até ${v.ccval}`:''}${v.nif?`, e número de identificação fiscal ${v.nif}`:''}${v.morada?`, residente em ${v.morada}`:''}`;
+}
+
+/* ═══════════ CHEQUES DINÂMICOS ═══════════ */
+let cheqCnt=0;
+function addCheque(dados){
+  const c=document.getElementById('cheques-container');
+  const idx=++cheqCnt,id=`cheq-${idx}`;
+  const div=document.createElement('div');
+  div.className='cheq-block';div.id=id;div.style.cssText='display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.45rem';
+  div.innerHTML=`
+    <div class="form-group" style="flex:1"><label class="form-label">Valor (€)</label><input class="form-input" id="${id}-valor" placeholder="Ex: 29000,00"></div>
+    <div class="form-group" style="flex:1"><label class="form-label">Nº do cheque</label><input class="form-input" id="${id}-num" placeholder="…"></div>
+    ${idx>1?`<button class="remove-btn" type="button" style="margin-bottom:6px" onclick="document.getElementById('${id}').remove();atualizar()">×</button>`:''}`;
+  c.appendChild(div);
+  if(dados){document.getElementById(`${id}-valor`).value=dados.valor||'';document.getElementById(`${id}-num`).value=dados.num||'';}
+}
+function lerCheques(){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return[...document.querySelectorAll('.cheq-block')].map(b=>({valor:g(`${b.id}-valor`),num:g(`${b.id}-num`)})).filter(c=>c.valor||c.num);
+}
+
+/* ═══════════ COMPOSIÇÃO DOS BLOCOS ═══════════ */
+const v=id=>document.getElementById(id)?.value?.trim()||'';
+const chk=id=>!!document.getElementById(id)?.checked;
+
+function compor(){
+  const vend=lerVendedores();
+  const plural=vend.length>1;
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+
+  const txtPrimeiro=vend.map(textoVendedor).join(';\n')+`, adiante designad${plural?'os':'o'} por Primeiro${plural?'s':''} Contratante${plural?'s':''}.`;
+
+  const p1=v('f-p1-nome'),p2=v('f-p2-nome');
+  const procTxt=n=>{
+    const p=n===1?'p1':'p2';
+    return`${v(`f-${p}-nome`)}, ${v(`f-${p}-estado`)||'…'}, natural da ${v(`f-${p}-natural`)||'…'}, contribuinte fiscal n.º ${v(`f-${p}-nif`)||'…'}, titular do Cartão de Cidadão n.º ${v(`f-${p}-cc`)||'…'}, válido até ${v(`f-${p}-ccval`)||'…'}`;
+  };
+  let reprCGD;
+  if(p1&&p2)reprCGD=`devidamente representada neste ato por ${procTxt(1)}; e ${procTxt(2)}, ambos com domicílio profissional na sede da sua representada, na qualidade de Procuradora com poderes para o ato`;
+  else reprCGD=`devidamente representada neste ato por ${procTxt(1)}, com domicílio profissional na sede da sua representada, na qualidade de Procuradora com poderes para o ato`;
+  const txtSegunda=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de 4.525.714.495,00 Euros, ${reprCGD}, adiante designada por Segunda Contratante, CGD ou CAIXA.`;
+
+  /* Imóvel */
+  const isFr=v('f-im-tipo')==='fracao';
+  const txtImovel=isFr
+    ?`a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
+    :`o prédio urbano composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`;
+
+  /* Preço */
+  const preco=v('f-preco');
+  const cheques=lerCheques();
+  let txtPag;
+  if(cheques.length===0)txtPag=`2. O pagamento foi efetuado integralmente na presente data.`;
+  else{
+    const partes=cheques.map(c=>`no valor de ${c.valor||'…'} Euros (${c.valor?valorExtenso(c.valor).toLowerCase():'…'}), com o n.º ${c.num||'…'}`);
+    const lista=partes.length>1?partes.slice(0,-1).join(', ')+' e '+partes[partes.length-1]:partes[0];
+    txtPag=`2. O pagamento foi efetuado integralmente na presente data através de ${cheques.length>1?extInt(cheques.length)+' cheques bancários':'um cheque bancário'}, ${lista}, ${cheques.length>1?'todos sacados':'sacado'} sobre ${v('f-banco')||'…'}.`;
+  }
+  const txtPreco=`1. O Imóvel é vendido pelo preço de ${preco||'…'} Euros (${preco?valorExtenso(preco):'…'}), que o Primeiro Contratante declara já ter recebido e de que dá aqui quitação.\n${txtPag}`;
+
+  const txtOnus=chk('t-onus-livre')?'O Imóvel é vendido livre de quaisquer ónus ou encargos.':(v('f-onus-txt')||'…');
+  const txtLU=`O Imóvel tem a Licença de Utilização n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}, para o prédio de que faz parte integrante.`;
+  const txtDestino=`O Imóvel destina-se a ser cedido em Locação Financeira a ${v('f-loc-nome')||'…'}, com sede em ${v('f-loc-sede')||'…'}, e o NIPC ${v('f-loc-nipc')||'…'}.`;
+
+  /* ── TERMO ── */
+  const termo=[];
+  const entTxt=sol?`${sol.nome}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, contribuinte fiscal ${sol.nif}`:'…';
+  const localTxt=sol?`no domicílio profissional sito na ${sol.domicilio}`:'no domicílio profissional sito na …';
+  termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, com domicílio profissional na morada supra mencionada, compareceram como Outorgantes:`});
+  termo.push({id:'t-primeiro',T:plural?'PRIMEIROS':'PRIMEIRO',X:txtPrimeiro});
+  termo.push({id:'t-segunda',T:'SEGUNDA',X:txtSegunda});
+  termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;\n— a qualidade e os poderes da Segunda Outorgante, para o presente ato, pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}, ao abrigo do disposto no ${v('f-proc-poderes')||'…'}, da referida procuração.`});
+  termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
+  termo.push({id:'t-preco-decl',T:'',X:`Os Outorgantes declararam que corresponde inteiramente à verdade o teor da cláusula constante do contrato que aqui se autentica relativa ao valor do preço e respetivos meios e datas de pagamento, a qual aqui se tem por integralmente reproduzida para todos os efeitos legais.`});
+  if(chk('t-mediacao'))termo.push({id:'t-mediacao',T:'',X:`Pelos Outorgantes foi declarado que as partes recorreram a mediação imobiliária, prestada por ${v('f-med-nome')||'…'}, titular da licença n.º ${v('f-med-ami')||'…'} - AMI, tendo-lhes sido feita advertência de que a omissão ou a prestação de falsas declarações sobre a intervenção de mediador imobiliário no contrato faz incorrer as partes na pena aplicável ao crime de desobediência, prevista no artigo 348.º do Código Penal, por aplicação do n.º 3 do artigo 40.º, da Lei n.º 15/2013, de 8 de Fevereiro.`});
+  if(chk('t-ce'))termo.push({id:'t-ce',T:'',X:`A Parte Compradora declara que recebeu nesta data da Parte Vendedora o Certificado emitido no âmbito do SCE (Certificado Energético n.º ${v('f-ce-num')||'…'}), nos termos do Decreto-Lei 118/2013 de 20 de Agosto, relativamente ao IMÓVEL objeto da Compra e Venda contratada.`});
+  if(chk('t-condominio'))termo.push({id:'t-condominio',T:'',X:`É arquivada a declaração do administrador do condomínio, referente a encargos e dívidas de condomínio em vigor, em conformidade com o artigo 1424.º-A do Código Civil.`});
+  const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
+  if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
+  termo.push({id:'t-leitura',T:'',X:`A leitura e explicação do Documento Particular que aqui se autentica e deste Termo de Autenticação foram efetuadas em voz alta e na presença dos Outorgantes, com a advertência de que de seguida, e nesta mesma data, o mesmo vai ser depositado eletronicamente, para sua plena validade, em www.predialonline.pt.`});
+
+  /* ── CONTRATO ── */
+  const contrato=[];
+  contrato.push({id:'c-cab',T:'COMPRA E VENDA',X:''});
+  contrato.push({id:'c-primeiro',T:plural?'PRIMEIROS':'PRIMEIRO',X:txtPrimeiro});
+  contrato.push({id:'c-segunda',T:'SEGUNDA',X:txtSegunda});
+  contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
+  contrato.push({id:'c-cl1',T:'Primeira (Objeto)',X:`O Primeiro Contratante vende à representada da Segunda Contratante, que a aceita, ${txtImovel}`});
+  contrato.push({id:'c-cl2',T:'Segunda (Preço)',X:txtPreco});
+  contrato.push({id:'c-cl3',T:'Terceira (Ónus e encargos)',X:txtOnus});
+  let n=4;
+  if(chk('t-lu')){contrato.push({id:'c-cl-lu',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Licenciamento camarário)`,X:txtLU});n++;}
+  contrato.push({id:'c-cl-destino',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Destino do Imóvel adquirido)`,X:txtDestino});
+  contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
+
+  return{termo,contrato};
+}
+
+/* ═══════════ RENDER + EDIÇÃO POR BLOCO ═══════════ */
+let manuais={};
+function render(){
+  const{termo,contrato}=compor();
+  const folha=document.getElementById('folha');
+  const blocoHTML=b=>{
+    const manual=manuais[b.id]!==undefined;
+    const texto=manual?manuais[b.id]:b.X;
+    return`<div class="bloco${manual?' manual':''}" data-id="${b.id}">
+      <div class="b-ferr">${manual?`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Repor texto automático">↺ repor</button>`:''}</div>
+      ${b.T?`<div class="b-titulo${b.id.endsWith('-cab')?'" style="text-align:center':''}">${esc(b.T)}</div>`:''}
+      ${(texto||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="plaintext-only" data-id="${b.id}">${esc(texto)}</div>`:''}
+    </div>`;
+  };
+  folha.innerHTML=termo.map(blocoHTML).join('')
+    +`<hr class="quebra-pagina">`
+    +contrato.map(blocoHTML).join('');
+  folha.querySelectorAll('.b-texto').forEach(el=>{
+    el.addEventListener('input',()=>{
+      const id=el.dataset.id;
+      manuais[id]=el.innerText;
+      el.closest('.bloco').classList.add('manual');
+      const f=el.closest('.bloco').querySelector('.b-ferr');
+      if(f&&!f.querySelector('.b-badge'))f.innerHTML=`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${id}')">↺ repor</button>`;
+    });
+  });
+}
+function reporBloco(id){delete manuais[id];render();}
+function atualizar(){
+  // visibilidade condicional
+  document.getElementById('g-onus-txt').style.display=chk('t-onus-livre')?'none':'block';
+  document.getElementById('g-lu').style.display=chk('t-lu')?'block':'none';
+  document.getElementById('g-mediacao').style.display=chk('t-mediacao')?'block':'none';
+  document.getElementById('g-ce').style.display=chk('t-ce')?'block':'none';
+  const isFr=v('f-im-tipo')==='fracao';
+  document.getElementById('g-im-letra').style.display=isFr?'flex':'none';
+  document.getElementById('g-im-apph').style.display=isFr?'flex':'none';
+  render();
+}
+let atualizarTimer=null;
+document.getElementById('pane-form').addEventListener('input',()=>{
+  clearTimeout(atualizarTimer);atualizarTimer=setTimeout(atualizar,250);
+});
+
+/* ═══════════ GRAPH / PASTAS / RASCUNHO ═══════════ */
+let graphToken=localStorage.getItem('lbc_graph_token')||'';
+async function renovarToken(){
+  try{if(window.opener&&window.opener.graphToken){graphToken=window.opener.graphToken;localStorage.setItem('lbc_graph_token',graphToken);}}catch(e){}
+}
+async function graphFetch(url,opts={}){
+  const call=()=>fetch(url,{...opts,headers:{...(opts.headers||{}),'Authorization':'Bearer '+graphToken}});
+  let r=await call();
+  if(r.status===401){await renovarToken();r=await call();}
+  return r;
+}
+function showToast(msg,tipo){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show '+(tipo||'');
+  clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),4200);
+}
+
+let pastasSP=[],pastaSeleccionada=null;
+async function carregarPastasSP(){
+  const input=document.getElementById('pasta-search');
+  try{
+    await renovarToken();
+    const dr=await graphFetch(`${GRAPH_BASE}/sites/lbcsolicitadorapt.sharepoint.com:/sites/Escritrio:/drives`);
+    if(!dr.ok)throw new Error('sem acesso ('+dr.status+')');
+    const drives=await dr.json();
+    const d=drives.value.find(x=>x.name==='ESCRITURAS');
+    if(!d)throw new Error('biblioteca ESCRITURAS não encontrada');
+    const pr=await graphFetch(`${GRAPH_BASE}/drives/${d.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    const pastas=await pr.json();
+    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:d.id}));
+    input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;input.disabled=false;
+  }catch(e){input.placeholder='Sem ligação ao SharePoint';showToast('Pastas: '+e.message,'error');}
+}
+function pesquisarPastas(){
+  const q=document.getElementById('pasta-search').value.toLowerCase().trim();
+  const dd=document.getElementById('pasta-dropdown');
+  if(!q){dd.style.display='none';return;}
+  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
+  dd.innerHTML=res.length?res.map((p,i)=>`<div onclick="selecionarPasta(${i},'${q.replace(/'/g,"\\'")}')">${esc(p.nome)}</div>`).join(''):'<div style="cursor:default;color:var(--text-faint)">Sem resultados</div>';
+  dd.style.display='block';
+}
+function selecionarPasta(i,q){
+  const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q));
+  const p=res[i];if(!p)return;
+  pastaSeleccionada=p;
+  document.getElementById('pasta-search').value=p.nome;
+  document.getElementById('pasta-dropdown').style.display='none';
+  document.getElementById('pasta-sel-nome').textContent=p.nome;
+  document.getElementById('pasta-sel').style.display='block';
+  document.getElementById('btn-carregar-rascunho').disabled=false;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search'))document.getElementById('pasta-dropdown').style.display='none';});
+
+function estadoCompleto(){
+  const campos={};
+  document.querySelectorAll('.pane-form input,.pane-form select,.pane-form textarea').forEach(el=>{
+    if(!el.id||el.id==='pasta-search')return;
+    campos[el.id]=el.type==='checkbox'?el.checked:el.value;
+  });
+  return{tipo:'cvleasing',campos,vendedores:lerVendedores(),cheques:lerCheques(),manuais};
+}
+function restaurarEstado(d){
+  if(d.vendedores&&d.vendedores.length){document.getElementById('vendedores-container').innerHTML='';vendCnt=0;d.vendedores.forEach(x=>addVendedor(x));}
+  if(d.cheques&&d.cheques.length){document.getElementById('cheques-container').innerHTML='';cheqCnt=0;d.cheques.forEach(x=>addCheque(x));}
+  Object.entries(d.campos||{}).forEach(([id,val])=>{
+    const el=document.getElementById(id);if(!el)return;
+    if(el.type==='checkbox')el.checked=val;else el.value=val;
+  });
+  manuais=d.manuais||{};
+  atualizar();
+}
+async function guardarRascunho(){
+  const json=JSON.stringify(estadoCompleto(),null,2);
+  if(pastaSeleccionada){
+    try{
+      const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_GERADOR.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});
+      if(!r.ok)throw new Error(r.status);
+      showToast('Rascunho guardado na pasta!','success');return;
+    }catch(e){/* cai para local */}
+  }
+  localStorage.setItem('gerador_rascunho',json);
+  showToast(pastaSeleccionada?'Sem ligação — guardado localmente':'Sem pasta selecionada — guardado localmente','');
+}
+async function carregarRascunho(){
+  if(pastaSeleccionada){
+    try{
+      const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_GERADOR.json:/content`);
+      if(r.ok){restaurarEstado(await r.json());showToast('Rascunho carregado!','success');return;}
+      showToast('Esta pasta não tem rascunho do gerador','');return;
+    }catch(e){showToast('Erro: '+e.message,'error');return;}
+  }
+  const l=localStorage.getItem('gerador_rascunho');
+  if(l){restaurarEstado(JSON.parse(l));showToast('Rascunho local carregado','success');}
+}
+
+/* ═══════════ GERAR WORD (template-casca) ═══════════ */
+function blocosFinais(){
+  const{termo,contrato}=compor();
+  const aplicar=b=>({T:b.T,X:manuais[b.id]!==undefined?manuais[b.id]:b.X});
+  return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar)};
+}
+async function gerarWord(){
+  try{
+    if(typeof PizZip==='undefined'||typeof docxtemplater==='undefined')throw new Error('bibliotecas de geração não carregaram — verifica a ligação à internet');
+    await renovarToken();
+    const dr=await graphFetch(`${GRAPH_BASE}/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives`);
+    if(!dr.ok)throw new Error('sem acesso ao SharePoint ('+dr.status+')');
+    const drives=await dr.json();
+    const docsDrive=drives.value.find(d=>/document|documento/i.test(d.name))||drives.value[0];
+    const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA.docx:/content`);
+    if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA.docx — carrega o template-casca para essa pasta');
+    const buf=await fr.arrayBuffer();
+    const zip=new PizZip(buf);
+    const DocxClass=window.docxtemplater||window.Docxtemplater;
+    const doc=new DocxClass(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
+    doc.render(blocosFinais());
+    const blob=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const vend=lerVendedores()[0]||{};
+    const nomeBase=(vend.nome||vend.denom||'CONTRATO').split(/\s+/);
+    const nomeFich=`CV_LEASING_${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'')+'.docx';
+    // download
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nomeFich;a.click();
+    // gravar na pasta, se houver
+    if(pastaSeleccionada){
+      const up=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(nomeFich)}:/content`,{method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:blob});
+      showToast(up.ok?`${nomeFich} gerado e gravado na pasta!`:`${nomeFich} descarregado (falhou gravar na pasta)`,up.ok?'success':'');
+    }else showToast(`${nomeFich} descarregado`,'success');
+  }catch(e){showToast('Erro ao gerar Word: '+e.message,'error');}
+}
+
+/* ═══════════ INIT ═══════════ */
+window.addEventListener('load',()=>{
+  document.getElementById('f-data-ato').value=new Date().toISOString().slice(0,10);
+  addVendedor();addCheque();addCheque();
+  atualizar();
+  carregarPastasSP();
+});
+</script>
+</body>
+</html>
