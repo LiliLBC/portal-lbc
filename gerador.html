@@ -224,11 +224,21 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <div class="section-card-header"><div class="section-num">4</div><div><div class="section-name">Imóvel</div><div class="section-desc">Objeto da compra e venda</div></div></div>
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Tipo</label>
-        <select class="form-select" id="f-im-tipo">
+        <select class="form-select" id="f-im-tipo" onchange="onImTipo()">
           <option value="fracao">Fração autónoma</option>
           <option value="urbano">Prédio urbano</option>
+          <option value="rustico">Prédio rústico</option>
+          <option value="misto">Prédio misto</option>
         </select>
       </div>
+      <div class="form-group"><label class="form-label">Direito transmitido</label>
+        <select class="form-select" id="f-im-direito" onchange="atualizar()">
+          <option value="plena">Propriedade plena</option>
+          <option value="superficie">Direito de superfície</option>
+          <option value="usufruto">Usufruto</option>
+          <option value="raiz">Nua-propriedade (raiz)</option>
+          <option value="dhp">Direito real de habitação periódica</option>
+        </select></div>
       <div class="form-group" id="g-im-letra"><label class="form-label">Letra da fração</label><input class="form-input" id="f-im-letra" placeholder="Ex: E"></div>
       <div class="form-group form-full"><label class="form-label">Descrição / correspondência <span>*</span></label><textarea class="form-textarea" id="f-im-descricao" placeholder="Ex: correspondente a 1º esquerdo destinado a habitação com 5 divisões, cozinha e 2 casas de banho. Área coberta - 112,40 m2, com tudo o que a compõe"></textarea></div>
       <div class="form-group" id="g-im-apph"><label class="form-label">AP da propriedade horizontal</label><input class="form-input" id="f-im-apph" placeholder="Ex: AP. 49 de 1995/06/07"></div>
@@ -237,9 +247,19 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group"><label class="form-label">Nº de descrição <span>*</span></label><input class="form-input" id="f-im-num" placeholder="Ex: 497"></div>
       <div class="form-group"><label class="form-label">Freguesia (conservatória) <span>*</span></label><input class="form-input" id="f-im-freg-crp" placeholder="Ex: Horta das Figueiras"></div>
       <div class="form-group"><label class="form-label">AP aquisição (vendedor) <span>*</span></label><input class="form-input" id="f-im-apaq" placeholder="Ex: AP. 761 de 2012/06/26"></div>
-      <div class="form-group"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
-      <div class="form-group"><label class="form-label">Freguesia (matriz) <span>*</span></label><input class="form-input" id="f-im-freg-mat" placeholder="Ex: União das Freguesias de Malagueira e Horta das Figueiras"></div>
-      <div class="form-group"><label class="form-label">VPT (€) <span>*</span></label><input class="form-input" id="f-im-vpt" placeholder="Ex: 39314,90"></div>
+      <div class="form-group" id="g-im-artigo"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
+      <div class="form-group" id="g-im-freg-mat"><label class="form-label">Freguesia (matriz) <span>*</span></label><input class="form-input" id="f-im-freg-mat" placeholder="Ex: União das Freguesias de Malagueira e Horta das Figueiras"></div>
+      <div class="form-group" id="g-im-vpt"><label class="form-label">VPT (€) <span>*</span></label><input class="form-input" id="f-im-vpt" placeholder="Ex: 39314,90"></div>
+    </div>
+    <div class="cond-block" id="g-matrizes" style="display:none;margin-top:.6rem">
+      <div class="cond-block-title">Matrizes do prédio (urbanas e rústicas)</div>
+      <div id="matrizes-container"></div>
+      <button class="add-btn" type="button" onclick="addMatriz();atualizar()">+ Adicionar matriz</button>
+      <div id="mat-soma" style="display:none;font-size:11.5px;margin-top:.5rem;font-family:'DM Mono',monospace"></div>
+    </div>
+    <div id="g-predios-extra" style="display:none">
+      <div id="predios-extra-container"></div>
+      <button class="add-btn" type="button" style="margin-top:.5rem" onclick="addPredioExtra();atualizar()">+ Adicionar prédio (transação com vários prédios)</button>
     </div>
   </div>
 
@@ -277,12 +297,52 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
     </div>
 
+    <div class="cond-block" id="g-confinantes" style="display:none">
+      <div class="cond-block-title">Matriz rústica identificada — declarações obrigatórias (automáticas)</div>
+      <div class="form-group"><label class="form-label">Preferência de confinantes (art. 1380.º CC)</label>
+        <select class="form-select" id="f-confinantes" onchange="atualizar()">
+          <option value="asseguradas">Foram asseguradas as comunicações aos confinantes (arts. 416.º e 1380.º/3)</option>
+          <option value="excluida">Não aplicável — exclusão do art. 1381.º, al. a)</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:.4rem">A declaração dos arts. 1376.º/1377.º (não fracionamento) entra sempre, automaticamente.</div>
+    </div>
+
+    <div class="toggle-row"><span class="toggle-label">Direitos de preferência — Casa Pronta (pedido)</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-casapronta" onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+    <div class="cond-block" id="g-casapronta" style="display:none">
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label class="form-label">Nº do pedido</label><input class="form-input" id="f-cp-numero"></div>
+        <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="f-cp-data"></div>
+        <div class="form-group"><label class="form-label">Câmara Municipal</label><input class="form-input" id="f-cp-camara" placeholder="Ex: Évora"></div>
+      </div>
+      <div class="form-group" style="margin-top:.55rem"><label class="form-label">Pronúncia da Câmara Municipal</label>
+        <select class="form-select" id="f-cp-pronuncia">
+          <option value="nao">Não se pronunciou</option>
+          <option value="sim">Pronunciou-se — não pretende exercer preferência</option>
+        </select>
+      </div>
+    </div>
+
     <div class="cond-block">
       <div class="cond-block-title">Locatário (destino — locação financeira)</div>
       <div class="form-grid form-grid-2">
-        <div class="form-group form-full"><label class="form-label">Denominação <span>*</span></label><input class="form-input" id="f-loc-nome" placeholder="Ex: IDEIAS PRIORITÁRIAS DECORAÇÕES UNIPESSOAL LDA"></div>
-        <div class="form-group"><label class="form-label">Sede <span>*</span></label><input class="form-input" id="f-loc-sede" placeholder="Ex: Rua Luis Stau Monteiro nº4, R/C Dto, 7005-545, Évora"></div>
-        <div class="form-group"><label class="form-label">NIPC <span>*</span></label><input class="form-input" id="f-loc-nipc" placeholder="Ex: 509265391"></div>
+        <div class="form-group"><label class="form-label">Tipo de locatário</label>
+          <select class="form-select" id="f-loc-tipo" onchange="atualizar()"><option value="empresa">Empresa</option><option value="particular">Particular</option></select></div>
+        <div class="form-group form-full"><label class="form-label">Denominação / Nome <span>*</span></label><input class="form-input" id="f-loc-nome" placeholder="Ex: IDEIAS PRIORITÁRIAS DECORAÇÕES UNIPESSOAL LDA"></div>
+        <div class="form-group"><label class="form-label">Sede / Residência <span>*</span></label><input class="form-input" id="f-loc-sede" placeholder="Ex: Rua Luis Stau Monteiro nº4, R/C Dto, 7005-545, Évora"></div>
+        <div class="form-group"><label class="form-label">NIPC / NIF <span>*</span></label><input class="form-input" id="f-loc-nipc" placeholder="Ex: 509265391"></div>
+        <div class="form-group"><label class="form-label">Nº do contrato de locação financeira</label><input class="form-input" id="f-loc-num"></div>
+      </div>
+      <div class="cond-block-title" style="margin-top:.7rem">Identificação para o reconhecimento (representante da firma ou o próprio particular)</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome</label><input class="form-input" id="f-locrep-nome"></div>
+        <div class="form-group"><label class="form-label">Estado civil</label><input class="form-input" id="f-locrep-ec" placeholder="Ex: casada"></div>
+        <div class="form-group"><label class="form-label">Naturalidade</label><input class="form-input" id="f-locrep-natural"></div>
+        <div class="form-group"><label class="form-label">CC n.º</label><input class="form-input" id="f-locrep-cc"></div>
+        <div class="form-group"><label class="form-label">CC válido até</label><input class="form-input" id="f-locrep-ccval"></div>
+        <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-locrep-nif"></div>
+        <div class="form-group"><label class="form-label">Qualidade</label><input class="form-input" id="f-locrep-qual" value="gerente"></div>
       </div>
     </div>
 
@@ -301,8 +361,15 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group"><label class="form-label">Nº SCE</label><input class="form-input" id="f-ce-num" placeholder="Ex: SCE 392562633"></div>
     </div>
 
-    <div class="toggle-row"><span class="toggle-label">Declaração do condomínio (art. 1424.º-A CC)</span>
-      <label class="toggle-switch"><input type="checkbox" id="t-condominio" onchange="atualizar()"><span class="toggle-slider"></span></label></div>
+    <div class="cond-block" id="g-condominio" style="display:none">
+      <div class="cond-block-title">Condomínio (art. 1424.º-A CC) — aparece automaticamente por ser fração</div>
+      <div class="form-group"><label class="form-label">Declaração de encargos do condomínio</label>
+        <select class="form-select" id="f-condominio" onchange="atualizar()">
+          <option value="existe">Foi apresentada — fica arquivada</option>
+          <option value="advertencia">Não foi apresentada — advertência (art. 54.º CN)</option>
+        </select>
+      </div>
+    </div>
 
     <div class="form-group" style="margin-top:.6rem"><label class="form-label">Documentos arquivados (um por linha)</label>
       <textarea class="form-textarea" id="f-arquivados">«CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA» com as assinaturas reconhecidas presencialmente por mim, nesta data;
@@ -419,27 +486,86 @@ function addVendedor(dados){
           <option value="singular">Pessoa singular</option>
           <option value="empresa">Empresa</option>
         </select></div>
+      <div class="form-group ${id}-sing"><label class="form-label">Género</label>
+        <select class="form-select" id="${id}-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
       <div class="form-group form-full ${id}-sing"><label class="form-label">Nome <span>*</span></label><input class="form-input" id="${id}-nome" placeholder="Ex: ARLINDO DOS SANTOS NOBRE"></div>
-      <div class="form-group ${id}-sing"><label class="form-label">Estado civil (redigido)</label><input class="form-input" id="${id}-estado" placeholder='Ex: divorciado — ou: casado no regime de comunhão de adquiridos com MARIA …'></div>
+      <div class="form-group ${id}-sing"><label class="form-label">Estado civil</label>
+        <select class="form-select" id="${id}-ec" onchange="onVendEC('${id}');atualizar()">
+          <option value="solteiro">Solteiro(a), maior</option>
+          <option value="casado">Casado(a)</option>
+          <option value="divorciado">Divorciado(a)</option>
+          <option value="viuvo">Viúvo(a)</option>
+          <option value="uniao">Em união de facto</option>
+        </select></div>
       <div class="form-group ${id}-sing"><label class="form-label">Naturalidade</label><input class="form-input" id="${id}-natural" placeholder="Ex: freguesia de Évora (Sé)"></div>
-      <div class="form-group ${id}-sing"><label class="form-label">CC n.º</label><input class="form-input" id="${id}-cc" placeholder="Ex: 04909345 2ZY4"></div>
-      <div class="form-group ${id}-sing"><label class="form-label">CC válido até</label><input class="form-input" id="${id}-ccval" placeholder="Ex: 03/01/2031"></div>
-      <div class="form-group ${id}-sing"><label class="form-label">NIF</label><input class="form-input" id="${id}-nif" placeholder="Ex: 112784879"></div>
-      <div class="form-group form-full ${id}-sing"><label class="form-label">Morada</label><input class="form-input" id="${id}-morada" placeholder="Ex: Rua Eng. Tomás Silva nº 6, 1º Esq, 7005-263, Évora"></div>
-      <div class="form-group form-full ${id}-emp" style="display:none"><label class="form-label">Denominação <span>*</span></label><input class="form-input" id="${id}-denom" placeholder="Ex: SOCIEDADE X, LDA"></div>
-      <div class="form-group ${id}-emp" style="display:none"><label class="form-label">Sede</label><input class="form-input" id="${id}-sede"></div>
-      <div class="form-group ${id}-emp" style="display:none"><label class="form-label">NIPC</label><input class="form-input" id="${id}-nipc"></div>
-      <div class="form-group ${id}-emp" style="display:none"><label class="form-label">Capital social (€)</label><input class="form-input" id="${id}-capital"></div>
-      <div class="form-group form-full ${id}-emp" style="display:none"><label class="form-label">Representação (redigida)</label><input class="form-input" id="${id}-repr" placeholder="Ex: representada neste ato pelo seu gerente FULANO, com poderes para o ato"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">CC n.º</label><input class="form-input" id="${id}-cc"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">CC válido até</label><input class="form-input" id="${id}-ccval"></div>
+      <div class="form-group ${id}-sing"><label class="form-label">NIF</label><input class="form-input" id="${id}-nif"></div>
+      <div class="form-group form-full ${id}-sing"><label class="form-label">Morada</label><input class="form-input" id="${id}-morada"></div>
+    </div>
+    <div class="cond-block ${id}-casado" style="display:none;margin-top:.55rem">
+      <div class="cond-block-title">Cônjuge e regime de bens</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Regime de bens</label>
+          <select class="form-select" id="${id}-regime">
+            <option value="comunhão de adquiridos">Comunhão de adquiridos</option>
+            <option value="comunhão geral de bens">Comunhão geral de bens</option>
+            <option value="separação de bens">Separação de bens</option>
+          </select></div>
+        <div class="form-group"><label class="form-label">O cônjuge também outorga?</label>
+          <select class="form-select" id="${id}-conj-out" onchange="onVendEC('${id}');atualizar()">
+            <option value="sim">Sim — vende também / consente</option>
+            <option value="nao">Não outorga (só identificado)</option>
+          </select></div>
+        <div class="form-group form-full"><label class="form-label">Nome do cônjuge</label><input class="form-input" id="${id}-conj-nome"></div>
+        <div class="form-group"><label class="form-label">Naturalidade do cônjuge</label><input class="form-input" id="${id}-conj-natural"></div>
+        <div class="form-group"><label class="form-label">NIF do cônjuge</label><input class="form-input" id="${id}-conj-nif"></div>
+        <div class="form-group ${id}-conjdoc"><label class="form-label">CC do cônjuge n.º</label><input class="form-input" id="${id}-conj-cc"></div>
+        <div class="form-group ${id}-conjdoc"><label class="form-label">CC do cônjuge válido até</label><input class="form-input" id="${id}-conj-ccval"></div>
+      </div>
+    </div>
+    <div class="form-grid form-grid-2 ${id}-emp" style="display:none;margin-top:.55rem">
+      <div class="form-group form-full"><label class="form-label">Denominação <span>*</span></label><input class="form-input" id="${id}-denom"></div>
+      <div class="form-group"><label class="form-label">Sede</label><input class="form-input" id="${id}-sede"></div>
+      <div class="form-group"><label class="form-label">NIPC</label><input class="form-input" id="${id}-nipc"></div>
+      <div class="form-group"><label class="form-label">Capital social (€)</label><input class="form-input" id="${id}-capital"></div>
+      <div class="form-group"><label class="form-label">Conservatória do Reg. Comercial</label><input class="form-input" id="${id}-crc" placeholder="Ex: Évora"></div>
+      <div class="form-group form-full"><label class="form-label">Representação (redigida)</label><input class="form-input" id="${id}-repr" placeholder="Ex: representada neste ato pelo seu gerente FULANO, casado, natural de ..., com poderes para o ato"></div>
+    </div>
+    <div class="toggle-row" style="margin-top:.55rem;margin-bottom:0">
+      <span class="toggle-label" style="font-size:12px">Representado por procurador</span>
+      <label class="toggle-switch"><input type="checkbox" id="${id}-temproc" onchange="onVendEC('${id}');atualizar()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="cond-block ${id}-proc" style="display:none;margin-top:.45rem">
+      <div class="cond-block-title">Procurador</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Nome do procurador</label><input class="form-input" id="${id}-proc-nome"></div>
+        <div class="form-group form-full"><label class="form-label">Identificação do procurador (redigida)</label><input class="form-input" id="${id}-proc-id" placeholder="Ex: casado, natural da freguesia de ..., titular do CC n.º ..., válido até ..., NIF ..., residente em ..."></div>
+        <div class="form-group form-full"><label class="form-label">Procuração (referência)</label><input class="form-input" id="${id}-proc-ref" placeholder="Ex: procuração outorgada em 12/05/2026, com o código de acesso PR-... — ou: no Cartório Notarial de ..."></div>
+      </div>
     </div>`;
   c.appendChild(div);
-  if(dados)Object.entries(dados).forEach(([k,v])=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=v;});
-  onVendTipo(id);renumVend();
+  if(dados)Object.entries(dados).forEach(([k,v])=>{
+    const el=document.getElementById(`${id}-${k}`);
+    if(!el)return;
+    if(el.type==='checkbox')el.checked=!!v;else el.value=v;
+  });
+  onVendTipo(id);onVendEC(id);renumVend();
 }
 function onVendTipo(id){
   const emp=document.getElementById(`${id}-tipo`).value==='empresa';
   document.querySelectorAll(`.${id}-sing`).forEach(e=>e.style.display=emp?'none':'flex');
-  document.querySelectorAll(`.${id}-emp`).forEach(e=>e.style.display=emp?'flex':'none');
+  document.querySelectorAll(`.${id}-emp`).forEach(e=>e.style.display=emp?'grid':'none');
+  if(emp)document.querySelectorAll(`.${id}-casado`).forEach(e=>e.style.display='none');
+  else onVendEC(id);
+}
+function onVendEC(id){
+  const casado=document.getElementById(`${id}-ec`)?.value==='casado'&&document.getElementById(`${id}-tipo`).value!=='empresa';
+  document.querySelectorAll(`.${id}-casado`).forEach(e=>e.style.display=casado?'block':'none');
+  const conjOut=document.getElementById(`${id}-conj-out`)?.value==='sim';
+  document.querySelectorAll(`.${id}-conjdoc`).forEach(e=>e.style.display=(casado&&conjOut)?'flex':'none');
+  const temproc=!!document.getElementById(`${id}-temproc`)?.checked;
+  document.querySelectorAll(`.${id}-proc`).forEach(e=>e.style.display=temproc?'block':'none');
 }
 function renumVend(){
   const bs=document.querySelectorAll('.vend-block');
@@ -447,15 +573,119 @@ function renumVend(){
 }
 function lerVendedores(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
+  const gc=id=>!!document.getElementById(id)?.checked;
   return[...document.querySelectorAll('.vend-block')].map(b=>{
     const id=b.id;
-    return{tipo:g(`${id}-tipo`)||'singular',nome:g(`${id}-nome`),estado:g(`${id}-estado`),natural:g(`${id}-natural`),cc:g(`${id}-cc`),ccval:g(`${id}-ccval`),nif:g(`${id}-nif`),morada:g(`${id}-morada`),denom:g(`${id}-denom`),sede:g(`${id}-sede`),nipc:g(`${id}-nipc`),capital:g(`${id}-capital`),repr:g(`${id}-repr`)};
+    return{tipo:g(`${id}-tipo`)||'singular',genero:g(`${id}-genero`)||'M',nome:g(`${id}-nome`),ec:g(`${id}-ec`)||'solteiro',natural:g(`${id}-natural`),cc:g(`${id}-cc`),ccval:g(`${id}-ccval`),nif:g(`${id}-nif`),morada:g(`${id}-morada`),
+      regime:g(`${id}-regime`),'conj-out':g(`${id}-conj-out`)||'sim','conj-nome':g(`${id}-conj-nome`),'conj-natural':g(`${id}-conj-natural`),'conj-nif':g(`${id}-conj-nif`),'conj-cc':g(`${id}-conj-cc`),'conj-ccval':g(`${id}-conj-ccval`),
+      denom:g(`${id}-denom`),sede:g(`${id}-sede`),nipc:g(`${id}-nipc`),capital:g(`${id}-capital`),crc:g(`${id}-crc`),repr:g(`${id}-repr`),
+      temproc:gc(`${id}-temproc`),'proc-nome':g(`${id}-proc-nome`),'proc-id':g(`${id}-proc-id`),'proc-ref':g(`${id}-proc-ref`)};
   });
 }
+function ecTexto(v){
+  const f=v.genero==='F';
+  return{solteiro:f?'solteira, maior':'solteiro, maior',divorciado:f?'divorciada':'divorciado',viuvo:f?'viúva':'viúvo',uniao:'em união de facto'}[v.ec]||'';
+}
+function idSingularBase(v){
+  return`${v.nome||'…'}${v.natural?`, natural da ${v.natural}`:''}${v.cc?`, titular do Cartão de Cidadão n.º ${v.cc}`:''}${v.ccval?`, válido até ${v.ccval}`:''}${v.nif?`, e número de identificação fiscal ${v.nif}`:''}`;
+}
 function textoVendedor(v){
-  if(v.tipo==='empresa')
-    return`${v.denom||'…'}, com sede em ${v.sede||'…'}, matriculada na Conservatória do Registo Comercial com o número único de matrícula e de identificação de pessoa coletiva ${v.nipc||'…'}${v.capital?`, com o capital social de ${v.capital} Euros`:''}, ${v.repr||'devidamente representada neste ato'}`;
-  return`${v.nome||'…'}${v.estado?`, ${v.estado}`:''}${v.natural?`, natural da ${v.natural}`:''}${v.cc?`, titular do Cartão de Cidadão n.º ${v.cc}`:''}${v.ccval?`, válido até ${v.ccval}`:''}${v.nif?`, e número de identificação fiscal ${v.nif}`:''}${v.morada?`, residente em ${v.morada}`:''}`;
+  let base;
+  if(v.tipo==='empresa'){
+    base=`${v.denom||'…'}, com sede em ${v.sede||'…'}, matriculada na Conservatória do Registo Comercial${v.crc?` de ${v.crc}`:''} com o número único de matrícula e de identificação de pessoa coletiva ${v.nipc||'…'}${v.capital?`, com o capital social de ${v.capital} Euros`:''}, ${v.repr||'devidamente representada neste ato'}`;
+  }else if(v.ec==='casado'){
+    const f=v.genero==='F';
+    if(v['conj-out']==='sim'){
+      const conj=`${v['conj-nome']||'…'}${v['conj-natural']?`, natural da ${v['conj-natural']}`:''}${v['conj-cc']?`, titular do Cartão de Cidadão n.º ${v['conj-cc']}`:''}${v['conj-ccval']?`, válido até ${v['conj-ccval']}`:''}${v['conj-nif']?`, e número de identificação fiscal ${v['conj-nif']}`:''}`;
+      base=`${idSingularBase(v)}, e ${f?'marido':'mulher'} ${conj}, casados entre si sob o regime da ${v.regime||'…'}${v.morada?`, residentes em ${v.morada}`:''}`;
+    }else{
+      base=`${idSingularBase(v)}, ${f?'casada':'casado'} sob o regime da ${v.regime||'…'} com ${v['conj-nome']||'…'}${v['conj-natural']?`, natural da ${v['conj-natural']}`:''}${v['conj-nif']?`, NIF ${v['conj-nif']}`:''}${v.morada?`, residente em ${v.morada}`:''}`;
+    }
+  }else{
+    base=`${idSingularBase(v).replace(v.nome||'…',(v.nome||'…')+(ecTexto(v)?`, ${ecTexto(v)}`:''))}${v.morada?`, residente em ${v.morada}`:''}`;
+  }
+  if(v.temproc){
+    base+=`, neste ato ${v.tipo==='empresa'?'também ':''}representad${v.tipo==='empresa'?'a':(v.genero==='F'?'a':'o')} por ${v['proc-nome']||'…'}${v['proc-id']?`, ${v['proc-id']}`:''}, na qualidade de procurador${v['proc-id']&&/\bcasada|solteira|viúva|divorciada\b/i.test(v['proc-id'])?'a':''} com poderes para o ato, conforme ${v['proc-ref']||'procuração que arquivo'}`;
+  }
+  return base;
+}
+/* ═══════════ MATRIZES DINÂMICAS ═══════════ */
+let matCnt=0;
+function addMatriz(dados,pid){
+  const c=document.getElementById(pid?`${pid}-mats`:'matrizes-container');
+  const idx=++matCnt,id=`mat-${idx}`;
+  const div=document.createElement('div');
+  div.className='mat-block';div.id=id;div.style.cssText='display:flex;gap:.45rem;align-items:flex-end;margin-bottom:.45rem;flex-wrap:wrap';
+  div.innerHTML=`
+    <div class="form-group" style="width:110px"><label class="form-label">Natureza</label>
+      <select class="form-select" id="${id}-nat" onchange="atualizar()"><option value="urbana">Urbana</option><option value="rustica">Rústica</option></select></div>
+    <div class="form-group" style="width:90px"><label class="form-label">Artigo</label><input class="form-input" id="${id}-artigo"></div>
+    <div class="form-group" style="flex:1;min-width:150px"><label class="form-label">Freguesia</label><input class="form-input" id="${id}-freg"></div>
+    <div class="form-group" style="width:110px"><label class="form-label">VPT (€)</label><input class="form-input" id="${id}-vpt"></div>
+    <div class="form-group" style="width:70px"><label class="form-label">Ano</label><input class="form-input" id="${id}-ano"></div>
+    <div class="form-group mat-vimt" style="width:120px"><label class="form-label">Valor p/ IMT (€)</label><input class="form-input" id="${id}-vimt"></div>
+    <button class="remove-btn" type="button" style="margin-bottom:6px" onclick="document.getElementById('${id}').remove();atualizar()">×</button>`;
+  c.appendChild(div);
+  if(dados){['nat','artigo','freg','vpt','ano','vimt'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='nat'?'urbana':'');});}
+}
+function lerMatrizes(pid){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return[...document.querySelectorAll(pid?`#${pid}-mats .mat-block`:'#matrizes-container .mat-block')].map(b=>({nat:g(`${b.id}-nat`)||'urbana',artigo:g(`${b.id}-artigo`),freg:g(`${b.id}-freg`),vpt:g(`${b.id}-vpt`),ano:g(`${b.id}-ano`),vimt:g(`${b.id}-vimt`)}));
+}
+function temMatrizRustica(){
+  const t=v('f-im-tipo');
+  if(t==='fracao')return false;
+  return lerMatrizes().some(m=>m.nat==='rustica')||lerPrediosExtra().some(p=>p.matrizes.some(m=>m.nat==='rustica')||p.tipo!=='urbano')||t==='rustico'||t==='misto';
+}
+function onImTipo(){
+  const t=v('f-im-tipo');
+  if(t!=='fracao'){
+    const c=document.getElementById('matrizes-container');
+    if(!c.querySelector('.mat-block')){
+      if(t==='misto'){addMatriz({nat:'rustica'});addMatriz({nat:'urbana'});}
+      else addMatriz({nat:t==='rustico'?'rustica':'urbana'});
+    }
+  }
+  atualizar();
+}
+function textoMatrizG(m,multi){
+  return`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}, da freguesia de ${m.freg||'…'}, com o valor patrimonial atribuído de ${m.vpt||'…'} Euros${m.ano?`, determinado no ano de ${m.ano}`:''}${multi?`, ao qual foi atribuído o valor de ${m.vimt||'…'} Euros para efeitos de IMT`:''}`;
+}
+
+/* ═══════════ PRÉDIOS ADICIONAIS ═══════════ */
+let predCnt=0;
+function addPredioExtra(dados){
+  const c=document.getElementById('predios-extra-container');
+  const idx=++predCnt,id=`pred-${idx}`;
+  const div=document.createElement('div');
+  div.className='outorgante-block pred-block';div.id=id;div.style.marginTop='.6rem';
+  div.innerHTML=`
+    <div class="outorgante-header"><span class="outorgante-title pred-title">Prédio adicional</span>
+      <button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">×</button></div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Tipo</label>
+        <select class="form-select" id="${id}-tipo" onchange="atualizar()"><option value="urbano">Urbano</option><option value="rustico">Rústico</option><option value="misto">Misto</option></select></div>
+      <div class="form-group form-full"><label class="form-label">Composto de <span>*</span></label><input class="form-input" id="${id}-descricao"></div>
+      <div class="form-group"><label class="form-label">Sito em</label><input class="form-input" id="${id}-sito"></div>
+      <div class="form-group"><label class="form-label">Conservatória</label><input class="form-input" id="${id}-crp"></div>
+      <div class="form-group"><label class="form-label">Nº de descrição</label><input class="form-input" id="${id}-num"></div>
+      <div class="form-group"><label class="form-label">Freguesia (CRP)</label><input class="form-input" id="${id}-freg"></div>
+      <div class="form-group form-full"><label class="form-label">AP aquisição (vendedor)</label><input class="form-input" id="${id}-apaq"></div>
+    </div>
+    <div class="cond-block-title" style="margin-top:.6rem">Matrizes deste prédio</div>
+    <div id="${id}-mats"></div>
+    <button class="add-btn" type="button" onclick="addMatriz(null,'${id}');atualizar()">+ Adicionar matriz</button>`;
+  c.appendChild(div);
+  if(dados){['tipo','descricao','sito','crp','num','freg','apaq'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));}
+  else addMatriz(null,id);
+  return id;
+}
+function lerPrediosExtra(){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return[...document.querySelectorAll('.pred-block')].map(b=>{
+    const id=b.id;
+    return{tipo:g(`${id}-tipo`)||'urbano',descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),matrizes:lerMatrizes(id)};
+  });
 }
 
 /* ═══════════ CHEQUES DINÂMICOS ═══════════ */
@@ -500,9 +730,32 @@ function compor(){
 
   /* Imóvel */
   const isFr=v('f-im-tipo')==='fracao';
+  const tipoIm=v('f-im-tipo');
+  /* ── REGRA GENÉRICA DO TRONCO · Direito transmitido ──
+     Quando ≠ propriedade plena, o objeto é o DIREITO sobre o prédio — e no ramo do
+     mútuo/hipoteca (CVMH, quando migrar) a hipoteca constitui-se SOBRE O DIREITO,
+     nunca sobre o imóvel (fonte recorrente de suprimentos). Usar sempre dtoPrefixo. */
+  const DIREITOS={plena:'',superficie:'o direito de superfície sobre ',usufruto:'o usufruto sobre ',raiz:'a nua-propriedade (raiz) sobre ',dhp:'o direito real de habitação periódica sobre '};
+  const dtoPrefixo=DIREITOS[v('f-im-direito')]||'';
+  const desigIm=tipoIm==='misto'?'o prédio misto':tipoIm==='rustico'?'o prédio rústico':'o prédio urbano';
+  const matrizes=isFr?[]:lerMatrizes();
+  const txtMatrizes=matrizes.length
+    ?(matrizes.length>1?matrizes.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(matrizes[matrizes.length-1],true):textoMatrizG(matrizes[0],false))
+    :'na respetiva matriz predial …';
   const txtImovel=isFr
-    ?`a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
-    :`o prédio urbano composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`;
+    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
+    :(()=>{
+      const extras=lerPrediosExtra();
+      const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
+      const multiVerbas=extras.length>0;
+      const multiIMT=p=>p.matrizes.length>1||multiVerbas;
+      const txtMats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],true):textoMatrizG(ms[0],multiVerbas)):'na respetiva matriz predial …';
+      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
+      if(!multiVerbas)return p1+', adiante designado abreviadamente por Imóvel.';
+      const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} da freguesia de ${p.freg||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      return[p1,...pxs].map((t,i)=>`${CARD[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
+    })();
 
   /* Preço */
   const preco=v('f-preco');
@@ -518,7 +771,10 @@ function compor(){
 
   const txtOnus=chk('t-onus-livre')?'O Imóvel é vendido livre de quaisquer ónus ou encargos.':(v('f-onus-txt')||'…');
   const txtLU=`O Imóvel tem a Licença de Utilização n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}, para o prédio de que faz parte integrante.`;
-  const txtDestino=`O Imóvel destina-se a ser cedido em Locação Financeira a ${v('f-loc-nome')||'…'}, com sede em ${v('f-loc-sede')||'…'}, e o NIPC ${v('f-loc-nipc')||'…'}.`;
+  const locParticular=v('f-loc-tipo')==='particular';
+  const txtDestino=locParticular
+    ?`O Imóvel destina-se a ser cedido em Locação Financeira a ${v('f-loc-nome')||'…'}, com o número de identificação fiscal ${v('f-loc-nipc')||'…'}, residente em ${v('f-loc-sede')||'…'}.`
+    :`O Imóvel destina-se a ser cedido em Locação Financeira a ${v('f-loc-nome')||'…'}, com sede em ${v('f-loc-sede')||'…'}, e o NIPC ${v('f-loc-nipc')||'…'}.`;
 
   /* ── TERMO ── */
   const termo=[];
@@ -532,7 +788,14 @@ function compor(){
   termo.push({id:'t-preco-decl',T:'',X:`Os Outorgantes declararam que corresponde inteiramente à verdade o teor da cláusula constante do contrato que aqui se autentica relativa ao valor do preço e respetivos meios e datas de pagamento, a qual aqui se tem por integralmente reproduzida para todos os efeitos legais.`});
   if(chk('t-mediacao'))termo.push({id:'t-mediacao',T:'',X:`Pelos Outorgantes foi declarado que as partes recorreram a mediação imobiliária, prestada por ${v('f-med-nome')||'…'}, titular da licença n.º ${v('f-med-ami')||'…'} - AMI, tendo-lhes sido feita advertência de que a omissão ou a prestação de falsas declarações sobre a intervenção de mediador imobiliário no contrato faz incorrer as partes na pena aplicável ao crime de desobediência, prevista no artigo 348.º do Código Penal, por aplicação do n.º 3 do artigo 40.º, da Lei n.º 15/2013, de 8 de Fevereiro.`});
   if(chk('t-ce'))termo.push({id:'t-ce',T:'',X:`A Parte Compradora declara que recebeu nesta data da Parte Vendedora o Certificado emitido no âmbito do SCE (Certificado Energético n.º ${v('f-ce-num')||'…'}), nos termos do Decreto-Lei 118/2013 de 20 de Agosto, relativamente ao IMÓVEL objeto da Compra e Venda contratada.`});
-  if(chk('t-condominio'))termo.push({id:'t-condominio',T:'',X:`É arquivada a declaração do administrador do condomínio, referente a encargos e dívidas de condomínio em vigor, em conformidade com o artigo 1424.º-A do Código Civil.`});
+  /* ── CLÁUSULA GENÉRICA · Condomínio (art. 1424.º-A CC) ──
+     Tronco comum: aplica-se a qualquer contrato de compra e venda sobre fração.
+     Variante 1: declaração apresentada → arquivo. Variante 2: não apresentada → advertência (art. 54.º CN). */
+  if(isFr){
+    termo.push({id:'t-condominio',T:'',X:v('f-condominio')==='advertencia'
+      ?`A PARTE COMPRADORA declara que prescinde da declaração de condomínio do art.º 1424-Aº do Cód. Civil e foi por mim informada, para efeitos do disposto no art.º 54 do Código do Notariado, que em consequência admite qualquer responsabilidade de dívidas ou encargos que possam existir até à data de hoje.`
+      :`É arquivada a declaração do administrador do condomínio, referente a encargos e dívidas de condomínio em vigor, em conformidade com o artigo 1424.º-A do Código Civil.`});
+  }
   const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:'t-leitura',T:'',X:`A leitura e explicação do Documento Particular que aqui se autentica e deste Termo de Autenticação foram efetuadas em voz alta e na presença dos Outorgantes, com a advertência de que de seguida, e nesta mesma data, o mesmo vai ser depositado eletronicamente, para sua plena validade, em www.predialonline.pt.`});
@@ -544,6 +807,28 @@ function compor(){
   contrato.push({id:'c-segunda',T:'SEGUNDA',X:txtSegunda});
   contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
   contrato.push({id:'c-cl1',T:'Primeira (Objeto)',X:`O Primeiro Contratante vende à representada da Segunda Contratante, que a aceita, ${txtImovel}`});
+  /* ── CLÁUSULAS GENÉRICAS · Matriz rústica identificada ──
+     Regra do tronco: sempre que exista matriz rústica, entram (1) a declaração sobre a
+     preferência de confinantes (art. 1380.º CC — asseguradas OU excluída pelo 1381.º/a)
+     e (2) a declaração de não fracionamento (arts. 1376.º/1377.º CC). Automáticas. */
+  if(temMatrizRustica()){
+    contrato.push({id:'c-confinantes',T:'',X:v('f-confinantes')==='excluida'
+      ?`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que à presente transmissão não é aplicável o direito de preferência dos proprietários de terrenos confinantes previsto no artigo 1380.º do Código Civil, por se verificar a situação de exclusão consagrada na alínea a) do artigo 1381.º do mesmo Código, uma vez que o prédio ora transmitido se destina a fim diverso da cultura, designadamente parte componente de prédio urbano de logradouro.`
+      :`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que o prédio rústico ora transmitido, bem como os prédios com ele confinantes, têm área inferior à unidade de cultura fixada para a região, pelo que, reconhecendo aos respetivos proprietários o direito de preferência previsto no artigo 1380.º do Código Civil, asseguraram a comunicação a todos os proprietários dos prédios confinantes do projeto de venda e das respetivas cláusulas, nos termos e para os efeitos dos artigos 416.º e 1380.º, n.º 3, do Código Civil, não tendo nenhum deles exercido o respetivo direito dentro do prazo legal, motivo pelo qual a presente alienação se realiza livre de qualquer preferência.`});
+    contrato.push({id:'c-fracionamento',T:'',X:`--- Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes. ------------------`});
+  }
+
+  /* ── CLÁUSULA GENÉRICA · Direitos de preferência (Casa Pronta) ──
+     Tronco comum: Lei 83/2019, art. 37.º/3 + Lei 89/2021, art. 7.º — anúncio via casapronta.pt
+     (IHRU, Património Cultural I.P., ESTAMO e Câmara Municipal). */
+  if(chk('t-casapronta')){
+    const cpDataTxt=(()=>{const d=v('f-cp-data');if(!d)return'…';const[a,m,dd]=d.split('-');return`${dd}/${m}/${a}`;})();
+    const cpFecho=v('f-cp-pronuncia')==='sim'
+      ?`" não pretende exercer o direito que legalmente lhe assiste na preferência de compra sobre o imóvel;`
+      :`" nada disseram sobre o direito que legalmente lhe assiste na preferência de compra sobre o imóvel.`;
+    const cpMeio=v('f-cp-pronuncia')==='sim'?'e Câmara Municipal de "':'e a Câmara Municipal de "';
+    contrato.push({id:'c-casapronta',T:'',X:`--- Foi requerido para efeitos dos direitos de preferência nos termos do número 3 do artigo 37º da Lei 83/2019, de 3 de setembro (Lei De Bases Da Habitação), conjugado com o art.º 7º da Lei 89/2021, de 03 de novembro, com o número ${v('f-cp-numero')||'…'}, disponibilizado em ${cpDataTxt} através do sítio www.casapronta.pt, onde o Instituto da Habitação e da Reabilitação Urbana (IHRU), o Património Cultural, I. P., a ESTAMO – Participações Imobiliárias ${cpMeio}${v('f-cp-camara')||'…'}${cpFecho}`});
+  }
   contrato.push({id:'c-cl2',T:'Segunda (Preço)',X:txtPreco});
   contrato.push({id:'c-cl3',T:'Terceira (Ónus e encargos)',X:txtOnus});
   let n=4;
@@ -551,7 +836,13 @@ function compor(){
   contrato.push({id:'c-cl-destino',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Destino do Imóvel adquirido)`,X:txtDestino});
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
 
-  return{termo,contrato};
+  /* ── FOLHA AUTÓNOMA · Reconhecimento de assinaturas (locação financeira) ── */
+  const anexo=[];
+  anexo.push({id:'a-cab',T:'RECONHECIMENTO DE ASSINATURAS',X:''});
+  const rep=`${v('f-locrep-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}${v('f-locrep-nif')?`, e número de identificação fiscal ${v('f-locrep-nif')}`:''}`;
+  anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de ${p1||'…'} e de ${p2||'…'}, feitas pelo próprio punho, na qualidade de Procuradores e em representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}; e de ${locParticular?`${v('f-loc-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}, e número de identificação fiscal ${v('f-loc-nipc')||'…'}, feita pelo próprio punho, na qualidade de Locatário`:`${rep}, feita pelo próprio punho, na qualidade de ${v('f-locrep-qual')||'gerente'} e em representação de ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`}, apostas no «CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}», relativo ao Imóvel atrás identificado, que tem a Licença de Utilização (alvará) n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}.`});
+  anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
+  return{termo,contrato,anexo};
 }
 
 /* ═══════════ RENDER + EDIÇÃO POR BLOCO ═══════════ */
@@ -581,9 +872,12 @@ function render(){
       ${(b.X||manual||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="true" data-id="${b.id}">${conteudo}</div>`:''}
     </div>`;
   };
+  const{anexo}=compor();
   folha.innerHTML=termo.map(blocoHTML).join('')
     +`<hr class="quebra-pagina">`
-    +contrato.map(blocoHTML).join('');
+    +contrato.map(blocoHTML).join('')
+    +`<hr class="quebra-pagina">`
+    +anexo.map(blocoHTML).join('');
   folha.querySelectorAll('.b-texto').forEach(el=>{
     el.addEventListener('input',()=>marcarManual(el));
     el.addEventListener('paste',e=>{
@@ -651,6 +945,29 @@ function atualizar(){
   const isFr=v('f-im-tipo')==='fracao';
   document.getElementById('g-im-letra').style.display=isFr?'flex':'none';
   document.getElementById('g-im-apph').style.display=isFr?'flex':'none';
+  document.getElementById('g-condominio').style.display=isFr?'block':'none';
+  document.getElementById('g-matrizes').style.display=isFr?'none':'block';
+  ['g-im-artigo','g-im-freg-mat','g-im-vpt'].forEach(x=>document.getElementById(x).style.display=isFr?'flex':'none');
+  document.getElementById('g-confinantes').style.display=temMatrizRustica()?'block':'none';
+  document.getElementById('g-predios-extra').style.display=isFr?'none':'block';
+  const nPred=document.querySelectorAll('.pred-block').length;
+  const nMat1=document.querySelectorAll('#matrizes-container .mat-block').length;
+  document.querySelectorAll('#matrizes-container .mat-vimt').forEach(e=>e.style.display=(nMat1>1||nPred>0)?'flex':'none');
+  document.querySelectorAll('.pred-block').forEach(b=>{
+    const nm=b.querySelectorAll('.mat-block').length;
+    b.querySelectorAll('.mat-vimt').forEach(e=>e.style.display=(nm>1||nPred>0)?'flex':'none');
+  });
+  const nMat=nMat1+[...document.querySelectorAll('.pred-block .mat-block')].length;
+  const somaEl=document.getElementById('mat-soma');
+  if((nMat>1||nPred>0)&&!isFr){
+    const soma=lerMatrizes().reduce((s,m)=>s+parseValor(m.vimt),0)+lerPrediosExtra().reduce((s,p)=>s+p.matrizes.reduce((x,m)=>x+parseValor(m.vimt),0),0);
+    const preco=parseValor(v('f-preco'));
+    const bate=preco>0&&Math.abs(soma-preco)<0.01;
+    somaEl.style.display='block';
+    somaEl.style.color=bate?'var(--green)':'var(--amber)';
+    somaEl.textContent=`Soma dos valores p/ IMT: ${fmtValor(soma)} € · Preço: ${preco?fmtValor(preco)+' €':'—'} ${bate?'✓ bate certo':'⚠ conferir com as guias de IMT/IS'}`;
+  }else somaEl.style.display='none';
+  document.getElementById('g-casapronta').style.display=chk('t-casapronta')?'block':'none';
   render();
 }
 let atualizarTimer=null;
@@ -717,11 +1034,13 @@ function estadoCompleto(){
     if(!el.id||el.id==='pasta-search')return;
     campos[el.id]=el.type==='checkbox'?el.checked:el.value;
   });
-  return{tipo:'cvleasing',campos,vendedores:lerVendedores(),cheques:lerCheques(),manuais,notas};
+  return{tipo:'cvleasing',campos,vendedores:lerVendedores(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),manuais,notas};
 }
 function restaurarEstado(d){
   if(d.vendedores&&d.vendedores.length){document.getElementById('vendedores-container').innerHTML='';vendCnt=0;d.vendedores.forEach(x=>addVendedor(x));}
   if(d.cheques&&d.cheques.length){document.getElementById('cheques-container').innerHTML='';cheqCnt=0;d.cheques.forEach(x=>addCheque(x));}
+  if(d.matrizes&&d.matrizes.length){document.getElementById('matrizes-container').innerHTML='';matCnt=0;d.matrizes.forEach(x=>addMatriz(x));}
+  if(d.prediosExtra&&d.prediosExtra.length){document.getElementById('predios-extra-container').innerHTML='';predCnt=0;d.prediosExtra.forEach(x=>addPredioExtra(x));}
   Object.entries(d.campos||{}).forEach(([id,val])=>{
     const el=document.getElementById(id);if(!el)return;
     if(el.type==='checkbox')el.checked=val;else el.value=val;
@@ -767,7 +1086,8 @@ function blocosFinais(){
     const X=m===undefined?b.X:(typeof m==='string'?m:htmlParaTexto(m.html||''));
     return{T:b.T,X};
   };
-  return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar)};
+  const{anexo}=compor();
+  return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar),BlocosAnexo:anexo.map(aplicar)};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
