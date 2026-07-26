@@ -343,9 +343,6 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group"><label class="form-label">CC válido até</label><input class="form-input" id="f-locrep-ccval"></div>
         <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-locrep-nif"></div>
         <div class="form-group"><label class="form-label">Qualidade</label><input class="form-input" id="f-locrep-qual" value="gerente"></div>
-        <div class="form-group"><label class="form-label">Certidão permanente (código)</label><input class="form-input" id="f-loc-certidao" placeholder="Ex: 1234-5678-9012"></div>
-        <div class="form-group"><label class="form-label">Certidão válida até</label><input class="form-input" id="f-loc-certval"></div>
-        <div class="form-group"><label class="form-label">RCBE (código de acesso)</label><input class="form-input" id="f-loc-rcbe"></div>
       </div>
     </div>
 
@@ -396,8 +393,7 @@ documentos fiscais — DUC de IMT e Imposto do Selo.</textarea></div>
 /* ═══════════ CONFIG ═══════════ */
 const GRAPH_BASE='https://graph.microsoft.com/v1.0';
 const SOLICITADORAS={
-  liliana:{
-    nome:'LILIANA ISABEL PACHECO BURRICA CARDOSO',
+  liliana:{assinNome:'Liliana Burrica Cardoso',cargo:'Solicitadora C.P. 08733',nome:'LILIANA ISABEL PACHECO BURRICA CARDOSO',
     nomeAbrev:'Liliana Isabel Pacheco Burrica Cardoso',
     cedula:'08733',
     nif:'219.126.658',
@@ -409,8 +405,7 @@ const SOLICITADORAS={
     codProcuracao:'PR-65440-42413-78710 (2026/01/01 23:54:29)',
     textoProcuradora:'LILIANA ISABEL PACHECO BURRICA CARDOSO, casada, natural de Évora (Sé), Solicitadora com a cédula profissional número 08733 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 11841008 3ZU4, válido até 09/05/2035 e número de identificação fiscal 219.126.658, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora'
   },
-  andreia:{
-    nome:'ANDREIA PESSEGUEIRO CABANAS',
+  andreia:{assinNome:'Andreia Pessegueiro Cabanas',cargo:'Solicitadora C.P. 10126',nome:'ANDREIA PESSEGUEIRO CABANAS',
     nomeAbrev:'Andreia Pessegueiro Cabanas',
     cedula:'10126',
     nif:'249.651.378',
@@ -844,12 +839,10 @@ function compor(){
   anexo.push({id:'a-cab',T:'RECONHECIMENTO DE ASSINATURAS',X:''});
   const rep=`${v('f-locrep-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}${v('f-locrep-nif')?`, e número de identificação fiscal ${v('f-locrep-nif')}`:''}`;
   anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de ${p1||'…'} e de ${p2||'…'}, feitas pelo próprio punho, na qualidade de Procuradores e em representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}; e de ${locParticular?`${v('f-loc-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}, e número de identificação fiscal ${v('f-loc-nipc')||'…'}, feita pelo próprio punho, na qualidade de Locatário`:`${rep}, feita pelo próprio punho, na qualidade de ${v('f-locrep-qual')||'gerente'} e em representação de ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`}, apostas no «CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}», relativo ao Imóvel atrás identificado, que tem a Licença de Utilização (alvará) n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}.`});
-  const verifs=[];
-  if(!locParticular){
-    verifs.push(`a qualidade e os poderes de representação da locatária pela consulta da certidão permanente com o código de acesso ${v('f-loc-certidao')||'…'}${v('f-loc-certval')?`, válida até ${v('f-loc-certval')}`:''}`);
-    verifs.push(`a declaração do Registo Central do Beneficiário Efetivo da locatária, mediante o código de acesso RCBE ${v('f-loc-rcbe')||'…'}`);
-  }
-  anexo.push({id:'a-verif',T:'',X:`Verifiquei ainda${verifs.length?`: ${verifs.join('; e ')}`:' a identidade dos signatários pela exibição dos respetivos documentos de identificação'}, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`});
+  const txtVerif=locParticular
+    ?`Verifiquei ainda a identidade dos signatários pela exibição dos respetivos documentos de identificação, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`
+    :`Verifiquei ainda a qualidade e os poderes de representação da locatária pela consulta da respetiva certidão permanente, que se encontra em conformidade e válida, bem como que se encontram cumpridas as obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da mesma Lei.`;
+  anexo.push({id:'a-verif',T:'',X:txtVerif});
   anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
   return{termo,contrato,anexo};
 }
@@ -882,7 +875,9 @@ function render(){
     </div>`;
   };
   const{anexo}=compor();
-  folha.innerHTML=termo.map(blocoHTML).join('')
+  const solA=SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana;
+  const assin=`<div style="text-align:right;font-family:'Monotype Corsiva',cursive;font-style:italic;color:#404040;font-size:14px;line-height:1.35;margin-top:1.2rem"><b>ENTIDADE AUTENTICADORA</b><br>${esc(solA.assinNome||solA.nomeAbrev||solA.nome)}<br>${esc(solA.cargo)}</div>`;
+  folha.innerHTML=termo.map(blocoHTML).join('')+assin
     +`<hr class="quebra-pagina">`
     +contrato.map(blocoHTML).join('')
     +`<hr class="quebra-pagina">`
@@ -1096,7 +1091,7 @@ function blocosFinais(){
     return{T:b.T,X};
   };
   const{anexo}=compor();
-  return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar),BlocosAnexo:anexo.map(aplicar)};
+  return{BlocosTermo:termo.map(aplicar),BlocosContrato:contrato.map(aplicar),BlocosAnexo:anexo.map(aplicar),Assin_Nome:((SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).assinNome||(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).nomeAbrev),Assin_Cargo:(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).cargo};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
