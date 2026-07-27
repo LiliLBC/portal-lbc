@@ -26,8 +26,11 @@ select.tipo-contrato,span.tipo-contrato{font-family:'DM Sans';font-size:12.5px;f
 
 /* LAYOUT DIVIDIDO */
 .split{flex:1;display:flex;min-height:0}
-.pane-form{width:500px;min-width:380px;max-width:56vw;overflow-y:auto;padding:1.1rem 1.1rem 5rem;border-right:1px solid var(--border);background:var(--bg)}
-.pane-doc{flex:1;overflow-y:auto;background:#DEDCD5;padding:1.4rem;display:flex;justify-content:center}
+.pane-form{width:var(--pane-w,720px);min-width:420px;max-width:75vw;overflow-y:auto;padding:1.1rem 1.3rem 5rem;border-right:1px solid var(--border);background:var(--bg);flex-shrink:0}
+.pane-doc{flex:1;min-width:0;overflow-y:auto;background:#DEDCD5;padding:1.4rem;display:flex;justify-content:center}
+.divisor{width:6px;flex-shrink:0;cursor:col-resize;background:var(--border);transition:background .15s}
+.divisor:hover,.divisor.a-arrastar{background:var(--accent)}
+body.doc-oculto .divisor{display:none}
 body.doc-oculto .pane-doc{display:none}
 body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
@@ -57,6 +60,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 .section-desc{font-size:11px;color:var(--text-faint)}
 .form-grid{display:grid;gap:.65rem}
 .form-grid-2{grid-template-columns:1fr 1fr}
+@media(min-width:1400px){.pane-form .form-grid-2{grid-template-columns:1fr 1fr 1fr}.pane-form .form-full{grid-column:1/-1}}
 .form-grid-3{grid-template-columns:1fr 1fr 1fr}
 .form-full{grid-column:1/-1}
 .form-group{display:flex;flex-direction:column;gap:3px}
@@ -471,6 +475,7 @@ documentos fiscais — DUC de IMT e Imposto do Selo.</textarea></div>
 </div>
 
 <!-- ══════════════ DOCUMENTO ══════════════ -->
+<div class="divisor" id="divisor" title="Arrastar para redimensionar"></div>
 <div class="pane-doc"><div class="folha" id="folha"></div></div>
 </div>
 
@@ -611,11 +616,13 @@ function addOutorgante(pref,dados){
             <option value="comunhão geral de bens">Comunhão geral de bens</option>
             <option value="separação de bens">Separação de bens</option>
           </select></div>
-        <div class="form-group"><label class="form-label">O cônjuge também outorga?</label>
+        <div class="form-group form-full"><label class="form-label">Posição do cônjuge</label>
           <select class="form-select" id="${id}-conj-out" onchange="onVendEC('${id}');atualizar()">
-            <option value="sim">Sim — vende também / consente</option>
-            <option value="nao">Não outorga (só identificado)</option>
-          </select></div>
+            <option value="ambos">Outorga e é comproprietário — transmite também</option>
+            <option value="consente">Outorga apenas para prestar consentimento (art. 1682.º-A CC)</option>
+            <option value="nao">Não outorga — só identificado</option>
+          </select>
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Se ambos constam do registo, a identificação é conjunta. Se só um é proprietário, o cônjuge outorga para consentir.</div></div>
         <div class="form-group form-full"><label class="form-label">Nome do cônjuge</label><input class="form-input" id="${id}-conj-nome"></div>
         <div class="form-group"><label class="form-label">Naturalidade do cônjuge</label><input class="form-input" id="${id}-conj-natural"></div>
         <div class="form-group"><label class="form-label">NIF do cônjuge</label><input class="form-input" id="${id}-conj-nif"></div>
@@ -661,7 +668,7 @@ function onVendTipo(id){
 function onVendEC(id){
   const casado=document.getElementById(`${id}-ec`)?.value==='casado'&&document.getElementById(`${id}-tipo`).value!=='empresa';
   document.querySelectorAll(`.${id}-casado`).forEach(e=>e.style.display=casado?'block':'none');
-  const conjOut=document.getElementById(`${id}-conj-out`)?.value==='sim';
+  const conjOut=['ambos','consente','sim'].includes(document.getElementById(`${id}-conj-out`)?.value||'ambos');
   document.querySelectorAll(`.${id}-conjdoc`).forEach(e=>e.style.display=(casado&&conjOut)?'flex':'none');
   const temproc=!!document.getElementById(`${id}-temproc`)?.checked;
   document.querySelectorAll(`.${id}-proc`).forEach(e=>e.style.display=temproc?'block':'none');
@@ -693,16 +700,42 @@ function idSingularBase(v){
   return`${v.nome||'…'}${v.natural?`, natural da ${v.natural}`:''}${v.cc?`, titular do Cartão de Cidadão n.º ${v.cc}`:''}${v.ccval?`, válido até ${v.ccval}`:''}${v.nif?`, e número de identificação fiscal ${v.nif}`:''}`;
 }
 function textoOutorgante(v){return textoVendedor(v);}
+/* Nome abreviado para a linha de consentimento: primeiro + último.
+   (A identificação completa já consta da linha imediatamente acima.) */
+function nomeCurto(n){
+  const p=(n||'').trim().split(/\s+/).filter(Boolean);
+  return p.length<=1?(p[0]||''):`${p[0]} ${p[p.length-1]}`;
+}
+/* Linha de consentimento conjugal — art. 1682.º-A CC.
+   Cônjuges que outorgam sem serem proprietários. */
+function linhaConsentimento(outorgantes){
+  const cs=(outorgantes||[])
+    .filter(o=>o.tipo!=='empresa'&&o.ec==='casado'&&o['conj-out']==='consente'&&o['conj-nome'])
+    .map(o=>nomeCurto(o['conj-nome']));
+  if(!cs.length)return'';
+  const plural=cs.length>1;
+  const lista=cs.length===1?cs[0]:cs.slice(0,-1).join(', ')+' e '+cs[cs.length-1];
+  return`${lista}, nos termos do artigo 1682.º-A do Código Civil, expressamente presta${plural?'m':''} o seu consentimento para a plena validade do ato.`;
+}
 function textoVendedor(v){
   let base;
   if(v.tipo==='empresa'){
     base=`${v.denom||'…'}, com sede em ${v.sede||'…'}, matriculada na Conservatória do Registo Comercial${v.crc?` de ${v.crc}`:''} com o número único de matrícula e de identificação de pessoa coletiva ${v.nipc||'…'}${v.capital?`, com o capital social de ${v.capital} Euros`:''}, ${v.repr||'devidamente representada neste ato'}`;
   }else if(v.ec==='casado'){
     const f=v.genero==='F';
-    if(v['conj-out']==='sim'){
-      const conj=`${v['conj-nome']||'…'}${v['conj-natural']?`, natural da ${v['conj-natural']}`:''}${v['conj-cc']?`, titular do Cartão de Cidadão n.º ${v['conj-cc']}`:''}${v['conj-ccval']?`, válido até ${v['conj-ccval']}`:''}${v['conj-nif']?`, e número de identificação fiscal ${v['conj-nif']}`:''}`;
-      base=`${idSingularBase(v)}, e ${f?'marido':'mulher'} ${conj}, casados entre si sob o regime da ${v.regime||'…'}${v.morada?`, residentes em ${v.morada}`:''}`;
+    /* Compatibilidade: o valor antigo 'sim' correspondia à identificação conjunta. */
+    const co=v['conj-out']==='sim'?'ambos':(v['conj-out']||'ambos');
+    const conjCompleto=`${v['conj-nome']||'…'}${v['conj-natural']?`, natural da ${v['conj-natural']}`:''}${v['conj-cc']?`, titular do Cartão de Cidadão n.º ${v['conj-cc']}`:''}${v['conj-ccval']?`, válido até ${v['conj-ccval']}`:''}${v['conj-nif']?`, e número de identificação fiscal ${v['conj-nif']}`:''}`;
+    if(co==='ambos'){
+      /* Ambos proprietários — identificação conjunta, em pé de igualdade. */
+      base=`${idSingularBase(v)}, e ${f?'marido':'mulher'} ${conjCompleto}, casados entre si sob o regime da ${v.regime||'…'}${v.morada?`, residentes em ${v.morada}`:''}`;
+    }else if(co==='consente'){
+      /* Só um é proprietário; o cônjuge outorga para consentir (art. 1682.º-A CC).
+         Identificação completa, porque é outorgante — mas subordinada, não conjunta.
+         A declaração de consentimento sai numa linha própria, por baixo. */
+      base=`${idSingularBase(v)}, ${f?'casada':'casado'} sob o regime da ${v.regime||'…'} com ${conjCompleto}${v.morada?`, ambos residentes em ${v.morada}`:''}`;
     }else{
+      /* Não outorga — identificação mínima do cônjuge. */
       base=`${idSingularBase(v)}, ${f?'casada':'casado'} sob o regime da ${v.regime||'…'} com ${v['conj-nome']||'…'}${v['conj-natural']?`, natural da ${v['conj-natural']}`:''}${v['conj-nif']?`, NIF ${v['conj-nif']}`:''}${v.morada?`, residente em ${v.morada}`:''}`;
     }
   }else{
@@ -943,7 +976,8 @@ function compor(){
   const plural=vend.length>1;
   const sol=SOLICITADORAS[v('f-solicitadora')];
 
-  const txtPrimeiro=vend.map(textoVendedor).join(';\n')+`, adiante designad${plural?'os':'o'} por Primeiro${plural?'s':''} Contratante${plural?'s':''}.`;
+  const consent=linhaConsentimento(vend);
+  const txtPrimeiro=vend.map(textoVendedor).join(';\n')+`, adiante designad${plural?'os':'o'} por Primeiro${plural?'s':''} Contratante${plural?'s':''}.`+(consent?`\n${consent}`:'');
 
   const p1=v('f-p1-nome'),p2=v('f-p2-nome');
   const procTxt=n=>{
@@ -1021,9 +1055,11 @@ function compor(){
 
   /* ── TERMO ── */
   const termo=[];
-  const entTxt=sol?`${sol.nome}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, contribuinte fiscal ${sol.nif}`:'…';
-  const localTxt=sol?`no domicílio profissional sito na ${sol.domicilio}`:'no domicílio profissional sito na …';
-  termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, com domicílio profissional na morada supra mencionada, compareceram como Outorgantes:`});
+  /* Abertura do termo: o escritório é referido uma só vez.
+     O nome usa a forma abreviada de assinatura (assinNome), não o nome por extenso. */
+  const entTxt=sol?`${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, contribuinte fiscal ${sol.nif}`:'…';
+  const localTxt=sol?`no meu escritório sito na ${sol.domicilio}`:'no meu escritório sito na …';
+  termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram os seguintes outorgantes:`});
   termo.push({id:'t-primeiro',T:plural?'PRIMEIROS':'PRIMEIRO',X:txtPrimeiro});
   termo.push({id:'t-segunda',T:compCGD?'SEGUNDA':tituloSeg,X:txtSegunda});
   const ts=textosTratoSuc();
@@ -1107,7 +1143,35 @@ function compor(){
 }
 
 /* ═══════════ RENDER + EDIÇÃO POR BLOCO ═══════════ */
-let manuais={},notas={},inseridos={},titulos={},insCnt=0;
+let manuais={},notas={},inseridos={},titulos={},marcas={},insCnt=0;
+/* ── MARCAS DE VALIDAÇÃO (marcador / negrito) ──
+   Guardam-se como TRECHOS DE TEXTO, não como HTML embutido. São reaplicadas
+   a cada render, o que permite continuar a marcar sem congelar o bloco:
+   o texto continua a acompanhar o formulário. Só a edição à mão congela. */
+function aplicarMarcas(txtEsc,id){
+  const ms=marcas[id]||[];
+  if(!ms.length)return txtEsc;
+  const ranges=[];
+  ms.forEach(m=>{
+    const alvo=esc(m.texto);
+    if(!alvo)return;
+    const i=txtEsc.indexOf(alvo);
+    if(i>-1)ranges.push({i,fim:i+alvo.length,tipo:m.tipo});
+  });
+  if(!ranges.length)return txtEsc;
+  ranges.sort((a,b)=>a.i-b.i);
+  const limpos=[];let ultimo=-1;
+  ranges.forEach(r=>{if(r.i>=ultimo){limpos.push(r);ultimo=r.fim;}});
+  let out='',pos=0;
+  limpos.forEach(r=>{
+    out+=txtEsc.slice(pos,r.i);
+    const t=txtEsc.slice(r.i,r.fim);
+    out+=r.tipo==='bold'?`<b>${t}</b>`:`<span class="mark-hl">${t}</span>`;
+    pos=r.fim;
+  });
+  return out+txtEsc.slice(pos);
+}
+function limparMarcas(id){delete marcas[id];render();}
 function sanitizarHTML(html){
   const t=document.createElement('div');t.innerHTML=html;
   t.querySelectorAll('script,style,iframe,object').forEach(e=>e.remove());
@@ -1124,11 +1188,11 @@ function render(){
   const folha=document.getElementById('folha');
   const blocoHTML=b=>{
     const manual=manuais[b.id]!==undefined;
-    const conteudo=manual?manualHTML(b.id):esc(b.X);
+    const conteudo=manual?manualHTML(b.id):aplicarMarcas(esc(b.X),b.id);
     const nota=notas[b.id];
     const titMan=titulos[b.id]!==undefined;
     return`<div class="bloco${manual||titMan?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
-      <div class="b-ferr">${manual||titMan?`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Repor texto e título automáticos">↺ repor</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}<button class="b-repor" onclick="inserirBloco('${b.id}')" title="Inserir bloco novo por baixo deste">+ bloco</button></div>
+      <div class="b-ferr">${manual||titMan?`<span class="b-badge" title="Este bloco deixou de acompanhar o formulário">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Descartar a redação manual e voltar a acompanhar o formulário">↺ repor</button>`:''}${marcas[b.id]?`<button class="b-repor" onclick="limparMarcas('${b.id}')" title="Remover as marcas deste bloco">🧹 marcas</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}<button class="b-repor" onclick="inserirBloco('${b.id}')" title="Inserir bloco novo por baixo deste">+ bloco</button></div>
       ${b.T?`<div class="b-titulo" contenteditable="true" data-tit="${b.id}"${b.id.endsWith('-cab')?' style="text-align:center"':''}>${esc(titMan?titulos[b.id]:b.T)}</div>`:''}
       ${nota!==undefined?`<div class="nota-bloco"><button class="nota-remover" onclick="removerNota('${b.id}')" title="Remover nota">✕</button><div class="nota-texto" contenteditable="plaintext-only" data-nota="${b.id}">${esc(nota)}</div></div>`:''}
       ${(b.X||manual||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="true" data-id="${b.id}">${conteudo}</div>`:''}
@@ -1184,6 +1248,7 @@ function marcarManual(el){
   if(f&&!f.querySelector('.b-badge'))f.insertAdjacentHTML('afterbegin',`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${id}')">↺ repor</button>`);
 }
 function reporBloco(id){delete manuais[id];delete titulos[id];render();}
+/* nota: reporBloco NÃO apaga as marcas — usa-se 🧹 marcas para isso */
 function acharIns(id){
   for(const k in inseridos){const x=inseridos[k].find(y=>y.id===id);if(x)return x;}
   return null;
@@ -1226,11 +1291,26 @@ document.addEventListener('selectionchange',()=>{
 function aplicarMarca(tipo){
   if(!selBlocoAtual)return;
   const el=selBlocoAtual;
-  el.focus();
-  if(tipo==='bold')document.execCommand('bold');
-  else{document.execCommand('styleWithCSS',false,true);document.execCommand('hiliteColor',false,'#FFE58A');}
-  marcarManual(el);
+  const id=el.dataset.id;
+  const jaManual=id!==undefined&&manuais[id]!==undefined;
+  const inserido=el.dataset.ins!==undefined;
+  /* Bloco já manual, ou bloco inserido: o conteúdo é livre, formata-se no sítio. */
+  if(jaManual||inserido){
+    el.focus();
+    if(tipo==='bold')document.execCommand('bold');
+    else{document.execCommand('styleWithCSS',false,true);document.execCommand('hiliteColor',false,'#FFE58A');}
+    if(inserido){const x=acharIns(el.dataset.ins);if(x)x.htmlX=el.innerHTML;}
+    else marcarManual(el);
+    document.getElementById('sel-toolbar').style.display='none';
+    return;
+  }
+  /* Bloco automático: guarda-se o trecho como marca — o bloco continua vivo. */
+  const sel=window.getSelection();
+  const texto=sel&&!sel.isCollapsed?sel.toString():'';
+  if(!id||!texto.trim())return;
+  (marcas[id]=marcas[id]||[]).push({texto,tipo:tipo==='bold'?'bold':'hl'});
   document.getElementById('sel-toolbar').style.display='none';
+  render();
 }
 function criarNotaSel(){
   if(!selBlocoAtual)return;
@@ -1358,14 +1438,15 @@ function estadoCompleto(){
     if(!el.id||el.id==='pasta-search')return;
     campos[el.id]=el.type==='checkbox'?el.checked:el.value;
   });
-  return{tipo:tipoDeduzido().cod,campos,vendedores:lerVendedores(),compradores:lerCompradores(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),manuais,notas,inseridos,titulos,insCnt};
+  return{tipo:tipoDeduzido().cod,campos,vendedores:lerVendedores(),compradores:lerCompradores(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),manuais,notas,inseridos,titulos,marcas,insCnt};
 }
 function restaurarEstado(d){
   /* Compatibilidade: rascunhos gravados antes do funil não têm f-compradora.
      Eram todos leasing, por isso repõem-se no ramo CGD. */
   if(d.campos&&d.campos['f-compradora']===undefined&&(d.tipo==='cvleasing'||d.tipo==='LEASING'))d.campos['f-compradora']='cgd';
-  if(d.vendedores&&d.vendedores.length){document.getElementById('vendedores-container').innerHTML='';vendCnt=0;d.vendedores.forEach(x=>addVendedor(x));}
-  if(d.compradores&&d.compradores.length){document.getElementById('compradores-container').innerHTML='';compCnt=0;d.compradores.forEach(x=>addComprador(x));}
+  const migrarConj=x=>{if(x&&x['conj-out']==='sim')x['conj-out']='ambos';return x;};
+  if(d.vendedores&&d.vendedores.length){document.getElementById('vendedores-container').innerHTML='';vendCnt=0;d.vendedores.forEach(x=>addVendedor(migrarConj(x)));}
+  if(d.compradores&&d.compradores.length){document.getElementById('compradores-container').innerHTML='';compCnt=0;d.compradores.forEach(x=>addComprador(migrarConj(x)));}
   if(d.falecidos&&d.falecidos.length){document.getElementById('falecidos-container').innerHTML='';falecidoCnt=0;Object.keys(herdeiroCnt).forEach(k=>delete herdeiroCnt[k]);d.falecidos.forEach(x=>addFalecido(x));}
   if(d.cheques&&d.cheques.length){document.getElementById('cheques-container').innerHTML='';cheqCnt=0;d.cheques.forEach(x=>addCheque(x));}
   if(d.matrizes&&d.matrizes.length){document.getElementById('matrizes-container').innerHTML='';matCnt=0;d.matrizes.forEach(x=>addMatriz(x));}
@@ -1378,6 +1459,7 @@ function restaurarEstado(d){
   notas=d.notas||{};
   inseridos=d.inseridos||{};
   titulos=d.titulos||{};
+  marcas=d.marcas||{};
   insCnt=d.insCnt||0;
   atualizar();
 }
@@ -1554,6 +1636,27 @@ function abrirWhatsApp(){
 document.getElementById('modal-comunicacao')?.addEventListener('click',e=>{
   if(e.target.id==='modal-comunicacao')fecharModalComunicacao();
 });
+
+/* ═══════════ SEPARADOR ARRASTÁVEL ═══════════ */
+(function(){
+  const d=document.getElementById('divisor'),pf=document.getElementById('pane-form');
+  if(!d||!pf)return;
+  const guardada=localStorage.getItem('lbc_pane_w');
+  if(guardada)document.documentElement.style.setProperty('--pane-w',guardada);
+  let a=false;
+  d.addEventListener('mousedown',e=>{a=true;d.classList.add('a-arrastar');document.body.style.userSelect='none';e.preventDefault();});
+  window.addEventListener('mousemove',e=>{
+    if(!a)return;
+    const w=Math.max(420,Math.min(e.clientX-pf.getBoundingClientRect().left,window.innerWidth*0.75));
+    document.documentElement.style.setProperty('--pane-w',w+'px');
+  });
+  window.addEventListener('mouseup',()=>{
+    if(!a)return;
+    a=false;d.classList.remove('a-arrastar');document.body.style.userSelect='';
+    localStorage.setItem('lbc_pane_w',getComputedStyle(document.documentElement).getPropertyValue('--pane-w').trim()||'720px');
+  });
+  d.addEventListener('dblclick',()=>{document.documentElement.style.setProperty('--pane-w','720px');localStorage.setItem('lbc_pane_w','720px');});
+})();
 
 /* ═══════════ INIT ═══════════ */
 window.addEventListener('load',()=>{
