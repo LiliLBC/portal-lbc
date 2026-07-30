@@ -489,6 +489,19 @@ documentos fiscais — DUC de IMT e Imposto do Selo.</textarea></div>
 'use strict';
 /* ═══════════ CONFIG ═══════════ */
 const GRAPH_BASE='https://graph.microsoft.com/v1.0';
+/* ── ESCRITÓRIO DE ATENDIMENTO ──
+   Onde o cliente comparece. É sempre o mesmo, seja qual for a solicitadora que
+   autentica, e é esta a morada e o mapa que vão no email de agendamento.
+   NÃO confundir com SOLICITADORAS[x].domicilio: esse é o domicílio profissional
+   de cada uma e é o que consta do cabeçalho do termo de autenticação. */
+/* Capital social da CGD. Aumentado para 6.000.000.000,00 Euros por deliberação
+   da AG de 29/05/2026 (incorporação de reservas). Alterar aqui quando mudar. */
+const CGD_CAPITAL='6.000.000.000,00';
+const ESCRITORIO={
+  morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
+  moradaCurta:'Rua Domingos Franco de Oliveira, n.º 16, Évora',
+  maps:'https://maps.app.goo.gl/TG2cgW3Ajb64hzWZA'
+};
 const SOLICITADORAS={
   liliana:{assinNome:'Liliana Burrica Cardoso',cargo:'Solicitadora C.P. 08733',nome:'LILIANA ISABEL PACHECO BURRICA CARDOSO',
     nomeAbrev:'Liliana Isabel Pacheco Burrica Cardoso',
@@ -510,9 +523,9 @@ const SOLICITADORAS={
     ccValidade:'16/08/2027',
     estadoCivil:'solteira',
     naturalidade:'Évora (Sé)',
-    domicilio:'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
+    domicilio:'Rua António Ribeiro Chiado, n.º 14, em Évora',
     codProcuracao:'PR-65440-42413-78710 (21/01/2026 15:28)',
-    textoProcuradora:'ANDREIA PESSEGUEIRO CABANAS, solteira, maior, natural de Évora (Sé), Solicitadora com a cédula profissional número 10126 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 30756227 1ZX4, válido até 16/08/2027 e número de identificação fiscal 249.651.378, com domicílio profissional na Rua Domingos Franco de Oliveira, n.º 16, em Évora'
+    textoProcuradora:'ANDREIA PESSEGUEIRO CABANAS, solteira, maior, natural de Évora (Sé), Solicitadora com a cédula profissional número 10126 e portadora do cartão de cidadão emitido pela República Portuguesa com o número 30756227 1ZX4, válido até 16/08/2027 e número de identificação fiscal 249.651.378, com domicílio profissional na Rua António Ribeiro Chiado, n.º 14, em Évora'
   }
 };
 function onEntChange(){
@@ -987,7 +1000,7 @@ function compor(){
   let reprCGD;
   if(p1&&p2)reprCGD=`devidamente representada neste ato por ${procTxt(1)}; e ${procTxt(2)}, ambos com domicílio profissional na sede da sua representada, na qualidade de Procuradora com poderes para o ato`;
   else reprCGD=`devidamente representada neste ato por ${procTxt(1)}, com domicílio profissional na sede da sua representada, na qualidade de Procuradora com poderes para o ato`;
-  const txtSegundaCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de 4.525.714.495,00 Euros, ${reprCGD}, adiante designada por Segunda Contratante, CGD ou CAIXA.`;
+  const txtSegundaCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros, ${reprCGD}, adiante designada por Segunda Contratante, CGD ou CAIXA.`;
 
   /* ── FUNIL · A parte compradora determina o ramo ──
      compradora = CGD  → locação financeira (leasing): destino + anexo de reconhecimento
@@ -1058,6 +1071,9 @@ function compor(){
   /* Abertura do termo: o escritório é referido uma só vez.
      O nome usa a forma abreviada de assinatura (assinNome), não o nome por extenso. */
   const entTxt=sol?`${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, contribuinte fiscal ${sol.nif}`:'…';
+  /* Cabeçalho do termo: «no meu escritório sito na …» — a morada é a do domicílio
+     profissional de quem autentica (a Liliana na dela, a Andreia na dela).
+     Distinto de ESCRITORIO, que é o local de atendimento indicado ao cliente. */
   const localTxt=sol?`no meu escritório sito na ${sol.domicilio}`:'no meu escritório sito na …';
   termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram os seguintes outorgantes:`});
   termo.push({id:'t-primeiro',T:plural?'PRIMEIROS':'PRIMEIRO',X:txtPrimeiro});
@@ -1495,22 +1511,31 @@ function htmlParaTexto(html){
 }
 function blocosFinais(){
   const{termo,contrato}=compor();
+  /* Bandeiras para a casca:
+     titCentro / titEsq — permitem à casca omitir o parágrafo do título quando
+       não há título (senão sobra uma linha em branco) e centrar os cabeçalhos.
+     Um bloco '…-cab' é cabeçalho de zona e vai centrado. */
   const aplicar=b=>{
     const m=manuais[b.id];
     const X=m===undefined?b.X:(typeof m==='string'?m:htmlParaTexto(m.html||''));
-    return{T:titulos[b.id]!==undefined?titulos[b.id]:b.T,X};
+    const T=titulos[b.id]!==undefined?titulos[b.id]:b.T;
+    const temT=!!(T&&String(T).trim());
+    const centro=temT&&/-cab$/.test(b.id);
+    return{T,X,titCentro:centro,titEsq:temT&&!centro,temX:!!(X&&String(X).trim())};
   };
   const cadeiaDados=id=>{
     const out=[];
     (inseridos[id]||[]).forEach(x=>{
-      out.push({T:x.T||'',X:x.htmlX!==undefined?htmlParaTexto(x.htmlX):(x.X||'')});
+      const Ti=x.T||'';
+      const Xi=x.htmlX!==undefined?htmlParaTexto(x.htmlX):(x.X||'');
+      out.push({T:Ti,X:Xi,titCentro:false,titEsq:!!Ti.trim(),temX:!!Xi.trim()});
       out.push(...cadeiaDados(x.id));
     });
     return out;
   };
   const expandir=arr=>arr.flatMap(b=>[aplicar(b),...cadeiaDados(b.id)]);
   const{anexo}=compor();
-  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),Assin_Nome:((SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).assinNome||(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).nomeAbrev),Assin_Cargo:(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).cargo};
+  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temAnexo:anexo.length>0,Assin_Nome:((SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).assinNome||(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).nomeAbrev),Assin_Cargo:(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).cargo};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
@@ -1592,6 +1617,11 @@ function listarOutorgantesEmail(){
   if(cgd)add(v('f-locrep-nome'));
   return nomes.filter(Boolean);
 }
+/* Morada do escritório no email: vem da solicitadora selecionada, porque as
+   moradas das duas divergiram. O link de mapa só sai se existir para a morada. */
+function blocoEscritorio(){
+  return`\n\n📍 Localização do escritório: ${ESCRITORIO.maps}\n(LBC Solicitadora — ${ESCRITORIO.moradaCurta})`;
+}
 function abrirModalComunicacao(){
   const t=tipoDeduzido(),nome=nomeCliente(),data=dataAtoPT();
   const cgd=v('f-compradora')==='cgd';
@@ -1601,7 +1631,7 @@ function abrirModalComunicacao(){
   const outorgantes=listarOutorgantesEmail();
   const fraseOutorgantes=`Os outorgantes ${outorgantes.length?listarComEVirgula(outorgantes)+' ':''}deverão fazer-se acompanhar dos documentos de identificação originais e, caso se façam representar por terceiros, deverão remeter-nos, com a maior brevidade possível, os respetivos documentos de identificação e procuração.`;
   const fraseCheques=comCaixa?`\n\nMais informamos que os cheques para pagamento devem ser solicitados na agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento do pedido.`:'';
-  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de ${t.nome} se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n${fraseOutorgantes}\n\nTodos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (licença de utilização, certidão de isenção, habilitações de herdeiros, certidões de nascimento/casamento e imposto do selo). Deverão ainda fazer-se acompanhar das guias de liquidação de IMT/IS impressas.${fraseCheques}\n\n📍 Localização do escritório: https://maps.app.goo.gl/TG2cgW3Ajb64hzWZA\n(LBC Solicitadora — Rua Domingos Franco de Oliveira, n.º 16, Évora)\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
+  document.getElementById('com-email-corpo').value=`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de ${t.nome} se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n${fraseOutorgantes}\n\nTodos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (licença de utilização, certidão de isenção, habilitações de herdeiros, certidões de nascimento/casamento e imposto do selo). Deverão ainda fazer-se acompanhar das guias de liquidação de IMT/IS impressas.${fraseCheques}${blocoEscritorio()}\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`;
   document.getElementById('com-wa-telefone').value='351';
   document.getElementById('com-wa-mensagem').value=`Bom dia${nome?' '+nome:''},\n\nInformamos que o seu processo de ${t.nome} está em preparação para a escritura de ${data||'___'}.${comCaixa?`\n\nNota: os cheques para pagamento devem ser pedidos à agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento.`:''}\n\nQualquer dúvida, não hesite em contactar-nos.\n\nLBC Solicitadora`;
   comSetTab('email');
