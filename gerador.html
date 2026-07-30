@@ -152,8 +152,32 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
     <button class="btn btn-sm" onclick="guardarRascunho()">💾 Guardar rascunho</button>
+    <button class="btn btn-sm" onclick="abrirBiblioteca()" title="Biblioteca de cláusulas para escrituras / DPA">📚 Cláusulas DPA</button>
     <button class="btn btn-sm" onclick="abrirModalComunicacao()" title="Enviar email ou WhatsApp ao cliente">✉ Contactar cliente</button>
     <button class="btn btn-sm btn-success" onclick="gerarWord()">⬇ Gerar Word</button>
+  </div>
+</div>
+
+<!-- MODAL BIBLIOTECA DE CLÁUSULAS DPA -->
+<div class="modal-overlay" id="modal-biblioteca">
+  <div class="modal" style="max-width:820px;width:96%;max-height:88vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem">
+      <div><div class="modal-title">Cláusulas DPA</div>
+        <div style="font-size:11.5px;color:var(--text-faint)">Cláusulas avulsas para escrituras e documentos particulares autenticados</div></div>
+      <button class="btn btn-sm" onclick="novaClausula()">+ Nova cláusula</button>
+    </div>
+    <input class="form-input" id="bib-procura" placeholder="Procurar por título, categoria ou texto…" oninput="renderBiblioteca()" style="margin:.9rem 0 .6rem">
+    <div style="display:flex;gap:.6rem;align-items:center;font-size:11.5px;margin-bottom:.7rem">
+      <label style="color:var(--text-faint)">Inserir a seguir a:</label>
+      <select class="form-select" id="bib-ancora" style="flex:1;font-size:11.5px;padding:4px 8px"></select>
+    </div>
+    <div id="bib-lista" style="overflow-y:auto;flex:1;min-height:0;border-top:1px solid var(--border);padding-top:.6rem"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="fecharBiblioteca()" style="flex:1">Fechar</button>
+      <button class="btn btn-sm" onclick="exportarBiblioteca()" title="Guardar a biblioteca num ficheiro">⬇ Exportar</button>
+      <button class="btn btn-sm" onclick="document.getElementById('bib-import').click()" title="Carregar de um ficheiro">⬆ Importar</button>
+      <input type="file" id="bib-import" accept="application/json" style="display:none" onchange="importarBiblioteca(this)">
+    </div>
   </div>
 </div>
 
@@ -1269,9 +1293,9 @@ function acharIns(id){
   for(const k in inseridos){const x=inseridos[k].find(y=>y.id===id);if(x)return x;}
   return null;
 }
-function inserirBloco(ancoraId){
+function inserirBloco(ancoraId,T='',X=''){
   const id='ins'+(++insCnt)+'-'+Date.now().toString(36);
-  (inseridos[ancoraId]=inseridos[ancoraId]||[]).push({id,T:'',X:''});
+  (inseridos[ancoraId]=inseridos[ancoraId]||[]).push({id,T,X});
   render();
   const el=document.querySelector(`[data-tit-ins="${id}"]`);
   if(el){el.focus();el.scrollIntoView({block:'center',behavior:'smooth'});}
@@ -1484,23 +1508,38 @@ async function guardarRascunho(){
   if(pastaSeleccionada){
     try{
       const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_GERADOR.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});
-      if(!r.ok)throw new Error(r.status);
+      if(!r.ok){
+        /* Não engolir o erro: o código diz o que se passa.
+           401/403 = token expirado ou sem permissão (reabrir a partir do Portal)
+           404 = pasta já não existe · 413 = ficheiro grande de mais · 423 = bloqueado */
+        let detalhe='';
+        try{const j=await r.json();detalhe=j?.error?.message||'';}catch(_){}
+        throw new Error(`${r.status}${detalhe?' — '+detalhe:''}`);
+      }
       showToast('Rascunho guardado na pasta!','success');return;
-    }catch(e){/* cai para local */}
+    }catch(e){
+      localStorage.setItem('gerador_rascunho',json);
+      showToast(`SharePoint recusou (${e.message}). Guardado no browser — recupera com «Carregar rascunho».`,'error');
+      console.error('[rascunho] falha ao gravar no SharePoint:',e);
+      return;
+    }
   }
   localStorage.setItem('gerador_rascunho',json);
-  showToast(pastaSeleccionada?'Sem ligação — guardado localmente':'Sem pasta selecionada — guardado localmente','');
+  showToast('Sem pasta selecionada — guardado no browser','');
 }
 async function carregarRascunho(){
   if(pastaSeleccionada){
     try{
       const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_GERADOR.json:/content`);
-      if(r.ok){restaurarEstado(await r.json());showToast('Rascunho carregado!','success');return;}
-      showToast('Esta pasta não tem rascunho do gerador','');return;
-    }catch(e){showToast('Erro: '+e.message,'error');return;}
+      if(r.ok){restaurarEstado(await r.json());showToast('Rascunho carregado da pasta!','success');return;}
+      /* Não havia na pasta — pode ter caído para o browser numa gravação falhada.
+         Antes desta correção o carregamento desistia aqui, e o rascunho ficava
+         gravado mas inacessível: era o sintoma de «não guarda». */
+    }catch(e){console.error('[rascunho] falha ao ler do SharePoint:',e);}
   }
   const l=localStorage.getItem('gerador_rascunho');
-  if(l){restaurarEstado(JSON.parse(l));showToast('Rascunho local carregado','success');}
+  if(l){restaurarEstado(JSON.parse(l));showToast(pastaSeleccionada?'Não havia na pasta — carregado do browser':'Rascunho do browser carregado','success');return;}
+  showToast('Não encontrei rascunho — nem na pasta, nem no browser','');
 }
 
 /* ═══════════ GERAR WORD (template-casca) ═══════════ */
@@ -1580,6 +1619,151 @@ async function gerarWord(){
     }else showToast(`${nomeFich} descarregado`,'success');
   }catch(e){showToast('Erro ao gerar Word: '+e.message,'error');}
 }
+
+/* ═══════════ BIBLIOTECA DE CLÁUSULAS DPA ═══════════
+   Cláusulas avulsas que não pertencem ao tronco nem a nenhum ramo — entram
+   pontualmente (intérprete, abonadores, representação de menor…). Guardam-se
+   no browser e exportam-se para ficheiro.
+
+   VARIÁVEIS: o texto pode conter marcas que se substituem no momento da
+   inserção pelos dados do formulário. As disponíveis são:
+     {{data}}         data do ato por extenso
+     {{dataCurta}}    data do ato em dd/mm/aaaa
+     {{solicitadora}} nome da entidade autenticadora
+     {{escritorio}}   domicílio profissional dela
+     {{primeiro}}     nome(s) da parte vendedora
+     {{segunda}}      nome(s) da parte compradora
+   Tudo o que não for variável fica como está — usa … para os campos a preencher
+   à mão depois de inserir. */
+const BIBLIOTECA_SEMENTE=[
+  {id:'exemplo-interprete',categoria:'Intervenção de terceiros',
+   titulo:'Intervenção de intérprete (ESQUELETO — por preencher)',
+   zona:'termo',porValidar:true,
+   texto:'Interveio ainda no ato, como intérprete, …, casado, natural da freguesia de …, titular do Cartão de Cidadão n.º …, válido até …, e número de identificação fiscal …, residente em …, que traduziu ao Outorgante … o conteúdo do documento e deste termo, por este não dominar a língua portuguesa, nos termos do disposto no artigo … do Código do Notariado.\n\n[ESQUELETO: substituir por redação tua, confirmando a norma aplicável. Foi deixado incompleto de propósito — ver nota do Claude.]'},
+  {id:'exemplo-variaveis',categoria:'Exemplos',
+   titulo:'Demonstração das variáveis (apagar depois de perceberes)',
+   zona:'termo',porValidar:true,
+   texto:'Ato de {{dataCurta}} — por extenso: {{data}}.\nEntidade autenticadora: {{solicitadora}}, com domicílio profissional na {{escritorio}}.\nParte vendedora: {{primeiro}}.\nParte compradora: {{segunda}}.'}
+];
+let biblioteca=[];
+function carregarBiblioteca(){
+  try{const g=localStorage.getItem('lbc_clausulas_dpa');biblioteca=g?JSON.parse(g):BIBLIOTECA_SEMENTE.slice();}
+  catch(e){biblioteca=BIBLIOTECA_SEMENTE.slice();}
+}
+function gravarBiblioteca(){
+  try{localStorage.setItem('lbc_clausulas_dpa',JSON.stringify(biblioteca));}
+  catch(e){showToast('Não consegui gravar a biblioteca: '+e.message,'error');}
+}
+/* Substitui as variáveis pelos dados do formulário no momento da inserção. */
+function resolverVariaveis(txt){
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  const nomes=arr=>arr.map(o=>o.tipo==='empresa'?(o.denom||''):(o.nome||'')).filter(Boolean).join(', ')||'…';
+  const cgd=v('f-compradora')==='cgd';
+  const mapa={
+    '{{data}}':dataExtenso(v('f-data-ato'))||'…',
+    '{{dataCurta}}':dataAtoPT()||'…',
+    '{{solicitadora}}':sol?(sol.assinNome||sol.nome):'…',
+    '{{escritorio}}':sol?sol.domicilio:'…',
+    '{{primeiro}}':nomes(lerVendedores()),
+    '{{segunda}}':cgd?'CAIXA GERAL DE DEPÓSITOS, S.A.':nomes(lerCompradores())
+  };
+  return Object.keys(mapa).reduce((s,k)=>s.split(k).join(mapa[k]),txt);
+}
+function abrirBiblioteca(){
+  carregarBiblioteca();
+  const {termo,contrato,anexo}=compor();
+  const sel=document.getElementById('bib-ancora');
+  const op=(z,arr)=>arr.map(b=>`<option value="${b.id}">${z} · ${esc(b.T||b.X.slice(0,44)+'…')}</option>`).join('');
+  sel.innerHTML=op('TERMO',termo)+op('CONTRATO',contrato)+(anexo.length?op('ANEXO',anexo):'');
+  if(contrato.length)sel.value=contrato[contrato.length-1].id;
+  document.getElementById('bib-procura').value='';
+  renderBiblioteca();
+  document.getElementById('modal-biblioteca').classList.add('show');
+}
+function fecharBiblioteca(){document.getElementById('modal-biblioteca').classList.remove('show');}
+function renderBiblioteca(){
+  const q=(document.getElementById('bib-procura').value||'').toLowerCase().trim();
+  const filtradas=biblioteca.filter(c=>!q||`${c.titulo} ${c.categoria} ${c.texto}`.toLowerCase().includes(q));
+  const cont=document.getElementById('bib-lista');
+  if(!filtradas.length){cont.innerHTML='<div style="color:var(--text-faint);font-size:12px;padding:1rem 0">Sem cláusulas. Usa «+ Nova cláusula» para começar a tua biblioteca.</div>';return;}
+  const cats=[...new Set(filtradas.map(c=>c.categoria||'Sem categoria'))].sort();
+  cont.innerHTML=cats.map(cat=>`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin:.8rem 0 .35rem">${esc(cat)}</div>
+    ${filtradas.filter(c=>(c.categoria||'Sem categoria')===cat).map(c=>`
+      <div style="border:1px solid var(--border);border-radius:8px;padding:.6rem .7rem;margin-bottom:.45rem;background:${c.porValidar?'var(--amber-light)':'var(--surface)'}">
+        <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start">
+          <div style="font-size:12.5px;font-weight:600;flex:1">${esc(c.titulo)}${c.porValidar?' <span style="font-size:9.5px;font-weight:600;background:#E8C440;color:#4A3A00;padding:1px 5px;border-radius:3px">POR VALIDAR</span>':''}</div>
+          <div style="display:flex;gap:.3rem;flex-shrink:0">
+            <button class="btn btn-sm" style="font-size:10px;padding:2px 7px" onclick="copiarClausula('${c.id}')">Copiar</button>
+            <button class="btn btn-sm btn-primary" style="font-size:10px;padding:2px 7px" onclick="inserirClausula('${c.id}')">Inserir</button>
+            <button class="btn btn-sm" style="font-size:10px;padding:2px 7px" onclick="editarClausula('${c.id}')">Editar</button>
+            <button class="btn btn-sm" style="font-size:10px;padding:2px 7px;color:var(--danger)" onclick="apagarClausula('${c.id}')">×</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-soft);margin-top:.3rem;white-space:pre-wrap;max-height:3.4em;overflow:hidden">${esc(c.texto)}</div>
+      </div>`).join('')}`).join('');
+}
+function acharClausula(id){return biblioteca.find(c=>c.id===id);}
+function copiarClausula(id){
+  const c=acharClausula(id);if(!c)return;
+  navigator.clipboard.writeText(resolverVariaveis(c.texto))
+    .then(()=>showToast('Cláusula copiada — cola no bloco que quiseres','success'))
+    .catch(()=>showToast('Não consegui aceder à área de transferência','error'));
+}
+function inserirClausula(id){
+  const c=acharClausula(id);if(!c)return;
+  const ancora=document.getElementById('bib-ancora').value;
+  if(!ancora){showToast('Escolhe onde inserir','error');return;}
+  inserirBloco(ancora,c.titulo.replace(/\s*\(ESQUELETO[^)]*\)/,'').trim(),resolverVariaveis(c.texto));
+  fecharBiblioteca();
+  showToast('Cláusula inserida — edita na folha','success');
+}
+function novaClausula(){
+  const titulo=prompt('Título da cláusula:');if(!titulo)return;
+  const categoria=prompt('Categoria (ex: Intervenção de terceiros):','Geral')||'Geral';
+  const texto=prompt('Texto da cláusula (podes usar {{data}}, {{primeiro}}, {{segunda}}…):');if(texto===null)return;
+  biblioteca.push({id:'cl-'+Date.now().toString(36),categoria,titulo,zona:'contrato',porValidar:false,texto});
+  gravarBiblioteca();renderBiblioteca();
+  showToast('Cláusula adicionada','success');
+}
+function editarClausula(id){
+  const c=acharClausula(id);if(!c)return;
+  const titulo=prompt('Título:',c.titulo);if(titulo===null)return;
+  const categoria=prompt('Categoria:',c.categoria)||c.categoria;
+  const texto=prompt('Texto:',c.texto);if(texto===null)return;
+  Object.assign(c,{titulo,categoria,texto,porValidar:false});
+  gravarBiblioteca();renderBiblioteca();
+}
+function apagarClausula(id){
+  const c=acharClausula(id);if(!c)return;
+  if(!confirm(`Apagar «${c.titulo}»?`))return;
+  biblioteca=biblioteca.filter(x=>x.id!==id);
+  gravarBiblioteca();renderBiblioteca();
+}
+function exportarBiblioteca(){
+  const b=new Blob([JSON.stringify(biblioteca,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='clausulas_dpa.json';a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importarBiblioteca(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d))throw new Error('formato inesperado');
+      if(confirm(`Importar ${d.length} cláusula(s)? As atuais são substituídas.`)){
+        biblioteca=d;gravarBiblioteca();renderBiblioteca();showToast('Biblioteca importada','success');
+      }
+    }catch(e){showToast('Ficheiro inválido: '+e.message,'error');}
+    input.value='';
+  };
+  r.readAsText(f);
+}
+document.getElementById('modal-biblioteca')?.addEventListener('click',e=>{
+  if(e.target.id==='modal-biblioteca')fecharBiblioteca();
+});
 
 /* ═══════════ CONTACTAR CLIENTE (porte do cvmh.html) ═══════════
    Adaptado ao tronco: o nome do ato, o cliente e a lista de outorgantes
