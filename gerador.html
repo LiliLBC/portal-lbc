@@ -1081,6 +1081,11 @@ function onEntChange(){
 function setDisp(id,val){const e=document.getElementById(id);if(e)e.style.display=val;}
 function setProp(id,prop,val){const e=document.getElementById(id);if(e)e[prop]=val;}
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* Marca a opção escolhida ao repor um bloco. Estava declarada dentro de cada
+   função que constrói blocos, e a dos falecidos ficou sem ela — o que rebentava
+   o «+ Adicionar falecido». Passa a existir uma só vez, ao nível de topo, para
+   nenhuma função futura voltar a ficar sem. */
+const sel=(v,x)=>v===x?' selected':'';
 
 /* ═══════════ EXTENSO ═══════════ */
 const U=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
