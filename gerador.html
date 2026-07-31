@@ -311,6 +311,17 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="mh">Com Mútuo e Hipoteca</option>
           <option value="superficie">Direito de Superfície</option>
         </select></div>
+      <div class="form-group form-full" id="g-subtipo-mh" style="display:none"><label class="form-label">Contrato <span>*</span></label>
+        <select class="form-select" id="f-mh-contrato" onchange="atualizar()">
+          <option value="toic">4.1 · TOIC — transferência de crédito de habitação própria permanente</option>
+          <option value="uno">4.2 · UNO — mútuo com hipoteca</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">O TOIC é isento de Imposto do Selo; o UNO é sujeito. O imóvel já é do cliente — não há compra, substituem-se hipotecas.</div>
+        <div class="toggle-row" id="row-mh-conexo" style="display:none;margin-top:.6rem">
+          <span class="toggle-label">Criar o contrato conexo (4.2 · UNO)</span>
+          <label class="toggle-switch"><input type="checkbox" id="t-mh-conexo" onchange="atualizar()"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="nota-mh-conexo" style="display:none;font-size:10.5px;color:var(--text-faint);margin-top:3px">Saem dois documentos. Os mutuários, o imóvel, o mutuante e a avaliação são os mesmos e não se repetem — só os dados financeiros do UNO ficam por preencher, no 10.6.</div></div>
       <div class="form-group form-full"><div id="funil-aviso" style="display:none;font-size:11.5px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20"></div></div>
     </div>
     </div>
@@ -486,6 +497,22 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
             <div style="font-size:10.5px;color:#7A5A20;margin-top:2px">Com o requerimento carimbado, a escritura pode avançar.</div>
           </div>
         </div>
+      </div>
+    </div>
+    <!-- ÓNUS E ENCARGOS -->
+    <div class="cond-block" style="margin-top:.9rem" id="blk-onus">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
+        <div><div class="cond-block-title" style="margin-bottom:2px">Ónus e encargos</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">O que onera o imóvel e por que via se cancela</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="t-onus-livre" onchange="onOnusLivre()" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px" id="onus-hint">Ligado: o imóvel vai livre de ónus e encargos.</div>
+      <div id="g-onus" style="display:none;margin-top:.75rem">
+        <div id="onus-container"></div>
+        <button class="add-btn" type="button" onclick="addOnus();atualizar()">+ Adicionar ónus</button>
+        <div class="form-group form-full" style="margin-top:.7rem"><label class="form-label">Outros ónus, por extenso</label>
+          <textarea class="form-input" id="f-onus-txt" rows="2" oninput="atualizar()" placeholder="Ónus que se mantêm e que a lista acima não cobre"></textarea>
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Texto livre, acrescentado à cláusula depois dos ónus listados.</div></div>
       </div>
     </div>
   </div>
@@ -781,8 +808,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Desligado, gera uma compra e venda simples e o contrato fecha no bloco 9.</div>
 
     <div id="g-mh" style="display:none">
-    <div class="cond-block" style="margin-top:.7rem">
-      <div class="cond-block-title">10.1 · Terceiro Contratante — mutuante</div>
+    <div class="cond-block" style="margin-top:.7rem" id="blk-mutuante">
+      <div class="cond-block-title" id="ttl-mutuante">10.1 · Terceiro Contratante — mutuante</div>
       <div class="form-grid form-grid-2">
         <div class="form-group form-full"><label class="form-label">Mutuante</label>
           <select class="form-select" id="f-mutuante" onchange="onMutuante();atualizar()">
@@ -808,6 +835,15 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           </div></div>
         <div class="form-group"><label class="form-label">Procuração válida até</label>
           <input type="date" class="form-input" id="f-mut-proc-val" onchange="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Certidão comercial — código</label>
+          <div style="display:flex;gap:.35rem;align-items:stretch">
+            <input class="form-input" id="f-mut-crc-cod" oninput="atualizar()" style="flex:1;min-width:0">
+            <button type="button" class="btn btn-sm" title="Abrir a consulta da certidão permanente"
+              onclick="window.open('https://registo.justica.gov.pt/Empresas/Consultar-Certidao-Permanente/Iniciar','_blank','noopener')"
+              style="flex-shrink:0;padding:0 .6rem">🔍</button>
+          </div></div>
+        <div class="form-group"><label class="form-label">Certidão válida até</label>
+          <input type="date" class="form-input" id="f-mut-crc-val" onchange="atualizar()"></div>
         <div class="form-group form-full"><label class="form-label">Poderes invocados</label>
           <input class="form-input" id="f-mut-proc-poderes" oninput="atualizar()"></div>
         <div class="form-group form-full"><label class="form-label">Representação — texto</label>
@@ -816,7 +852,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
 
     <div class="cond-block" style="margin-top:.7rem">
-      <div class="cond-block-title">10.2 · Mútuo e Hipoteca</div>
+      <div class="cond-block-title" id="ttl-mh-financeiro">10.2 · Mútuo e Hipoteca</div>
       <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">O valor de avaliação vive aqui, e não no imóvel: só há atribuição de valor quando existe financiamento.</div>
       <div class="form-grid form-grid-3">
         <div class="form-group"><label class="form-label">Valor de avaliação (€) <span>*</span></label>
@@ -840,6 +876,16 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
     </div>
 
+    <!-- PERÍODO DE REFLEXÃO -->
+    <div class="cond-block" style="margin-top:.7rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
+        <div><div class="cond-block-title" style="margin-bottom:2px">Período de reflexão</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">Decreto-Lei n.º 74-A/2017, de 23 de junho</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="t-reflexao" onchange="atualizar()" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px">Cláusula única, no fecho do contrato. Havendo dois contratos, cada um leva a sua.</div>
+    </div>
+
     <div class="cond-block" style="margin-top:.7rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
         <div><div class="cond-block-title" style="margin-bottom:2px">10.3 · Quartos Outorgantes — fiadores</div>
@@ -849,6 +895,59 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div id="g-quartos" style="display:none;margin-top:.75rem">
         <div id="quartos-container"></div>
         <button class="add-btn" type="button" onclick="addQuarto();atualizar()">+ Adicionar quarto outorgante</button>
+      </div>
+    </div>
+
+    <!-- 10.6 · DADOS FINANCEIROS DO CONTRATO CONEXO (UNO) -->
+    <div class="cond-block" style="margin-top:.7rem;display:none" id="blk-uno">
+      <div class="cond-block-title">10.6 · Mútuo e Hipoteca — 4.2 · UNO (contrato conexo)</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">Só os dados financeiros. Mutuários, imóvel, mutuante e valor de avaliação vêm dos blocos acima — são os mesmos.</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label class="form-label">Montante do mútuo (€) <span>*</span></label>
+          <input class="form-input" id="f-uno-montante" oninput="atualizar()" placeholder="Ex: 25000"></div>
+        <div class="form-group"><label class="form-label">Prazo (meses) <span>*</span></label>
+          <input class="form-input" id="f-uno-prazo" oninput="atualizar()" placeholder="Ex: 420"></div>
+        <div class="form-group"><label class="form-label">Taxa de juro (%)</label>
+          <input class="form-input" id="f-uno-juros" oninput="atualizar()" placeholder="Ex: 4,10"></div>
+        <div class="form-group"><label class="form-label">Sobretaxa de mora (%)</label>
+          <input class="form-input" id="f-uno-mora" oninput="atualizar()" placeholder="Ex: 3"></div>
+        <div class="form-group"><label class="form-label">Despesas (€)</label>
+          <input class="form-input" id="f-uno-despesas" oninput="atualizar()" placeholder="Ex: 750"></div>
+        <div class="form-group"><label class="form-label">Montante máximo da hipoteca (€) <span>*</span></label>
+          <input class="form-input" id="f-uno-hipoteca" oninput="atualizar()" placeholder="Ex: 35000"></div>
+        <div class="form-group form-full"><label class="form-label">Cálculo do Imposto do Selo (verba 17.1.3)</label>
+          <input class="form-input" id="f-uno-calculo-is" oninput="atualizar()" placeholder="Deixa vazio para calcular a 6/1000 sobre o montante"></div>
+      </div>
+    </div>
+
+    <!-- 10.5 · LIQUIDAÇÃO EM OIC (só TOIC) -->
+    <div class="cond-block" style="margin-top:.7rem;display:none" id="blk-oic">
+      <div class="cond-block-title">10.5 · Liquidação em OIC</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">O capital em dívida no empréstimo que se transfere, e por que via é pago ao banco anterior. Ambas as cláusulas vão ao CONTRATO.</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Forma de pagamento à OIC</label>
+          <select class="form-select" id="f-oic-forma" onchange="atualizar()">
+            <option value="">— sem cláusula de forma —</option>
+            <option value="apb">Transferência ao abrigo do protocolo APB</option>
+            <option value="cheque">Cheque bancário</option>
+          </select></div>
+        <div class="form-group oic-apb" style="display:none"><label class="form-label">Valor (€)</label>
+          <input class="form-input" id="f-oic-apb-valor" oninput="atualizar()"></div>
+        <div class="form-group oic-apb" style="display:none"><label class="form-label">Conta de origem, na CAIXA</label>
+          <input class="form-input" id="f-oic-apb-origem" oninput="atualizar()"></div>
+        <div class="form-group form-full oic-apb" style="display:none"><label class="form-label">Conta de destino, do banco anterior</label>
+          <input class="form-input" id="f-oic-apb-destino" oninput="atualizar()"></div>
+        <div class="form-group oic-chq" style="display:none"><label class="form-label">Valor (€)</label>
+          <input class="form-input" id="f-oic-chq-valor" oninput="atualizar()"></div>
+        <div class="form-group oic-chq" style="display:none"><label class="form-label">Emitido em</label>
+          <input type="date" class="form-input" id="f-oic-chq-data" onchange="atualizar()"></div>
+        <div class="form-group oic-chq" style="display:none"><label class="form-label">Sacado sobre</label>
+          <input class="form-input" id="f-oic-chq-banco" oninput="atualizar()"></div>
+        <div class="form-group oic-chq" style="display:none"><label class="form-label">N.º do cheque</label>
+          <input class="form-input" id="f-oic-chq-num" oninput="atualizar()"></div>
+        <div class="form-group form-full"><label class="form-label">Fim do empréstimo que se liquida</label>
+          <input class="form-input" id="f-oic-fim" oninput="atualizar()" value="para aquisição do imóvel destinado à sua habitação própria permanente">
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Fecha a cláusula de liquidação. Redação tua, do mh.html.</div></div>
       </div>
     </div>
     </div>
@@ -888,7 +987,16 @@ const CGD_PROCURACAO='PR-82574-78071-23851';
    pontas, porque o n.º 12 não distingue comprar de vender. */
 const CGD_PODERES={comp:'ponto segundo alínea 12) e ponto terceiro regra 2.ª',
                    vend:'ponto segundo alínea 12) e ponto terceiro regra 2.ª'};
+/* Capital social atual, confirmado pela Liliana. O TEMPL_MH_TOIC_CGD.docx traz
+   €4 525 721 495,00, que está desatualizado — quem manda é esta constante.
+   O extenso é derivado daqui, para não poder divergir do número. */
 const CGD_CAPITAL='6.000.000.000,00';
+const capitalCGD=()=>`€${CGD_CAPITAL.replace(/\./g,' ')} (${valorExtenso(CGD_CAPITAL).toLowerCase()})`;
+/* A certidão comercial da CAIXA segue o mesmo padrão da procuração: constante
+   no topo, que serve de valor inicial ao campo. Muda-se aqui quando a CAIXA
+   renovar a certidão, e no ato pontual corrige-se no campo. */
+const CGD_CRC='4664-4842-3841';
+const CGD_CRC_VAL='2030-03-12';
 const ESCRITORIO={
   morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
   moradaCurta:'Rua Domingos Franco de Oliveira, n.º 16, Évora',
@@ -1628,7 +1736,7 @@ function textoVendedor(v){
     const fecho=reps.length>1
       ?'os quais outorgam conjuntamente na qualidade de procuradores'
       :(reps[0]&&reps[0].genero==='F'?'a qual outorga na qualidade de procuradora':'o qual outorga na qualidade de procurador');
-    return`${lista}, ${fecho} em nome e representação da CAIXA GERAL DE DEPÓSITOS S.A., com sede na Av. João XXI, n.º 63, em Lisboa, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva 500.960.046, capital social de €${CGD_CAPITAL.replace(/\./g,' ')} (seis mil milhões euros)`;
+    return`${lista}, ${fecho} em nome e representação da CAIXA GERAL DE DEPÓSITOS S.A., com sede na Av. João XXI, n.º 63, em Lisboa, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva 500.960.046, capital social de ${capitalCGD()}`;
   }
 
   const fem=v.genero==='F';
@@ -2065,6 +2173,100 @@ function addCheque(dados){
   c.appendChild(div);
   if(dados){document.getElementById(`${id}-valor`).value=dados.valor||'';document.getElementById(`${id}-num`).value=dados.num||'';}
 }
+/* ── ÓNUS E ENCARGOS ──
+   Vive na secção do imóvel porque é atributo do prédio, não do contrato, e é
+   partilhado pelos dois troncos: na compra e venda diz-se o que onera e o que
+   se cancela; no mútuo, as hipotecas anteriores que o ato vem substituir.
+   As vias de cancelamento são as do CVMH. */
+let onusCnt=0;
+function addOnus(dados){
+  const c=document.getElementById('onus-container');
+  const idx=++onusCnt,id=`onus-${idx}`;
+  const div=document.createElement('div');
+  div.className='onus-block';div.id=id;
+  div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:.6rem;margin-bottom:.5rem;background:var(--surface)';
+  div.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted)">Ónus ${idx}</div>
+      ${idx>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">×</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Ónus</label>
+        <input class="form-input" id="${id}-desc" value="hipoteca voluntária" oninput="atualizar()"></div>
+      <div class="form-group"><label class="form-label">Inscrição</label>
+        <input class="form-input" id="${id}-ap" oninput="atualizar()" placeholder="Ex: Ap. 45 de 2019/05/12"></div>
+      <div class="form-group"><label class="form-label">A favor de</label>
+        <input class="form-input" id="${id}-ent" oninput="atualizar()" placeholder="Ex: Millennium BCP"></div>
+      <div class="form-group"><label class="form-label">NIF</label>
+        <input class="form-input" id="${id}-nif" oninput="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label">Cancelamento</label>
+        <select class="form-select" id="${id}-canc" onchange="atualizar()">
+          <option value="nao">Não se cancela neste ato — mantém-se</option>
+          <option value="fisico">Autorização de cancelamento em papel — arquivo</option>
+          <option value="codigo">Autorização de cancelamento por código</option>
+          <option value="renuncia">Renúncia ⚠ sem redação</option>
+        </select></div>
+      <div class="form-group onus-fis" style="display:none"><label class="form-label">Emitida em</label>
+        <input type="date" class="form-input" id="${id}-data" onchange="atualizar()"></div>
+      <div class="form-group onus-cod" style="display:none"><label class="form-label">Código</label>
+        <input class="form-input" id="${id}-codigo" oninput="atualizar()"></div>
+    </div>`;
+  c.appendChild(div);
+  if(dados)['desc','ap','ent','nif','canc','data','codigo'].forEach(k=>{
+    const e=document.getElementById(`${id}-${k}`);if(e&&dados[k]!==undefined)e.value=dados[k];
+  });
+}
+function lerOnus(){
+  if(chk('t-onus-livre'))return[];
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return[...document.querySelectorAll('.onus-block')].map(b=>({
+    desc:g(`${b.id}-desc`),ap:g(`${b.id}-ap`),ent:g(`${b.id}-ent`),nif:g(`${b.id}-nif`),
+    canc:g(`${b.id}-canc`)||'nao',data:g(`${b.id}-data`),codigo:g(`${b.id}-codigo`)
+  })).filter(o=>o.desc||o.ap||o.ent);
+}
+/* Cada ónus mostra só os campos da via escolhida. */
+function aplicarOnus(){
+  const livre=chk('t-onus-livre');
+  setDisp('g-onus',livre?'none':'block');
+  document.querySelectorAll('.onus-block').forEach(b=>{
+    const c=document.getElementById(`${b.id}-canc`)?.value||'nao';
+    b.querySelectorAll('.onus-fis').forEach(e=>e.style.display=c==='fisico'?'block':'none');
+    b.querySelectorAll('.onus-cod').forEach(e=>e.style.display=c==='codigo'?'block':'none');
+  });
+}
+function onOnusLivre(){
+  const livre=chk('t-onus-livre');
+  setDisp('g-onus',livre?'none':'block');
+  setProp('onus-hint','textContent',livre
+    ?'Ligado: o imóvel vai livre de ónus e encargos.'
+    :'Desligado: enumera-se o que onera o imóvel e como se cancela.');
+  if(!livre&&!document.querySelectorAll('.onus-block').length)addOnus();
+  atualizar();
+}
+/* ── ÓNUS · textos ──
+   CONTRATO — a menção ao ónus e ao seu cancelamento.
+   TERMO    — a verificação da autorização de cancelamento (art. 56.º CRP).
+   ⚠ A redação do cancelamento é a tua, do mh.html; troquei «O imóvel ora
+   hipotecado encontra-se onerado com hipoteca voluntária» por «O Imóvel
+   encontra-se onerado com {ónus}», porque na compra e venda o imóvel não está
+   a ser hipotecado e o ónus pode não ser uma hipoteca. O resto é palavra
+   por palavra. */
+function textoOnusContrato(o){
+  if(o.canc==='nao'||o.canc==='renuncia')return'';
+  return`O Imóvel encontra-se onerado com ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, cujo cancelamento é assegurado com o presente ato.`;
+}
+function textoOnusTermo(o){
+  if(o.canc==='fisico')
+    return`— Para efeitos do artigo 56.º do Código do Registo Predial, arquivo a autorização de cancelamento d${/hipoteca/i.test(o.desc||'')?'a hipoteca':'o ónus'} emitida em ${dPT(o.data)};`;
+  if(o.canc==='codigo')
+    return`— Para efeitos do artigo 56.º do Código do Registo Predial, consultei a autorização de cancelamento d${/hipoteca/i.test(o.desc||'')?'a hipoteca':'o ónus'} através do código «${o.codigo||'…'}»;`;
+  return'';
+}
+/* O banco a quem se liquida no TOIC é o titular da hipoteca que se cancela. */
+function bancoACancelar(){
+  const o=lerOnus().find(x=>x.canc==='fisico'||x.canc==='codigo');
+  return o?o.ent:'';
+}
 function lerCheques(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   return[...document.querySelectorAll('.cheq-block')].map(b=>({valor:g(`${b.id}-valor`),num:g(`${b.id}-num`)})).filter(c=>c.valor||c.num);
@@ -2074,7 +2276,365 @@ function lerCheques(){
 const v=id=>document.getElementById(id)?.value?.trim()||'';
 const chk=id=>!!document.getElementById(id)?.checked;
 
+/* ═══════════ VERIFICAÇÕES · funções partilhadas pelos troncos ═══════════
+   Estavam dentro do compor() da compra e venda. Subiram para nível de topo
+   sem alteração de redação, para o tronco do mútuo as poder reutilizar. */
+/* ── VERIFIQUEI · poderes de representação ──
+   Um segmento por cada procuração, com os dados de quem a autenticou e o
+   destino do documento: arquivado em papel, ou consultado por código. */
+function segmentoProcuracao(o){
+  if(o['repr-tipo']!=='procurador')return'';
+  const representados=[o.nome||'…'];
+  if(ehCasado(o.ec)&&(o['conj-out']||'ambos')!=='nao'&&o['conj-nome'])representados.push(o['conj-nome']);
+  const destino=o['pr-doc']==='codigo'
+    ?`e que consultei através do código ${o['pr-codigo']||'…'}`
+    :'e que arquivo';
+  return`os poderes de representação de ${representados.join(' e ')} através da procuração autenticada em ${o['pr-data']||'…'} por ${o['pr-ent']||'…'}, ${o['pr-qual']||'…'}, cédula profissional n.º ${o['pr-cedula']||'…'}, com domicílio profissional em ${o['pr-domicilio']||'…'}, ${destino}`;
+}
+/* ── VERIFIQUEI · certidão comercial e RCBE ──
+   Redação fixada pela Liliana. Refere a PARTE, não a pessoa do representante.
+   Parágrafo autónomo, com «Verifiquei» próprio. */
+function linhaEmpresa(o,parte){
+  if(o.tipo!=='empresa')return'';
+  /* Sem variante: o ato não avança sem RCBE válido, por isso a declaração é
+     sempre esta. A confirmação no formulário serve de verificação prévia. */
+  /* Quando o objeto social não abrange imóveis, a deliberação dos sócios entra
+     junto da verificação dos poderes — é o que os habilita para o ato. */
+  const ata=o.objeto==='nao'
+    ? `, e ata de deliberação em ${o['ata-tipo']==='extraordinária'?'assembleia extraordinária':'assembleia geral'} número ${o['ata-num']||'…'} assinada em ${o['ata-data']?dataExtenso(o['ata-data']):'…'}, que arquivo`
+    : '';
+  return`Verifiquei a qualidade e poderes de representação da ${parte} através da Certidão de Registo Comercial com o código de acesso ${o['crc-cod']||'…'}, disponível em www.eportugal.gov.pt em vigor${ata}, e o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto.`;
+}
+/* ── VERIFIQUEI · município ──
+   Redação fixada pela Liliana. Cobre também a identidade dos outorgantes,
+   por isso substitui a linha genérica quando há município no ato. */
+function linhaMunicipio(o,ordinal){
+  if(o.tipo!=='municipio')return'';
+  const destino=o['mun-doc']==='codigo'
+    ?`e que consultei através do código ${o['mun-codigo']||'…'}`
+    :'e que arquivo';
+  return`Verifiquei a identidade dos outorgantes por exibição dos respetivos documentos de identificação e a qualidade e suficiência dos poderes de representação invocados pelo ${ordinal} outorgante pela ata da instalação da Câmara Municipal de ${o['mun-nome']||'…'}, mandato ${o['mun-mandato']||'…'}, lavrada em ${o['mun-ata']?dataExtenso(o['mun-ata']):'…'}, competindo ao ${((o.reps&&o.reps[0]&&o.reps[0].qual)||'…')} representar o Município nos termos da alínea a) do n.º 1 do artigo 35.º do Anexo I à Lei n.º 75/2013, de 12 de setembro, ${destino};`;
+}
+/* ── VERIFIQUEI · estado civil alterado desde o registo ──
+   Redação da Liliana. Só sai quando os assentos estão preenchidos. */
+function linhaAssento(o){
+  if(o.tipo!=='singular'||o.coincide!=='nao')return'';
+  if(!o['asc-nasc-num']||!o['asc-nasc-crc'])return'';
+  const cas=ehCasado(o.ec);
+  if(cas&&(!o['asc-cas-num']||!o['asc-cas-crc']))return'';
+  const casTxt=cas?` e o regime de casamento através do assento n.º ${o['asc-cas-num']} da Conservatória de ${o['asc-cas-crc']}`:'';
+  return`— verifiquei o estado civil de ${o.nome||'…'} por consulta ao assento de nascimento n.º ${o['asc-nasc-num']} da Conservatória de ${o['asc-nasc-crc']}${casTxt};`;
+}
+/* ── VERIFIQUEI · identificação do prédio ──
+   Redação fixada pela Liliana. A ficha do SNIC e o NIC só entram nos prédios
+   com componente rústica. */
+function linhaPredio(pref,dados){
+  const g=k=>dados?(dados[k]||''):v(`${pref}-${k}`);
+  const tipo=dados?dados.tipo:v('f-im-tipo');
+  const cad=g('cad-data'),cod=g('cert-cod'),val=g('cert-val');
+  if(!cad&&!cod&&!g('mod1-num'))return'';
+  const rust=(()=>{const mats=pref==='f-im'?lerMatrizes():(dados?dados.matrizes:lerMatrizes(pref));
+    return tipo==='rustico'||tipo==='misto'||(mats||[]).some(m=>m.nat==='rustica');})();
+  const snic=rust
+    ? `, a que corresponde a ficha de prédio n.º ${g('snic-ficha')||'…'} do Sistema Nacional de Informação Cadastral, NIC ${g('snic-nic')||'…'}`
+    : '';
+  /* Havendo Modelo 1 do IMI, substitui a caderneta — mas só a urbana:
+     o Modelo 1 respeita à inscrição matricial urbana. Num misto, a caderneta
+     rústica mantém-se e só a urbana dá lugar ao Modelo 1. */
+  /* O Modelo 1 só substitui a caderneta URBANA. Num prédio puramente rústico
+     não entra: a harmonização do cadastro rústico faz-se por outra via. */
+  const soRustico=rust&&tipo!=='misto';
+  const mod1=!soRustico&&g('areas')==='nao'&&!!g('mod1-num');
+  const codMod1=g('mod1-num')||'…';
+  const dataCad=cad?dPT(cad):'…';
+  let cabeca;
+  if(tipo==='misto'){
+    const parteR=`A caderneta predial rústica do prédio, emitida em ${dataCad}${snic}`;
+    cabeca=mod1
+      ? `— ${parteR}, e Mod. 1 IMI com o código ${codMod1}, que arquivo`
+      : `— As cadernetas prediais rústica, emitida em ${dataCad}${snic}, e urbana, emitida em ${g('cad-data-u')?dPT(g('cad-data-u')):'…'}`;
+  }else if(soRustico){
+    cabeca=`— A caderneta predial rústica do prédio, emitida em ${dataCad}${snic}`;
+  }else{
+    cabeca=mod1
+      ? `— Consultei Mod. 1 IMI com o código ${codMod1} e que arquivo`
+      : `— A caderneta predial urbana do prédio, emitida em ${dataCad}`;
+  }
+  return`${cabeca}, ${mod1?'bem como':'e'} certidão permanente do imóvel com o código ${cod||'…'}, consultadas hoje nos respetivos portais, sendo esta última válida até ${val?dPT(val):'…'}, com inscrições e descrições em vigor;`;
+}
+/* ── VERIFIQUEI · requerimento à AT para correção de áreas no rústico ──
+   Redação da Liliana, com a citação do diploma por extenso. */
+function linhaRequerimento(pref,dados){
+  const g=k=>dados?(dados[k]||''):v(`${pref}-${k}`);
+  if(g('areas')!=='nao'||!g('req-data'))return'';
+  const mats=(dados?dados.matrizes:lerMatrizes(pref==='f-im'?undefined:pref))||[];
+  const rust=mats.filter(m=>m.nat==='rustica');
+  if(!rust.length)return'';
+  const ident=rust.map(m=>`artigo matricial ${m.artigo||'…'}${m.seccao?`, secção ${m.seccao}`:''}`).join(' e ');
+  return`— Arquivo requerimento entregue na Autoridade Tributária em ${dPT(g('req-data'))}, para efeitos de correção de áreas quanto ao ${ident}, sob compromisso do cumprimento dos requisitos previstos no Decreto-Lei n.º 72/2023, de 23 de agosto, quanto à operação de conservação de cadastro predial;`;
+}
+/* ═══════════ ATO 4 · MÚTUO COM HIPOTECA ═══════════
+   Tronco próprio: os outorgantes são os MUTUÁRIOS (primeiros) e a CAIXA
+   (segunda — na compra e venda com mútuo é a terceira, aqui sobe uma posição).
+   O imóvel já é do cliente: não há compra, substituem-se hipotecas.
+
+   Dois contratos, que podem sair juntos:
+     4.1 · TOIC — transferência de crédito de habitação própria permanente,
+            isenta de Imposto do Selo pela alínea j) do n.º 1 do artigo 7.º CIS;
+     4.2 · UNO — mútuo com hipoteca comum, sujeito a Imposto do Selo da verba
+            17.1.3, liquidado pela CAIXA.
+   Sendo conexos, os mutuários, o imóvel, o mutuante e a avaliação são os mesmos
+   e não se repetem: só os dados financeiros do UNO se pedem, no 10.6.
+
+   REGRA DE REPARTIÇÃO, como no tronco da compra e venda:
+     blocos 1 a 4 → TERMO, com identificação curta no contrato;
+     do bloco 5 em diante → CONTRATO, exceto as VERIFICAÇÕES — cadernetas,
+     códigos de certidão, procurações e a autorização de cancelamento —,
+     que ficam no termo por serem o que a solicitadora confirma.
+
+   FONTES DA REDAÇÃO. Nada aqui é texto novo:
+     TEMPL_MH_TOIC_CGD.docx → esqueleto do termo e do contrato, mútuo e hipoteca
+     mh.html                → liquidação em OIC, forma de pagamento, distrate,
+                              banco hipotecante, isenção de selo, fiança, terceiros
+   O que estiver marcado com ⚠ é proposta por validar.                        */
+function comporMH(variante){
+  const P=variante==='uno'?'u':'';            /* prefixo dos ids dos blocos */
+  const toic=variante==='toic';
+  /* Os dados financeiros do conexo vivem no 10.6; sozinho, o UNO usa o 10.2. */
+  const F=(variante==='uno'&&temConexo())?'f-uno':'f-mh';
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  const mut=lerVendedores();                  /* bloco 3 · mutuários */
+  const nMut=contarPessoas(mut);
+  const muP=nMut>1;
+  const gen=generosOutorgantes(mut);
+  const femM=gen.length>0&&gen.every(g=>g==='F');
+  const quartos=lerQuartos();
+  const fiadores=fiadoresMH();
+  const garantes=garantesMH();
+  const tipoNome=nomeContratoMH(variante);
+
+  /* ── formatação de valores, como no textosMH ── */
+  const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} EUROS (${valorExtenso(v(x)).toLowerCase()})`:'…';
+  const semEuro=t=>t.replace(/ euros? e /,' vírgula ').replace(/ cêntimos?$/,'').replace(/ euros?$/,'');
+  const pct=x=>v(x)?`${v(x)}% (${semEuro(valorExtenso(v(x)).toLowerCase())} por cento)`:'…';
+  const prazo=v(`${F}-prazo`)?`${v(`${F}-prazo`)} MESES (${semEuro(valorExtenso(v(`${F}-prazo`)).toLowerCase())} meses)`:'… meses';
+
+  /* ── SEGUNDA · a CAIXA ── */
+  const quemMut=v('f-mut-quem')||'liliana';
+  const solMut=SOLICITADORAS[quemMut];
+  /* Mesma forma da compra e venda: «€… (extenso)», e não «… Euros». */
+  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., com sede na Avenida João XXI, n.º 63, em Lisboa, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva 500960046, com o capital social de ${capitalCGD()}`;
+  const outraIC=v('f-mutuante')!=='cgd';
+  const txtSegunda=outraIC
+    ?(v('f-mutuante-txt')||'…')
+    :(solMut
+      ?`${solMut.textoProcuradora}, a qual outorga na qualidade de procuradora substabelecida, em nome e em representação da ${baseCGD}.`
+      :`${v('f-mut-repr')||'…'}, em nome e em representação da ${baseCGD}.`);
+  const txtSegundaCurto=outraIC
+    ?`${v('f-mutuante-txt')||'…'}, adiante designada por MUTUANTE.`
+    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${solMut?solMut.nomeAbrev:(v('f-mut-repr')||'…')}, adiante designada por CAIXA e/ou MUTUANTE.`;
+
+  /* ── PRIMEIROS · mutuários (mesmo componente dos outorgantes da compra e venda) ── */
+  const consent=linhaConsentimento(mut);
+  const txtPrimeiro=mut.map(textoVendedor).join(';\n')+'.'+(consent?`\n${consent}`:'');
+  const txtPrimeiroCurto=mut.map(textoVendedorCurto).join(', ')
+    +`, adiante designad${muP?'os':(femM?'a':'o')} por PRIMEIR${muP?'OS':(femM?'A':'O')} CONTRATANTE${muP?'S':''} e/ou MUTUÁRI${muP?'OS':(femM?'A':'O')}.`;
+
+  /* ── TERCEIROS · garantes hipotecários e fiadores (designações do mh.html) ── */
+  const tercPl=quartos.length>1;
+  const desigTerc=(()=>{
+    if(!quartos.length)return'';
+    const soG=garantes.length&&!fiadores.length;
+    const soF=fiadores.length&&!garantes.length;
+    const unif=quartos.every(q=>q.qualidade==='ambos');
+    if(unif)return tercPl?'GARANTES HIPOTECÁRIOS E FIADORES':'GARANTE HIPOTECÁRIO E FIADOR';
+    if(soG)return tercPl?'TERCEIROS CONTRATANTES e/ou GARANTES HIPOTECÁRIOS':'TERCEIRO CONTRATANTE e/ou GARANTE HIPOTECÁRIO';
+    if(soF)return fiadores.length>1?'FIADORES':'FIADOR';
+    return`${garantes.length>1?'TERCEIROS CONTRATANTES e/ou GARANTES HIPOTECÁRIOS':'TERCEIRO CONTRATANTE e/ou GARANTE HIPOTECÁRIO'} e ${fiadores.length>1?'FIADORES':'FIADOR'}`;
+  })();
+  const genQ=generosOutorgantes(quartos);
+  const femQ=genQ.length>0&&genQ.every(g=>g==='F');
+  const txtTerceiros=quartos.length?quartos.map(textoOutorgante).join(';\n')+'.':'';
+  const txtTerceirosCurto=quartos.length
+    ?quartos.map(textoVendedorCurto).join(', ')+`, adiante designad${tercPl?(femQ?'as':'os'):(femQ?'a':'o')} por ${desigTerc}.`
+    :'';
+
+  /* ── 10.4 · distrate e banco hipotecante (redações do mh.html) ──
+     ⚠ Por validar: sendo dois contratos conexos, a autorização de cancelamento
+     é uma só e ficou no termo do TOIC, que é o crédito que se transfere. Diz-me
+     se preferes que saia também no termo do UNO.                              */
+  const onusLista=lerOnus();
+  const clDistrate=toic?onusLista.map(textoOnusTermo).filter(Boolean):[];
+  const clBancoHip=toic?onusLista.map(textoOnusContrato).filter(Boolean):[];
+  const bancoOIC=bancoACancelar();
+
+  /* ── 10.5 · liquidação em OIC · só no TOIC (redações do mh.html) ── */
+  const clLiquidaOIC=toic
+    ?`O mútuo é concedido para liquidação do capital em dívida do empréstimo celebrado entre ${muP?'os PRIMEIROS':(femM?'a PRIMEIRA':'o PRIMEIRO')} e o banco ${bancoOIC||'…'}, ${v('f-oic-fim')||'…'}.`
+    :'';
+  const fo=v('f-oic-forma');
+  const clLiquidaForma=(toic&&fo==='apb')
+    ?`Na presente data, ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${par('f-oic-apb-valor')} mediante transferência bancária da conta ${v('f-oic-apb-origem')||'…'}, titulada pel${muP?'os PRIMEIROS':(femM?'a PRIMEIRA':'o PRIMEIRO')} junto da CAIXA, a creditar via target na conta ${v('f-oic-apb-destino')||'…'}, cujo titular é o banco ${bancoOIC||'…'}.`
+    :(toic&&fo==='cheque')
+    ?`O capital em dívida no empréstimo em liquidação é pago na data de hoje, no valor de ${par('f-oic-chq-valor')}, em moeda euro, mediante cheque bancário emitido em ${dPT(v('f-oic-chq-data'))}, sacado sobre o banco ${v('f-oic-chq-banco')||'…'} com o número ${v('f-oic-chq-num')||'…'}.`
+    :'';
+
+  /* ── Imposto do Selo ──
+     O TOIC é transferência de crédito de habitação própria permanente: isento.
+     O UNO é mútuo comum: sujeito à verba 17.1.3, liquidado pela CAIXA. */
+  const montante=parseValor(v(`${F}-montante`));
+  const isVal=v(`${F}-calculo-is`)||(montante?fmtValor(montante*6/1000)+' €':'…');
+  const clSelo=toic
+    ?`— O contrato que aqui se autentica está isento de Imposto do Selo da verba 17.1.3 da TGIS, por força da alínea j) do n.º 1 do artigo 7.º do Código do Imposto do Selo;`
+    :`— O contrato que aqui se autentica está sujeito a Imposto do Selo da verba 17.1.3 da TGIS, que será liquidado pela CAIXA no valor de ${isVal}, de acordo com o artigo 23.º do Código do Imposto do Selo;`;
+
+  /* ── Imóvel · importado do bloco 5, é o mesmo nos dois contratos ── */
+  const isFr=v('f-im-tipo')==='fracao';
+  const DIREITOS={plena:'',superficie:'o direito de superfície sobre ',usufruto:'o usufruto sobre ',raiz:'a nua-propriedade (raiz) sobre ',dhp:'o direito real de habitação periódica sobre '};
+  const dto=DIREITOS[v('f-im-direito')]||'';
+  const desigIm=v('f-im-tipo')==='misto'?'o prédio misto':v('f-im-tipo')==='rustico'?'o prédio rústico':'o prédio urbano';
+  const corpoIm=isFr
+    ?`${dto}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}`
+    :`${dto}${desigIm} composto de ${v('f-im-descricao')||'…'}`;
+  const genT=generosOutorgantes(garantes);
+  const femT=genT.length>0&&genT.every(g=>g==='F');
+  const sujeitoHip=garantes.length
+    ?(garantes.length>1?'Os TERCEIROS CONTRATANTES constituem':(femT?'A TERCEIRA CONTRATANTE constitui':'O TERCEIRO CONTRATANTE constitui'))
+    :(muP?'Os PRIMEIROS constituem':(femM?'A PRIMEIRA constitui':'O PRIMEIRO constitui'));
+  const sujeitoReg=garantes.length
+    ?(garantes.length>1?'dos TERCEIROS CONTRATANTES':(femT?'da TERCEIRA CONTRATANTE':'do TERCEIRO CONTRATANTE'))
+    :(muP?'dos PRIMEIROS CONTRATANTES':(femM?'da PRIMEIRA CONTRATANTE':'do PRIMEIRO CONTRATANTE'));
+  const mats=isFr?[]:lerMatrizes();
+  const txtMatriz=isFr
+    ?`O prédio encontra-se inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros.`
+    :`O prédio encontra-se inscrito ${mats.length?(mats.length>1?mats.slice(0,-1).map(m=>textoMatrizG(m,false)).join(', ')+' e '+textoMatrizG(mats[mats.length-1],false):textoMatrizG(mats[0],false)):'na respetiva matriz predial …'}.`;
+
+  /* ══════════════ TERMO ══════════════ */
+  const termo=[];
+  const foraEscritorio=v('f-local-tipo')==='outro';
+  const entTxt=sol
+    ?`${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, número de identificação fiscal ${sol.nif}`
+      +(foraEscritorio?`, com domicílio profissional na ${sol.domicilio}`:'')
+    :'…';
+  const localTxt=foraEscritorio
+    ?`na ${v('f-local-morada')||'…'}`
+    :(sol?`no meu escritório sito na ${sol.domicilio}`:'no meu escritório sito na …');
+  termo.push({id:P+'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram os seguintes outorgantes:`});
+  termo.push({id:P+'t-primeiro',T:muP?'PRIMEIROS':(femM?'PRIMEIRA':'PRIMEIRO'),X:txtPrimeiro,
+    negrito:mut.flatMap(o=>{const r=[];if(o.nome)r.push(o.nome);
+      if(ehCasado(o.ec)&&o['conj-nome']&&(o['conj-out']||'ambos')!=='nao')r.push(o['conj-nome']);return r;})});
+  termo.push({id:P+'t-segunda',T:'SEGUNDA',X:txtSegunda,negrito:solMut?[solMut.nome]:[]});
+  if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?'TERCEIROS':'TERCEIRO',X:txtTerceiros,
+    negrito:quartos.map(q=>q.nome).filter(Boolean)});
+  termo.push({id:P+'t-apresentaram',T:'',X:`Os signatários apresentaram o documento de contrato de ${tipoNome} com DOCUMENTO COMPLEMENTAR e ANEXO I, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
+
+  /* ── VERIFIQUEI ── */
+  const procuracoes=mut.map(segmentoProcuracao).filter(Boolean);
+  const assentos=mut.map(linhaAssento).filter(Boolean);
+  const predios=[linhaPredio('f-im',null)].filter(Boolean);
+  const requerimentos=[linhaRequerimento('f-im',null)].filter(Boolean);
+  const crcCod=v('f-mut-crc-cod')||CGD_CRC;
+  const crcVal=v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL);
+  const linhas=[];
+  linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`);
+  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação da CAIXA pela procuração, conjugada com a consulta do substabelecimento, depositados em www.procuracoesonline.mj.pt através do código de acesso ${v('f-mut-proc-cod')||(solMut?solMut.codProcuracao:'…')}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
+  /* A alínea b) do artigo 4.º vem do template; o nome da lei vem da redação da
+     compra e venda, porque aqui o Regime Jurídico não foi citado antes e o
+     «referido» do template ficaria no ar. */
+  if(!outraIC)linhas.push(`— Os poderes de representação da CAIXA GERAL DE DEPÓSITOS, S.A. através da Certidão de Registo Comercial com o número de acesso ${crcCod}, disponível em www.eportugal.gov.pt, válida até ${crcVal}, verificando-se ainda a exclusão da Caixa Geral de Depósitos, S.A. do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º da Lei n.º 89/2017, de 21 de agosto;`);
+  assentos.forEach(l=>linhas.push(l));
+  predios.forEach(l=>linhas.push(l));
+  requerimentos.forEach(l=>linhas.push(l));
+  clDistrate.forEach(l=>linhas.push(l));
+  termo.push({id:P+'t-verifiquei',T:'',X:`Verifiquei:\n${linhas.join('\n')}`});
+
+  /* ── INFORMEI ── */
+  const infos=[clSelo,
+    `— os outorgantes de que, nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt;`];
+  termo.push({id:P+'t-informei',T:'',X:`Informei:\n${infos.join('\n')}`});
+  termo.push({id:P+'t-rgpd',T:'',X:`Com consentimento dos outorgantes, procedi à recolha dos elementos de identificação e à reprodução dos documentos que serviram de base ao presente ato, nos termos da Lei n.º 83/2017, de 18 de agosto, ficando os mesmos arquivados pelo período legal de sete anos.`});
+  const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
+  if(arq)termo.push({id:P+'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
+  termo.push({id:P+'t-leitura',T:'',X:`O presente Documento Particular Autenticado foi lido em voz alta e explicado aos signatários, na presença simultânea de todos os outorgantes, os quais declararam encontrar-se plenamente esclarecidos quanto ao respetivo conteúdo, tendo dispensado a leitura do Documento Complementar por já haverem procedido previamente à sua leitura, reconhecendo-o, ainda assim, como parte integrante do presente contrato.`});
+
+  /* ══════════════ CONTRATO ══════════════ */
+  const contrato=[];
+  contrato.push({id:P+'c-cab',T:tipoNome,X:''});
+  contrato.push({id:P+'c-entre',T:'ENTRE',X:txtPrimeiroCurto,negrito:mut.map(o=>o.nome).filter(Boolean)});
+  contrato.push({id:P+'c-e',T:'E',X:txtSegundaCurto});
+  if(quartos.length)contrato.push({id:P+'c-terceiros',T:'E',X:txtTerceirosCurto,
+    negrito:quartos.map(q=>q.nome).filter(Boolean)});
+  contrato.push({id:P+'c-preambulo',T:'',X:`É celebrado o presente contrato de ${tipoNome} sobre imóvel, que se rege pelas seguintes disposições:`});
+
+  /* ── MÚTUO ── */
+  contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
+    `Pelo presente contrato, a CAIXA concede ${muP?'aos PRIMEIROS':(femM?'à PRIMEIRA':'ao PRIMEIRO')} um empréstimo no montante de ${par(`${F}-montante`)}, pelo prazo de ${prazo}, a contar da presente data, de que ${muP?'estes se confessam devedores':(femM?'esta se confessa devedora':'este se confessa devedor')}, o que a CAIXA aceita, nos termos deste Contrato, bem como pelas cláusulas constantes do Documento Complementar e Anexo I, que ficam anexos e dele fazem parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
+  if(clLiquidaOIC)contrato.push({id:P+'c-liquida-oic',T:'',X:clLiquidaOIC});
+  if(clLiquidaForma)contrato.push({id:P+'c-liquida-forma',T:'',X:clLiquidaForma});
+
+  /* ── FIANÇA · redação do mh.html, com a concordância pelo número e género ── */
+  if(fiadores.length){
+    const fiP=fiadores.length>1;
+    const daPRIM=muP?'dos PRIMEIROS':(femM?'da PRIMEIRA':'do PRIMEIRO');
+    const pelaPRIM=muP?'pelos PRIMEIROS':(femM?'pela PRIMEIRA':'pelo PRIMEIRO');
+    const O_FIADOR=fiP?'OS FIADORES':'O FIADOR';
+    const constitui=fiP?'constituem-se':'constitui-se';
+    const pp=fiP?'principais pagadores':'principal pagador';
+    const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
+    contrato.push({id:P+'c-fianca',T:'FIANÇA',X:[
+      `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaPRIM} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${daPRIM};`,
+      `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${daPRIM} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
+      `A presente fiança é prestada com a qualidade de ${pp}, podendo o Banco, em caso de incumprimento por parte ${daPRIM}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${daPRIM}.`
+    ].join('\n')});
+  }
+
+  /* ── HIPOTECA · redação do TEMPL_MH_TOIC_CGD.docx ──
+     Saindo os dois contratos, constituem-se duas hipotecas sobre o mesmo
+     imóvel. O grau não se menciona nem se pergunta: resolve-se pela ordem de
+     apresentação na conservatória. Confirmado pela Liliana — não há nada a
+     dizer sobre isso no contrato. */
+  contrato.push({id:P+'c-hip-garantia',T:'HIPOTECA',X:
+    `Para garantia:\n`
+    +`a) do capital mutuado de ${par(`${F}-montante`)};\n`
+    +`b) dos juros remuneratórios, fixados em até ${pct(`${F}-juros`)} ao ano;\n`
+    +`c) dos juros moratórios, correspondentes aos juros remuneratórios acrescidos de uma sobretaxa até ${pct(`${F}-mora`)} ao ano, nos termos e dentro do limite máximo previsto no artigo 8.º do Decreto-Lei n.º 58/2013, de 8 de maio;\n`
+    +`d) das comissões, despesas e demais encargos contratuais emergentes do contrato de empréstimo, que em conjunto se fixam no montante de ${par(`${F}-despesas`)}.`});
+  contrato.push({id:P+'c-hip-maximo',T:'',X:
+    `Fica estabelecido que o montante máximo garantido por hipoteca se fixa em ${par(`${F}-hipoteca`)} para todos os efeitos legais e de registo.`});
+  contrato.push({id:P+'c-hip-constituicao',T:'',X:
+    `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
+  contrato.push({id:P+'c-hip-registo',T:'',X:
+    `O imóvel ora hipotecado encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}.`});
+  if(clBancoHip.length)contrato.push({id:P+'c-hip-banco',T:'',X:clBancoHip.join('\n')});
+  contrato.push({id:P+'c-hip-matriz',T:'',X:txtMatriz});
+  contrato.push({id:P+'c-hip-vigencia',T:'',X:
+    `A hipoteca ora constituída vigorará por tempo indeterminado, subsistindo enquanto perdurar qualquer das responsabilidades por ela garantidas, abrangendo o Imóvel, bem como todas as construções, edificações, melhoramentos, benfeitorias e acessões, presentes ou futuras, que já existam ou que nele venham a ser incorporadas.\n`
+    +`A CAIXA poderá, a todo o tempo, requerer e promover os respetivos averbamentos junto da Conservatória do Registo Predial competente, considerando-se, para efeitos de exequibilidade, que os recibos comprovativos desses atos constituem parte integrante do presente contrato.\n`
+    +`A hipoteca ora constituída garante igualmente, sempre dentro do limite do montante máximo assegurado, os demais acessórios do crédito, incluindo, designadamente, os prémios de seguros, licenças, contribuições, taxas e demais impostos, bem como as despesas relativas a registos de hipoteca e quaisquer outros encargos que a CAIXA venha a suportar nos termos previstos no presente contrato e Documento Complementar, considerando-se, para efeitos de exequibilidade, que os respetivos recibos e documentos comprovativos constituem parte integrante do presente contrato.\n`
+    +`A CAIXA poderá, sempre que entenda necessário, proceder à inspeção e avaliação do Imóvel para efeitos do disposto no artigo 701.º do Código Civil, ou de qualquer outra norma legal aplicável.`});
+  contrato.push({id:P+'c-hip-execucao',T:'',X:
+    `A presente hipoteca é suscetível de execução logo que o crédito por ela garantido se torne vencido e exigível nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
+  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'',X:
+    `${garantes.length>1?'Os Terceiros Garantes declaram':'O Terceiro Garante declara'} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${garantes.length>1?'os aceitam':'os aceita'}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`});
+
+  /* ── Fecho · período de reflexão ──
+     A cláusula é única, confirmado pela Liliana: o {Clausula_Renuncia} do
+     template e o texto fixo do fim são o mesmo, não se somam. Fica na posição
+     do template — no fecho, antes da aceitação — e sai uma vez por contrato. */
+  if(chk('t-reflexao'))contrato.push({id:P+'c-reflexao',T:'',X:
+    `${muP?'OS PRIMEIROS CONTRATANTES':(femM?'A PRIMEIRA CONTRATANTE':'O PRIMEIRO CONTRATANTE')}, nos termos e para os efeitos do disposto no Decreto-Lei n.º 74-A/2017, de 23 de junho, ${muP?'reconhecem':'reconhece'} ter decorrido integralmente o período de reflexão legal de sete dias.`});
+  contrato.push({id:P+'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
+  contrato.push({id:P+'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
+
+  return{variante,cod:(variante==='toic'?'MH_TOIC':'MH_UNO')+(fiadores.length?'_F':''),
+         rot:tipoNome,termo,contrato,anexo:[]};
+}
 function compor(){
+  if(atoEscolhido()==='mh'){
+    const docs=docsMH().map(comporMH);
+    const d0=docs[0]||{termo:[],contrato:[],anexo:[]};
+    return{termo:d0.termo,contrato:d0.contrato,anexo:[],docs};
+  }
   const vend=lerVendedores();
   const plural=vend.length>1;
   const sol=SOLICITADORAS[v('f-solicitadora')];
@@ -2190,7 +2750,15 @@ function compor(){
     +(txtRem?`\n${txtRem}`:'')
     +(txtUnica?`\n${txtUnica}`:'');
 
-  const txtOnus=chk('t-onus-livre')?'O Imóvel é vendido livre de quaisquer ónus ou encargos.':(v('f-onus-txt')||'…');
+  /* ── ÓNUS · secção do imóvel ──
+     Livre → a declaração. Onerado → um parágrafo por ónus que se cancela, mais
+     o texto livre do que se mantém. A verificação da autorização vai ao termo. */
+  const onusLista=lerOnus();
+  const onusContrato=onusLista.map(textoOnusContrato).filter(Boolean);
+  const onusTermo=onusLista.map(textoOnusTermo).filter(Boolean);
+  const txtOnus=chk('t-onus-livre')
+    ?'O Imóvel é vendido livre de quaisquer ónus ou encargos.'
+    :[...onusContrato,v('f-onus-txt')].filter(Boolean).join('\n')||'…';
   const tu=textosTituloUrb();
   const cond=textosCondominio();
   const locParticular=v('f-loc-tipo')==='particular';
@@ -2236,104 +2804,10 @@ function compor(){
   /* No tipo «Direito de Superfície» o direito transmitido é o de superfície,
      independentemente do que estiver no campo do imóvel. */
   const ts=textosTratoSuc();
-  /* ── VERIFIQUEI · poderes de representação ──
-     Um segmento por cada procuração, com os dados de quem a autenticou e o
-     destino do documento: arquivado em papel, ou consultado por código. */
-  function segmentoProcuracao(o){
-    if(o['repr-tipo']!=='procurador')return'';
-    const representados=[o.nome||'…'];
-    if(ehCasado(o.ec)&&(o['conj-out']||'ambos')!=='nao'&&o['conj-nome'])representados.push(o['conj-nome']);
-    const destino=o['pr-doc']==='codigo'
-      ?`e que consultei através do código ${o['pr-codigo']||'…'}`
-      :'e que arquivo';
-    return`os poderes de representação de ${representados.join(' e ')} através da procuração autenticada em ${o['pr-data']||'…'} por ${o['pr-ent']||'…'}, ${o['pr-qual']||'…'}, cédula profissional n.º ${o['pr-cedula']||'…'}, com domicílio profissional em ${o['pr-domicilio']||'…'}, ${destino}`;
-  }
-  /* ── VERIFIQUEI · certidão comercial e RCBE ──
-     Redação fixada pela Liliana. Refere a PARTE, não a pessoa do representante.
-     Parágrafo autónomo, com «Verifiquei» próprio. */
-  function linhaEmpresa(o,parte){
-    if(o.tipo!=='empresa')return'';
-    /* Sem variante: o ato não avança sem RCBE válido, por isso a declaração é
-       sempre esta. A confirmação no formulário serve de verificação prévia. */
-    /* Quando o objeto social não abrange imóveis, a deliberação dos sócios entra
-       junto da verificação dos poderes — é o que os habilita para o ato. */
-    const ata=o.objeto==='nao'
-      ? `, e ata de deliberação em ${o['ata-tipo']==='extraordinária'?'assembleia extraordinária':'assembleia geral'} número ${o['ata-num']||'…'} assinada em ${o['ata-data']?dataExtenso(o['ata-data']):'…'}, que arquivo`
-      : '';
-    return`Verifiquei a qualidade e poderes de representação da ${parte} através da Certidão de Registo Comercial com o código de acesso ${o['crc-cod']||'…'}, disponível em www.eportugal.gov.pt em vigor${ata}, e o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto.`;
-  }
-  /* ── VERIFIQUEI · município ──
-     Redação fixada pela Liliana. Cobre também a identidade dos outorgantes,
-     por isso substitui a linha genérica quando há município no ato. */
-  function linhaMunicipio(o,ordinal){
-    if(o.tipo!=='municipio')return'';
-    const destino=o['mun-doc']==='codigo'
-      ?`e que consultei através do código ${o['mun-codigo']||'…'}`
-      :'e que arquivo';
-    return`Verifiquei a identidade dos outorgantes por exibição dos respetivos documentos de identificação e a qualidade e suficiência dos poderes de representação invocados pelo ${ordinal} outorgante pela ata da instalação da Câmara Municipal de ${o['mun-nome']||'…'}, mandato ${o['mun-mandato']||'…'}, lavrada em ${o['mun-ata']?dataExtenso(o['mun-ata']):'…'}, competindo ao ${((o.reps&&o.reps[0]&&o.reps[0].qual)||'…')} representar o Município nos termos da alínea a) do n.º 1 do artigo 35.º do Anexo I à Lei n.º 75/2013, de 12 de setembro, ${destino};`;
-  }
   const municipios=[...vend.map(o=>linhaMunicipio(o,'primeiro')),
                     ...comps.map(o=>linhaMunicipio(o,'segundo'))].filter(Boolean);
   const empresas=[...vend.map(o=>linhaEmpresa(o,'PARTE VENDEDORA')),
                   ...comps.map(o=>linhaEmpresa(o,'PARTE COMPRADORA'))].filter(Boolean);
-  /* ── VERIFIQUEI · estado civil alterado desde o registo ──
-     Redação da Liliana. Só sai quando os assentos estão preenchidos. */
-  function linhaAssento(o){
-    if(o.tipo!=='singular'||o.coincide!=='nao')return'';
-    if(!o['asc-nasc-num']||!o['asc-nasc-crc'])return'';
-    const cas=ehCasado(o.ec);
-    if(cas&&(!o['asc-cas-num']||!o['asc-cas-crc']))return'';
-    const casTxt=cas?` e o regime de casamento através do assento n.º ${o['asc-cas-num']} da Conservatória de ${o['asc-cas-crc']}`:'';
-    return`— verifiquei o estado civil de ${o.nome||'…'} por consulta ao assento de nascimento n.º ${o['asc-nasc-num']} da Conservatória de ${o['asc-nasc-crc']}${casTxt};`;
-  }
-  /* ── VERIFIQUEI · identificação do prédio ──
-     Redação fixada pela Liliana. A ficha do SNIC e o NIC só entram nos prédios
-     com componente rústica. */
-  function linhaPredio(pref,dados){
-    const g=k=>dados?(dados[k]||''):v(`${pref}-${k}`);
-    const tipo=dados?dados.tipo:v('f-im-tipo');
-    const cad=g('cad-data'),cod=g('cert-cod'),val=g('cert-val');
-    if(!cad&&!cod&&!g('mod1-num'))return'';
-    const rust=(()=>{const mats=pref==='f-im'?lerMatrizes():(dados?dados.matrizes:lerMatrizes(pref));
-      return tipo==='rustico'||tipo==='misto'||(mats||[]).some(m=>m.nat==='rustica');})();
-    const snic=rust
-      ? `, a que corresponde a ficha de prédio n.º ${g('snic-ficha')||'…'} do Sistema Nacional de Informação Cadastral, NIC ${g('snic-nic')||'…'}`
-      : '';
-    /* Havendo Modelo 1 do IMI, substitui a caderneta — mas só a urbana:
-       o Modelo 1 respeita à inscrição matricial urbana. Num misto, a caderneta
-       rústica mantém-se e só a urbana dá lugar ao Modelo 1. */
-    /* O Modelo 1 só substitui a caderneta URBANA. Num prédio puramente rústico
-       não entra: a harmonização do cadastro rústico faz-se por outra via. */
-    const soRustico=rust&&tipo!=='misto';
-    const mod1=!soRustico&&g('areas')==='nao'&&!!g('mod1-num');
-    const codMod1=g('mod1-num')||'…';
-    const dataCad=cad?dPT(cad):'…';
-    let cabeca;
-    if(tipo==='misto'){
-      const parteR=`A caderneta predial rústica do prédio, emitida em ${dataCad}${snic}`;
-      cabeca=mod1
-        ? `— ${parteR}, e Mod. 1 IMI com o código ${codMod1}, que arquivo`
-        : `— As cadernetas prediais rústica, emitida em ${dataCad}${snic}, e urbana, emitida em ${g('cad-data-u')?dPT(g('cad-data-u')):'…'}`;
-    }else if(soRustico){
-      cabeca=`— A caderneta predial rústica do prédio, emitida em ${dataCad}${snic}`;
-    }else{
-      cabeca=mod1
-        ? `— Consultei Mod. 1 IMI com o código ${codMod1} e que arquivo`
-        : `— A caderneta predial urbana do prédio, emitida em ${dataCad}`;
-    }
-    return`${cabeca}, ${mod1?'bem como':'e'} certidão permanente do imóvel com o código ${cod||'…'}, consultadas hoje nos respetivos portais, sendo esta última válida até ${val?dPT(val):'…'}, com inscrições e descrições em vigor;`;
-  }
-  /* ── VERIFIQUEI · requerimento à AT para correção de áreas no rústico ──
-     Redação da Liliana, com a citação do diploma por extenso. */
-  function linhaRequerimento(pref,dados){
-    const g=k=>dados?(dados[k]||''):v(`${pref}-${k}`);
-    if(g('areas')!=='nao'||!g('req-data'))return'';
-    const mats=(dados?dados.matrizes:lerMatrizes(pref==='f-im'?undefined:pref))||[];
-    const rust=mats.filter(m=>m.nat==='rustica');
-    if(!rust.length)return'';
-    const ident=rust.map(m=>`artigo matricial ${m.artigo||'…'}${m.seccao?`, secção ${m.seccao}`:''}`).join(' e ');
-    return`— Arquivo requerimento entregue na Autoridade Tributária em ${dPT(g('req-data'))}, para efeitos de correção de áreas quanto ao ${ident}, sob compromisso do cumprimento dos requisitos previstos no Decreto-Lei n.º 72/2023, de 23 de agosto, quanto à operação de conservação de cadastro predial;`;
-  }
   const requerimentos=[linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean);
   const predios=[linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean);
   const assentos=vend.map(linhaAssento).filter(Boolean);
@@ -2350,6 +2824,7 @@ function compor(){
     +(predios.length?'\n'+predios.join('\n'):'')
     +(requerimentos.length?'\n'+requerimentos.join('\n'):'')
     +(ehCVMH?`\n— Para efeitos da Lei n.º 78/2021, de 24 de novembro, que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`:'')
+    +(onusTermo.length?'\n'+onusTermo.join('\n'):'')
     +(tu.termo?'\n'+tu.termo:'')
     +((chk('t-tu-advert')&&(v('f-tu-caso')==='declarado'||v('f-tu-caso')==='nao-dispoe'))
       ?'\n— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;':'');
@@ -2481,7 +2956,7 @@ function compor(){
   if(ehCVMH){
     contrato.push({id:'c-mh-execucao',T:'',X:`A presente hipoteca é suscetível de execução logo que o crédito garantido se torne vencido e exigível, nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
     const S=flexaoMutuario(generosOutorgantes(comps).length);
-    contrato.push({id:'c-mh-reflexao',T:'',X:`Declara${S.art==='os'?'m':''} ${S.art} ${S.art==='os'?'Segundos Outorgantes':'Segundo Outorgante'} que, nos termos do Decreto-Lei n.º 74-A/2017, de 23 de junho, ${S.reconhece} ter decorrido integralmente o período de reflexão legal de sete dias.`});
+    if(chk('t-reflexao'))contrato.push({id:'c-mh-reflexao',T:'',X:`Declara${S.art==='os'?'m':''} ${S.art} ${S.art==='os'?'Segundos Outorgantes':'Segundo Outorgante'} que, nos termos do Decreto-Lei n.º 74-A/2017, de 23 de junho, ${S.reconhece} ter decorrido integralmente o período de reflexão legal de sete dias.`});
   }
   contrato.push({id:'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
@@ -2545,7 +3020,10 @@ function manualHTML(id){
   return typeof m==='string'?esc(m):sanitizarHTML(m.html||'');
 }
 function render(){
-  const{termo,contrato}=compor();
+  const R=compor();
+  /* O tronco 4 pode produzir dois documentos — o TOIC e o UNO conexo. Cada um
+     leva o seu termo, a sua assinatura e o seu contrato, separados por quebra. */
+  const docs=R.docs&&R.docs.length?R.docs:[{termo:R.termo,contrato:R.contrato,anexo:R.anexo||[]}];
   const folha=document.getElementById('folha');
   const blocoHTML=b=>{
     const manual=manuais[b.id]!==undefined;
@@ -2562,7 +3040,6 @@ function render(){
       ${(b.X||manual||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="true" data-id="${b.id}">${conteudo}</div>`:''}
     </div>`;
   };
-  const{anexo}=compor();
   const solA=SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana;
   const assin=`<div style="text-align:right;font-family:'Monotype Corsiva',cursive;font-style:italic;color:#404040;font-size:14px;line-height:1.35;margin-top:1.2rem"><b>ENTIDADE AUTENTICADORA</b><br>${esc(solA.assinNome||solA.nomeAbrev||solA.nome)}<br>${esc(solA.cargo)}</div>`;
   const insHTML=x=>`<div class="bloco inserido" data-id="${x.id}">
@@ -2572,10 +3049,14 @@ function render(){
     </div>`;
   const cadeia=id=>(inseridos[id]||[]).map(x=>insHTML(x)+cadeia(x.id)).join('');
   const seq=arr=>arr.map(b=>blocoHTML(b)+cadeia(b.id)).join('');
-  folha.innerHTML=seq(termo)+assin
-    +`<hr class="quebra-pagina">`
-    +seq(contrato)
-    +(anexo.length?`<hr class="quebra-pagina">`+seq(anexo):'');
+  folha.innerHTML=docs.map((d,i)=>
+      (i?`<hr class="quebra-pagina">`:'')
+      +(docs.length>1?`<div style="text-align:center;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8578;margin:.2rem 0 .9rem">Documento ${i+1} de ${docs.length} · ${esc(d.rot||'')}</div>`:'')
+      +seq(d.termo)+assin
+      +`<hr class="quebra-pagina">`
+      +seq(d.contrato)
+      +((d.anexo&&d.anexo.length)?`<hr class="quebra-pagina">`+seq(d.anexo):'')
+    ).join('');
   const colarTexto=el=>el.addEventListener('paste',e=>{
     e.preventDefault();
     document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text'));
@@ -2693,7 +3174,7 @@ const TIPOS_ATO={
   cv:           {cod:'CV',           rot:'Compra e Venda',                        nome:'Compra e Venda',                pronto:true },
   doacao:       {cod:'DOACAO',       rot:'Doação',                                nome:'Doação',                        pronto:false},
   partilhas:    {cod:'PARTILHAS',    rot:'Partilhas / Divisão de Coisa Comum',    nome:'Partilhas',                     pronto:false},
-  mh:           {cod:'MH',           rot:'Mútuo com Hipoteca',                    nome:'Mútuo com Hipoteca',            pronto:false},
+  mh:           {cod:'MH',           rot:'Mútuo com Hipoteca',                    nome:'Mútuo com Hipoteca',            pronto:true },
   recon:        {cod:'RECON',        rot:'Reconhecimento de Assinaturas',         nome:'Reconhecimento de Assinaturas', pronto:false},
   termoempresas:{cod:'TERMO_EMP',    rot:'Termo de Autenticação — Empresas',      nome:'Termo de Autenticação',         pronto:false},
   permuta:      {cod:'PERMUTA',      rot:'Permuta de Bens Imóveis',               nome:'Permuta de Bens Imóveis',       pronto:false}
@@ -2712,8 +3193,42 @@ const SUBTIPOS_CV={
   mh:        {cod:'CVMH', rot:'Compra e Venda com Mútuo e Hipoteca',     nome:'Compra e Venda com Mútuo e Hipoteca',       pronto:false},
   superficie:{cod:'CVDS', rot:'Compra e Venda — Direito de Superfície',  nome:'Compra e Venda de Direito de Superfície',   pronto:true }
 };
+/* ── ATO 4 · TRONCO PRÓPRIO ──
+   Não deriva da compra e venda: os outorgantes são os mutuários (PRIMEIROS) e a
+   CAIXA (SEGUNDA). Não há vendedores nem compradores, nem preço, nem IMT.
+   Dois subtipos sobre o mesmo esqueleto do TEMPL_MH_TOIC_CGD.docx: o mútuo
+   novo e a transferência de crédito de outra instituição, com liquidação. */
+/* Dois contratos, não dois subtipos:
+     4.1 · TOIC — transferência de crédito de habitação própria permanente.
+            Regras próprias e isenção de Imposto do Selo.
+     4.2 · UNO — mútuo com hipoteca comum, sujeito a Imposto do Selo.
+   Vêm normalmente acoplados: o TOIC transfere o crédito da habitação e o UNO
+   acrescenta financiamento novo sobre o mesmo imóvel. Quando isso acontece
+   saem dois documentos, com os mesmos mutuários e o mesmo imóvel — só os
+   dados financeiros diferem. */
+function ehMH(){return atoEscolhido()==='mh';}
+function contratoMH(){return v('f-mh-contrato')||'toic';}
+function temConexo(){return ehMH()&&contratoMH()==='toic'&&chk('t-mh-conexo');}
+function ehTOIC(){return ehMH()&&contratoMH()==='toic';}
+function docsMH(){return!ehMH()?[]:(contratoMH()==='toic'?(temConexo()?['toic','uno']:['toic']):['uno']);}
+function nomeContratoMH(variante){
+  const base=variante==='toic'?'MÚTUO (TRANSFERÊNCIA) COM HIPOTECA':'MÚTUO COM HIPOTECA';
+  return fiadoresMH().length?`${base} E FIANÇA`:base;
+}
+function fiadoresMH(){return lerQuartos().filter(q=>q.qualidade==='fiador'||q.qualidade==='ambos');}
+function garantesMH(){return lerQuartos().filter(q=>q.qualidade==='garante'||q.qualidade==='ambos');}
 function tipoDeduzido(){
   const t=atoEscolhido();
+  if(t==='mh'){
+    const ds=docsMH();
+    const rot=ds.length>1
+      ?'Mútuo com Hipoteca — 4.1 TOIC + 4.2 UNO conexo'
+      :(ds[0]==='toic'?'Mútuo com Hipoteca — 4.1 · TOIC':'Mútuo com Hipoteca — 4.2 · UNO');
+    const fi=fiadoresMH().length?'_F':'';
+    return{cod:`MH_${ds.map(x=>x.toUpperCase()).join('_')}${fi}`,
+           rot:rot+(fiadoresMH().length?' e Fiança':''),
+           nome:nomeContratoMH(ds[0]||'toic'),pronto:true};
+  }
   if(t!=='cv')return TIPOS_ATO[t];
   const s={...SUBTIPOS_CV[subtipoCV()]};
   if(compradoraCGD()){s.rot+=' · CAIXA (locação financeira)';s.cod+='_LF';}
@@ -2728,8 +3243,101 @@ function avisoFolha(t){
       Nada é composto por agora — mais vale folha vazia do que um documento de outro ato.
     </div>
     <div style="font-size:11.5px;margin-top:1.2rem;color:#9A9588">
-      Pronto: Compra e Venda (incluindo leasing). Por construir: Doação, Partilhas / Divisão de Coisa Comum, Mútuo com Hipoteca, Reconhecimento de Assinaturas, Termo de Autenticação — Empresas e Permuta de Bens Imóveis.
+      Pronto: Compra e Venda (incluindo leasing) e Mútuo com Hipoteca (simples e TOIC). Por construir: Doação, Partilhas / Divisão de Coisa Comum, Reconhecimento de Assinaturas, Termo de Autenticação — Empresas e Permuta de Bens Imóveis.
     </div></div>`;
+}
+/* ── FUNIL DO ATO 4 · MÚTUO COM HIPOTECA / TOIC ──
+   Tronco próprio. Os blocos 3 e 4 mudam de sujeito — mutuários e CAIXA — e os
+   blocos 6 a 9 caem por inteiro, confirmado pela Liliana: sem transmissão não
+   há preço, certificado energético, preferências, mediação nem IMT, e também
+   não se retém o condomínio nem o título urbanístico. Ficam escondidos no
+   formulário e excluídos da composição e dos alertas, para que um rascunho de
+   compra e venda com esses interruptores ligados não contamine o ato 4.
+   O bloco 10 deixa de ser derivação e
+   passa a ser o corpo do contrato; o mutuante sobe do 10.1 para o bloco 4, que
+   é o seu lugar na ordem dos outorgantes. */
+function nomearBloco(card,nome,desc){
+  const c=document.getElementById(card);if(!c)return;
+  const n=c.querySelector('.section-name'),d=c.querySelector('.section-desc');
+  if(n)n.textContent=nome;if(d)d.textContent=desc;
+}
+function funilMH(){
+  const toic=ehTOIC();
+  const conexo=temConexo();
+  setDisp('row-mh-conexo',toic?'flex':'none');
+  setDisp('nota-mh-conexo',conexo?'block':'none');
+  setDisp('blk-uno',conexo?'block':'none');
+  /* Sozinho, o UNO usa o 10.2; sendo conexo, o 10.2 é do TOIC e o UNO tem o 10.6. */
+  setProp('ttl-mh-financeiro','textContent',
+    toic?'10.2 · Mútuo e Hipoteca — 4.1 · TOIC':'10.2 · Mútuo e Hipoteca — 4.2 · UNO');
+  nomearBloco('card-b3','Mutuários','Primeiros Outorgantes — quem contrai o empréstimo');
+  nomearBloco('card-b4','Mutuante','Segunda Outorgante — a CAIXA');
+  nomearBloco('card-b5','Imóvel','Objeto da hipoteca');
+  nomearBloco('card-b10','Mútuo e Hipoteca','Corpo do contrato — este é o tronco');
+  /* O mutuante muda de sítio: no tronco 4 é o segundo outorgante, não o terceiro. */
+  const blk=document.getElementById('blk-mutuante'),b4=document.getElementById('card-b4');
+  if(blk&&b4&&blk.parentElement!==b4){b4.appendChild(blk);}
+  setProp('ttl-mutuante','textContent','4.1 · Segunda Outorgante — a CAIXA');
+  /* Sem transmissão, a designação das partes é a do template e não se escolhe. */
+  ['f-desig-vend','f-desig-comp'].forEach(id=>{
+    const g=document.getElementById(id);if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='none';
+  });
+  const ts=document.getElementById('t-trato-suc');
+  if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='none';
+  document.querySelectorAll('#compradores-container').forEach(e=>e.style.display='none');
+  const btnComp=document.querySelector('#card-b4 > .add-btn');if(btnComp)btnComp.style.display='none';
+  ['card-b6','card-b7','card-b8','card-b9'].forEach(k=>setDisp(k,'none'));
+  setDisp('card-b10','block');
+  const tmh=document.getElementById('t-mh');
+  if(tmh){tmh.checked=true;const r=tmh.closest('.toggle-row');if(r)r.style.display='none';
+    const h=r&&r.nextElementSibling;if(h&&h.tagName==='DIV'&&!h.id)h.style.display='none';}
+  setDisp('g-mh','block');
+  onMutuante();onMutQuem();semearCertidaoCGD();
+  setDisp('g-quartos',chk('t-quartos')?'block':'none');
+  if(!document.querySelectorAll('.vend-block').length)addVendedor();
+  /* As hipotecas anteriores e o seu cancelamento vivem na secção do imóvel,
+     partilhadas com a compra e venda. Aqui fica só a liquidação, que é do TOIC. */
+  aplicarOnus();
+  setDisp('blk-oic',toic?'block':'none');
+  const fo=v('f-oic-forma');
+  document.querySelectorAll('.oic-apb').forEach(e=>e.style.display=fo==='apb'?'block':'none');
+  document.querySelectorAll('.oic-chq').forEach(e=>e.style.display=fo==='cheque'?'block':'none');
+  /* Visibilidade do imóvel: a fração e as matrizes seguem a regra do tronco. */
+  const isFr=v('f-im-tipo')==='fracao';
+  setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
+  setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
+  ['g-im-artigo','g-im-freg-mat','g-im-vpt'].forEach(x=>setDisp(x,isFr?'flex':'none'));
+  setDisp('g-predios-extra','none');
+  aplicarAreas();aplicarSnic();aplicarSeccao();
+  const gm=document.getElementById('g-local-morada');
+  if(gm)gm.style.display=v('f-local-tipo')==='outro'?'block':'none';
+  const av=document.getElementById('funil-aviso');
+  if(av){av.style.display='none';}
+}
+/* Repõe o formulário no tronco da compra e venda. */
+function desfazerFunilMH(){
+  const blk=document.getElementById('blk-mutuante'),gmh=document.getElementById('g-mh');
+  const alvo=document.getElementById('blk-uno');
+  if(blk&&gmh&&blk.parentElement!==gmh){gmh.insertBefore(blk,alvo||null);}
+  setProp('ttl-mutuante','textContent','10.1 · Terceiro Contratante — mutuante');
+  setProp('ttl-mh-financeiro','textContent','10.2 · Mútuo e Hipoteca');
+  setDisp('blk-uno','none');setDisp('row-mh-conexo','none');setDisp('nota-mh-conexo','none');
+  nomearBloco('card-b3','Entidade Vendedora','Parte vendedora');
+  nomearBloco('card-b4','Entidade Compradora','Parte compradora');
+  nomearBloco('card-b5','Imóvel','Objeto da transmissão');
+  nomearBloco('card-b10','Mútuo com Hipoteca','Derivação — o tronco fecha no bloco 9');
+  ['f-desig-vend','f-desig-comp'].forEach(id=>{
+    const g=document.getElementById(id);if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='';
+  });
+  const ts=document.getElementById('t-trato-suc');
+  if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='';
+  document.querySelectorAll('#compradores-container').forEach(e=>e.style.display='');
+  const btnComp=document.querySelector('#card-b4 > .add-btn');if(btnComp)btnComp.style.display='';
+  ['card-b6','card-b7','card-b8','card-b9'].forEach(k=>setDisp(k,'block'));
+  const tmh=document.getElementById('t-mh');
+  if(tmh){const r=tmh.closest('.toggle-row');if(r)r.style.display='';
+    const h=r&&r.nextElementSibling;if(h&&h.tagName==='DIV'&&!h.id)h.style.display='';}
+  setDisp('blk-oic','none');
 }
 function atualizar(){
   // ── funil ──
@@ -2738,7 +3346,10 @@ function atualizar(){
   const compCGD=ehCV&&compradoraCGD();
   const t=tipoDeduzido();
   setProp('tipo-badge','textContent',t.rot);
-  document.body.classList.toggle('ato-por-construir',!t.pronto&&!ehCV);
+  document.body.classList.toggle('ato-por-construir',!t.pronto&&!ehCV&&ato!=='mh');
+  setDisp('g-subtipo-mh',ato==='mh'?'flex':'none');
+  if(ato==='mh'){funilMH();sincronizarAlertas();desenharAlertas();render();return;}
+  desfazerFunilMH();
 
   setDisp('card-cgd',compCGD?'block':'none');
   setDisp('card-compradores',compCGD?'none':'block');
@@ -2806,6 +3417,7 @@ function atualizar(){
     somaEl.textContent=`Soma dos valores p/ IMT: ${fmtValor(soma)} € · Preço: ${preco?fmtValor(preco)+' €':'—'} ${bate?'✓ bate certo':'⚠ conferir com as guias de IMT/IS'}`;
   }else somaEl.style.display='none';
   setDisp('g-casapronta',chk('t-casapronta')?'block':'none');
+  aplicarOnus();
   render();
 }
 let atualizarTimer=null;
@@ -2872,7 +3484,7 @@ function estadoCompleto(){
     if(!el.id||el.id==='pasta-search')return;
     campos[el.id]=el.type==='checkbox'?el.checked:el.value;
   });
-  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico};
+  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico};
 }
 function restaurarEstado(d){
 
@@ -2896,6 +3508,7 @@ function restaurarEstado(d){
   if(d.quartos&&d.quartos.length){setProp('quartos-container','innerHTML','');quartoCnt=0;d.quartos.forEach(x=>addQuarto(migrarConj(x)));}
   if(d.falecidos&&d.falecidos.length){setProp('falecidos-container','innerHTML','');falecidoCnt=0;Object.keys(herdeiroCnt).forEach(k=>delete herdeiroCnt[k]);d.falecidos.forEach(x=>addFalecido(x));}
   if(d.cheques&&d.cheques.length){setProp('cheques-container','innerHTML','');cheqCnt=0;d.cheques.forEach(x=>addCheque(x));}
+  if(d.onus&&d.onus.length){setProp('onus-container','innerHTML','');onusCnt=0;d.onus.forEach(x=>addOnus(x));}
   if(d.matrizes&&d.matrizes.length){setProp('matrizes-container','innerHTML','');matCnt=0;d.matrizes.forEach(x=>addMatriz(x));}
   if(d.prediosExtra&&d.prediosExtra.length){setProp('predios-extra-container','innerHTML','');predCnt=0;d.prediosExtra.forEach(x=>addPredioExtra(x));}
   Object.entries(d.campos||{}).forEach(([id,val])=>{
@@ -2993,8 +3606,11 @@ function htmlParaTexto(html){
   t.innerHTML=sanitizarHTML(html).replace(/<br\s*\/?>/gi,'\n').replace(/<\/div>\s*<div[^>]*>/gi,'\n');
   return t.innerText.replace(/\u00a0/g,' ');
 }
-function blocosFinais(){
-  const{termo,contrato}=compor();
+function blocosFinais(i){
+  const R=compor();
+  const docs=R.docs&&R.docs.length?R.docs:[{termo:R.termo,contrato:R.contrato,anexo:R.anexo||[]}];
+  const D=docs[i||0]||docs[0];
+  const termo=D.termo,contrato=D.contrato,anexo=D.anexo||[];
   /* Bandeiras para a casca:
      titCentro / titEsq — permitem à casca omitir o parágrafo do título quando
        não há título (senão sobra uma linha em branco) e centrar os cabeçalhos.
@@ -3018,7 +3634,6 @@ function blocosFinais(){
     return out;
   };
   const expandir=arr=>arr.flatMap(b=>[aplicar(b),...cadeiaDados(b.id)]);
-  const{anexo}=compor();
   return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temAnexo:anexo.length>0,Assin_Nome:((SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).assinNome||(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).nomeAbrev),Assin_Cargo:(SOLICITADORAS[v('f-solicitadora')]||SOLICITADORAS.liliana).cargo};
 }
 function pendentesValidacao(){
@@ -3047,21 +3662,29 @@ async function gerarWord(){
     const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA.docx:/content`);
     if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA.docx — carrega o template-casca para essa pasta');
     const buf=await fr.arrayBuffer();
-    const zip=new PizZip(buf);
     const DocxClass=window.docxtemplater||window.Docxtemplater;
-    const doc=new DocxClass(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
-    doc.render(blocosFinais());
-    const blob=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    /* Um ficheiro por contrato: com o conexo ligado saem dois Words, cada um
+       com o seu termo, porque o Imposto do Selo e o depósito são de cada um. */
+    const R0=compor();
+    const nDocs=(R0.docs&&R0.docs.length)?R0.docs.length:1;
     const vend=lerVendedores()[0]||{};
     const nomeBase=(vend.nome||vend.denom||'CONTRATO').split(/\s+/);
-    const nomeFich=`${tipoDeduzido().cod}_${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'')+'.docx';
-    // download
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nomeFich;a.click();
-    // gravar na pasta, se houver
-    if(pastaSeleccionada){
-      const up=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(nomeFich)}:/content`,{method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:blob});
-      showToast(up.ok?`${nomeFich} gerado e gravado na pasta!`:`${nomeFich} descarregado (falhou gravar na pasta)`,up.ok?'success':'');
-    }else showToast(`${nomeFich} descarregado`,'success');
+    const sufNome=`${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'');
+    const gerados=[];
+    for(let i=0;i<nDocs;i++){
+      const zipI=new PizZip(buf);
+      const docI=new DocxClass(zipI,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
+      docI.render(blocosFinais(i));
+      const blob=docI.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const cod=(R0.docs&&R0.docs[i]&&R0.docs[i].cod)||tipoDeduzido().cod;
+      const nomeFich=`${cod}_${sufNome}`.replace(/_+$/,'')+'.docx';
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nomeFich;a.click();
+      if(pastaSeleccionada){
+        await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(nomeFich)}:/content`,{method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:blob});
+      }
+      gerados.push(nomeFich);
+    }
+    showToast(`${gerados.join(' e ')} ${gerados.length>1?'gerados':'gerado'}`,'success');
   }catch(e){showToast('Erro ao gerar Word: '+e.message,'error');}
 }
 
@@ -3300,6 +3923,15 @@ const PROC_MUT={
   andreia:{cod:'',pod:PODERES_MUTUANTE},
   cgd:{cod:CGD_PROCURACAO,pod:PODERES_MUTUANTE}
 };
+/* Semeia os campos da certidão à primeira vez, e só à primeira: apagados de
+   propósito, ficam apagados. É o que o painel do outorgante CGD faz com a
+   procuração, onde a constante é o valor inicial do campo. */
+function semearCertidaoCGD(){
+  [['f-mut-crc-cod',CGD_CRC],['f-mut-crc-val',CGD_CRC_VAL]].forEach(([id,val])=>{
+    const e=document.getElementById(id);
+    if(e&&!e.dataset.semeado){e.dataset.semeado='1';if(!e.value)e.value=val;}
+  });
+}
 function onMutQuem(){
   const q=v('f-mut-quem')||'liliana';
   document.querySelectorAll('.mut-cgd').forEach(e=>e.style.display=q==='cgd'?'block':'none');
@@ -3325,7 +3957,7 @@ function onBlocoMH(){
   setDisp('card-b10',atoEscolhido()==='cv'?'block':'none');
   const mh=chk('t-mh');
   setDisp('g-mh',mh?'block':'none');
-  if(mh){onMutuante();onMutQuem();setDisp('g-quartos',chk('t-quartos')?'block':'none');}
+  if(mh){onMutuante();onMutQuem();semearCertidaoCGD();setDisp('g-quartos',chk('t-quartos')?'block':'none');}
 }
 /* O subtipo do bloco 1 liga o interruptor; a partir daí manda o interruptor. */
 function sincronizarMH(){
@@ -3697,12 +4329,15 @@ function calcularAlertas(){
   })();
 
   /* ── Mútuo com hipoteca ── */
-  if(atoEscolhido()==='cv'&&chk('t-mh')){
+  if((atoEscolhido()==='cv'&&chk('t-mh'))||ehMH()){
     if(!v('f-mh-avaliacao'))push('mh-aval','bloqueio','Mútuo com Hipoteca','Falta o valor de avaliação.');
     if(!v('f-mh-montante'))push('mh-mont','bloqueio','Mútuo com Hipoteca','Falta o montante do mútuo.');
     if(!v('f-mh-prazo'))push('mh-prazo','bloqueio','Mútuo com Hipoteca','Falta o prazo do mútuo.');
     if(!v('f-mh-hipoteca'))push('mh-hip','bloqueio','Mútuo com Hipoteca','Falta o montante máximo assegurado pela hipoteca.');
-    if(!v('f-mut-repr'))push('mh-repr','aviso','Mútuo com Hipoteca','Mutuante sem representação indicada.');
+    /* No tronco 4 a representação vem do texto da procuradora; só falta mesmo
+       quando o mutuante não é uma das solicitadoras nem tem texto próprio. */
+    if(!v('f-mut-repr')&&!(ehMH()&&SOLICITADORAS[v('f-mut-quem')||'liliana']))
+      push('mh-repr','aviso','Mútuo com Hipoteca','Mutuante sem representação indicada.');
     if(!v('f-mut-proc-cod'))push('mh-proccod','bloqueio','Mútuo com Hipoteca','Terceiro outorgante sem código de procuração.');
     /* Regra 1.ª: a procuração exclui atos de valor superior a cinco milhões. */
     const valAto=Math.max(parseValor(v('f-preco')),parseValor(v('f-mh-montante')));
@@ -3710,8 +4345,49 @@ function calcularAlertas(){
       push('mh-limite','bloqueio','Mútuo com Hipoteca',`Valor do ato (${fmtValor(valAto)} €) excede os cinco milhões de euros — a regra 1.ª exclui estes atos da procuração da CAIXA.`);
     if(v('f-mut-proc-val')&&v('f-data-ato')&&v('f-mut-proc-val')<v('f-data-ato'))
       push('mh-proccad','bloqueio','Mútuo com Hipoteca',`Procuração do terceiro outorgante caducada à data do ato (válida até ${dPT(v('f-mut-proc-val'))}).`);
+    /* A certidão comercial é declarada no termo como verificada e em vigor. */
+    if(ehMH()&&v('f-mutuante')==='cgd'){
+      const cv=v('f-mut-crc-val')||CGD_CRC_VAL;
+      if(!v('f-mut-crc-cod'))push('mh-crccod','bloqueio','Mutuante','Certidão comercial da CAIXA sem código de acesso.');
+      if(v('f-data-ato')&&cv<v('f-data-ato'))
+        push('mh-crccad','bloqueio','Mutuante',`Certidão comercial da CAIXA caducada à data do ato (válida até ${dPT(cv)}).`);
+    }
     const av=parseValor(v('f-mh-avaliacao')),mo=parseValor(v('f-mh-montante'));
     if(av>0&&mo>av)push('mh-ltv','aviso','Mútuo com Hipoteca',`Montante do mútuo (${fmtValor(mo)} €) superior ao valor de avaliação (${fmtValor(av)} €).`);
+  }
+
+  /* ── Ónus e encargos · secção do imóvel, comum aos dois troncos ── */
+  if(!chk('t-onus-livre')){
+    const os=lerOnus();
+    if(!os.length)push('onus-vazio','bloqueio','Ónus e encargos','Imóvel não declarado livre de ónus e nenhum ónus identificado.');
+    os.forEach((o,i)=>{
+      const q=`Ónus ${i+1}`;
+      if(!o.ap)push(`onus${i}-ap`,'aviso','Ónus e encargos',`${q}: sem a inscrição indicada.`);
+      if(o.canc!=='nao'&&!o.ent)push(`onus${i}-ent`,'bloqueio','Ónus e encargos',`${q}: cancelamento sem o titular indicado — a cláusula não sai.`);
+      if(o.canc==='fisico'&&!o.data)push(`onus${i}-data`,'bloqueio','Ónus e encargos',`${q}: autorização em papel sem data de emissão.`);
+      if(o.canc==='codigo'&&!o.codigo)push(`onus${i}-cod`,'bloqueio','Ónus e encargos',`${q}: autorização sem código.`);
+      if(o.canc==='renuncia')push(`onus${i}-ren`,'bloqueio','Ónus e encargos',`${q}: a renúncia não tem redação no gerador — não sai cláusula nenhuma.`);
+    });
+  }
+
+  /* ── ATO 4 · alertas do tronco do mútuo ── */
+  if(ehMH()){
+    if(!lerVendedores().length)push('mh-sem-mutuario','bloqueio','Mutuários','Não há mutuário identificado.');
+    if(!lerOnus().some(o=>o.canc==='fisico'||o.canc==='codigo')&&ehTOIC())
+      push('toic-sem-canc','aviso','Ónus e encargos','Transferência sem hipoteca anterior a cancelar — confirma na secção do imóvel.');
+    if(temConexo()){
+      if(!v('f-uno-montante'))push('uno-mont','bloqueio','Contrato conexo (UNO)','Falta o montante do mútuo do contrato conexo.');
+      if(!v('f-uno-prazo'))push('uno-prazo','bloqueio','Contrato conexo (UNO)','Falta o prazo do contrato conexo.');
+      if(!v('f-uno-hipoteca'))push('uno-hip','bloqueio','Contrato conexo (UNO)','Falta o montante máximo da hipoteca do contrato conexo.');
+    }
+    if(ehTOIC()){
+      const fo=v('f-oic-forma');
+      if(!fo)push('toic-sem-forma','aviso','Liquidação em OIC','Sem forma de pagamento à OIC — a cláusula da forma não sai no contrato.');
+      if(fo==='apb'&&(!v('f-oic-apb-valor')||!v('f-oic-apb-origem')||!v('f-oic-apb-destino')))
+        push('toic-apb','bloqueio','Liquidação em OIC','Transferência APB sem valor ou sem uma das contas.');
+      if(fo==='cheque'&&(!v('f-oic-chq-valor')||!v('f-oic-chq-num')||!v('f-oic-chq-banco')))
+        push('toic-chq','bloqueio','Liquidação em OIC','Cheque bancário sem valor, número ou banco sacado.');
+    }
   }
 
   /* ── Impostos ── */
@@ -3764,9 +4440,15 @@ function calcularAlertas(){
     }
   });
 
-  return A;
+  return ehMH()?A.filter(a=>!ALERTAS_SO_CV.includes(a.chave)):A;
 }
 
+/* No tronco do mútuo não há transmissão: caem os alertas do preço, dos
+   compradores, do IMT, da mediação, do certificado energético e do título
+   urbanístico, que são todos da compra e venda. */
+const ALERTAS_SO_CV=['sem-comprador','sem-preco','pag-soma','mat-soma','fisc-regime','fisc-imt',
+  'fisc-is','fisc-revenda','fisc-jovens','med-dados','cond-caso','tu-caso','tu-dados','tu-norma',
+  'tu-cpu','tu-mod1-posterior','tu-cert','tu-cert-velha','ce-num','ce-norma','ce-caducado'];
 function sincronizarAlertas(){
   const atuais=calcularAlertas();
   const vivos=new Set(atuais.map(a=>a.chave));
