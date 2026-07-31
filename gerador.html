@@ -439,6 +439,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
       <!-- 5.1 · VERIFICAÇÕES -->
     <div class="cond-block" style="margin-top:.9rem">
+      <div class="form-group form-full" style="margin-bottom:.6rem"><label class="form-label">Destino do imóvel</label>
+        <input class="form-input" id="f-destino" oninput="atualizar()" placeholder="Ex: habitação própria e permanente"></div>
       <div class="cond-block-title" style="margin-bottom:2px">5.1 · Verificações — prédio principal</div>
       <div class="form-grid form-grid-2">
         <div class="form-group"><label class="form-label"><span class="f-im-rot-cad">Caderneta predial emitida em</span></label>
@@ -2261,6 +2263,7 @@ function compor(){
     +(assentos.length?'\n'+assentos.join('\n'):'')
     +(predios.length?'\n'+predios.join('\n'):'')
     +(requerimentos.length?'\n'+requerimentos.join('\n'):'')
+    +(ehCVMH?`\n— Para efeitos da Lei n.º 78/2021, de 24 de novembro, que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`:'')
     +(tu.termo?'\n'+tu.termo:'')
     +((chk('t-tu-advert')&&(v('f-tu-caso')==='declarado'||v('f-tu-caso')==='nao-dispoe'))
       ?'\n— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;':'');
@@ -2289,6 +2292,14 @@ function compor(){
   if(cond.termo)termo.push({id:'t-condominio',T:'',X:cond.termo});
   const txtImp=textoImpostos();
   if(txtImp)termo.push({id:'t-impostos',T:'',X:txtImp});
+  /* ── TEXTOS FIXOS DO TERMO ── do TEMPL_CVMH_CGD_v2.docx
+     A declaração da veracidade do preço fica no termo: não é a cláusula do
+     preço, é a declaração dos outorgantes prestada perante a solicitadora. */
+  termo.push({id:'t-preco-decl',T:'',X:`Os Outorgantes declararam que o teor da cláusula relativa ao preço, respetivos meios e datas de pagamento corresponde inteiramente à verdade, dando-se aqui a mesma por integralmente reproduzida para todos os efeitos legais.`});
+  if(chk('t-mediacao'))termo.push({id:'t-advert-mediacao',T:'',X:`Adverti as partes, que nos termos do art.º 40.º, n.º 3, da Lei 15/2013 (Regime Jurídico da Atividade de Mediação Imobiliária, de 8 de fevereiro), as partes que omitam ou prestem falsas declarações sobre a intervenção de mediação imobiliária incorrem na pena prevista para o crime de desobediência (art.º 348.º do Código Penal).`});
+  termo.push({id:'t-rgpd',T:'',X:`Com o consentimento dos outorgantes, foram recolhidos e reproduzidos os documentos de identificação nos termos da Lei n.º 83/2017, de 18 de agosto, arquivados pelo prazo legal de 7 anos.`});
+  termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
+  termo.push({id:'t-deposito',T:'',X:`Os outorgantes foram informados de que, nos termos do art.º 24.º, n.º 2, do D.L. 116/2008, de 4 de julho, o presente Documento Particular Autenticado só produz efeitos após depósito eletrónico em www.predialonline.mj.pt, a efetuar hoje e todo o documento foi lido e explicado a todos os outorgantes, que declararam estar plenamente esclarecidos${ehCVMH?', dispensando a leitura do Documento Complementar por já o conhecerem e o haverem lido, reconhecendo-o como parte integrante do presente instrumento':''}.`});
   if(atoEscolhido()==='cv'&&subtipoCV()==='mh'&&v('f-mh-calculo-is'))
     termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que o Imposto de Selo de verba 17.1.3, da TGIS será liquidado pela CAIXA no valor de ${v('f-mh-calculo-is')}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
@@ -2307,7 +2318,7 @@ function compor(){
   }
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
   if(ts.narrativa)contrato.push({id:'c-trato-suc',T:'',X:ts.narrativa});
-  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(b));
+  if(ehCVMH)contrato.push({id:'c-preambulo',T:'PREÂMBULO',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
   contrato.push({id:'c-cl1',T:'Primeira (Objeto)',
     X:`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`});
   /* ── CLÁUSULAS GENÉRICAS · Matriz rústica identificada ──
@@ -2355,7 +2366,10 @@ function compor(){
       :`A Parte Compradora declara que recebeu nesta data da Parte Vendedora o Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios (Certificado Energético n.º ${v('f-ce-num')||'…'}${dCE?`, válido até ${dPT(dCE)}`:''}), nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`});
   }
   /* Redação do cvmh: a declaração sai sempre, haja ou não mediação. */
-  contrato.push({id:'c-mediacao',T:'',X:chk('t-mediacao')
+  contrato.push({id:'c-encargos',T:'ENCARGOS',X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
+  if(v('f-destino'))contrato.push({id:'c-destino',T:'DESTINO DO IMÓVEL',X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
+  contrato.push({id:'c-obras',T:'',X:`A PARTE VENDEDORA declara, igualmente, que, tanto quanto é do seu conhecimento, o imóvel não sofreu quaisquer obras, modificações ou alterações estruturais e/ou funcionais que possam afetar a validade dos referidos documentos.`});
+  contrato.push({id:'c-mediacao',T:'MEDIAÇÃO IMOBILIÁRIA',X:chk('t-mediacao')
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
   contrato.push({id:'c-cl3',T:'Terceira (Ónus e encargos)',X:txtOnus});
@@ -2375,6 +2389,13 @@ function compor(){
       ].join('\n')});
     }
   }
+  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(b));
+  if(ehCVMH){
+    contrato.push({id:'c-mh-execucao',T:'',X:`A presente hipoteca é suscetível de execução logo que o crédito garantido se torne vencido e exigível, nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
+    const S=flexaoMutuario(generosOutorgantes(comps).length);
+    contrato.push({id:'c-mh-reflexao',T:'',X:`Declara${S.art==='os'?'m':''} ${S.art} ${S.art==='os'?'Segundos Outorgantes':'Segundo Outorgante'} que, nos termos do Decreto-Lei n.º 74-A/2017, de 23 de junho, ${S.reconhece} ter decorrido integralmente o período de reflexão legal de sete dias.`});
+  }
+  contrato.push({id:'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
 
   /* ── FOLHA AUTÓNOMA · Reconhecimento de assinaturas (só locação financeira) ──
