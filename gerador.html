@@ -37,7 +37,13 @@ body.doc-oculto .pane-doc{display:none}
 body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
 /* A FOLHA */
-.folha{background:#fff;max-width:820px;width:100%;box-shadow:0 2px 14px rgba(0,0,0,.18);padding:3.2rem 3rem 4rem;font-family:'Courier New',monospace;font-size:12.5px;line-height:1.75;color:#111;height:fit-content}
+.folha{background:#fff;max-width:820px;width:100%;box-shadow:0 2px 14px rgba(0,0,0,.18);padding:4cm 2.7cm 2cm;font-family:'Courier New',monospace;font-size:12.5px;line-height:1.75;color:#111;height:fit-content}
+/* Margens escolhidas pela Liliana no provador: 4 cm em cima, 2,7 cm de cada
+   lado, 2 cm no pé. O topo de 4 cm vale para todas as páginas, o que dá ao
+   termo o espaço dos averbamentos sem precisar de tratamento próprio — por
+   isso o invólucro do termo não acrescenta nada. Fica no sítio para o caso de
+   o termo vir a querer um topo diferente do contrato. */
+.termo-pagina{padding-top:0}
 .folha .doc-titulo{text-align:center;font-weight:700;margin:0 0 1.1rem}
 .quebra-pagina{border:none;border-top:2px dashed var(--border-strong);margin:2.2rem -1rem;position:relative}
 .quebra-pagina::after{content:'quebra de página';position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#fff;color:var(--text-faint);font-family:'DM Mono';font-size:9px;padding:0 8px;letter-spacing:.08em;text-transform:uppercase}
@@ -150,7 +156,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
   .split{flex-direction:column}
   .pane-form{width:100%;max-width:none;border-right:none;border-bottom:1px solid var(--border)}
   .pane-doc{padding:.8rem}
-  .folha{padding:1.6rem 1.2rem}
+  /* Ecrã estreito: a folha encolhe, mas mantém a proporção das margens em vez
+     de voltar a valores fixos que anulavam o que está definido acima. */
+  .folha{padding:2.4cm 1.6cm 1.2cm}
 }
 </style>
 </head>
@@ -3112,7 +3120,7 @@ function render(){
   folha.innerHTML=docs.map((d,i)=>
       (i?`<hr class="quebra-pagina">`:'')
       +(docs.length>1?`<div style="text-align:center;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8578;margin:.2rem 0 .9rem">Documento ${i+1} de ${docs.length} · ${esc(d.rot||'')}</div>`:'')
-      +seq(d.termo)+assin
+      +`<div class="termo-pagina">`+seq(d.termo)+assin+`</div>`
       +`<hr class="quebra-pagina">`
       +seq(d.contrato)
       +((d.anexo&&d.anexo.length)?`<hr class="quebra-pagina">`+seq(d.anexo):'')
