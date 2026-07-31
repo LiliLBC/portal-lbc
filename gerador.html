@@ -771,10 +771,17 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
   </div>
 
-  <div class="section-card" id="card-b10" style="display:none">
-    <div class="section-card-header"><div class="section-num">10</div><div><div class="section-name">Mútuo com Hipoteca</div><div class="section-desc">Derivação — só na compra e venda com mútuo</div></div></div>
+  <div class="section-card" id="card-b10">
+    <div class="section-card-header"><div class="section-num">10</div><div><div class="section-name">Mútuo com Hipoteca</div><div class="section-desc">Derivação — o tronco fecha no bloco 9</div></div></div>
 
-    <div class="cond-block">
+    <div class="toggle-row">
+      <span class="toggle-label">Há mútuo com hipoteca?</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-mh" onchange="onBlocoMH();atualizar()"><span class="toggle-slider"></span></label>
+    </div>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Desligado, gera uma compra e venda simples e o contrato fecha no bloco 9.</div>
+
+    <div id="g-mh" style="display:none">
+    <div class="cond-block" style="margin-top:.7rem">
       <div class="cond-block-title">10.1 · Terceiro Contratante — mutuante</div>
       <div class="form-grid form-grid-2">
         <div class="form-group form-full"><label class="form-label">Mutuante</label>
@@ -784,8 +791,14 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           </select></div>
         <div class="form-group form-full mut-outro" style="display:none"><label class="form-label">Identificação da instituição</label>
           <textarea class="form-input" id="f-mutuante-txt" rows="2" oninput="atualizar()" placeholder="Identificação completa"></textarea></div>
-        <div class="form-group form-full"><label class="form-label">Representação</label>
-          <textarea class="form-input" id="f-mut-repr" rows="2" oninput="atualizar()" placeholder="Ex: representada por …, na qualidade de procuradora"></textarea></div>
+        <div class="form-group form-full"><label class="form-label">Representada por <span>*</span></label>
+          <select class="form-select" id="f-mut-quem" onchange="onMutQuem();atualizar()">
+            <option value="liliana">Liliana Burrica Cardoso — procuração própria</option>
+            <option value="andreia">Andreia Pessegueiro Cabanas — procuração própria</option>
+            <option value="cgd">Procuradores da CAIXA — dois, um da Classe A</option>
+          </select></div>
+        <div class="form-group form-full mut-cgd" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
+          O mútuo é o n.º 1 e a aceitação da hipoteca o n.º 6 — nenhum consta da regra 2.ª, pelo que se aplica a <strong>regra 5.ª</strong>: num documento particular autenticado <strong>basta um procurador</strong>. A exigência de dois, com um da Classe A, é da regra 2.ª e vale para a compra e venda (n.º 12) quando a CAIXA seja parte.</div>
         <div class="form-group"><label class="form-label">Código da procuração</label>
           <div style="display:flex;gap:.35rem;align-items:stretch">
             <input class="form-input" id="f-mut-proc-cod" oninput="atualizar()" style="flex:1;min-width:0">
@@ -793,8 +806,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
               onclick="window.open('https://www.procuracoesonline.pt/ProcuracoesOnline/','_blank','noopener')"
               style="flex-shrink:0;padding:0 .6rem">🔍</button>
           </div></div>
-        <div class="form-group"><label class="form-label">Poderes invocados</label>
-          <input class="form-input" id="f-mut-proc-poderes" oninput="atualizar()" placeholder="Ex: n.º 1 do artigo 3.º"></div>
+        <div class="form-group"><label class="form-label">Procuração válida até</label>
+          <input type="date" class="form-input" id="f-mut-proc-val" onchange="atualizar()"></div>
+        <div class="form-group form-full"><label class="form-label">Poderes invocados</label>
+          <input class="form-input" id="f-mut-proc-poderes" oninput="atualizar()"></div>
+        <div class="form-group form-full"><label class="form-label">Representação — texto</label>
+          <textarea class="form-input" id="f-mut-repr" rows="2" oninput="atualizar()"></textarea></div>
       </div>
     </div>
 
@@ -834,6 +851,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <button class="add-btn" type="button" onclick="addQuarto();atualizar()">+ Adicionar quarto outorgante</button>
       </div>
     </div>
+    </div>
   </div>
 
 
@@ -862,6 +880,14 @@ const GRAPH_BASE='https://graph.microsoft.com/v1.0';
    de cada uma e é o que consta do cabeçalho do termo de autenticação. */
 /* Capital social da CGD. Aumentado para 6.000.000.000,00 Euros por deliberação
    da AG de 29/05/2026 (incorporação de reservas). Alterar aqui quando mudar. */
+/* A procuração da CGD é sempre a mesma; o que muda são os poderes invocados,
+   conforme a CAIXA compre ou venda, e os procuradores que outorgam. */
+const CGD_PROCURACAO='PR-82574-78071-23851';
+/* A CAIXA como parte na compra e venda: n.º 12, com a regra 2.ª — dois
+   procuradores, um obrigatoriamente da Classe A. A alínea é a mesma nas duas
+   pontas, porque o n.º 12 não distingue comprar de vender. */
+const CGD_PODERES={comp:'ponto segundo alínea 12) e ponto terceiro regra 2.ª',
+                   vend:'ponto segundo alínea 12) e ponto terceiro regra 2.ª'};
 const CGD_CAPITAL='6.000.000.000,00';
 const ESCRITORIO={
   morada:'Rua Domingos Franco de Oliveira, n.º 16, em Évora',
@@ -1016,7 +1042,7 @@ function addOutorgante(pref,dados){
         <div class="form-group"><label class="form-label">Cartão de Cidadão n.º</label>
           <input class="form-input" id="${id}-proc-cc"></div>
         <div class="form-group"><label class="form-label">Válido até</label>
-          <input class="form-input" id="${id}-proc-ccval"></div>
+          <input type="date" class="form-input" id="${id}-proc-ccval" onchange="atualizar()"></div>
         <div class="form-group"><label class="form-label">NIF</label>
           <input class="form-input" id="${id}-proc-nif"></div>
         <div class="form-group form-full"><label class="form-label">Morada</label>
@@ -1065,19 +1091,20 @@ function addOutorgante(pref,dados){
       <div class="form-group"><label class="form-label">Cartão de Cidadão n.º</label>
         <input class="form-input" id="${id}-cc"></div>
       <div class="form-group"><label class="form-label">Válido até</label>
-        <input class="form-input" id="${id}-ccval" placeholder="Ex: 09/05/2035"></div>
+        <input type="date" class="form-input" id="${id}-ccval" onchange="atualizar()"></div>
       <div class="form-group"><label class="form-label">NIF</label>
         <input class="form-input" id="${id}-nif"></div>
+      <div class="form-group"><label class="form-label">Género</label>
+        <select class="form-select" id="${id}-genero" onchange="onGenero('${id}');atualizar()">
+          <option value="M"${sel(dados.genero,'M')}>Masculino</option>
+          <option value="F"${sel(dados.genero,'F')}>Feminino</option>
+        </select></div>
       <div class="form-group"><label class="form-label">Estado civil</label>
         <select class="form-select" id="${id}-ec" onchange="onEstadoCivil('${id}');atualizar()">
           <option value="solteiro, maior"${sel(dados.ec,'solteiro, maior')}>solteiro, maior</option>
-          <option value="solteira, maior"${sel(dados.ec,'solteira, maior')}>solteira, maior</option>
           <option value="casado"${sel(dados.ec,'casado')}>casado</option>
-          <option value="casada"${sel(dados.ec,'casada')}>casada</option>
           <option value="divorciado"${sel(dados.ec,'divorciado')}>divorciado</option>
-          <option value="divorciada"${sel(dados.ec,'divorciada')}>divorciada</option>
           <option value="viúvo"${sel(dados.ec,'viúvo')}>viúvo</option>
-          <option value="viúva"${sel(dados.ec,'viúva')}>viúva</option>
         </select></div>
       <div class="form-group form-full"><label class="form-label">Morada</label>
         <input class="form-input" id="${id}-morada" placeholder="Ex: Avenida …, Urbanização …, Ferreiras"></div>
@@ -1133,7 +1160,7 @@ function addOutorgante(pref,dados){
         <div class="form-group"><label class="form-label">Cartão de Cidadão n.º</label>
           <input class="form-input" id="${id}-conj-cc"></div>
         <div class="form-group"><label class="form-label">Válido até</label>
-          <input class="form-input" id="${id}-conj-ccval"></div>
+          <input type="date" class="form-input" id="${id}-conj-ccval" onchange="atualizar()"></div>
         <div class="form-group"><label class="form-label">NIF</label>
           <input class="form-input" id="${id}-conj-nif"></div>
       </div>
@@ -1195,6 +1222,7 @@ function addOutorgante(pref,dados){
 
     <!-- MUNICÍPIO -->
     <div class="form-grid form-grid-2 ${id}-mun" style="display:none;margin-top:.55rem">
+      <div class="form-group form-full cond-block-title" style="margin:0">${pref==='comp'?'4.2':'3.2'} · Município</div>
       <div class="form-group form-full"><label class="form-label">Município de <span>*</span></label>
         <input class="form-input" id="${id}-mun-nome" placeholder="Ex: Monforte" oninput="atualizar()"></div>
       <div class="form-group"><label class="form-label">Número de identificação fiscal</label>
@@ -1226,8 +1254,19 @@ function addOutorgante(pref,dados){
 
     <!-- CGD -->
     <div class="form-grid form-grid-2 ${id}-cgd" style="display:none;margin-top:.55rem">
+      <div class="form-group form-full cond-block-title" style="margin:0">${pref==='comp'?'4.1':'3.1'} · CGD</div>
       <div class="form-group form-full" style="font-size:11.5px;color:var(--text-faint);background:var(--surface2);border-radius:6px;padding:.5rem .6rem">
         Identificação da CGD automática (sede, matrícula, NIPC e capital social). Falta indicar quem a representa, em baixo.</div>
+      <div class="form-group form-full"><label class="form-label">Código(s) de acesso da procuração</label>
+        <div style="display:flex;gap:.35rem;align-items:stretch">
+          <input class="form-input" id="${id}-cgd-proc-cod" oninput="atualizar()" value="${dados['cgd-proc-cod']||CGD_PROCURACAO}" style="flex:1;min-width:0">
+          <button type="button" class="btn btn-sm" title="Abrir as Procurações Online"
+            onclick="window.open('https://www.procuracoesonline.pt/ProcuracoesOnline/','_blank','noopener')"
+            style="flex-shrink:0;padding:0 .6rem">🔍</button>
+        </div></div>
+      <div class="form-group form-full"><label class="form-label">Poderes invocados</label>
+        <input class="form-input" id="${id}-cgd-proc-poderes" oninput="atualizar()" value="${dados['cgd-proc-poderes']||CGD_PODERES[pref]||''}" placeholder="${pref==='vend'?'Alínea da venda — por indicar':'Poderes invocados'}"></div>
+      <div class="form-group form-full" style="font-size:10.5px;color:var(--text-faint)">A procuração é sempre a mesma; os poderes mudam conforme a CAIXA compre ou venda.</div>
     </div>
 
 `;
@@ -1251,7 +1290,7 @@ function onVendTipo(id){
   mostra('rep', comRep,'block');
   if(comRep&&!document.querySelectorAll(`.${id}-repblock`).length)addRepresentante(id);
   onMunDoc(id);onRcbe(id);onQualMunicipio(id);onObjetoSocial(id);
-  onEstadoCivil(id);onRepresentacao(id);
+  onGenero(id);onRepresentacao(id);
 }
 /* Casado(a) abre os dados do cônjuge. Solteiro(a), divorciado(a) e viúvo(a) terminam aí. */
 /* Uma sociedade pode obrigar-se com mais do que uma assinatura; um município
@@ -1291,19 +1330,20 @@ function addRepresentante(oid,dados){
       <div class="form-group"><label class="form-label">Cartão de Cidadão n.º</label>
         <input class="form-input" id="${rid}-cc"></div>
       <div class="form-group"><label class="form-label">Válido até</label>
-        <input class="form-input" id="${rid}-ccval"></div>
+        <input type="date" class="form-input" id="${rid}-ccval" onchange="atualizar()"></div>
       <div class="form-group"><label class="form-label">NIF</label>
         <input class="form-input" id="${rid}-nif"></div>
+      <div class="form-group"><label class="form-label">Género</label>
+        <select class="form-select" id="${rid}-genero" onchange="onGenero('${rid}');atualizar()">
+          <option value="M"${sel(dados.genero,'M')}>Masculino</option>
+          <option value="F"${sel(dados.genero,'F')}>Feminino</option>
+        </select></div>
       <div class="form-group"><label class="form-label">Estado civil</label>
         <select class="form-select" id="${rid}-ec" onchange="atualizar()">
           <option value="solteiro, maior"${sel(dados.ec,'solteiro, maior')}>solteiro, maior</option>
-          <option value="solteira, maior"${sel(dados.ec,'solteira, maior')}>solteira, maior</option>
           <option value="casado"${sel(dados.ec,'casado')}>casado</option>
-          <option value="casada"${sel(dados.ec,'casada')}>casada</option>
           <option value="divorciado"${sel(dados.ec,'divorciado')}>divorciado</option>
-          <option value="divorciada"${sel(dados.ec,'divorciada')}>divorciada</option>
           <option value="viúvo"${sel(dados.ec,'viúvo')}>viúvo</option>
-          <option value="viúva"${sel(dados.ec,'viúva')}>viúva</option>
         </select></div>
       <div class="form-group form-full"><label class="form-label">Domicílio profissional</label>
         <input class="form-input" id="${rid}-morada" placeholder="Vazio usa «na sede»"></div>
@@ -1317,7 +1357,7 @@ function addRepresentante(oid,dados){
 function lerRepresentantes(oid){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   return[...document.querySelectorAll(`.${oid}-repblock`)].map(b=>({
-    qual:g(`${b.id}-qual`),nome:g(`${b.id}-nome`),natural:g(`${b.id}-natural`),
+    qual:g(`${b.id}-qual`),nome:g(`${b.id}-nome`),natural:g(`${b.id}-natural`),genero:g(`${b.id}-genero`)||'M',
     cc:g(`${b.id}-cc`),ccval:g(`${b.id}-ccval`),nif:g(`${b.id}-nif`),
     ec:g(`${b.id}-ec`),morada:g(`${b.id}-morada`)
   }));
@@ -1447,6 +1487,19 @@ function aplicarAssento(id){
   const falta=abrir&&(!g('asc-nasc-num')||!g('asc-nasc-crc')||(cas&&(!g('asc-cas-num')||!g('asc-cas-crc'))));
   document.querySelectorAll(`.${id}-assento-falta`).forEach(e=>e.style.display=falta?'block':'none');
 }
+/* O género passou a ser explícito e comanda as formas do estado civil —
+   antes era deduzido da terminação, e uma mulher com o valor por omissão
+   «solteiro, maior» saía como «portador». */
+const EC_FORMAS={M:['solteiro, maior','casado','divorciado','viúvo'],
+                 F:['solteira, maior','casada','divorciada','viúva']};
+function onGenero(id){
+  const g=document.getElementById(`${id}-genero`)?.value||'M';
+  const sel=document.getElementById(`${id}-ec`);
+  if(!sel)return;
+  const i=Math.max(0,EC_FORMAS.M.indexOf(sel.value),EC_FORMAS.F.indexOf(sel.value));
+  sel.innerHTML=EC_FORMAS[g].map((x,k)=>`<option value="${x}"${k===i?' selected':''}>${x}</option>`).join('');
+  onEstadoCivil(id);
+}
 function onEstadoCivil(id){
   const t=document.getElementById(`${id}-tipo`)?.value||'singular';
   const ec=document.getElementById(`${id}-ec`)?.value||'';
@@ -1471,7 +1524,7 @@ function lerOutorgantes(pref){
       tipo:g(`${id}-tipo`)||'singular',
       /* O género deriva da forma do estado civil (casada/casado), evitando
          um campo só para concordância. */
-      genero:/a$/.test((ec.split(/[\s,]/)[0]||''))?'F':'M',
+      genero:g(`${id}-genero`)||'M',
       nome:g(`${id}-nome`),natural:g(`${id}-natural`),cc:g(`${id}-cc`),ccval:g(`${id}-ccval`),
       nif:g(`${id}-nif`),ec,morada:g(`${id}-morada`),
       denom:g(`${id}-denom`),nipc:g(`${id}-nipc`),capital:g(`${id}-capital`),sede:g(`${id}-sede`),
@@ -1489,6 +1542,7 @@ function lerOutorgantes(pref){
       regime:g(`${id}-regime`),'conj-out':g(`${id}-conj-out`)||'ambos',
       'conj-nome':g(`${id}-conj-nome`),'conj-genero':g(`${id}-conj-genero`)||'M','conj-natural':g(`${id}-conj-natural`),
       'conj-cc':g(`${id}-conj-cc`),'conj-ccval':g(`${id}-conj-ccval`),'conj-nif':g(`${id}-conj-nif`),
+      'cgd-proc-cod':g(`${id}-cgd-proc-cod`),'cgd-proc-poderes':g(`${id}-cgd-proc-poderes`),
       'mun-nome':g(`${id}-mun-nome`),'mun-nipc':g(`${id}-mun-nipc`),'mun-sede':g(`${id}-mun-sede`),
       'mun-mandato':g(`${id}-mun-mandato`),'mun-ata':g(`${id}-mun-ata`),
       'mun-doc':g(`${id}-mun-doc`)||'arquivo','mun-codigo':g(`${id}-mun-codigo`),
@@ -1524,8 +1578,15 @@ function linhaConsentimento(outorgantes){
 /* ── IDENTIFICAÇÃO LONGA · TERMO DE AUTENTICAÇÃO ──
    Identificação completa. Sem «adiante designado»: quem faz esse papel é o
    título do bloco (PRIMEIRO / PRIMEIROS / SEGUNDOS / TERCEIRO / QUARTOS). */
+/* As validades do cartão de cidadão passaram a campo de data — antes eram
+   texto livre e era fácil enganar-se a escrever. Aqui converte-se para
+   dd/mm/aaaa, aceitando também o formato antigo dos rascunhos gravados. */
+function dataCC(x){
+  if(!x)return'…';
+  return /^\d{4}-\d{2}-\d{2}$/.test(x)?dPT(x):x;
+}
 function idCompleta(nome,natural,cc,ccval,nif,fem){
-  return`${nome||'…'}, natural de ${natural||'…'}, ${fem?'portadora':'portador'} do cartão de cidadão emitido pela República Portuguesa com o número ${cc||'…'}, válido até ${ccval||'…'}, e número de identificação fiscal ${nif||'…'}`;
+  return`${nome||'…'}, natural de ${natural||'…'}, ${fem?'portadora':'portador'} do cartão de cidadão emitido pela República Portuguesa com o número ${cc||'…'}, válido até ${dataCC(ccval)}, e número de identificação fiscal ${nif||'…'}`;
 }
 function textoVendedor(v){
 
@@ -1534,9 +1595,9 @@ function textoVendedor(v){
      vem primeiro e a entidade representada vem depois, atrás de «em representação».
      Redação fixada pela Liliana no caso do município; a empresa segue o mesmo molde. */
   const repCabeca=(r,tipo)=>{
-    const rfem=/a$/.test(((r.ec||'').split(/[\s,]/)[0]||''));
+    const rfem=r.genero==='F';
     const dom=r.morada?`na ${r.morada}`:(tipo==='municipio'?'na sede do município':'na sede da sociedade');
-    return`${r.nome||'…'}, contribuinte fiscal n.º ${r.nif||'…'}, ${r.ec||'…'}, natural de ${r.natural||'…'}, ${rfem?'portadora':'portador'} do cartão de cidadão número ${r.cc||'…'}, válido até ${r.ccval||'…'}, com domicílio profissional ${dom}`;
+    return`${r.nome||'…'}, contribuinte fiscal n.º ${r.nif||'…'}, ${r.ec||'…'}, natural de ${r.natural||'…'}, ${rfem?'portadora':'portador'} do cartão de cidadão número ${r.cc||'…'}, válido até ${dataCC(r.ccval)}, com domicílio profissional ${dom}`;
   };
   /* Um ou vários representantes — muitas sociedades só se obrigam com duas
      assinaturas. Com um: «…, que outorga na qualidade de X e em representação…».
@@ -1554,8 +1615,21 @@ function textoVendedor(v){
   }
   if(v.tipo==='empresa')
     return`${juntar(reps,'empresa','')} da ${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}${v.capital?`, com o capital social de ${v.capital} Euros`:''}`;
-  if(v.tipo==='cgd')
-    return`${juntar(reps,'empresa','')} da CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`;
+  if(v.tipo==='cgd'){
+    /* ── 4.1 · CGD ── redação fixada pela Liliana.
+       Ordem própria: nome, estado civil, naturalidade, cartão de cidadão,
+       NIF e domicílio profissional. Fecha com a identificação da CAIXA. */
+    const um=r=>{
+      const fem=r.genero==='F';
+      return`${r.nome||'…'}, ${r.ec||'…'}, natural de ${r.natural||'…'}, ${fem?'portadora':'portador'} do cartão de cidadão emitido pela República Portuguesa com o número ${r.cc||'…'}, válido até ${dataCC(r.ccval)} e número de identificação fiscal ${r.nif||'…'}, com domicílio profissional na ${r.morada||'…'}`;
+    };
+    const p=reps.map(um);
+    const lista=p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
+    const fecho=reps.length>1
+      ?'os quais outorgam conjuntamente na qualidade de procuradores'
+      :(reps[0]&&reps[0].genero==='F'?'a qual outorga na qualidade de procuradora':'o qual outorga na qualidade de procurador');
+    return`${lista}, ${fecho} em nome e representação da CAIXA GERAL DE DEPÓSITOS S.A., com sede na Av. João XXI, n.º 63, em Lisboa, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva 500.960.046, capital social de €${CGD_CAPITAL.replace(/\./g,' ')} (seis mil milhões euros)`;
+  }
 
   const fem=v.genero==='F';
 
@@ -1704,7 +1778,7 @@ function addFalecido(dados={}){
           <input class="form-input" id="falecido-${idx}-hab-copia" value="${dados.habCopia||''}"></div>
         <div class="form-group" id="falecido-${idx}-simp-group" style="display:none"><label class="form-label">N.º do procedimento</label>
           <input class="form-input" id="falecido-${idx}-hab-numero" value="${dados.habNumero||''}" placeholder="Ex: 1234/2026"></div>
-        <div class="form-group form-full"><label class="form-label">Notário / Conservatória <span style="font-weight:400;color:var(--text-faint)">(só o nome — o texto já diz «cartório notarial de»)</span></label>
+        <div class="form-group form-full"><label class="form-label">Notário / Conservatória <span style="font-weight:400;color:var(--text-faint)">(só o nome — o texto já escreve «cartório notarial de» ou «Conservatória de»)</span></label>
           <input class="form-input" id="falecido-${idx}-hab-notario" value="${dados.habNotario||''}" placeholder="Ex: Évora — ou: Maria Silva"></div>
       </div>
     </div>
@@ -1721,19 +1795,23 @@ function addFalecido(dados={}){
           <div class="form-group"><label class="form-label">Serviço de Finanças</label>
             <input class="form-input" id="falecido-${idx}-is-sf" value="${dados.isSF||''}" placeholder="Ex: Évora" oninput="atualizar()"></div>
         </div>
-        <div class="toggle-row" style="margin:.5rem 0 0">
-          <span class="toggle-label" style="font-size:12px">O imóvel consta da relação de bens da participação</span>
-          <label class="toggle-switch"><input type="checkbox" id="falecido-${idx}-is-consta" onchange="atualizar()"><span class="toggle-slider"></span></label>
-        </div>
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Se o imóvel não constar da relação, o ato não pode avançar.</div>
+        <div class="form-group form-full" style="margin-top:.5rem"><label class="form-label">O imóvel consta da relação de bens da participação? <span>*</span></label>
+          <select class="form-select" id="falecido-${idx}-is-consta" onchange="atualizar()">
+            <option value=""${sel(dados.isConsta,'')}>— por responder —</option>
+            <option value="sim"${sel(dados.isConsta,'sim')}>Sim</option>
+            <option value="nao"${sel(dados.isConsta,'nao')}>Não</option>
+          </select>
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Se o imóvel não constar da relação, o ato não pode avançar.</div></div>
       </div>
     </div>
     <div class="cond-block" style="margin-top:.5rem">
-      <div class="toggle-row" style="margin:0">
-        <span class="toggle-label" style="font-size:12px">Habilitação conferida — todos os herdeiros outorgam ou estão representados</span>
-        <label class="toggle-switch"><input type="checkbox" id="falecido-${idx}-hab-conferida" onchange="atualizar()"><span class="toggle-slider"></span></label>
-      </div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Herdeiro em falta é causa frequente de suprimento.</div>
+      <div class="form-group form-full"><label class="form-label">Todos os herdeiros outorgam ou estão representados? <span>*</span></label>
+        <select class="form-select" id="falecido-${idx}-hab-conferida" onchange="atualizar()">
+          <option value=""${sel(dados.habConferida,'')}>— por responder —</option>
+          <option value="sim"${sel(dados.habConferida,'sim')}>Sim</option>
+          <option value="nao"${sel(dados.habConferida,'nao')}>Não</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Herdeiro em falta é causa frequente de suprimento.</div></div>
     </div>
     <div class="cond-block" style="margin-top:.5rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
@@ -1780,8 +1858,7 @@ function lerFalecidos(){
     return{nome:g('nome'),dataObito:g('data-obito'),freguesia:g('freguesia'),habTipo:g('hab-tipo'),habData:g('hab-data'),
       habCodigo:g('hab-codigo'),habCopia:g('hab-copia'),habNumero:g('hab-numero'),habNotario:g('hab-notario'),
       isNumero:g('is-numero'),isData:g('is-data'),isSF:g('is-sf'),
-      isConsta:!!document.getElementById(`falecido-${idx}-is-consta`)?.checked,
-      habConferida:!!document.getElementById(`falecido-${idx}-hab-conferida`)?.checked,
+      isConsta:g('is-consta'),habConferida:g('hab-conferida'),
       herdeiros};
   });
 }
@@ -1820,8 +1897,11 @@ function textosTratoSuc(){
   if(!fs.length)return{legitimidade:'',narrativa:''};
   /* «legitimidade dos herdeiros de X» — identifica a sucessão sem enumerar
      os herdeiros um a um: não generaliza, mas também não restringe. */
+  /* O campo pede só o nome, mas é fácil escrever «Conservatória de Estremoz»
+     e o texto ficar «na Conservatória de Conservatória de Estremoz». */
+  const soNome=x=>(x||'').replace(/^\s*(conservat[óo]ria|cart[óo]rio\s+notarial)\s+(de|da|do)\s+/i,'').trim();
   const legit=fs.map(f=>{
-    const d=dPT(f.habData),n=f.habNotario||'…';
+    const d=dPT(f.habData),n=soNome(f.habNotario)||'…';
     const quem=`dos herdeiros de ${(f.nome||'…').toUpperCase()}`;
     if(f.habTipo==='codigo')return`— a legitimidade ${quem} pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, através do código ${f.habCodigo||'…'};`;
     if(f.habTipo==='simplificado')return`— a legitimidade ${quem} pelo Procedimento Simplificado de Habilitação de Herdeiros n.º ${f.habNumero||'…'}, lavrado em ${d}, na Conservatória de ${n};`;
@@ -2141,7 +2221,7 @@ function compor(){
   termo.push({id:'t-primeiro',T:v('f-desig-vend')||'PRIMEIRO',X:txtPrimeiro,negrito:negritoVend});
   termo.push({id:'t-segunda',T:tituloSeg,X:txtSegunda,negrito:negritoComp});
   /* ── RAMO CVMH ── */
-  const ehCVMH=atoEscolhido()==='cv'&&subtipoCV()==='mh';
+  const ehCVMH=atoEscolhido()==='cv'&&chk('t-mh');
   const quartos=ehCVMH?lerQuartos():[];
   const fiadores=quartos.filter(q=>q.qualidade==='fiador'||q.qualidade==='ambos');
   const garantes=quartos.filter(q=>q.qualidade==='garante'||q.qualidade==='ambos');
@@ -2258,7 +2338,13 @@ function compor(){
   const predios=[linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean);
   const assentos=vend.map(linhaAssento).filter(Boolean);
   const procuracoes=[...vend,...comps].map(segmentoProcuracao).filter(Boolean);
-  const linhaIdentidade='— a identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação'
+  /* ── 4.1 · CGD — verificação dos poderes ──
+     Redação fixada pela Liliana: junta-se à linha da identidade. */
+  const cgdOut=[...vend,...comps].find(o=>o.tipo==='cgd');
+  const linhaCGD=cgdOut
+    ? ` bem como a qualidade e poderes dos outorgantes em representação da CAIXA, mediante consulta da procuração depositada em www.procuracoesonline.mj.pt através dos códigos de acesso ${cgdOut['cgd-proc-cod']||'…'} nos termos ${cgdOut['cgd-proc-poderes']||'…'}`
+    : '';
+  const linhaIdentidade='— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação'+linhaCGD
     +(procuracoes.length?` e ${procuracoes.join('; e ainda ')}`:'')+';'
     +(assentos.length?'\n'+assentos.join('\n'):'')
     +(predios.length?'\n'+predios.join('\n'):'')
@@ -2300,7 +2386,7 @@ function compor(){
   termo.push({id:'t-rgpd',T:'',X:`Com o consentimento dos outorgantes, foram recolhidos e reproduzidos os documentos de identificação nos termos da Lei n.º 83/2017, de 18 de agosto, arquivados pelo prazo legal de 7 anos.`});
   termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
   termo.push({id:'t-deposito',T:'',X:`Os outorgantes foram informados de que, nos termos do art.º 24.º, n.º 2, do D.L. 116/2008, de 4 de julho, o presente Documento Particular Autenticado só produz efeitos após depósito eletrónico em www.predialonline.mj.pt, a efetuar hoje e todo o documento foi lido e explicado a todos os outorgantes, que declararam estar plenamente esclarecidos${ehCVMH?', dispensando a leitura do Documento Complementar por já o conhecerem e o haverem lido, reconhecendo-o como parte integrante do presente instrumento':''}.`});
-  if(atoEscolhido()==='cv'&&subtipoCV()==='mh'&&v('f-mh-calculo-is'))
+  if(ehCVMH&&v('f-mh-calculo-is'))
     termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que o Imposto de Selo de verba 17.1.3, da TGIS será liquidado pela CAIXA no valor de ${v('f-mh-calculo-is')}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:'t-leitura',T:'',X:`A leitura e explicação do Documento Particular que aqui se autentica e deste Termo de Autenticação foram efetuadas em voz alta e na presença dos Outorgantes, com a advertência de que de seguida, e nesta mesma data, o mesmo vai ser depositado eletronicamente, para sua plena validade, em www.predialonline.pt.`});
@@ -2317,10 +2403,12 @@ function compor(){
       X:quartos.map(textoOutorgante).join(';\n')+`, adiante designad${quartos.length>1?'os':'o'} por Quart${quartos.length>1?'os':'o'} Outorgante${quartos.length>1?'s':''}.`});
   }
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
-  if(ts.narrativa)contrato.push({id:'c-trato-suc',T:'',X:ts.narrativa});
   if(ehCVMH)contrato.push({id:'c-preambulo',T:'PREÂMBULO',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
+  /* A narrativa do óbito abre a cláusula do objeto: explica de onde vem o
+     direito antes de se dizer o que se vende. */
   contrato.push({id:'c-cl1',T:'Primeira (Objeto)',
-    X:`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`});
+    X:(ts.narrativa?`${ts.narrativa}\n`:'')
+      +`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`});
   /* ── CLÁUSULAS GENÉRICAS · Matriz rústica identificada ──
      Regra do tronco: sempre que exista matriz rústica, entram (1) a declaração sobre a
      preferência de confinantes (art. 1380.º CC — asseguradas OU excluída pelo 1381.º/a)
@@ -2687,7 +2775,7 @@ function atualizar(){
   if(!ehCV){setProp('folha','innerHTML',avisoFolha(t));return;}
   // visibilidade condicional
   setDisp('g-onus-txt',chk('t-onus-livre')?'none':'block');
-  setDisp('g-mediacao',chk('t-mediacao')?'block':'none');onRegimeFiscal();onBlocoMH();
+  setDisp('g-mediacao',chk('t-mediacao')?'block':'none');onRegimeFiscal();sincronizarMH();
   setDisp('g-ce',chk('t-ce')?'block':'none');onCE();onCondominio();
   const isFr=v('f-im-tipo')==='fracao';
   setDisp('g-im-letra',isFr?'flex':'none');
@@ -3169,7 +3257,7 @@ function flexaoMutuario(n){
 /* ── CLÁUSULAS DO MÚTUO E DA HIPOTECA ──
    Redação do TEMPL_CVMH_CGD_v2.docx, com os valores formatados e por extenso. */
 function textosMH(nComps){
-  if(!(atoEscolhido()==='cv'&&subtipoCV()==='mh'))return[];
+  if(!(atoEscolhido()==='cv'&&chk('t-mh')))return[];
   const S=flexaoMutuario(nComps);
   const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} € (${valorExtenso(v(x)).toLowerCase()})`:'…';
   /* O conversor é de moeda: «três euros e vinte e cinco cêntimos». Numa
@@ -3196,6 +3284,31 @@ function textosMH(nComps){
     +`A hipoteca garante igualmente, dentro do limite do montante máximo assegurado, todos os acessórios do crédito, incluindo prémios de seguros, licenças, contribuições, taxas, impostos e despesas de registo ou outros encargos suportados pela CAIXA, cujos documentos comprovativos fazem parte integrante deste contrato.\n`
     +`A CAIXA poderá, sempre que o entenda necessário, proceder à inspeção e avaliação do imóvel, nos termos do artigo 701.º do Código Civil e demais legislação aplicável.`}];
 }
+/* ── 10.1 · TERCEIRO OUTORGANTE ──
+   A CAIXA pode ser representada pela Liliana, pela Andreia — cada uma com a
+   sua procuração — ou por procuradores da própria CAIXA. Neste último caso a
+   procuração exige dois, um obrigatoriamente da CLASSE A (regra 2.ª).
+   Os poderes são os do n.º 12 (compra e venda de imóveis) e, havendo mútuo,
+   também os do n.º 1 (operações de crédito). */
+/* Poderes do terceiro outorgante: mutuante que concede o empréstimo (n.º 1) e
+   aceita a hipoteca (n.º 6). Não é o n.º 12 — a CAIXA não compra nem vende —,
+   pelo que não se aplica a regra 2.ª mas a 5.ª, que basta um procurador em
+   documento particular autenticado. */
+const PODERES_MUTUANTE='ponto segundo alínea 1) e 6) e ponto terceiro regra 5.ª';
+const PROC_MUT={
+  liliana:{cod:'PR-65440-42413-78710',pod:PODERES_MUTUANTE},
+  andreia:{cod:'',pod:PODERES_MUTUANTE},
+  cgd:{cod:CGD_PROCURACAO,pod:PODERES_MUTUANTE}
+};
+function onMutQuem(){
+  const q=v('f-mut-quem')||'liliana';
+  document.querySelectorAll('.mut-cgd').forEach(e=>e.style.display=q==='cgd'?'block':'none');
+  const p=PROC_MUT[q]||{};
+  const c=document.getElementById('f-mut-proc-cod');
+  const d=document.getElementById('f-mut-proc-poderes');
+  if(c&&!c.dataset.tocado)c.value=p.cod||'';
+  if(d&&!d.dataset.tocado)d.value=p.pod||'';
+}
 function onMutuante(){
   document.querySelectorAll('.mut-outro').forEach(e=>e.style.display=v('f-mutuante')==='outro'?'flex':'none');
 }
@@ -3205,10 +3318,20 @@ function onQuartos(){
   if(on&&!document.querySelectorAll('.quarto-block').length)addQuarto();
   atualizar();
 }
+/* O bloco 10 é comandado pelo seu próprio interruptor. Escolher o subtipo
+   «Com Mútuo e Hipoteca» no bloco 1 liga-o; desligá-lo aqui faz o contrato
+   fechar no bloco 9 e gerar uma compra e venda simples. */
 function onBlocoMH(){
-  const mh=atoEscolhido()==='cv'&&subtipoCV()==='mh';
-  setDisp('card-b10',mh?'block':'none');
-  if(mh){onMutuante();setDisp('g-quartos',chk('t-quartos')?'block':'none');}
+  setDisp('card-b10',atoEscolhido()==='cv'?'block':'none');
+  const mh=chk('t-mh');
+  setDisp('g-mh',mh?'block':'none');
+  if(mh){onMutuante();onMutQuem();setDisp('g-quartos',chk('t-quartos')?'block':'none');}
+}
+/* O subtipo do bloco 1 liga o interruptor; a partir daí manda o interruptor. */
+function sincronizarMH(){
+  const el=document.getElementById('t-mh');
+  if(el&&subtipoCV()==='mh')el.checked=true;
+  onBlocoMH();
 }
 function onRegimeFiscal(){
   const r=v('f-fisc-regime');
@@ -3574,12 +3697,19 @@ function calcularAlertas(){
   })();
 
   /* ── Mútuo com hipoteca ── */
-  if(atoEscolhido()==='cv'&&subtipoCV()==='mh'){
+  if(atoEscolhido()==='cv'&&chk('t-mh')){
     if(!v('f-mh-avaliacao'))push('mh-aval','bloqueio','Mútuo com Hipoteca','Falta o valor de avaliação.');
     if(!v('f-mh-montante'))push('mh-mont','bloqueio','Mútuo com Hipoteca','Falta o montante do mútuo.');
     if(!v('f-mh-prazo'))push('mh-prazo','bloqueio','Mútuo com Hipoteca','Falta o prazo do mútuo.');
     if(!v('f-mh-hipoteca'))push('mh-hip','bloqueio','Mútuo com Hipoteca','Falta o montante máximo assegurado pela hipoteca.');
     if(!v('f-mut-repr'))push('mh-repr','aviso','Mútuo com Hipoteca','Mutuante sem representação indicada.');
+    if(!v('f-mut-proc-cod'))push('mh-proccod','bloqueio','Mútuo com Hipoteca','Terceiro outorgante sem código de procuração.');
+    /* Regra 1.ª: a procuração exclui atos de valor superior a cinco milhões. */
+    const valAto=Math.max(parseValor(v('f-preco')),parseValor(v('f-mh-montante')));
+    if(v('f-mut-quem')==='cgd'&&valAto>5000000)
+      push('mh-limite','bloqueio','Mútuo com Hipoteca',`Valor do ato (${fmtValor(valAto)} €) excede os cinco milhões de euros — a regra 1.ª exclui estes atos da procuração da CAIXA.`);
+    if(v('f-mut-proc-val')&&v('f-data-ato')&&v('f-mut-proc-val')<v('f-data-ato'))
+      push('mh-proccad','bloqueio','Mútuo com Hipoteca',`Procuração do terceiro outorgante caducada à data do ato (válida até ${dPT(v('f-mut-proc-val'))}).`);
     const av=parseValor(v('f-mh-avaliacao')),mo=parseValor(v('f-mh-montante'));
     if(av>0&&mo>av)push('mh-ltv','aviso','Mútuo com Hipoteca',`Montante do mútuo (${fmtValor(mo)} €) superior ao valor de avaliação (${fmtValor(av)} €).`);
   }
@@ -3625,10 +3755,13 @@ function calcularAlertas(){
     if(f.habTipo==='codigo'&&!f.habCodigo)push(`f${i}-habcod`,'bloqueio','Trato sucessivo',`${q}: habilitação por código sem código de acesso.`);
     if(seloExigivel(f.dataObito)&&!f.isNumero)push(`f${i}-is`,'aviso','Trato sucessivo',`${q}: participação de imposto do selo por indicar.`);
     if(!f.herdeiros.length)push(`f${i}-herd`,'aviso','Trato sucessivo',`${q}: sem herdeiros identificados.`);
-    if(!f.habConferida)push(`f${i}-habconf`,'bloqueio','Trato sucessivo',`${q}: habilitação por conferir — falta confirmar que todos os herdeiros outorgam.`);
+    if(!f.habConferida)push(`f${i}-habconf`,'bloqueio','Trato sucessivo',`${q}: falta responder se todos os herdeiros outorgam ou estão representados.`);
+    else if(f.habConferida==='nao')push(`f${i}-habfalta`,'bloqueio','Trato sucessivo',`${q}: há herdeiros que não outorgam nem estão representados — por resolver.`);
     /* Selo: só obriga em óbitos com menos de 8 anos. */
-    if(seloExigivel(f.dataObito)&&!f.isConsta)
-      push(`f${i}-isconsta`,'bloqueio','Trato sucessivo',`${q}: falta confirmar que o imóvel consta da relação de bens da participação.`);
+    if(seloExigivel(f.dataObito)){
+      if(!f.isConsta)push(`f${i}-isconsta`,'bloqueio','Trato sucessivo',`${q}: falta responder se o imóvel consta da relação de bens da participação.`);
+      else if(f.isConsta==='nao')push(`f${i}-isnao`,'bloqueio','Trato sucessivo',`${q}: o imóvel não consta da relação de bens da participação — o ato não pode avançar.`);
+    }
   });
 
   return A;
