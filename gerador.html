@@ -500,14 +500,28 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
       </div>
     </div>
+    <!-- PREFERÊNCIA DOS CONFINANTES -->
+    <div class="cond-block" style="margin-top:.9rem;display:none" id="g-confinantes">
+      <div class="cond-block-title" style="margin-bottom:2px">Preferência dos confinantes</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.55rem">Artigo 1380.º do Código Civil. Aparece sempre que o objeto seja rústico ou misto.</div>
+      <div class="form-group form-full"><label class="form-label">Hipótese <span>*</span></label>
+        <select class="form-select" id="f-confinantes" onchange="atualizar()">
+          <option value="">— escolher —</option>
+          <option value="asseguradas">Preferência assegurada — comunicado aos confinantes, ninguém exerceu</option>
+          <option value="excluida">Preferência excluída — art. 1381.º, al. a): fim diverso da cultura</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">A declaração é dos vendedores e vai ao contrato. Sem escolha não sai cláusula nenhuma.</div>
+      </div>
+    </div>
+
     <!-- ÓNUS E ENCARGOS -->
     <div class="cond-block" style="margin-top:.9rem" id="blk-onus">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
         <div><div class="cond-block-title" style="margin-bottom:2px">Ónus e encargos</div>
           <div style="font-size:10.5px;color:var(--text-faint)">O que onera o imóvel e por que via se cancela</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="t-onus-livre" onchange="onOnusLivre()" checked><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t-onus" onchange="onOnus()"><span class="toggle-slider"></span></label>
       </div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px" id="onus-hint">Ligado: o imóvel vai livre de ónus e encargos.</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px" id="onus-hint">Desligado: o imóvel vai livre de ónus e encargos.</div>
       <div id="g-onus" style="display:none;margin-top:.75rem">
         <div id="onus-container"></div>
         <button class="add-btn" type="button" onclick="addOnus();atualizar()">+ Adicionar ónus</button>
@@ -2238,7 +2252,7 @@ function addOnus(dados){
   });
 }
 function lerOnus(){
-  if(chk('t-onus-livre'))return[];
+  if(!chk('t-onus'))return[];
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   return[...document.querySelectorAll('.onus-block')].map(b=>({
     desc:g(`${b.id}-desc`),ap:g(`${b.id}-ap`),ent:g(`${b.id}-ent`),nif:g(`${b.id}-nif`),
@@ -2247,21 +2261,21 @@ function lerOnus(){
 }
 /* Cada ónus mostra só os campos da via escolhida. */
 function aplicarOnus(){
-  const livre=chk('t-onus-livre');
-  setDisp('g-onus',livre?'none':'block');
+  setDisp('g-onus',chk('t-onus')?'block':'none');
   document.querySelectorAll('.onus-block').forEach(b=>{
     const c=document.getElementById(`${b.id}-canc`)?.value||'nao';
     b.querySelectorAll('.onus-fis').forEach(e=>e.style.display=c==='fisico'?'block':'none');
     b.querySelectorAll('.onus-cod').forEach(e=>e.style.display=c==='codigo'?'block':'none');
   });
 }
-function onOnusLivre(){
-  const livre=chk('t-onus-livre');
-  setDisp('g-onus',livre?'none':'block');
-  setProp('onus-hint','textContent',livre
-    ?'Ligado: o imóvel vai livre de ónus e encargos.'
-    :'Desligado: enumera-se o que onera o imóvel e como se cancela.');
-  if(!livre&&!document.querySelectorAll('.onus-block').length)addOnus();
+/* Ligado, há ónus; desligado, o imóvel vai livre. */
+function onOnus(){
+  const ha=chk('t-onus');
+  setDisp('g-onus',ha?'block':'none');
+  setProp('onus-hint','textContent',ha
+    ?'Ligado: enumera-se o que onera o imóvel e como se cancela.'
+    :'Desligado: o imóvel vai livre de ónus e encargos.');
+  if(ha&&!document.querySelectorAll('.onus-block').length)addOnus();
   atualizar();
 }
 /* ── ÓNUS · textos ──
@@ -2796,7 +2810,7 @@ function compor(){
   const onusLista=lerOnus();
   const onusContrato=onusLista.map(textoOnusContrato).filter(Boolean);
   const onusTermo=onusLista.map(textoOnusTermo).filter(Boolean);
-  const txtOnus=chk('t-onus-livre')
+  const txtOnus=!chk('t-onus')
     ?'O Imóvel é vendido livre de quaisquer ónus ou encargos.'
     :[...onusContrato,v('f-onus-txt')].filter(Boolean).join('\n')||'…';
   const tu=textosTituloUrb();
@@ -2924,17 +2938,6 @@ function compor(){
   contrato.push({id:'c-cl1',T:'Primeira (Objeto)',
     X:(ts.narrativa?`${ts.narrativa}\n`:'')
       +`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`});
-  /* ── CLÁUSULAS GENÉRICAS · Matriz rústica identificada ──
-     Regra do tronco: sempre que exista matriz rústica, entram (1) a declaração sobre a
-     preferência de confinantes (art. 1380.º CC — asseguradas OU excluída pelo 1381.º/a)
-     e (2) a declaração de não fracionamento (arts. 1376.º/1377.º CC). Automáticas. */
-  if(temMatrizRustica()){
-    contrato.push({id:'c-confinantes',T:'',X:v('f-confinantes')==='excluida'
-      ?`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que à presente transmissão não é aplicável o direito de preferência dos proprietários de terrenos confinantes previsto no artigo 1380.º do Código Civil, por se verificar a situação de exclusão consagrada na alínea a) do artigo 1381.º do mesmo Código, uma vez que o prédio ora transmitido se destina a fim diverso da cultura, designadamente parte componente de prédio urbano de logradouro.`
-      :`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que o prédio rústico ora transmitido, bem como os prédios com ele confinantes, têm área inferior à unidade de cultura fixada para a região, pelo que, reconhecendo aos respetivos proprietários o direito de preferência previsto no artigo 1380.º do Código Civil, asseguraram a comunicação a todos os proprietários dos prédios confinantes do projeto de venda e das respetivas cláusulas, nos termos e para os efeitos dos artigos 416.º e 1380.º, n.º 3, do Código Civil, não tendo nenhum deles exercido o respetivo direito dentro do prazo legal, motivo pelo qual a presente alienação se realiza livre de qualquer preferência.`});
-    contrato.push({id:'c-fracionamento',T:'',X:`--- Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes. ------------------`});
-  }
-
   /* ── CLÁUSULA GENÉRICA · Direitos de preferência (Casa Pronta) ──
      Tronco comum: Lei 83/2019, art. 37.º/3 + Lei 89/2021, art. 7.º — anúncio via casapronta.pt
      (IHRU, Património Cultural I.P., ESTAMO e Câmara Municipal). */
@@ -2972,6 +2975,23 @@ function compor(){
   contrato.push({id:'c-encargos',T:'ENCARGOS',X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
   if(v('f-destino'))contrato.push({id:'c-destino',T:'DESTINO DO IMÓVEL',X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
   contrato.push({id:'c-obras',T:'',X:`A PARTE VENDEDORA declara, igualmente, que, tanto quanto é do seu conhecimento, o imóvel não sofreu quaisquer obras, modificações ou alterações estruturais e/ou funcionais que possam afetar a validade dos referidos documentos.`});
+  /* ── PRÉDIO RÚSTICO · fecho dos certificados e licenças ──
+     Sequência da Liliana, contígua e por esta ordem:
+       1.º a declaração quanto à preferência dos confinantes, numa de duas
+           hipóteses — houve comunicação (art. 1380.º e 416.º) ou a preferência
+           está excluída (art. 1381.º, al. a);
+       2.º a declaração de não fracionamento (arts. 1376.º e 1377.º), que sai
+           sempre que haja rústico, com comunicação ou sem ela.
+     Estava junto ao objeto e passou para aqui, que é onde a Liliana a situou.
+     Os travessões da redação original saíram: o preenchimento a tracejado é
+     do template Word e, no texto, sairia a dobrar. */
+  if(temMatrizRustica()){
+    if(v('f-confinantes')==='asseguradas')
+      contrato.push({id:'c-confinantes',T:'',X:`Mais declararam ter conhecimento de que a alienação de prédio rústico com área inferior à unidade de cultura fixada para a respetiva zona confere aos proprietários dos prédios confinantes o direito de preferência previsto no artigo 1380.º do Código Civil, tendo sido dado cumprimento à obrigação de comunicação prevista no artigo 416.º do mesmo Código, sem que qualquer preferente tenha exercido o respetivo direito no prazo legal.`});
+    else if(v('f-confinantes')==='excluida')
+      contrato.push({id:'c-confinantes',T:'',X:`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que à presente transmissão não é aplicável o direito de preferência dos proprietários de terrenos confinantes previsto no artigo 1380.º do Código Civil, por se verificar a situação de exclusão consagrada na alínea a) do artigo 1381.º do mesmo Código, uma vez que o prédio ora transmitido se destina a fim diverso da cultura, designadamente parte componente de prédio urbano de logradouro.`});
+    contrato.push({id:'c-fracionamento',T:'',X:`Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.`});
+  }
   contrato.push({id:'c-mediacao',T:'MEDIAÇÃO IMOBILIÁRIA',X:chk('t-mediacao')
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
@@ -3338,6 +3358,10 @@ function funilMH(){
   /* As hipotecas anteriores e o seu cancelamento vivem na secção do imóvel,
      partilhadas com a compra e venda. Aqui fica só a liquidação, que é do TOIC. */
   aplicarOnus();
+  /* Sem transmissão não há preferência: nem cartas a confinantes, nem direitos
+     das entidades públicas. O campo esconde-se, para não sugerir o contrário a
+     quem venha de um rascunho de compra e venda. */
+  setDisp('g-confinantes','none');
   setDisp('blk-oic',toic?'block':'none');
   const fo=v('f-oic-forma');
   document.querySelectorAll('.oic-apb').forEach(e=>e.style.display=fo==='apb'?'block':'none');
@@ -3378,6 +3402,7 @@ function desfazerFunilMH(){
   if(tmh){const r=tmh.closest('.toggle-row');if(r)r.style.display='';
     const h=r&&r.nextElementSibling;if(h&&h.tagName==='DIV'&&!h.id)h.style.display='';}
   setDisp('blk-oic','none');
+  setDisp('g-confinantes',temMatrizRustica()?'block':'none');
 }
 function atualizar(){
   // ── funil ──
@@ -3425,7 +3450,6 @@ function atualizar(){
   if(ehCV&&!compCGD&&!document.querySelectorAll('.comp-block').length)addComprador();
   if(!ehCV){setProp('folha','innerHTML',avisoFolha(t));return;}
   // visibilidade condicional
-  setDisp('g-onus-txt',chk('t-onus-livre')?'none':'block');
   setDisp('g-mediacao',chk('t-mediacao')?'block':'none');onRegimeFiscal();sincronizarMH();
   setDisp('g-ce',chk('t-ce')?'block':'none');onCE();onCondominio();
   const isFr=v('f-im-tipo')==='fracao';
@@ -3530,6 +3554,10 @@ function restaurarEstado(d){
 
   /* Rascunhos anteriores ao seletor eram todos compra e venda. */
   if(d.campos&&d.campos['f-tipo-ato']===undefined)d.campos['f-tipo-ato']=d.ato||'cv';
+  /* O interruptor dos ónus estava invertido — «livre de ónus» ligado. Passou a
+     «há ónus», que é a leitura natural. Os rascunhos antigos traduzem-se. */
+  if(d.campos&&d.campos['t-onus-livre']!==undefined&&d.campos['t-onus']===undefined)
+    d.campos['t-onus']=!d.campos['t-onus-livre'];
   /* Antes havia «financiamento sim/não»; passou a subtipo explícito. */
   if(d.campos&&d.campos['f-subtipo-cv']===undefined)
     d.campos['f-subtipo-cv']=d.campos['f-financiamento']==='sim'?'mh':'simples';
@@ -4396,8 +4424,12 @@ function calcularAlertas(){
     if(av>0&&mo>av)push('mh-ltv','aviso','Mútuo com Hipoteca',`Montante do mútuo (${fmtValor(mo)} €) superior ao valor de avaliação (${fmtValor(av)} €).`);
   }
 
+  /* ── Preferência dos confinantes · só na compra e venda, com rústico ── */
+  if(atoEscolhido()==='cv'&&temMatrizRustica()&&!v('f-confinantes'))
+    push('confinantes','bloqueio','Imóvel','Prédio rústico ou misto sem hipótese escolhida quanto à preferência dos confinantes — não sai cláusula.');
+
   /* ── Ónus e encargos · secção do imóvel, comum aos dois troncos ── */
-  if(!chk('t-onus-livre')){
+  if(chk('t-onus')){
     const os=lerOnus();
     if(!os.length)push('onus-vazio','bloqueio','Ónus e encargos','Imóvel não declarado livre de ónus e nenhum ónus identificado.');
     os.forEach((o,i)=>{
