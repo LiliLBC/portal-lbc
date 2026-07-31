@@ -817,7 +817,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group form-full"><label class="form-label">Cálculo do Imposto do Selo (verba 17)</label>
           <input class="form-input" id="f-mh-calculo-is" oninput="atualizar()" placeholder="Memória de cálculo, se quiseres registá-la"></div>
         <div class="form-group form-full" style="font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
-          ⚠ As cláusulas do mútuo e da hipoteca vivem no <strong>TEMPL_CVMH_CGD_v2.docx</strong>, que nunca me chegou. Os campos ficam recolhidos e prontos, mas o texto das cláusulas não é gerado até me passares o template ou as redações.</div>
+          As cláusulas do mútuo e da garantia hipotecária são geradas a partir destes campos, com os valores por extenso.</div>
       </div>
     </div>
 
@@ -2289,6 +2289,8 @@ function compor(){
   if(cond.termo)termo.push({id:'t-condominio',T:'',X:cond.termo});
   const txtImp=textoImpostos();
   if(txtImp)termo.push({id:'t-impostos',T:'',X:txtImp});
+  if(atoEscolhido()==='cv'&&subtipoCV()==='mh'&&v('f-mh-calculo-is'))
+    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que o Imposto de Selo de verba 17.1.3, da TGIS será liquidado pela CAIXA no valor de ${v('f-mh-calculo-is')}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:'t-leitura',T:'',X:`A leitura e explicação do Documento Particular que aqui se autentica e deste Termo de Autenticação foram efetuadas em voz alta e na presença dos Outorgantes, com a advertência de que de seguida, e nesta mesma data, o mesmo vai ser depositado eletronicamente, para sua plena validade, em www.predialonline.pt.`});
 
@@ -2305,6 +2307,7 @@ function compor(){
   }
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
   if(ts.narrativa)contrato.push({id:'c-trato-suc',T:'',X:ts.narrativa});
+  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(b));
   contrato.push({id:'c-cl1',T:'Primeira (Objeto)',
     X:`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`});
   /* ── CLÁUSULAS GENÉRICAS · Matriz rústica identificada ──
@@ -2359,11 +2362,6 @@ function compor(){
   let n=4;
   if(compCGD){contrato.push({id:'c-cl-destino',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Destino do Imóvel adquirido)`,X:txtDestino});n++;}
   if(ehCVMH){
-    const val=id=>v(id)||'…';
-    contrato.push({id:'c-mutuo-valores',T:'Mútuo e hipoteca — valores apurados',
-      X:`Montante do mútuo: ${val('f-mut-montante')} €.\nPrazo: ${val('f-mut-prazo')} meses.\nTaxa de juro: ${val('f-mut-taxa')} %.\nSobretaxa de mora: ${val('f-mut-mora')} %.\nDespesas: ${val('f-mut-despesas')} €.\nValor de avaliação: ${val('f-mut-aval')} €.\nMontante máximo assegurado pela hipoteca: ${val('f-mut-maximo')} €.\nImposto do Selo (verba 17.1.3): ${val('f-mut-selo')} €.`});
-    contrato.push({id:'c-mutuo-falta',T:'⚠ Cláusulas de mútuo e hipoteca — POR PREENCHER',
-      X:`A redação das cláusulas de mútuo e de hipoteca não está no gerador: vive dentro do TEMPL_CVMH_CGD_v2.docx. Não foi escrita aqui para não ser inventada.\n\nOs valores acima já estão apurados e as partes identificadas. Assim que o template chegar, estas cláusulas passam a ser compostas automaticamente e este bloco desaparece.\n\nEntretanto: podes escrever a redação à mão neste bloco, ou trazê-la da biblioteca de Cláusulas DPA.`});
     if(fiadores.length){
       const cP=comps.length>1,fiP=fiadores.length>1;
       const doSEGUNDO=cP?'dos SEGUNDOS':'do SEGUNDO',pelaSEGUNDO=cP?'pelos SEGUNDOS':'pelo SEGUNDO';
@@ -3142,6 +3140,41 @@ function textoViaUnica(r,nVendedores){
    valor quando existe financiamento.
    ⚠ As cláusulas do mútuo e da hipoteca estão no TEMPL_CVMH_CGD_v2.docx, que
    ainda não foi recebido — os campos são recolhidos mas não geram texto. */
+function flexaoMutuario(n){
+  return n>1
+    ?{ao:'aos',mutuario:'Mutuários',reconhece:'reconhecem',devedor:'devedores',art:'os',mut:'mutuários',constitui:'constituem'}
+    :{ao:'ao',mutuario:'Mutuário',reconhece:'reconhece',devedor:'devedor',art:'o',mut:'mutuário',constitui:'constitui'};
+}
+/* ── CLÁUSULAS DO MÚTUO E DA HIPOTECA ──
+   Redação do TEMPL_CVMH_CGD_v2.docx, com os valores formatados e por extenso. */
+function textosMH(nComps){
+  if(!(atoEscolhido()==='cv'&&subtipoCV()==='mh'))return[];
+  const S=flexaoMutuario(nComps);
+  const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} € (${valorExtenso(v(x)).toLowerCase()})`:'…';
+  /* O conversor é de moeda: «três euros e vinte e cinco cêntimos». Numa
+     percentagem lê-se «três vírgula vinte e cinco por cento». */
+  const semEuro=s=>s.replace(/ euros? e /,' vírgula ').replace(/ cêntimos?$/,'').replace(/ euros?$/,'');
+  const pct=x=>v(x)?`${v(x)}% (${semEuro(valorExtenso(v(x)).toLowerCase())} por cento)`:'…';
+  const prazo=v('f-mh-prazo')?`${v('f-mh-prazo')} meses (${semEuro(valorExtenso(v('f-mh-prazo')).toLowerCase())})`:'… meses';
+  return[
+   {id:'c-mh-titulo',T:'MÚTUO E HIPOTECA',X:
+    `Para aquisição do referido imóvel, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, a CAIXA concede ${S.ao} ${S.mutuario} um empréstimo no montante de ${par('f-mh-montante')}, quantia de que se ${S.reconhece} ${S.devedor}, pelo prazo de ${prazo} a contar da presente data.`},
+   {id:'c-mh-condicoes',T:'',X:
+    `O presente contrato fica sujeito às condições aqui estipuladas, bem como às cláusulas constantes do Documento Complementar e do Anexo I, que dele fazem parte integrante para todos os efeitos legais e contratuais, sem prejuízo das demais disposições legais aplicáveis.`},
+   {id:'c-mh-garantia',T:'GARANTIA HIPOTECÁRIA',X:
+    `Para garantia do capital mutuado e respetivos acessórios, ${S.art} ${S.mut} ${S.constitui} hipoteca sobre o referido imóvel a favor da CAIXA, que a aceita, abrangendo:\n`
+    +`a) o capital de ${par('f-mh-montante')};\n`
+    +`b) dos juros remuneratórios, fixados em até ${pct('f-mh-juros')} ao ano;\n`
+    +`c) dos juros moratórios, correspondentes aos juros remuneratórios acrescidos de uma sobretaxa até ${pct('f-mh-mora')} ao ano, em caso de mora, nos termos e dentro do limite máximo previsto no artigo 8.º do Decreto-Lei n.º 58/2013, de 8 de maio;\n`
+    +`d) das comissões, despesas e demais encargos contratuais que em conjunto se fixam no montante de ${par('f-mh-despesas')}.`},
+   {id:'c-mh-maximo',T:'',X:
+    `O montante máximo garantido para efeitos de hipoteca fica fixado em ${par('f-mh-hipoteca')}, para todos os efeitos legais e de registo.`},
+   {id:'c-mh-vigencia',T:'',X:
+    `A hipoteca ora constituída vigorará por tempo indeterminado, subsistindo enquanto existirem responsabilidades garantidas, abrangendo o imóvel hipotecado, bem como todas as construções, benfeitorias e acessões, presentes ou futuras, nele incorporadas.\n`
+    +`A CAIXA poderá, a todo o tempo, requerer os averbamentos necessários junto da Conservatória do Registo Predial competente, considerando-se que os respetivos recibos comprovativos integram o presente contrato para efeitos de exequibilidade.\n`
+    +`A hipoteca garante igualmente, dentro do limite do montante máximo assegurado, todos os acessórios do crédito, incluindo prémios de seguros, licenças, contribuições, taxas, impostos e despesas de registo ou outros encargos suportados pela CAIXA, cujos documentos comprovativos fazem parte integrante deste contrato.\n`
+    +`A CAIXA poderá, sempre que o entenda necessário, proceder à inspeção e avaliação do imóvel, nos termos do artigo 701.º do Código Civil e demais legislação aplicável.`}];
+}
 function onMutuante(){
   document.querySelectorAll('.mut-outro').forEach(e=>e.style.display=v('f-mutuante')==='outro'?'flex':'none');
 }
@@ -3528,7 +3561,6 @@ function calcularAlertas(){
     if(!v('f-mut-repr'))push('mh-repr','aviso','Mútuo com Hipoteca','Mutuante sem representação indicada.');
     const av=parseValor(v('f-mh-avaliacao')),mo=parseValor(v('f-mh-montante'));
     if(av>0&&mo>av)push('mh-ltv','aviso','Mútuo com Hipoteca',`Montante do mútuo (${fmtValor(mo)} €) superior ao valor de avaliação (${fmtValor(av)} €).`);
-    push('mh-clausulas','bloqueio','Mútuo com Hipoteca','As cláusulas do mútuo e da hipoteca ainda não são geradas — falta o TEMPL_CVMH_CGD_v2.docx ou as redações.');
   }
 
   /* ── Impostos ── */
