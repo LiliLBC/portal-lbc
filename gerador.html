@@ -436,6 +436,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group" id="g-im-artigo"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
       <div class="form-group" id="g-im-freg-mat"><label class="form-label">Freguesia (matriz) <span>*</span></label><input class="form-input" id="f-im-freg-mat" placeholder="Ex: União das Freguesias de Malagueira e Horta das Figueiras"></div>
       <div class="form-group" id="g-im-vpt"><label class="form-label">VPT (€) <span>*</span></label><input class="form-input" id="f-im-vpt" placeholder="Ex: 39314,90"></div>
+      <div class="form-group" id="g-im-vpt-ano"><label class="form-label">VPT determinado em</label><input class="form-input" id="f-im-vpt-ano" placeholder="Ex: 2024"></div>
       <div class="form-group" id="g-im-vimt" style="display:none"><label class="form-label">Valor p/ IMT (€)</label><input class="form-input" id="f-im-vimt" oninput="atualizar()" placeholder="Parte do preço imputada a esta fração"></div>
     </div>
     <div class="cond-block" id="g-matrizes" style="display:none;margin-top:.6rem">
@@ -826,6 +827,26 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           </select></div>
         <div class="form-group form-full mut-cgd" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
           O mútuo é o n.º 1 e a aceitação da hipoteca o n.º 6 — nenhum consta da regra 2.ª, pelo que se aplica a <strong>regra 5.ª</strong>: num documento particular autenticado <strong>basta um procurador</strong>. A exigência de dois, com um da Classe A, é da regra 2.ª e vale para a compra e venda (n.º 12) quando a CAIXA seja parte.</div>
+        <div class="form-grid form-grid-2 form-full mut-cgd" style="display:none;gap:.55rem">
+          <div class="form-group form-full" style="font-size:11px;color:var(--text-muted);font-weight:600">Procurador(a) da CAIXA — identificação para o termo</div>
+          <div class="form-group"><label class="form-label">Nome</label>
+            <input class="form-input" id="f-mut-p-nome" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Género</label>
+            <select class="form-select" id="f-mut-p-genero" onchange="atualizar()">
+              <option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+          <div class="form-group"><label class="form-label">Estado civil</label>
+            <input class="form-input" id="f-mut-p-ec" oninput="atualizar()" placeholder="Ex: solteira, maior"></div>
+          <div class="form-group"><label class="form-label">Natural de</label>
+            <input class="form-input" id="f-mut-p-natural" oninput="atualizar()" placeholder="Ex: São Sebastião da Pedreira, Lisboa"></div>
+          <div class="form-group"><label class="form-label">Cartão de cidadão</label>
+            <input class="form-input" id="f-mut-p-cc" oninput="atualizar()" placeholder="Ex: 11462876 9ZX9"></div>
+          <div class="form-group"><label class="form-label">Válido até</label>
+            <input type="date" class="form-input" id="f-mut-p-ccval" onchange="atualizar()"></div>
+          <div class="form-group"><label class="form-label">NIF</label>
+            <input class="form-input" id="f-mut-p-nif" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Domicílio profissional</label>
+            <input class="form-input" id="f-mut-p-dom" oninput="atualizar()" placeholder="Ex: agência CGD, Quinta do Moniz, em Évora"></div>
+        </div>
         <div class="form-group"><label class="form-label">Código da procuração</label>
           <div style="display:flex;gap:.35rem;align-items:stretch">
             <input class="form-input" id="f-mut-proc-cod" oninput="atualizar()" style="flex:1;min-width:0">
@@ -2251,15 +2272,18 @@ function onOnusLivre(){
    encontra-se onerado com {ónus}», porque na compra e venda o imóvel não está
    a ser hipotecado e o ónus pode não ser uma hipoteca. O resto é palavra
    por palavra. */
-function textoOnusContrato(o){
+function textoOnusContrato(o,mh){
   if(o.canc==='nao'||o.canc==='renuncia')return'';
-  return`O Imóvel encontra-se onerado com ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, cujo cancelamento é assegurado com o presente ato.`;
+  /* No mútuo o imóvel está a ser hipotecado e a frase é a do template, palavra
+     por palavra. Na compra e venda não está, e o sujeito muda para «O Imóvel». */
+  const cab=mh?'O imóvel ora hipotecado encontra-se onerado com':'O Imóvel encontra-se onerado com';
+  return`${cab} ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, cujo cancelamento é assegurado com o presente ato.`;
 }
 function textoOnusTermo(o){
   if(o.canc==='fisico')
     return`— Para efeitos do artigo 56.º do Código do Registo Predial, arquivo a autorização de cancelamento d${/hipoteca/i.test(o.desc||'')?'a hipoteca':'o ónus'} emitida em ${dPT(o.data)};`;
   if(o.canc==='codigo')
-    return`— Para efeitos do artigo 56.º do Código do Registo Predial, consultei a autorização de cancelamento d${/hipoteca/i.test(o.desc||'')?'a hipoteca':'o ónus'} através do código «${o.codigo||'…'}»;`;
+    return`— Para efeitos do artigo 56.º do Código do Registo Predial, consultei a autorização de cancelamento d${/hipoteca/i.test(o.desc||'')?'a hipoteca':'o ónus'} através do código ${o.codigo||'…'};`;
   return'';
 }
 /* O banco a quem se liquida no TOIC é o titular da hipoteca que se cancela. */
@@ -2425,14 +2449,27 @@ function comporMH(variante){
   /* Mesma forma da compra e venda: «€… (extenso)», e não «… Euros». */
   const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., com sede na Avenida João XXI, n.º 63, em Lisboa, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva 500960046, com o capital social de ${capitalCGD()}`;
   const outraIC=v('f-mutuante')!=='cgd';
+  /* Duas vias, ambas vistas nos atos reais: a solicitadora com procuração
+     substabelecida, ou um procurador da CAIXA com poderes para o ato. */
+  const pf=v('f-mut-p-genero')!=='M';
+  const procCGD=quemMut==='cgd';
+  const nomeP=(v('f-mut-p-nome')||'…').toUpperCase();
+  const txtProcCGD=[nomeP,v('f-mut-p-ec'),
+    v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',
+    v('f-mut-p-cc')?`portador${pf?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${v('f-mut-p-cc')}${v('f-mut-p-ccval')?`, válido até ${dPT(v('f-mut-p-ccval'))}`:''}`:'',
+    v('f-mut-p-nif')?`número de identificação fiscal ${v('f-mut-p-nif')}`:'',
+    v('f-mut-p-dom')?`com domicílio profissional na ${v('f-mut-p-dom')}`:''
+  ].filter(Boolean).join(', ');
   const txtSegunda=outraIC
     ?(v('f-mutuante-txt')||'…')
-    :(solMut
-      ?`${solMut.textoProcuradora}, a qual outorga na qualidade de procuradora substabelecida, em nome e em representação da ${baseCGD}.`
-      :`${v('f-mut-repr')||'…'}, em nome e em representação da ${baseCGD}.`);
+    :(procCGD
+      ?`${txtProcCGD}, ${pf?'a qual':'o qual'} outorga na qualidade de procurador${pf?'a':''} com poderes para o ato, em nome e em representação da ${baseCGD}.`
+      :(solMut
+        ?`${solMut.textoProcuradora}, a qual outorga na qualidade de procuradora substabelecida, em nome e em representação da ${baseCGD}.`
+        :`${v('f-mut-repr')||'…'}, em nome e em representação da ${baseCGD}.`));
   const txtSegundaCurto=outraIC
     ?`${v('f-mutuante-txt')||'…'}, adiante designada por MUTUANTE.`
-    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${solMut?solMut.nomeAbrev:(v('f-mut-repr')||'…')}, adiante designada por CAIXA e/ou MUTUANTE.`;
+    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${procCGD?[nomeP,v('f-mut-p-ec'),v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',v('f-mut-p-nif')?`NIF ${v('f-mut-p-nif')}`:''].filter(Boolean).join(', '):(solMut?solMut.nomeAbrev:(v('f-mut-repr')||'…'))}, adiante designada por CAIXA e/ou MUTUANTE.`;
 
   /* ── PRIMEIROS · mutuários (mesmo componente dos outorgantes da compra e venda) ── */
   const consent=linhaConsentimento(mut);
@@ -2465,7 +2502,7 @@ function comporMH(variante){
      se preferes que saia também no termo do UNO.                              */
   const onusLista=lerOnus();
   const clDistrate=toic?onusLista.map(textoOnusTermo).filter(Boolean):[];
-  const clBancoHip=toic?onusLista.map(textoOnusContrato).filter(Boolean):[];
+  const clBancoHip=toic?onusLista.map(o=>textoOnusContrato(o,true)).filter(Boolean):[];
   const bancoOIC=bancoACancelar();
 
   /* ── 10.5 · liquidação em OIC · só no TOIC (redações do mh.html) ── */
@@ -2485,8 +2522,8 @@ function comporMH(variante){
   const montante=parseValor(v(`${F}-montante`));
   const isVal=v(`${F}-calculo-is`)||(montante?fmtValor(montante*6/1000)+' €':'…');
   const clSelo=toic
-    ?`— O contrato que aqui se autentica está isento de Imposto do Selo da verba 17.1.3 da TGIS, por força da alínea j) do n.º 1 do artigo 7.º do Código do Imposto do Selo;`
-    :`— O contrato que aqui se autentica está sujeito a Imposto do Selo da verba 17.1.3 da TGIS, que será liquidado pela CAIXA no valor de ${isVal}, de acordo com o artigo 23.º do Código do Imposto do Selo;`;
+    ?`— O contrato que aqui se autentica está isento de Imposto de Selo da verba 17.1.3, da TGIS, por força da alínea j) do n.º 1 do artigo 7.º do Código do Imposto de Selo;`
+    :`— O contrato que aqui se autentica está sujeito a Imposto de Selo da verba 17.1.3, da TGIS, por força do artigo 7.º do Código do Imposto de Selo, no valor de ${isVal};`;
 
   /* ── Imóvel · importado do bloco 5, é o mesmo nos dois contratos ── */
   const isFr=v('f-im-tipo')==='fracao';
@@ -2494,8 +2531,8 @@ function comporMH(variante){
   const dto=DIREITOS[v('f-im-direito')]||'';
   const desigIm=v('f-im-tipo')==='misto'?'o prédio misto':v('f-im-tipo')==='rustico'?'o prédio rústico':'o prédio urbano';
   const corpoIm=isFr
-    ?`${dto}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}`
-    :`${dto}${desigIm} composto de ${v('f-im-descricao')||'…'}`;
+    ?`${dto}a fração autónoma designada pela letra «${v('f-im-letra')||'…'}», do prédio em regime de propriedade horizontal constituída pela ${v('f-im-apph')||'…'}, composta por ${v('f-im-descricao')||'…'}`
+    :`${dto}${desigIm} composto por ${v('f-im-descricao')||'…'}`;
   const genT=generosOutorgantes(garantes);
   const femT=genT.length>0&&genT.every(g=>g==='F');
   const sujeitoHip=garantes.length
@@ -2506,7 +2543,7 @@ function comporMH(variante){
     :(muP?'dos PRIMEIROS CONTRATANTES':(femM?'da PRIMEIRA CONTRATANTE':'do PRIMEIRO CONTRATANTE'));
   const mats=isFr?[]:lerMatrizes();
   const txtMatriz=isFr
-    ?`O prédio encontra-se inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros.`
+    ?`O prédio encontra-se inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'} da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial tributário de ${v('f-im-vpt')||'…'} EUROS${v('f-im-vpt-ano')?`, determinado no ano de ${v('f-im-vpt-ano')}`:''}.`
     :`O prédio encontra-se inscrito ${mats.length?(mats.length>1?mats.slice(0,-1).map(m=>textoMatrizG(m,false)).join(', ')+' e '+textoMatrizG(mats[mats.length-1],false):textoMatrizG(mats[0],false)):'na respetiva matriz predial …'}.`;
 
   /* ══════════════ TERMO ══════════════ */
@@ -2537,7 +2574,10 @@ function comporMH(variante){
   const crcVal=v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL);
   const linhas=[];
   linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`);
-  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação da CAIXA pela procuração, conjugada com a consulta do substabelecimento, depositados em www.procuracoesonline.mj.pt através do código de acesso ${v('f-mut-proc-cod')||(solMut?solMut.codProcuracao:'…')}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
+  /* O substabelecimento só se consulta quando existe: a solicitadora outorga
+     por procuração substabelecida, o procurador da CAIXA por procuração direta. */
+  const codProc=v('f-mut-proc-cod')||(procCGD?CGD_PROCURACAO:(solMut?solMut.codProcuracao:'…'));
+  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação da CAIXA pela procuração${procCGD?'':', conjugada com a consulta do substabelecimento,'} depositada${procCGD?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
   /* A alínea b) do artigo 4.º vem do template; o nome da lei vem da redação da
      compra e venda, porque aqui o Regime Jurídico não foi citado antes e o
      «referido» do template ficaria no ar. */
@@ -2555,7 +2595,7 @@ function comporMH(variante){
   termo.push({id:P+'t-rgpd',T:'',X:`Com consentimento dos outorgantes, procedi à recolha dos elementos de identificação e à reprodução dos documentos que serviram de base ao presente ato, nos termos da Lei n.º 83/2017, de 18 de agosto, ficando os mesmos arquivados pelo período legal de sete anos.`});
   const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
   if(arq)termo.push({id:P+'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
-  termo.push({id:P+'t-leitura',T:'',X:`O presente Documento Particular Autenticado foi lido em voz alta e explicado aos signatários, na presença simultânea de todos os outorgantes, os quais declararam encontrar-se plenamente esclarecidos quanto ao respetivo conteúdo, tendo dispensado a leitura do Documento Complementar por já haverem procedido previamente à sua leitura, reconhecendo-o, ainda assim, como parte integrante do presente contrato.`});
+  termo.push({id:P+'t-leitura',T:'',X:`O presente Termo, bem como o contrato anexo, foi lido em voz alta e explicado aos signatários, na presença simultânea de todos os outorgantes, os quais declararam encontrar-se plenamente esclarecidos quanto ao respetivo conteúdo, tendo dispensado a leitura do Documento Complementar por já haverem procedido previamente à sua leitura, reconhecendo-o, ainda assim, como parte integrante do presente contrato.`});
 
   /* ══════════════ CONTRATO ══════════════ */
   const contrato=[];
@@ -3306,7 +3346,7 @@ function funilMH(){
   const isFr=v('f-im-tipo')==='fracao';
   setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
   setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
-  ['g-im-artigo','g-im-freg-mat','g-im-vpt'].forEach(x=>setDisp(x,isFr?'flex':'none'));
+  ['g-im-artigo','g-im-freg-mat','g-im-vpt','g-im-vpt-ano'].forEach(x=>setDisp(x,isFr?'flex':'none'));
   setDisp('g-predios-extra','none');
   aplicarAreas();aplicarSnic();aplicarSeccao();
   const gm=document.getElementById('g-local-morada');
@@ -3393,7 +3433,7 @@ function atualizar(){
   setDisp('g-im-apph',isFr?'flex':'none');
   setDisp('g-condominio',isFr?'block':'none');
   setDisp('g-matrizes',isFr?'none':'block');
-  ['g-im-artigo','g-im-freg-mat','g-im-vpt'].forEach(x=>document.getElementById(x).style.display=isFr?'flex':'none');
+  ['g-im-artigo','g-im-freg-mat','g-im-vpt','g-im-vpt-ano'].forEach(x=>document.getElementById(x).style.display=isFr?'flex':'none');
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
   /* Fração e garagem é caso comum: os prédios adicionais servem também as frações. */
   setDisp('g-predios-extra','block');
