@@ -641,7 +641,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
     <div class="cond-block" style="margin-top:.7rem">
       <div class="cond-block-title">7.2 · Título urbanístico</div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">Artigo 4.º-A, n.º 14, do RJUE (DL 108/2026, em vigor desde 3 de agosto de 2026). A menção é obrigatória sob pena de anulabilidade do negócio.</div>
+      <div id="aviso-rjue" style="display:none;font-size:10.5px;color:#7A5A20;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:8px;padding:.5rem .6rem;margin-bottom:.5rem"></div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem" id="nota-rjue">Artigo 4.º-A, n.º 14, do RJUE (DL 108/2026, em vigor desde 3 de agosto de 2026). A menção é obrigatória sob pena de anulabilidade do negócio.</div>
       <div class="form-group form-full"><label class="form-label">Situação do imóvel <span>*</span></label>
         <select class="form-select" id="f-tu-caso" onchange="onTituloUrb();atualizar()">
           <option value="">— por responder —</option>
@@ -1027,6 +1028,23 @@ const CGD_PODERES={comp:'ponto segundo alínea 12) e ponto terceiro regra 2.ª',
 /* Capital social atual, confirmado pela Liliana. O TEMPL_MH_TOIC_CGD.docx traz
    €4 525 721 495,00, que está desatualizado — quem manda é esta constante.
    O extenso é derivado daqui, para não poder divergir do número. */
+/* ── TRANSIÇÃO DO REGIME URBANÍSTICO ──
+   Até esta data vale o artigo 19.º do DL 10/2024, que desconsiderou a situação
+   dos títulos urbanísticos nas transmissões e deixou à solicitadora o dever de
+   informar; a partir dela vale o artigo 4.º-A, n.º 14, do RJUE, na redação do
+   DL 108/2026, que exige a menção no contrato.
+   Manda a data do ato, e não a de hoje: um ato de julho regenerado em setembro
+   tem de sair com o regime que lhe era aplicável.
+   O diploma previa 3 de agosto de 2026, mas o Conselho de Ministros de 23 de
+   julho de 2026 aprovou o adiamento para 1 de outubro de 2026. Saíram ainda a
+   Declaração de Retificação n.º 29-A/2026/1, de 27 de julho, e a Portaria
+   n.º 320/2026/1, de 31 de julho, que entra em vigor com o DL 108/2026.
+   Havendo novo adiamento, muda-se esta linha e mais nada. */
+const RJUE_NOVO_DESDE='2026-10-01';
+function regimeNovoRJUE(){
+  const d=v('f-data-ato');
+  return d?d>=RJUE_NOVO_DESDE:true;
+}
 const CGD_CAPITAL='6.000.000.000,00';
 const capitalCGD=()=>`€${CGD_CAPITAL.replace(/\./g,' ')} (${valorExtenso(CGD_CAPITAL).toLowerCase()})`;
 /* A certidão comercial da CAIXA segue o mesmo padrão da procuração: constante
@@ -2947,9 +2965,16 @@ function compor(){
     +(onusTermo.length?'\n'+onusTermo.join('\n'):'')
     +(tu.termo?'\n'+tu.termo:'')
     /* Não sendo exibido o título, o termo leva só a advertência — a declaração
-       da parte vive no contrato. Confirmado pela Liliana. */
-    +((v('f-tu-caso')==='declarado'||v('f-tu-caso')==='nao-dispoe')
-      ?'\n— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;':'');
+       da parte vive no contrato. Confirmado pela Liliana.
+       A redação segue o regime em vigor à data do ato. */
+    /* Sempre que não haja documento de licença, de isenção ou certidão camarária
+       de anterioridade. Inclui o caso por responder: a falta de escolha não é
+       razão para o termo ficar calado sobre isto. */
+    +(!['apresentado','isento','anterior'].includes(v('f-tu-caso'))
+      ?(regimeNovoRJUE()
+        ?'\n— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;'
+        :'\n— nos termos do artigo 19.º do Decreto-Lei n.º 10/2024, de 8 de janeiro, as partes foram por mim informadas de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização;')
+      :'');
   const temRepresentacao=[...vend,...comps].some(c=>c.tipo!=='singular');
   termo.push({id:'t-verifiquei',T:'',
     X:`Verifiquei:\n${abertura}${extraVerif}`});
@@ -3532,6 +3557,11 @@ function atualizar(){
   setDisp('g-condominio',isFr?'block':'none');
   setDisp('g-matrizes',isFr?'none':'block');
   ['g-im-artigo','g-im-freg-mat','g-im-vpt','g-im-vpt-ano'].forEach(x=>document.getElementById(x).style.display=isFr?'flex':'none');
+  /* A nota diz qual o regime que se aplica à data do ato escolhida. */
+  aplicarRegimeTU();
+  setProp('nota-rjue','textContent',regimeNovoRJUE()
+    ?'Artigo 4.º-A, n.º 14, do RJUE, na redação do DL 108/2026. Não sendo exibido o título, o termo leva a advertência de que a situação urbanística não foi confirmada perante ti.'
+    :'À data deste ato vale ainda o artigo 19.º do DL 10/2024: não sendo exibido o título, o termo informa as partes de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização.');
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
   /* Fração e garagem é caso comum: os prédios adicionais servem também as frações. */
   setDisp('g-predios-extra','block');
@@ -4235,6 +4265,34 @@ function onCE(){
   /* A declaração provisória de isenção não tem validade — tem data de emissão. */
   setProp('rot-ce-data','textContent',isen?'Emitida em':'Válido até');
 }
+/* As hipóteses mudam com o regime aplicável à data do ato. Até 1 de outubro são
+   três; a partir daí voltam as cinco, com a declaração da parte no contrato. */
+const TU_ART19=[['','— por responder —'],
+  ['apresentado','Licença exibida — verifiquei-a'],
+  ['isento','Isenção de controlo prévio — arquivo-a'],
+  ['sem-doc','Sem documento — sai a advertência']];
+const TU_NOVO=[['','— por responder —'],
+  ['apresentado','Título apresentado — verifiquei-o'],
+  ['declarado','Transmitente declara que dispõe — não exibido'],
+  ['nao-dispoe','Transmitente declara que não dispõe de título'],
+  ['isento','Isento de controlo prévio'],
+  ['anterior','Anterior à exigência de licenciamento — certidão camarária']];
+function aplicarRegimeTU(){
+  const sel=document.getElementById('f-tu-caso');if(!sel)return;
+  const novo=regimeNovoRJUE();
+  const lista=novo?TU_NOVO:TU_ART19;
+  const marca=novo?'novo':'art19';
+  if(sel.dataset.regime!==marca){
+    const antes=sel.value;
+    sel.dataset.regime=marca;
+    sel.innerHTML=lista.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+    sel.value=lista.some(([v])=>v===antes)?antes:'';
+  }
+  setProp('aviso-rjue','textContent',novo
+    ?''
+    :'Em 1 de outubro de 2026 entra em vigor o DL 108/2026: a partir daí a declaração sobre o título urbanístico passa a constar do contrato, e voltam as hipóteses todas.');
+  setDisp('aviso-rjue',novo?'none':'block');
+}
 function onTituloUrb(){
   const c=v('f-tu-caso');
   const mostra=(cls,on,modo)=>document.querySelectorAll(cls).forEach(e=>e.style.display=on?modo:'none');
@@ -4251,8 +4309,20 @@ function certidaoVelha(){
 }
 function textosTituloUrb(){
   const c=v('f-tu-caso');
-  if(!c)return{contrato:'',termo:''};
   const d=(id)=>v(id)?dPT(v(id)):'…';
+  /* ── REGIME DO ARTIGO 19.º · até 1 de outubro de 2026 ──
+     Nada vai ao contrato: a lei desligou o título urbanístico do ato
+     transacional, e a menção no contrato é exigência do DL 108/2026, que ainda
+     não vigora. Três hipóteses, e todas se resolvem no termo — exibido, isento,
+     ou sem documento, caso em que sai a advertência. */
+  if(!regimeNovoRJUE()){
+    if(c==='apresentado')return{contrato:'',
+      termo:`— o título urbanístico do imóvel, ${v('f-tu-tipo')||'licença de utilização'} n.º ${v('f-tu-num')||'…'}, de ${d('f-tu-data')}, da Câmara Municipal de ${v('f-tu-camara')||'…'}, que me foi apresentado;`};
+    if(c==='isento')return{contrato:'',
+      termo:`— a isenção de controlo prévio da operação urbanística, nos termos ${v('f-tu-norma')||'…'}, que arquivo;`};
+    return{contrato:'',termo:''};   /* sem documento: sai só a advertência */
+  }
+  if(!c)return{contrato:'',termo:''};
   if(c==='apresentado')
     return{
       contrato:`O imóvel dispõe de ${v('f-tu-tipo')||'licença de utilização'} n.º ${v('f-tu-num')||'…'}, de ${d('f-tu-data')}, da Câmara Municipal de ${v('f-tu-camara')||'…'}.`,
