@@ -3103,7 +3103,7 @@ function render(){
     let conteudo=manual?manualHTML(b.id):aplicarMarcas(esc(b.X),b.id);
     /* Só o nome dos outorgantes sai a negrito. */
     if(!manual&&b.negrito&&b.negrito.length)
-      b.negrito.forEach(n=>{const a=esc(n);if(a)conteudo=conteudo.split(a).join(`<b>${a}</b>`);});
+      b.negrito.forEach(n=>{const a=esc(n);if(a)conteudo=conteudo.split(a).join(`<b class="auto">${a}</b>`);});
     const nota=notas[b.id];
     const titMan=titulos[b.id]!==undefined;
     return`<div class="bloco${manual||titMan?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
@@ -3719,11 +3719,58 @@ function blocosFinais(i){
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
-  let nMarcas=0;
-  document.querySelectorAll('.b-texto').forEach(el=>{
-    if(el.querySelector('[style*="background"],b,strong,.mark-hl'))nMarcas++;
+  /* Só contam as marcas postas à mão. O negrito dos nomes dos outorgantes é
+     automático e sai sempre; contá-lo fazia o aviso disparar em todos os
+     documentos. Lê-se do registo das marcas, e não do HTML da folha, que não
+     distingue um negrito do outro. */
+  const comMarca=new Set(Object.keys(marcas).filter(id=>marcas[id]&&marcas[id].length));
+  Object.keys(manuais).forEach(id=>{
+    const m=manuais[id];
+    const h=(m&&typeof m==='object'&&m.html)||'';
+    if(/<(b|strong)\b|background/i.test(h))comMarca.add(id);
   });
-  return{nNotas,nMarcas};
+  return{nNotas,nMarcas:comMarca.size};
+}
+/* ── BIBLIOTECAS DE GERAÇÃO ──
+   O PizZip e o docxtemplater vêm de um CDN. Se o cdnjs não responder — rede da
+   firma, bloqueio, ficheiro em falta —, tenta-se o jsDelivr e o unpkg antes de
+   desistir. O docxtemplater ora se apresenta como «docxtemplater» ora como
+   «Docxtemplater», conforme a compilação: aceitam-se os dois nomes, que era
+   coisa que o teste antigo não fazia e dava erro com a biblioteca já carregada. */
+const zipCarregado=()=>window.PizZip;
+const docxCarregado=()=>window.docxtemplater||window.Docxtemplater;
+function carregarScript(url){
+  return new Promise((ok,falha)=>{
+    const el=document.createElement('script');
+    el.src=url;el.async=false;
+    el.onload=()=>ok(url);
+    el.onerror=()=>falha(new Error(url));
+    document.head.appendChild(el);
+  });
+}
+async function tentarUrls(urls,pronto){
+  for(const u of urls){
+    if(pronto())return true;
+    try{await carregarScript(u);}catch(e){continue;}
+    if(pronto())return true;
+  }
+  return pronto();
+}
+async function garantirBibliotecas(){
+  if(zipCarregado()&&docxCarregado())return;
+  showToast('A carregar as bibliotecas de geração…','');
+  const okZip=await tentarUrls([
+    'https://cdn.jsdelivr.net/npm/pizzip@3.1.6/dist/pizzip.min.js',
+    'https://unpkg.com/pizzip@3.1.6/dist/pizzip.js'
+  ],zipCarregado);
+  const okDocx=await tentarUrls([
+    'https://cdn.jsdelivr.net/npm/docxtemplater@3.42.0/build/docxtemplater.js',
+    'https://unpkg.com/docxtemplater@3.42.0/build/docxtemplater.js'
+  ],docxCarregado);
+  if(!okZip||!okDocx){
+    const faltam=[!okZip?'PizZip':'',!okDocx?'docxtemplater':''].filter(Boolean).join(' e ');
+    throw new Error(`não consegui carregar ${faltam}. Tentei o cdnjs, o jsDelivr e o unpkg — é provável que a rede esteja a bloquear estes endereços.`);
+  }
 }
 async function gerarWord(){
   try{
@@ -3734,7 +3781,7 @@ async function gerarWord(){
       if(p.nMarcas)partes.push(`${p.nMarcas} bloco${p.nMarcas>1?'s':''} com texto marcado/negrito`);
       if(!confirm(`Atenção: o contrato ainda tem ${partes.join(' e ')} por resolver.\n\nAs notas e as marcas NÃO saem no Word — são só de trabalho.\n\nGerar mesmo assim?`))return;
     }
-    if(typeof PizZip==='undefined'||typeof docxtemplater==='undefined')throw new Error('bibliotecas de geração não carregaram — verifica a ligação à internet');
+    await garantirBibliotecas();
     await renovarToken();
     const dr=await graphFetch(`${GRAPH_BASE}/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives`);
     if(!dr.ok)throw new Error('sem acesso ao SharePoint ('+dr.status+')');
@@ -3753,7 +3800,7 @@ async function gerarWord(){
     const sufNome=`${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'');
     const gerados=[];
     for(let i=0;i<nDocs;i++){
-      const zipI=new PizZip(buf);
+      const zipI=new (window.PizZip)(buf);
       const docI=new DocxClass(zipI,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
       docI.render(blocosFinais(i));
       const blob=docI.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
