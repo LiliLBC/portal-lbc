@@ -6,8 +6,6 @@
 <title>Gerador CT Compra e Venda Imóveis — LBC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.42.0/docxtemplater.js"></script>
 <style>
 :root{--bg:#F7F6F3;--surface:#fff;--surface2:#F2F1EE;--border:#E4E2DC;--border-strong:#C8C5BC;--text:#1A1916;--text-muted:#6B6860;--text-faint:#9D9B94;--accent:#7B6EAF;--accent-light:#EDE9F8;--accent-dark:#4F4580;--green:#2D7D4F;--green-light:#E8F5EE;--amber:#A05C1A;--amber-light:#FDF3E3;--red:#B53A2F;--red-light:#FDECEA;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -3759,13 +3757,18 @@ async function tentarUrls(urls,pronto){
 async function garantirBibliotecas(){
   if(zipCarregado()&&docxCarregado())return;
   showToast('A carregar as bibliotecas de geração…','');
+  /* Primeiro o unpkg, nas versões que o mh.html usa: são as que comprovadamente
+     passam na rede do escritório. O cdnjs fica em último — era o que estava cá
+     sozinho e é o que esta rede trava. */
   const okZip=await tentarUrls([
-    'https://cdn.jsdelivr.net/npm/pizzip@3.1.6/dist/pizzip.min.js',
-    'https://unpkg.com/pizzip@3.1.6/dist/pizzip.js'
+    'https://unpkg.com/pizzip@3.1.4/dist/pizzip.js',
+    'https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js'
   ],zipCarregado);
   const okDocx=await tentarUrls([
-    'https://cdn.jsdelivr.net/npm/docxtemplater@3.42.0/build/docxtemplater.js',
-    'https://unpkg.com/docxtemplater@3.42.0/build/docxtemplater.js'
+    'https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js',
+    'https://cdn.jsdelivr.net/npm/docxtemplater@3.44.0/build/docxtemplater.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.42.0/docxtemplater.js'
   ],docxCarregado);
   if(!okZip||!okDocx){
     const faltam=[!okZip?'PizZip':'',!okDocx?'docxtemplater':''].filter(Boolean).join(' e ');
@@ -3790,7 +3793,7 @@ async function gerarWord(){
     const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA.docx:/content`);
     if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA.docx — carrega o template-casca para essa pasta');
     const buf=await fr.arrayBuffer();
-    const DocxClass=window.docxtemplater||window.Docxtemplater;
+    const DocxClass=window.Docxtemplater||window.docxtemplater;
     /* Um ficheiro por contrato: com o conexo ligado saem dois Words, cada um
        com o seu termo, porque o Imposto do Selo e o depósito são de cada um. */
     const R0=compor();
