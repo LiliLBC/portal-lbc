@@ -439,6 +439,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <button type="button" class="btn btn-sm" title="Abrir o Predial Online"
             onclick="window.open('https://www.predialonline.pt/PredialOnline/FRM005RPOLCP_input.action','_blank','noopener')" style="flex-shrink:0;padding:0 .6rem">🔍</button>
         </div></div>
+      <!-- A validade anda com o código: são o mesmo documento. -->
+      <div class="form-group"><label class="form-label">Certidão permanente válida até</label>
+        <input type="date" class="form-input" id="f-im-cert-val" onchange="atualizar()"></div>
       <div class="form-group" id="g-im-artigo"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
       <div class="form-group" id="g-im-freg-mat"><label class="form-label">Freguesia (matriz) <span>*</span></label><input class="form-input" id="f-im-freg-mat" placeholder="Ex: União das Freguesias de Malagueira e Horta das Figueiras"></div>
       <div class="form-group" id="g-im-vpt"><label class="form-label">VPT (€) <span>*</span></label><input class="form-input" id="f-im-vpt" placeholder="Ex: 39314,90"></div>
@@ -465,8 +468,6 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <input type="date" class="form-input" id="f-im-cad-data" onchange="atualizar()"></div>
         <div class="form-group f-im-misto" style="display:none"><label class="form-label">Caderneta urbana emitida em</label>
           <input type="date" class="form-input" id="f-im-cad-data-u" onchange="atualizar()"></div>
-        <div class="form-group"><label class="form-label">Certidão permanente válida até</label>
-          <input type="date" class="form-input" id="f-im-cert-val" onchange="atualizar()"></div>
         <div class="form-group f-im-snic"><label class="form-label">Ficha de prédio n.º (SNIC)</label>
           <input class="form-input" id="f-im-snic-ficha" placeholder="Ex: 314072/2026" oninput="atualizar()"></div>
         <div class="form-group f-im-snic"><label class="form-label">NIC</label>
@@ -605,6 +606,28 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
         <div class="form-group form-full rem-quem" style="display:none"><label class="form-label">Vendedor que recebe</label>
           <input class="form-input" id="f-rem-quem" oninput="atualizar()" style="text-transform:uppercase" placeholder="Nome do vendedor a quem o título é emitido"></div>
+      </div>
+    </div>
+
+    <!-- 6.3 · APB -->
+    <div class="cond-block" style="margin-top:.7rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
+        <div><div class="cond-block-title" style="margin-bottom:2px">6.3 · Pagamento APB</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">Liquidação do capital em dívida da parte vendedora, ao abrigo do protocolo</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="t-apb" onchange="atualizar()"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="g-apb" style="display:none;margin-top:.7rem">
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Montante (€) <span>*</span></label>
+            <input class="form-input" id="f-apb-valor" oninput="atualizar()" placeholder="Ex: 142350,22"></div>
+          <div class="form-group"><label class="form-label">Conta dos mutuários <span>*</span></label>
+            <input class="form-input" id="f-apb-origem" oninput="atualizar()" placeholder="N.º da conta na CAIXA"></div>
+          <div class="form-group form-full"><label class="form-label">IBAN de destino — OIC <span>*</span></label>
+            <input class="form-input" id="f-apb-iban" oninput="atualizar()" placeholder="PT50 …"></div>
+          <div class="form-group form-full"><label class="form-label">Banco titular da conta de destino</label>
+            <input class="form-input" id="f-apb-banco" oninput="atualizar()" placeholder="Vem do ónus que se cancela">
+            <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="apb-nota-banco"></div></div>
+        </div>
       </div>
     </div>
 
@@ -882,7 +905,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           </div></div>
         <div class="form-group"><label class="form-label">Certidão válida até</label>
           <input type="date" class="form-input" id="f-mut-crc-val" onchange="atualizar()"></div>
-        <div class="form-group form-full"><label class="form-label">Poderes invocados</label>
+        <div class="form-group mut-cgd" style="display:none" form-full"><label class="form-label">Poderes invocados</label>
           <input class="form-input" id="f-mut-proc-poderes" oninput="atualizar()"></div>
         <div class="form-group form-full"><label class="form-label">Representação — texto</label>
           <textarea class="form-input" id="f-mut-repr" rows="2" oninput="atualizar()"></textarea></div>
@@ -907,8 +930,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <input class="form-input" id="f-mh-despesas" oninput="atualizar()" placeholder="Ex: 1500"></div>
         <div class="form-group form-full"><label class="form-label">Montante máximo assegurado pela hipoteca (€) <span>*</span></label>
           <input class="form-input" id="f-mh-hipoteca" oninput="atualizar()" placeholder="Ex: 250000"></div>
-        <div class="form-group form-full"><label class="form-label">Cálculo do Imposto do Selo (verba 17)</label>
-          <input class="form-input" id="f-mh-calculo-is" oninput="atualizar()" placeholder="Memória de cálculo, se quiseres registá-la"></div>
+        <div class="form-group form-full"><label class="form-label">Imposto do Selo — verba 17.1.3 (&euro;)</label>
+          <input class="form-input" id="f-mh-calculo-is" oninput="atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-is-mh"></div></div>
         <div class="form-group form-full" style="font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
           As cláusulas do mútuo e da garantia hipotecária são geradas a partir destes campos, com os valores por extenso.</div>
       </div>
@@ -2264,12 +2288,17 @@ function addOnus(dados){
           <option value="nao">Não se cancela neste ato — mantém-se</option>
           <option value="fisico">Autorização de cancelamento em papel — arquivo</option>
           <option value="codigo">Autorização de cancelamento por código</option>
-          <option value="renuncia">Renúncia ⚠ sem redação</option>
+          <option value="renuncia">Renúncia da CAIXA à hipoteca anterior</option>
         </select></div>
       <div class="form-group onus-fis" style="display:none"><label class="form-label">Emitida em</label>
         <input type="date" class="form-input" id="${id}-data" onchange="atualizar()"></div>
       <div class="form-group onus-cod" style="display:none"><label class="form-label">Código</label>
-        <input class="form-input" id="${id}-codigo" oninput="atualizar()"></div>
+        <div style="display:flex;gap:.35rem;align-items:stretch">
+          <input class="form-input" id="${id}-codigo" oninput="atualizar()" style="flex:1;min-width:0">
+          <button type="button" class="btn btn-sm" title="Consultar a autorização de cancelamento no Predial Online"
+            onclick="window.open('https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action','_blank','noopener')"
+            style="flex-shrink:0;padding:0 .6rem">🔍</button>
+        </div></div>
     </div>`;
   c.appendChild(div);
   if(dados)['desc','ap','ent','nif','canc','data','codigo'].forEach(k=>{
@@ -2306,15 +2335,14 @@ function onOnus(){
 /* ── ÓNUS · textos ──
    CONTRATO — a menção ao ónus e ao seu cancelamento.
    TERMO    — a verificação da autorização de cancelamento (art. 56.º CRP).
-   ⚠ A redação do cancelamento é a tua, do mh.html; troquei «O imóvel ora
-   hipotecado encontra-se onerado com hipoteca voluntária» por «O Imóvel
-   encontra-se onerado com {ónus}», porque na compra e venda o imóvel não está
-   a ser hipotecado e o ónus pode não ser uma hipoteca. O resto é palavra
-   por palavra. */
+   A redação do cancelamento é a da Liliana, do mh.html. Na compra e venda o
+   sujeito muda para «O Imóvel», por aí o imóvel não estar a ser hipotecado e o
+   ónus poder não ser uma hipoteca; no mútuo fica palavra por palavra. */
 function textoOnusContrato(o,mh){
   if(o.canc==='nao'||o.canc==='renuncia')return'';
-  /* No mútuo o imóvel está a ser hipotecado e a frase é a do template, palavra
-     por palavra. Na compra e venda não está, e o sujeito muda para «O Imóvel». */
+  /* No mútuo o imóvel está a ser hipotecado e a frase é a do mh.html, palavra
+     por palavra. Na compra e venda não está — está a ser vendido —, e o sujeito
+     muda para «O Imóvel». Confirmado pela Liliana. */
   const cab=mh?'O imóvel ora hipotecado encontra-se onerado com':'O Imóvel encontra-se onerado com';
   return`${cab} ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, cujo cancelamento é assegurado com o presente ato.`;
 }
@@ -2551,9 +2579,8 @@ function comporMH(variante){
     :'';
 
   /* ── 10.4 · distrate e banco hipotecante (redações do mh.html) ──
-     ⚠ Por validar: sendo dois contratos conexos, a autorização de cancelamento
-     é uma só e ficou no termo do TOIC, que é o crédito que se transfere. Diz-me
-     se preferes que saia também no termo do UNO.                              */
+     Sendo dois contratos conexos, a autorização de cancelamento é uma só e fica
+     no termo do TOIC, que é o crédito que se transfere. Confirmado. */
   const onusLista=lerOnus();
   const clDistrate=toic?onusLista.map(textoOnusTermo).filter(Boolean):[];
   const clBancoHip=toic?onusLista.map(o=>textoOnusContrato(o,true)).filter(Boolean):[];
@@ -2639,8 +2666,9 @@ function comporMH(variante){
   if(!outraIC)linhas.push(`— Os poderes de representação da CAIXA GERAL DE DEPÓSITOS, S.A. através da Certidão de Registo Comercial com o número de acesso ${crcCod}, disponível em www.eportugal.gov.pt, válida até ${crcVal}, verificando-se ainda a exclusão da Caixa Geral de Depósitos, S.A. do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º da Lei n.º 89/2017, de 21 de agosto;`);
   /* Mutuário ou garante que seja sociedade: certidão comercial e RCBE, com a
      mesma redação da compra e venda. Faltava por inteiro neste tronco.
-     ⚠ Por validar: os rótulos «PARTE MUTUÁRIA» e «TERCEIRA CONTRATANTE» são
-     escolha minha para encher a variável da tua redação. */
+     A variável da redação só previa PARTE VENDEDORA e PARTE COMPRADORA; para
+     estes dois casos vale PARTE MUTUÁRIA e TERCEIRA CONTRATANTE, confirmado
+     pela Liliana. */
   mut.map(o=>linhaEmpresa(o,'PARTE MUTUÁRIA')).filter(Boolean).forEach(l=>linhas.push('— '+l));
   quartos.map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
   assentos.forEach(l=>linhas.push(l));
@@ -2856,18 +2884,39 @@ function compor(){
   const letras='abcdefghijklmnopqrstuvwxyz';
   const rem=lerRemanescente();
   const alineas=lerPagamentos().map((p,i)=>textoPagamento(p,letras[i]||'?',rem&&rem.integral));
-  const txtRem=textoRemanescente(rem);
+  /* A imputação corre por alíneas seguidas: primeiro o sinal e os reforços,
+     depois o APB, e o remanescente a fechar. A letra do APB e a do remanescente
+     continuam a contagem dos pagamentos anteriores. */
+  let nAlinea=alineas.length;
+  const letraAPB=chk('t-apb')?letras[nAlinea++]||'?':'';
+  const letraRem=letras[nAlinea]||'?';
+  const txtRem=textoRemanescente(rem,alineas.length||chk('t-apb')?letraRem:'');
   const txtUnica=textoViaUnica(rem,generosOutorgantes(vend).length);
+  /* ── 6.3 · APB ──
+     Redação da Liliana. Forma adicional de pagamento: a CAIXA transfere da
+     conta dos mutuários para o banco que detém o ónus, liquidando o capital em
+     dívida da parte vendedora. Fecha a cláusula do preço, depois das restantes
+     formas. O banco vem do ónus que se cancela, salvo indicação em contrário. */
+  const txtAPB=chk('t-apb')
+    ? `${letraAPB?letraAPB+') ':''}Na presente data e ao abrigo do protocolo APB, a CAIXA transfere o montante de ${v('f-apb-valor')?`${fmtValor(parseValor(v('f-apb-valor')))} EUROS (${valorExtenso(v('f-apb-valor')).toLowerCase()})`:'…'}, da conta dos mutuários com o número ${v('f-apb-origem')||'…'}, para a conta com o IBAN ${v('f-apb-iban')||'…'}, titulada pelo banco ${v('f-apb-banco')||bancoACancelar()||'…'}, para efeitos de liquidação do capital em dívida da PARTE VENDEDORA referente à aquisição deste imóvel.`
+    : '';
+
   /* Com sinal, o preço reparte-se em alíneas; sem sinal, paga-se de uma vez
      com a outorga e o meio entra logo na primeira frase. */
   const base=`Entre os contratantes ficou convencionado o preço de ${preco?fmtValor(parseValor(preco)):'…'} (${preco?valorExtenso(preco).toLowerCase():'…'}), que é pago na moeda euro`;
-  const repartido=rem&&rem.integral&&alineas.length;
+  /* Havendo APB, o preço reparte-se mesmo sem sinal: parte vai ao banco, o
+     resto à parte vendedora. Sem isto, a frase de abertura dizia que o preço
+     todo era pago por um meio só, e logo a seguir vinha a alínea do APB. */
+  const repartido=rem&&rem.integral&&(alineas.length||chk('t-apb'));
   const txtPreco=(rem&&rem.integral
       ?(repartido
         ?`${base} com a outorga do presente contrato, da seguinte forma:`
         :`${base} com a outorga do presente contrato mediante ${descricaoMeio(rem)}.`)
       :`${base} e imputado da seguinte forma:`)
     +(alineas.length?`\n${alineas.join('\n')}`:'')
+    /* O APB vem antes do remanescente: primeiro liquida-se o que a parte
+       vendedora deve ao banco, e só o que sobra é que lhe é entregue. */
+    +(txtAPB?`\n${txtAPB}`:'')
     +(txtRem?`\n${txtRem}`:'')
     +(txtUnica?`\n${txtUnica}`:'');
 
@@ -2930,8 +2979,8 @@ function compor(){
   /* A verificação segue a empresa onde quer que ela outorgue, e não só nas duas
      partes principais: um garante ou fiador que seja sociedade precisa da mesma
      certidão e do mesmo RCBE.
-     ⚠ Por validar: o rótulo «TERCEIRA CONTRATANTE» é escolha minha para encher
-     a variável da tua redação, que só tinha PARTE VENDEDORA e PARTE COMPRADORA. */
+     O rótulo TERCEIRA CONTRATANTE cobre a sociedade que entra como garante ou
+     fiadora, confirmado pela Liliana. */
   const empresas=[...vend.map(o=>linhaEmpresa(o,'PARTE VENDEDORA')),
                   ...comps.map(o=>linhaEmpresa(o,'PARTE COMPRADORA')),
                   ...lerQuartos().map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE'))].filter(Boolean);
@@ -3008,8 +3057,8 @@ function compor(){
   termo.push({id:'t-rgpd',T:'',X:`Com o consentimento dos outorgantes, foram recolhidos e reproduzidos os documentos de identificação nos termos da Lei n.º 83/2017, de 18 de agosto, arquivados pelo prazo legal de 7 anos.`});
   termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
   
-  if(ehCVMH&&v('f-mh-calculo-is'))
-    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que o Imposto de Selo de verba 17.1.3, da TGIS será liquidado pela CAIXA no valor de ${v('f-mh-calculo-is')}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
+  if(ehCVMH&&seloMutuo().valor)
+    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que o Imposto de Selo de verba 17.1.3, da TGIS será liquidado pela CAIXA no valor de ${seloMutuo().valor}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:'t-leitura',T:'',X:fechoTermo(ehCVMH)});
 
@@ -4035,6 +4084,19 @@ function onRemMeio(){
   setProp('btn-add-pag','textContent',comSinal?'+ Adicionar reforço de sinal':'+ Adicionar pagamento a vendedor');
   if(repartido&&!document.querySelectorAll('.pag-block').length)addPagamento();
   setProp('titulo-pagamento','textContent',comSinal?'6.1.1 · Remanescente do preço':'6.2 · Pagamento integral');
+  /* 6.3 · APB — forma adicional, que convive com o 6.1 e o 6.2. O banco de
+     destino é o titular do ónus que se cancela, e por isso vem de lá; o campo
+     serve para corrigir quando não coincidir. */
+  const selo=seloMutuo();
+  setProp('nota-is-mh','textContent',
+    selo.origem==='escrito'?'A usar o valor que escreveste.'
+    :selo.origem==='calculado'?`Vazio, usa ${selo.valor} \u2014 6/1000 sobre o montante do mútuo.`
+    :'Preenche o montante do mútuo para o valor ser calculado.');
+  setDisp('g-apb',chk('t-apb')?'block':'none');
+  const bancoOnus=bancoACancelar();
+  setProp('apb-nota-banco','textContent',bancoOnus
+    ?`Vazio, usa «${bancoOnus}», do ónus que se cancela.`
+    :'Sem ónus com cancelamento indicado no bloco do imóvel — preenche à mão.');
   setDisp('g-rem-valor',comSinal?'flex':'none');
   setDisp('g-rem-quando',comSinal?'flex':'none');
   const meio=v('f-rem-meio')||'transferencia';
@@ -4076,11 +4138,11 @@ function descricaoMeio(r){
     return`cheque ${r['cheque-tipo']||'bancário'} sacado sobre o banco ${r.banco||'…'} à ordem de ${r.ordem||'…'} com o número ${r['cheque-num']||'…'}`;
   return'numerário entregue na minha presença';
 }
-function textoRemanescente(r){
+function textoRemanescente(r,letra){
   if(!r||r.integral||!r.valor)return'';
   const val=`${fmtValor(parseValor(r.valor))} (${valorExtenso(r.valor).toLowerCase()})`;
   const quando=r.quando==='ja'?'foi já pago':'é pago com a outorga do presente contrato';
-  return`O remanescente do preço, no valor de ${val}, ${quando} mediante ${descricaoMeio(r)};`;
+  return`${letra?letra+') ':''}O remanescente do preço, no valor de ${val}, ${quando} mediante ${descricaoMeio(r)};`;
 }
 /* ── VIA ÚNICA ──
    Vários vendedores e um só título: um recebe pelos demais e fica obrigado a
@@ -4122,6 +4184,17 @@ function flexaoMutuario(n){
 }
 /* ── CLÁUSULAS DO MÚTUO E DA HIPOTECA ──
    Redação do TEMPL_CVMH_CGD_v2.docx, com os valores formatados e por extenso. */
+/* ── IMPOSTO DO SELO DO MÚTUO ──
+   Verba 17.1.3 da TGIS: montante do empréstimo a 6/1000, sempre, sem exceções
+   pelo prazo — decisão da Liliana. O campo continua a poder ser escrito à mão,
+   e o que lá estiver manda. */
+function seloMutuo(){
+  const montante=parseValor(v('f-mh-montante'));
+  const escrito=v('f-mh-calculo-is');
+  if(escrito)return{valor:escrito,origem:'escrito'};
+  if(!montante)return{valor:'',origem:'sem-montante'};
+  return{valor:fmtValor(montante*6/1000)+' €',origem:'calculado'};
+}
 function textosMH(nComps){
   if(!(atoEscolhido()==='cv'&&chk('t-mh')))return[];
   const S=flexaoMutuario(nComps);
@@ -4180,12 +4253,18 @@ function semearCertidaoCGD(){
 }
 function onMutQuem(){
   const q=v('f-mut-quem')||'liliana';
+  /* Os poderes invocados só se citam quando quem outorga é procurador da CAIXA:
+     a solicitadora outorga por procuração substabelecida, e aí é o código que
+     identifica os poderes, não a enumeração das alíneas. */
   document.querySelectorAll('.mut-cgd').forEach(e=>e.style.display=q==='cgd'?'block':'none');
   const p=procMutuante(q);
   const c=document.getElementById('f-mut-proc-cod');
   const d=document.getElementById('f-mut-proc-poderes');
+  /* Ao trocar de procurador, o código muda mesmo que já lá estivesse escrito —
+     cada um tem o seu, e manter o anterior seria pôr no termo o código de
+     outra pessoa. Só se respeita o que a Liliana tenha escrito à mão. */
   if(c&&!c.dataset.tocado)c.value=p.cod||'';
-  if(d&&!d.dataset.tocado)d.value=p.pod||'';
+  if(d)d.value=q==='cgd'?(d.dataset.tocado?d.value:(p.pod||'')):'';
 }
 function onMutuante(){
   document.querySelectorAll('.mut-outro').forEach(e=>e.style.display=v('f-mutuante')==='outro'?'flex':'none');
@@ -4648,6 +4727,19 @@ function calcularAlertas(){
   /* ── Preferência dos confinantes · só na compra e venda, com rústico ── */
   if(atoEscolhido()==='cv'&&temMatrizRustica()&&!v('f-confinantes'))
     push('confinantes','bloqueio','Imóvel','Prédio rústico ou misto sem hipótese escolhida quanto à preferência dos confinantes — não sai cláusula.');
+
+  /* ── 6.3 · APB ── */
+  if(chk('t-apb')){
+    if(!v('f-apb-valor'))push('apb-valor','bloqueio','Preço','Pagamento APB sem montante.');
+    if(!v('f-apb-origem'))push('apb-origem','bloqueio','Preço','Pagamento APB sem a conta dos mutuários.');
+    if(!v('f-apb-iban'))push('apb-iban','bloqueio','Preço','Pagamento APB sem o IBAN de destino.');
+    if(!v('f-apb-banco')&&!bancoACancelar())
+      push('apb-banco','bloqueio','Preço','Pagamento APB sem o banco de destino — não há ónus a cancelar de onde o ir buscar.');
+    const soma=parseValor(v('f-apb-valor'));
+    const preco=parseValor(v('f-preco'));
+    if(soma&&preco&&soma>preco)
+      push('apb-excede','aviso','Preço','O montante do APB excede o preço — confirma os valores.');
+  }
 
   /* ── Ónus e encargos · secção do imóvel, comum aos dois troncos ── */
   if(chk('t-onus')){
