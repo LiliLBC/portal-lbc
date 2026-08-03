@@ -931,7 +931,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group form-full"><label class="form-label">Montante máximo assegurado pela hipoteca (€) <span>*</span></label>
           <input class="form-input" id="f-mh-hipoteca" oninput="atualizar()" placeholder="Ex: 250000"></div>
         <div class="form-group form-full"><label class="form-label">Imposto do Selo — verba 17.1.3 (&euro;)</label>
-          <input class="form-input" id="f-mh-calculo-is" oninput="atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
+          <input class="form-input" id="f-mh-calculo-is" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-is-mh"></div></div>
         <div class="form-group form-full" style="font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
           As cláusulas do mútuo e da garantia hipotecária são geradas a partir destes campos, com os valores por extenso.</div>
@@ -2958,6 +2958,9 @@ function compor(){
   termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram os seguintes outorgantes:`});
   termo.push({id:'t-primeiro',T:v('f-desig-vend')||'PRIMEIRO',X:txtPrimeiro,negrito:negritoVend});
   termo.push({id:'t-segunda',T:tituloSeg,X:txtSegunda,negrito:negritoComp});
+  /* Marca do sítio onde a TERCEIRA e os QUARTOS entram: a seguir aos primeiros
+     e segundos, antes de qualquer verificação. */
+  const iOutorgantes=termo.length;
   /* ── RAMO CVMH ── */
   const ehCVMH=atoEscolhido()==='cv'&&chk('t-mh');
   const quartos=ehCVMH?lerQuartos():[];
@@ -3025,13 +3028,19 @@ function compor(){
         :'\n— nos termos do artigo 19.º do Decreto-Lei n.º 10/2024, de 8 de janeiro, as partes foram por mim informadas de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização;')
       :'');
   const temRepresentacao=[...vend,...comps].some(c=>c.tipo!=='singular');
-  termo.push({id:'t-verifiquei',T:'',
-    X:`Verifiquei:\n${abertura}${extraVerif}`});
+  /* ── ORDEM DO TERMO ──
+     Comparecem todos primeiro — primeiros, segundos, terceira e quartos —, e só
+     depois vem o que a solicitadora verificou, arquivou e advertiu. Estava ao
+     contrário: a TERCEIRA e os QUARTOS apareciam depois do «Verifiquei». */
+  const depoisOutorgantes=[];
   if(ehCVMH){
-    termo.push({id:'t-terceira',T:'TERCEIRA',X:txtMutuante});
-    if(quartos.length)termo.push({id:'t-quartos',T:quartos.length>1?'QUARTOS':'QUARTO',
+    depoisOutorgantes.push({id:'t-terceira',T:'TERCEIRA',X:txtMutuante});
+    if(quartos.length)depoisOutorgantes.push({id:'t-quartos',T:quartos.length>1?'QUARTOS':'QUARTO',
       X:quartos.map(textoOutorgante).join(';\n')+`, adiante designad${quartos.length>1?'os':'o'} por Quart${quartos.length>1?'os':'o'} Outorgante${quartos.length>1?'s':''}.`});
   }
+  /* Os outorgantes entram no seu lugar; o «Verifiquei» vem a seguir. */
+  termo.splice(iOutorgantes,0,...depoisOutorgantes);
+  termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${abertura}${extraVerif}`});
   if(empresas.length)termo.push({id:'t-verif-empresa',T:'',X:empresas.join('\n')});
   /* ── TRATO SUCESSIVO · legitimidade e imposto do selo por óbito (termo) ── */
   if(ts.legitimidade)termo.push({id:'t-trato-suc',T:'',X:`Verifiquei ainda:\n${ts.legitimidade}`});
@@ -4087,10 +4096,14 @@ function onRemMeio(){
   /* 6.3 · APB — forma adicional, que convive com o 6.1 e o 6.2. O banco de
      destino é o titular do ónus que se cancela, e por isso vem de lá; o campo
      serve para corrigir quando não coincidir. */
+  /* O valor calculado aparece no próprio campo, não só na nota. Apagando-o,
+     volta a ser calculado; escrevendo outro, fica o que se escreveu. */
   const selo=seloMutuo();
+  const elIS=document.getElementById('f-mh-calculo-is');
+  if(elIS&&!elIS.dataset.tocado&&elIS.value!==selo.valor)elIS.value=selo.valor;
   setProp('nota-is-mh','textContent',
-    selo.origem==='escrito'?'A usar o valor que escreveste.'
-    :selo.origem==='calculado'?`Vazio, usa ${selo.valor} \u2014 6/1000 sobre o montante do mútuo.`
+    selo.origem==='escrito'?'Valor escrito à mão. Apaga-o para voltar ao cálculo.'
+    :selo.origem==='calculado'?'Calculado a 6/1000 sobre o montante do mútuo.'
     :'Preenche o montante do mútuo para o valor ser calculado.');
   setDisp('g-apb',chk('t-apb')?'block':'none');
   const bancoOnus=bancoACancelar();
@@ -4190,8 +4203,11 @@ function flexaoMutuario(n){
    e o que lá estiver manda. */
 function seloMutuo(){
   const montante=parseValor(v('f-mh-montante'));
-  const escrito=v('f-mh-calculo-is');
-  if(escrito)return{valor:escrito,origem:'escrito'};
+  const el=document.getElementById('f-mh-calculo-is');
+  /* O valor escrito à mão só manda depois de lhe tocarem. Sem isso, o campo
+     mostra o cálculo — e mostrá-lo é diferente de o dar por escolhido. */
+  if(el&&el.dataset.tocado&&el.value.trim())
+    return{valor:el.value.trim(),origem:'escrito'};
   if(!montante)return{valor:'',origem:'sem-montante'};
   return{valor:fmtValor(montante*6/1000)+' €',origem:'calculado'};
 }
