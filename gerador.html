@@ -2966,13 +2966,22 @@ function compor(){
   const quartos=ehCVMH?lerQuartos():[];
   const fiadores=quartos.filter(q=>q.qualidade==='fiador'||q.qualidade==='ambos');
   const garantes=quartos.filter(q=>q.qualidade==='garante'||q.qualidade==='ambos');
+  /* No contrato a CAIXA vai em forma curta, como as restantes partes: pessoa
+     coletiva, quem a representa em identificação simplificada, e a designação. */
+  const txtMutuanteCurto=(()=>{
+    if(!ehCVMH)return'';
+    if(v('f-mutuante')!=='cgd')return`${v('f-mutuante-txt')||'…'}, adiante designada por Terceira Contratante.`;
+    const r=representanteCAIXA();
+    return`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, neste ato representada por ${r.curto||'…'}, adiante designada por Terceira Contratante ou CAIXA.`;
+  })();
   const txtMutuante=(()=>{
     if(!ehCVMH)return'';
     const base=v('f-mutuante')==='cgd'
       ?`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`
       :(v('f-mutuante-txt')||'…');
-    const repr=v('f-mut-repr');
-    return`${base}${repr?', '+repr:''}, adiante designada por Terceira Contratante, CGD ou CAIXA.`;
+    const r=representanteCAIXA();
+    const repr=v('f-mut-repr')||(r.id?`neste ato representada por ${r.id}${r.qualidade?`, que outorga ${r.qualidade}`:''}`:'');
+    return`${base}${repr?', '+repr:''}, adiante designada por Terceira Contratante ou CAIXA.`;
   })();
   /* No tipo «Direito de Superfície» o direito transmitido é o de superfície,
      independentemente do que estiver no campo do imóvel. */
@@ -2996,6 +3005,15 @@ function compor(){
   const cgdOut=[...vend,...comps].find(o=>o.tipo==='cgd');
   const linhaCGD=cgdOut
     ? ` bem como a qualidade e poderes dos outorgantes em representação da CAIXA, mediante consulta da procuração depositada em www.procuracoesonline.mj.pt através dos códigos de acesso ${cgdOut['cgd-proc-cod']||'…'} nos termos ${cgdOut['cgd-proc-poderes']||'…'}`
+    : (ehCVMH&&v('f-mutuante')==='cgd'
+      ? ` e a qualidade e poderes de quem representa a CAIXA pela procuração${v('f-mut-quem')==='cgd'?'':', conjugada com a consulta do substabelecimento,'} depositada${v('f-mut-quem')==='cgd'?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${v('f-mut-proc-cod')||(v('f-mut-quem')==='cgd'?CGD_PROCURACAO:(SOLICITADORAS[v('f-mut-quem')||'liliana']||{}).codProcuracao||'…').replace(/\s*\(.*$/,'')}`
+      : '');
+  /* ── CVMH · certidão comercial da CAIXA e exclusão do RCBE ──
+     Faltava por inteiro neste ramo: a CAIXA entra como Terceira Contratante e
+     os seus poderes não eram verificados em lado nenhum. Mesma redação do
+     tronco do mútuo. */
+  const linhaCertidaoCGD=(ehCVMH&&v('f-mutuante')==='cgd')
+    ? `— Os poderes de representação da CAIXA GERAL DE DEPÓSITOS, S.A. através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}, verificando-se ainda a exclusão da Caixa Geral de Depósitos, S.A. do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º da Lei n.º 89/2017, de 21 de agosto;`
     : '';
   /* A linha do município já cobre a identidade dos outorgantes, pelo que
      substitui a abertura genérica — mas só essa. As procurações, os assentos,
@@ -3008,7 +3026,8 @@ function compor(){
       +(procuracoes.length?` e ${procuracoes.join('; e ainda ')}`:'')+';';
   /* Havendo município, as procurações das outras partes não cabem na abertura
      dele e saem em alínea própria — não se perdem. */
-  const extraVerif=(municipios.length&&procuracoes.length
+  const extraVerif=(linhaCertidaoCGD?'\n'+linhaCertidaoCGD:'')
+    +(municipios.length&&procuracoes.length
       ?`\n— ${procuracoes.join('; e ainda ')};`:'')
     +(assentos.length?'\n'+assentos.join('\n'):'')
     +(predios.length?'\n'+predios.join('\n'):'')
@@ -3076,12 +3095,14 @@ function compor(){
   contrato.push({id:'c-cab',T:'COMPRA E VENDA',X:''});
   contrato.push({id:'c-primeiro',T:'',X:txtPrimeiroCurto,negrito:negritoVend});
   contrato.push({id:'c-segunda',T:'',X:txtSegundaCurto,negrito:negritoComp});
-  contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
+  /* A terceira e os quartos entram antes do «acima identificados» — senão a
+     frase remete para partes que ainda não apareceram. */
   if(ehCVMH){
-    contrato.push({id:'c-terceira',T:'TERCEIRA',X:txtMutuante});
-    if(quartos.length)contrato.push({id:'c-quartos',T:quartos.length>1?'QUARTOS':'QUARTO',
-      X:quartos.map(textoOutorgante).join(';\n')+`, adiante designad${quartos.length>1?'os':'o'} por Quart${quartos.length>1?'os':'o'} Outorgante${quartos.length>1?'s':''}.`});
+    contrato.push({id:'c-terceira',T:'',X:txtMutuanteCurto});
+    if(quartos.length)contrato.push({id:'c-quartos',T:'',
+      X:quartos.map(textoVendedorCurto).join(', ')+`, adiante designad${quartos.length>1?'os':'o'} por Quart${quartos.length>1?'os':'o'} Outorgante${quartos.length>1?'s':''}.`});
   }
+  contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
   if(ehCVMH)contrato.push({id:'c-preambulo',T:'PREÂMBULO',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
   /* A narrativa do óbito abre a cláusula do objeto: explica de onde vem o
@@ -4202,6 +4223,31 @@ function flexaoMutuario(n){
    Verba 17.1.3 da TGIS: montante do empréstimo a 6/1000, sempre, sem exceções
    pelo prazo — decisão da Liliana. O campo continua a poder ser escrito à mão,
    e o que lá estiver manda. */
+/* ── QUEM REPRESENTA A CAIXA ──
+   Duas vias, ambas vistas nos atos reais: a solicitadora, por procuração
+   substabelecida, ou um procurador da CAIXA, com poderes para o ato. Estava
+   escrito só no tronco do mútuo; a compra e venda com mútuo lia apenas o campo
+   de texto livre e, estando vazio, deixava a CAIXA sem representante. */
+function representanteCAIXA(){
+  const quem=v('f-mut-quem')||'liliana';
+  const sol=SOLICITADORAS[quem];
+  if(quem==='cgd'){
+    const fem=v('f-mut-p-genero')!=='M';
+    const id=[(v('f-mut-p-nome')||'…').toUpperCase(),
+      v('f-mut-p-ec'),
+      v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',
+      v('f-mut-p-cc')?`portador${fem?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${v('f-mut-p-cc')}${v('f-mut-p-ccval')?`, válido até ${dPT(v('f-mut-p-ccval'))}`:''}`:'',
+      v('f-mut-p-nif')?`número de identificação fiscal ${v('f-mut-p-nif')}`:'',
+      v('f-mut-p-dom')?`com domicílio profissional na ${v('f-mut-p-dom')}`:''
+    ].filter(Boolean).join(', ');
+    return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-natural'),v('f-mut-p-nif')),
+      qualidade:`na qualidade de procurador${fem?'a':''} com poderes para o ato`,nome:v('f-mut-p-nome')};
+  }
+  if(sol)return{id:sol.textoProcuradora,
+    curto:idCurta(sol.nome,sol.naturalidade,sol.nif),
+    qualidade:'na qualidade de procuradora substabelecida',nome:sol.nome};
+  return{id:v('f-mut-repr')||'…',curto:v('f-mut-repr')||'…',qualidade:'',nome:''};
+}
 function seloMutuo(){
   const montante=parseValor(v('f-mh-montante'));
   const el=document.getElementById('f-mh-calculo-is');
