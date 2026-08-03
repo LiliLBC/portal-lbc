@@ -3811,8 +3811,9 @@ async function tratarAlertas(enviar){
   /* Sem email, ou email falhado: bloco de notas ao lado do rascunho. */
   if(!pastaSeleccionada)return;
   try{
-    await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/ALERTAS_GERADOR.txt:/content`,
-      {method:'PUT',headers:{'Content-Type':'text/plain'},body:corpo});
+    /* Página em vez de texto simples: abre no browser e lê-se como o painel. */
+    await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/ALERTAS_GERADOR.html:/content`,
+      {method:'PUT',headers:{'Content-Type':'text/html; charset=utf-8'},body:paginaAlertas()});
   }catch(e){console.error('[alertas] falha ao gravar notas:',e);}
 }
 async function carregarRascunho(){
@@ -4899,6 +4900,53 @@ function desenharAlertas(){
 }
 
 /* Texto para o email e para o bloco de notas. */
+/* ── ALERTAS PARA A PASTA ──
+   O ficheiro .txt ficava com o aspeto de código, com parênteses retos e traços
+   a fazer de estrutura. Passa a ser uma página, com o mesmo aspeto do painel do
+   gerador: cartões, cores por nível, e os resolvidos riscados. Abre no browser
+   com dois cliques e lê-se de uma olhada. */
+function paginaAlertas(){
+  const{vivos,resolvidos}=listaAlertas();
+  const esc=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const cartao=(a,resolvido)=>{
+    const bloq=a.nivel==='bloqueio';
+    const cor=resolvido?'#E4E2DC':(bloq?'#B53A2F':'#A05C1A');
+    const fundo=resolvido?'#F7F6F3':(bloq?'#FDECEA':'#FDF3E3');
+    const tit=resolvido?'#9D9B94':(bloq?'#8E2B22':'#7A5A20');
+    return`<div class="c" style="background:${fundo};border-left:3px solid ${cor}">
+      <div class="o" style="color:${tit}">${esc(a.onde||'')}</div>
+      <div class="t" style="${resolvido?'text-decoration:line-through;color:#9D9B94':''}">${esc(a.texto||'')}</div>
+    </div>`;
+  };
+  const bloqueios=vivos.filter(a=>a.nivel==='bloqueio').length;
+  return`<!DOCTYPE html><html lang="pt-PT"><head><meta charset="utf-8">
+<title>Alertas — ${esc(tipoDeduzido().rot)}</title>
+<style>
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#F7F6F3;color:#1A1916;
+margin:0;padding:2rem 1.2rem;line-height:1.55;font-size:14px}
+.w{max-width:720px;margin:0 auto}
+h1{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0 0 .2rem}
+.sub{font-size:12.5px;color:#6B6860;margin-bottom:.3rem}
+.resumo{font-size:12.5px;color:#6B6860;margin-bottom:1.4rem;padding-bottom:1rem;border-bottom:1px solid #E4E2DC}
+h2{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+color:#9D9B94;margin:1.6rem 0 .6rem}
+.c{border-radius:9px;padding:.7rem .85rem;margin-bottom:.5rem}
+.o{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.15rem}
+.t{font-size:13.5px}
+.nada{color:#2D7D4F;background:#E8F5EE;border:1px solid #C3E3D0;border-radius:9px;padding:.7rem .85rem;font-size:13.5px}
+.pe{margin-top:2rem;padding-top:1rem;border-top:1px solid #E4E2DC;font-size:11.5px;color:#9D9B94}
+</style></head><body><div class="w">
+<h1>Alertas do gerador</h1>
+<div class="sub">${esc(tipoDeduzido().rot)}${v('f-data-ato')?' · ato de '+dataAtoPT():''}</div>
+<div class="resumo">${vivos.length
+  ?`${vivos.length} por resolver${bloqueios?`, ${bloqueios} ${bloqueios>1?'que bloqueiam':'que bloqueia'} o ato`:''}.`
+  :'Nada por resolver.'}${resolvidos.length?` ${resolvidos.length} já ${resolvidos.length>1?'resolvidos':'resolvido'} nesta sessão.`:''}</div>
+${vivos.length?`<h2>Por resolver</h2>${vivos.map(a=>cartao(a,false)).join('')}`
+  :`<div class="nada">Não ficou nada por resolver.</div>`}
+${resolvidos.length?`<h2>Já resolvidos nesta sessão</h2>${resolvidos.map(a=>cartao(a,true)).join('')}`:''}
+<div class="pe">Gerado em ${new Date().toLocaleString('pt-PT')} pelo Gerador do Portal LBC.</div>
+</div></body></html>`;
+}
 function textoAlertas(){
   const {vivos,resolvidos}=listaAlertas();
   const linhas=[];
