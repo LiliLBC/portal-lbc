@@ -183,6 +183,18 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 </div>
 
 <!-- MODAL · ÁREAS DIVERGENTES -->
+<!-- MODAL · ESCOLHER RASCUNHO -->
+<div class="modal-overlay" id="modal-rascunhos">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">Rascunhos nesta pasta</div>
+    <div style="font-size:12.5px;color:var(--text-soft);margin-top:.5rem" id="rasc-nota"></div>
+    <div id="rasc-lista" style="margin-top:.8rem;max-height:340px;overflow:auto"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="fecharRascunhos()" style="flex:1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-areas">
   <div class="modal" style="max-width:440px">
     <div class="modal-title">⚠ Áreas divergentes</div>
@@ -555,6 +567,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="cond-block-title" id="titulo-sinal">6.1 · Sinal</div>
       <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">Cada entrada dá origem a uma alínea, pela ordem em que aparecem.</div>
       <div id="pagamentos-container"></div>
+      <div id="nota-repartido" style="display:none;font-size:10.5px;color:#7A5A20;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:8px;padding:.5rem .6rem;margin-bottom:.5rem">
+        Escolheu «um título por vendedor» no pagamento integral. É aqui que se preenche cada um — destinatário, valor, data e banco. Cada um sai numa alínea.
+      </div>
       <button class="add-btn" type="button" onclick="addPagamento();atualizar()" id="btn-add-pag">+ Adicionar reforço de sinal</button>
 
 
@@ -606,6 +621,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
         <div class="form-group form-full rem-quem" style="display:none"><label class="form-label">Vendedor que recebe</label>
           <input class="form-input" id="f-rem-quem" oninput="atualizar()" style="text-transform:uppercase" placeholder="Nome do vendedor a quem o título é emitido"></div>
+
       </div>
     </div>
 
@@ -1137,7 +1153,23 @@ function extInt(n){
   if(resto){const lig=(resto<100||resto%100===0)?' e ':' ';s+=(s?lig:'')+ext999(resto);}
   return s.replace(/\s+/g,' ').trim();
 }
-function parseValor(v){return parseFloat(String(v||'').replace(/\./g,'').replace(',','.'))||0;}
+/* ── LER UM VALOR ──
+   Aceita o que o gerador escreve e o que se escreve à mão. Os espaços dos
+   milhares — incluindo o espaço fino que o toLocaleString usa — eram fatais:
+   «195 890,00» dava 195, porque o parseFloat pára no primeiro espaço.
+   A vírgula é o separador decimal; o ponto agrupa milhares, salvo quando é o
+   único e vem seguido de uma ou duas casas, caso em que é decimal. */
+function parseValor(v){
+  let t=String(v??'').replace(/[\s\u00a0\u202f]/g,'').replace(/[€$]/g,'');
+  if(!t)return 0;
+  if(t.includes(',')) t=t.replace(/\./g,'').replace(',','.');
+  else{
+    const pontos=(t.match(/\./g)||[]).length;
+    const decimal=pontos===1&&/\.\d{1,2}$/.test(t);
+    if(!decimal)t=t.replace(/\./g,'');
+  }
+  return parseFloat(t)||0;
+}
 /* pt-PT não agrupa os milhares em números de quatro dígitos: 5000,00 em vez de
    5 000,00. Forçamos o agrupamento para os valores ficarem alinhados no texto. */
 function fmtValor(n){return n.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:true}).replace(/^(\d)(\d{3},)/,'$1 $2');}
@@ -2147,7 +2179,9 @@ function onImTipo(){
   atualizar();
 }
 function textoMatrizG(m,multi){
-  return`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}, da freguesia de ${m.freg||'…'}, com o valor patrimonial atribuído de ${m.vpt||'…'} Euros${m.ano?`, determinado no ano de ${m.ano}`:''}${multi?`, ao qual foi atribuído o valor de ${m.vimt||'…'} Euros para efeitos de IMT`:''}`;
+  /* A secção só existe nas matrizes rústicas e vem colada ao artigo:
+     «sob o artigo 29, Secção G, da freguesia de …». Faltava. */
+  return`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}${m.seccao?`, Secção ${m.seccao}`:''}, da freguesia de ${m.freg||'…'}, com o valor patrimonial atribuído de ${m.vpt||'…'} Euros${m.ano?`, determinado no ano de ${m.ano}`:''}${multi?`, ao qual foi atribuído o valor de ${m.vimt||'…'} Euros para efeitos de IMT`:''}`;
 }
 
 /* ═══════════ PRÉDIOS ADICIONAIS ═══════════ */
@@ -2658,7 +2692,9 @@ function comporMH(variante){
   linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`);
   /* O substabelecimento só se consulta quando existe: a solicitadora outorga
      por procuração substabelecida, o procurador da CAIXA por procuração direta. */
-  const codProc=v('f-mut-proc-cod')||(procCGD?CGD_PROCURACAO:(solMut?solMut.codProcuracao:'…'));
+  const rep2=representanteCAIXA();
+  const pc2=partesProcuracao(v('f-mut-proc-cod')||rep2.cod);
+  const codProc=(pc2.cod||'…')+((pc2.data||rep2.data)?`, de ${pc2.data||rep2.data}`:'');
   linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação da CAIXA pela procuração${procCGD?'':', conjugada com a consulta do substabelecimento,'} depositada${procCGD?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
   /* A alínea b) do artigo 4.º vem do template; o nome da lei vem da redação da
      compra e venda, porque aqui o Regime Jurídico não foi citado antes e o
@@ -2774,7 +2810,7 @@ function comporMH(variante){
    A dispensa do Documento Complementar e do Anexo I é redação da Liliana, e
    entra em qualquer mútuo com hipoteca — na compra e venda e no ato 4. */
 function fechoTermo(temMH){
-  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos, tendo sido advertidos de que, nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, o Documento Particular Autenticado só produz efeitos após depósito eletrónico, a efetuar hoje, nesta mesma data, em www.predialonline.mj.pt.`;
+  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, em seguida nesta mesma data, em www.predialonline.mj.pt.`;
   const dispensa=`As partes dispensaram a leitura do Documento Complementar e Anexo I por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-os, ainda assim, como parte integrante do presente contrato.`;
   return temMH?`${base}\n${dispensa}`:base;
 }
@@ -2974,14 +3010,20 @@ function compor(){
     const r=representanteCAIXA();
     return`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, neste ato representada por ${r.curto||'…'}, adiante designada por Terceira Contratante ou CAIXA.`;
   })();
+  /* ── TERCEIRA · no TERMO ──
+     Quem comparece é a pessoa, não a sociedade: a procuradora outorga em nome e
+     em representação da CAIXA. Estava ao contrário — abria na CAIXA e punha a
+     procuradora como acessório. A designação «Terceira Contratante ou CAIXA»
+     é do contrato, e daqui saiu. */
   const txtMutuante=(()=>{
     if(!ehCVMH)return'';
     const base=v('f-mutuante')==='cgd'
       ?`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`
       :(v('f-mutuante-txt')||'…');
+    if(v('f-mut-repr'))return`${v('f-mut-repr')}, em nome e em representação da ${base}.`;
     const r=representanteCAIXA();
-    const repr=v('f-mut-repr')||(r.id?`neste ato representada por ${r.id}${r.qualidade?`, que outorga ${r.qualidade}`:''}`:'');
-    return`${base}${repr?', '+repr:''}, adiante designada por Terceira Contratante ou CAIXA.`;
+    if(!r.id)return`${base}.`;
+    return`${r.id}, que outorga ${r.qualidade||'em representação'}, em nome e em representação da ${base}.`;
   })();
   /* No tipo «Direito de Superfície» o direito transmitido é o de superfície,
      independentemente do que estiver no campo do imóvel. */
@@ -3006,7 +3048,15 @@ function compor(){
   const linhaCGD=cgdOut
     ? ` bem como a qualidade e poderes dos outorgantes em representação da CAIXA, mediante consulta da procuração depositada em www.procuracoesonline.mj.pt através dos códigos de acesso ${cgdOut['cgd-proc-cod']||'…'} nos termos ${cgdOut['cgd-proc-poderes']||'…'}`
     : (ehCVMH&&v('f-mutuante')==='cgd'
-      ? ` e a qualidade e poderes de quem representa a CAIXA pela procuração${v('f-mut-quem')==='cgd'?'':', conjugada com a consulta do substabelecimento,'} depositada${v('f-mut-quem')==='cgd'?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${v('f-mut-proc-cod')||(v('f-mut-quem')==='cgd'?CGD_PROCURACAO:(SOLICITADORAS[v('f-mut-quem')||'liliana']||{}).codProcuracao||'…').replace(/\s*\(.*$/,'')}`
+      ? (()=>{
+          const r=representanteCAIXA();
+          const cgd=v('f-mut-quem')==='cgd';
+          const pc=partesProcuracao(v('f-mut-proc-cod')||r.cod);
+          const cod=pc.cod||'…', dt=pc.data||r.data;
+          /* A data entra como «, de …», confirmado pela Liliana: o código é o
+             mesmo para as duas solicitadoras e é a data que as distingue. */
+          return ` e a qualidade e poderes de quem representa a CAIXA pela procuração${cgd?'':', conjugada com a consulta do substabelecimento,'} depositada${cgd?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${cod}${dt?`, de ${dt}`:''}`;
+        })()
       : '');
   /* ── CVMH · certidão comercial da CAIXA e exclusão do RCBE ──
      Faltava por inteiro neste ramo: a CAIXA entra como Terceira Contratante e
@@ -3020,32 +3070,51 @@ function compor(){
      os prédios, os ónus e o título urbanístico continuam a sair: antes eram
      deitados fora com ela, e uma escritura com município ficava sem nada disso
      no «Verifiquei». */
-  const abertura=municipios.length
-    ? municipios.join('\n')
-    : '— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação'+linhaCGD
-      +(procuracoes.length?` e ${procuracoes.join('; e ainda ')}`:'')+';';
-  /* Havendo município, as procurações das outras partes não cabem na abertura
-     dele e saem em alínea própria — não se perdem. */
-  const extraVerif=(linhaCertidaoCGD?'\n'+linhaCertidaoCGD:'')
-    +(municipios.length&&procuracoes.length
-      ?`\n— ${procuracoes.join('; e ainda ')};`:'')
-    +(assentos.length?'\n'+assentos.join('\n'):'')
-    +(predios.length?'\n'+predios.join('\n'):'')
-    +(requerimentos.length?'\n'+requerimentos.join('\n'):'')
-    +(ehCVMH?`\n— Para efeitos da Lei n.º 78/2021, de 24 de novembro, que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`:'')
-    +(onusTermo.length?'\n'+onusTermo.join('\n'):'')
-    +(tu.termo?'\n'+tu.termo:'')
-    /* Não sendo exibido o título, o termo leva só a advertência — a declaração
-       da parte vive no contrato. Confirmado pela Liliana.
-       A redação segue o regime em vigor à data do ato. */
-    /* Sempre que não haja documento de licença, de isenção ou certidão camarária
-       de anterioridade. Inclui o caso por responder: a falta de escolha não é
-       razão para o termo ficar calado sobre isto. */
-    +(!['apresentado','isento','anterior'].includes(v('f-tu-caso'))
-      ?(regimeNovoRJUE()
-        ?'\n— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;'
-        :'\n— nos termos do artigo 19.º do Decreto-Lei n.º 10/2024, de 8 de janeiro, as partes foram por mim informadas de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização;')
-      :'');
+  /* ── ESTRUTURA DO «VERIFIQUEI» ──
+     Quatro grupos, por esta ordem, como a Liliana os arruma:
+       1 · identidade dos outorgantes;
+       2 · procurações e habilitações — quem outorga por outrem;
+       3 · empresas — certidão de registo comercial e RCBE, a CAIXA incluída;
+       4 · documentos do ato — prédio, ónus, título urbanístico e o resto.
+     Antes andavam misturados: a certidão da CAIXA vinha antes dos assentos, e a
+     das outras empresas saía num parágrafo à parte, depois de tudo. */
+  const g1=[], g2=[], g3=[], g4=[];
+
+  /* 1 · identidade */
+  if(municipios.length)g1.push(...municipios);
+  else g1.push('— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação'+linhaCGD+';');
+
+  /* 2 · procurações e habilitações */
+  /* O segmento já abre em «os poderes de representação de …»: só se lhe dá
+     maiúscula inicial, sem repetir o começo. */
+  const maiusc=t=>t.charAt(0).toUpperCase()+t.slice(1);
+  if(procuracoes.length&&(municipios.length||linhaCGD))
+    g2.push(`— ${maiusc(procuracoes.join('; e ainda '))};`);
+  else if(procuracoes.length)
+    g1[0]=g1[0].replace(/;$/,'')+` e ${procuracoes.join('; e ainda ')};`;
+  g2.push(...assentos);
+
+  /* 3 · empresas — a CAIXA e as demais sociedades, juntas */
+  if(linhaCertidaoCGD)g3.push(linhaCertidaoCGD);
+  /* ⚠ A redação é a da Liliana; entrando na lista, o «Verifiquei» inicial sai,
+     porque já está no cabeçalho do parágrafo. */
+  empresas.forEach(t=>g3.push('— '+maiusc(t.replace(/^Verifiquei\s+/,'')).replace(/\.$/,';')));
+
+  /* 4 · documentos do ato */
+  g4.push(...predios,...requerimentos);
+  if(ehCVMH)g4.push('— Para efeitos da Lei n.º 78/2021, de 24 de novembro, verifiquei que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;');
+  g4.push(...onusTermo);
+  if(tu.termo)g4.push(tu.termo);
+  /* Não sendo exibido o título, o termo leva só a advertência — a declaração da
+     parte vive no contrato. A redação segue o regime em vigor à data do ato. */
+  if(!['apresentado','isento','anterior'].includes(v('f-tu-caso')))
+    g4.push(regimeNovoRJUE()
+      ?'— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;'
+      :'— nos termos do artigo 19.º do Decreto-Lei n.º 10/2024, de 8 de janeiro, as partes foram por mim informadas de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização;');
+
+  const linhasVerif=[...g1,...g2,...g3,...g4].filter(Boolean);
+  const abertura=linhasVerif.join('\n');
+  const extraVerif='';
   const temRepresentacao=[...vend,...comps].some(c=>c.tipo!=='singular');
   /* ── ORDEM DO TERMO ──
      Comparecem todos primeiro — primeiros, segundos, terceira e quartos —, e só
@@ -3059,11 +3128,18 @@ function compor(){
   }
   /* Os outorgantes entram no seu lugar; o «Verifiquei» vem a seguir. */
   termo.splice(iOutorgantes,0,...depoisOutorgantes);
+  /* ── O DOCUMENTO APRESENTADO ──
+     Vem logo a seguir às identificações e antes do «Verifiquei»: primeiro
+     comparecem e apresentam, depois é que a solicitadora verifica.
+     Havendo derivação para mútuo com hipoteca, o documento é outro — leva o
+     Documento Complementar e o Anexo I, como no tronco do mútuo. */
+  const nomeDocAnexo=ehCVMH
+    ? 'CONTRATO DE COMPRA E VENDA E MÚTUO COM HIPOTECA, COM DOCUMENTO COMPLEMENTAR E ANEXO I'
+    : 'CONTRATO DE COMPRA E VENDA';
+  termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um ${nomeDocAnexo}, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
   termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${abertura}${extraVerif}`});
-  if(empresas.length)termo.push({id:'t-verif-empresa',T:'',X:empresas.join('\n')});
   /* ── TRATO SUCESSIVO · legitimidade e imposto do selo por óbito (termo) ── */
   if(ts.legitimidade)termo.push({id:'t-trato-suc',T:'',X:`Verifiquei ainda:\n${ts.legitimidade}`});
-  termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
   /* ── REGRA DE DISTRIBUIÇÃO ──
      Blocos 1 a 4 (ato, entidade autenticadora, vendedora, compradora) vão ao
      TERMO, com identificação curta no contrato. Do bloco 5 em diante vai tudo
@@ -3086,30 +3162,43 @@ function compor(){
   termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
   
   if(ehCVMH&&seloMutuo().valor)
-    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que o Imposto de Selo de verba 17.1.3, da TGIS será liquidado pela CAIXA no valor de ${seloMutuo().valor}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
+    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que este contrato está sujeito a Imposto de Selo da verba 17.1.3, da TGIS e que será liquidado pela CAIXA no valor de ${seloMutuo().valor}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:'t-leitura',T:'',X:fechoTermo(ehCVMH)});
 
   /* ── CONTRATO ── */
   const contrato=[];
   contrato.push({id:'c-cab',T:'COMPRA E VENDA',X:''});
-  contrato.push({id:'c-primeiro',T:'',X:txtPrimeiroCurto,negrito:negritoVend});
-  contrato.push({id:'c-segunda',T:'',X:txtSegundaCurto,negrito:negritoComp});
+  /* Os mesmos títulos do termo — PRIMEIROS, SEGUNDOS, TERCEIRA, QUARTOS —, com
+     a identificação simplificada por baixo. Sem eles não se sabe quem é quem. */
+  contrato.push({id:'c-primeiro',T:v('f-desig-vend')||'PRIMEIRO',X:txtPrimeiroCurto,negrito:negritoVend});
+  contrato.push({id:'c-segunda',T:tituloSeg,X:txtSegundaCurto,negrito:negritoComp});
   /* A terceira e os quartos entram antes do «acima identificados» — senão a
      frase remete para partes que ainda não apareceram. */
   if(ehCVMH){
-    contrato.push({id:'c-terceira',T:'',X:txtMutuanteCurto});
-    if(quartos.length)contrato.push({id:'c-quartos',T:'',
+    contrato.push({id:'c-terceira',T:'TERCEIRA',X:txtMutuanteCurto});
+    if(quartos.length)contrato.push({id:'c-quartos',T:quartos.length>1?'QUARTOS':'QUARTO',
       X:quartos.map(textoVendedorCurto).join(', ')+`, adiante designad${quartos.length>1?'os':'o'} por Quart${quartos.length>1?'os':'o'} Outorgante${quartos.length>1?'s':''}.`});
   }
   contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
-  if(ehCVMH)contrato.push({id:'c-preambulo',T:'PREÂMBULO',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
+  /* O preâmbulo não é cláusula — abre o contrato e fica sem título. */
+  if(ehCVMH)contrato.push({id:'c-preambulo',T:'',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
   /* A narrativa do óbito abre a cláusula do objeto: explica de onde vem o
      direito antes de se dizer o que se vende. */
   /* Os ónus fecham a cláusula do objeto, logo a seguir ao registo de aquisição:
      é atributo do prédio e lê-se junto dele. Deixou de haver cláusula própria. */
-  contrato.push({id:'c-cl1',T:'Primeira (Objeto)',
+  /* ── NUMERAÇÃO DAS CLÁUSULAS ──
+     Todas seguem a mesma convenção: ordinal por extenso e o assunto entre
+     parênteses. Antes só as duas primeiras eram numeradas e as restantes
+     saíam com título em maiúsculas, o que dava um contrato de duas caras. */
+  /* Os títulos do mútuo vêm em maiúsculas; aqui entram como assunto da
+     cláusula, com a acentuação e as minúsculas próprias. */
+  const TITULOS_MH={'MÚTUO E HIPOTECA':'Mútuo e Hipoteca','GARANTIA HIPOTECÁRIA':'Garantia Hipotecária','FIANÇA':'Fiança'};
+  const ORD_CL=['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava','Nona','Décima','Décima Primeira','Décima Segunda','Décima Terceira','Décima Quarta'];
+  let nCl=0;
+  const clausula=assunto=>`${ORD_CL[++nCl]||nCl+'.ª'} (${assunto})`;
+  contrato.push({id:'c-cl1',T:clausula('Objeto'),
     X:(ts.narrativa?`${ts.narrativa}\n`:'')
       +`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`
       +`\n${txtOnus}`});
@@ -3127,29 +3216,38 @@ function compor(){
       : `a ESTAMO - Participações Imobiliárias S.A., e a Câmara Municipal de ${camara} nada disseram sobre o direito que legalmente lhes assiste na preferência de compra sobre o imóvel;`;
     contrato.push({id:'c-casapronta',T:'',X:`Foi requerido para efeitos dos direitos de preferência nos termos do n.º 3 do artigo 37 da Lei 83/2019, de 3 de setembro, (Lei de Bases da Habitação), conjugado com o art.º 7 da Lei 89/2021, de 03 de novembro, com o número ${v('f-cp-numero')||'…'}, disponibilizado em ${cpData} através do sítio www.casapronta.pt, onde o Instituto da Habitação e da Reabilitação Urbana (IHRU), o Património Cultural I.P., ${fecho}`});
   }
-  if(tu.contrato)contrato.push({id:'c-titulo-urb',T:'',X:tu.contrato});
   if(cond.contrato)contrato.push({id:'c-condominio',T:'',X:cond.contrato});
   /* ── IMT JOVEM · declaração dos compradores ──
      Os cinco requisitos do regime. Fundidos os dois da titularidade, que a lei
      trata numa só previsão. A idade é «igual ou inferior», nos termos da lei. */
   if(v('f-fisc-regime')==='jovens')
     contrato.push({id:'c-imt-jovem',T:'',X:`Declaram os SEGUNDOS OUTORGANTES que, à presente data, têm idade igual ou inferior a trinta e cinco anos; que, no ano da presente transmissão, não são considerados dependentes para efeitos do artigo 13.º do Código do Imposto sobre o Rendimento das Pessoas Singulares; que não são, nem foram nos três anos anteriores, titulares de direito de propriedade ou de figura parcelar desse direito sobre prédio urbano ou fração autónoma de prédio urbano com fim habitacional; e que a presente aquisição constitui a sua primeira aquisição, a título oneroso, de prédio urbano ou de fração autónoma de prédio urbano destinado exclusivamente a habitação própria e permanente.`});
-  contrato.push({id:'c-cl2',T:'Segunda (Preço)',X:txtPreco});
+  contrato.push({id:'c-cl2',T:clausula('Preço'),X:txtPreco});
   /* O DL 118/2013 foi revogado pelo DL 101-D/2020, de 7 de dezembro, com
      efeitos a 1 de julho de 2021. A citação foi corrigida. */
   /* O DL 118/2013 foi revogado pelo DL 101-D/2020, de 7 de dezembro, com
      efeitos a 1 de julho de 2021. A citação foi corrigida.
      ⚠ A redação da certidão de isenção é minha, à espera da da Liliana. */
+  /* Redação do cvmh: a declaração sai sempre, haja ou não mediação. */
+  /* ── CLÁUSULA DO LICENCIAMENTO ──
+     Uma só cláusula, pela ordem que a Liliana fixou:
+       1 · título urbanístico — exibido, isento, declarado mas não exibido, ou
+           inexistente; a advertência do artigo 19.º, quando é o caso, fica no
+           termo, que é onde a solicitadora fala por si;
+       2 · certificação energética;
+       3 · declaração de que não houve obras que afetem a validade dos dois;
+       4 · sendo rústico, a preferência dos confinantes e o não fracionamento.
+     Andavam espalhados: o título antes do preço, o certificado depois, as
+     obras noutro sítio e os rústicos no fim. */
+  const parsLic=[];
+  if(tu.contrato)parsLic.push(tu.contrato);
   if(chk('t-ce')){
     const dCE=v('f-ce-val');
-    contrato.push({id:'c-ce',T:'',X:v('f-ce-tipo')==='isencao'
+    parsLic.push(v('f-ce-tipo')==='isencao'
       ?`A Parte Compradora declara que recebeu nesta data da Parte Vendedora a declaração provisória de isenção de certificação energética n.º ${v('f-ce-num')||'…'}${dCE?`, emitida em ${dPT(dCE)}`:''}, nos termos ${v('f-ce-norma')||'…'} do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`
-      :`A Parte Compradora declara que recebeu nesta data da Parte Vendedora o Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios (Certificado Energético n.º ${v('f-ce-num')||'…'}${dCE?`, válido até ${dPT(dCE)}`:''}), nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`});
+      :`A Parte Compradora declara que recebeu nesta data da Parte Vendedora o Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios (Certificado Energético n.º ${v('f-ce-num')||'…'}${dCE?`, válido até ${dPT(dCE)}`:''}), nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`);
   }
-  /* Redação do cvmh: a declaração sai sempre, haja ou não mediação. */
-  contrato.push({id:'c-encargos',T:'ENCARGOS',X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
-  if(v('f-destino'))contrato.push({id:'c-destino',T:'DESTINO DO IMÓVEL',X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
-  contrato.push({id:'c-obras',T:'',X:`A PARTE VENDEDORA declara, igualmente, que, tanto quanto é do seu conhecimento, o imóvel não sofreu quaisquer obras, modificações ou alterações estruturais e/ou funcionais que possam afetar a validade dos referidos documentos.`});
+  parsLic.push(`A PARTE VENDEDORA declara, igualmente, que, tanto quanto é do seu conhecimento, o imóvel não sofreu quaisquer obras, modificações ou alterações estruturais e/ou funcionais que possam afetar a validade dos referidos documentos.`);
   /* ── PRÉDIO RÚSTICO · fecho dos certificados e licenças ──
      Sequência da Liliana, contígua e por esta ordem:
        1.º a declaração quanto à preferência dos confinantes, numa de duas
@@ -3162,18 +3260,18 @@ function compor(){
      do template Word e, no texto, sairia a dobrar. */
   if(temMatrizRustica()){
     if(v('f-confinantes')==='asseguradas')
-      contrato.push({id:'c-confinantes',T:'',X:`Mais declararam ter conhecimento de que a alienação de prédio rústico com área inferior à unidade de cultura fixada para a respetiva zona confere aos proprietários dos prédios confinantes o direito de preferência previsto no artigo 1380.º do Código Civil, tendo sido dado cumprimento à obrigação de comunicação prevista no artigo 416.º do mesmo Código, sem que qualquer preferente tenha exercido o respetivo direito no prazo legal.`});
+      parsLic.push(`Mais declararam ter conhecimento de que a alienação de prédio rústico com área inferior à unidade de cultura fixada para a respetiva zona confere aos proprietários dos prédios confinantes o direito de preferência previsto no artigo 1380.º do Código Civil, tendo sido dado cumprimento à obrigação de comunicação prevista no artigo 416.º do mesmo Código, sem que qualquer preferente tenha exercido o respetivo direito no prazo legal.`);
     else if(v('f-confinantes')==='excluida')
-      contrato.push({id:'c-confinantes',T:'',X:`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que à presente transmissão não é aplicável o direito de preferência dos proprietários de terrenos confinantes previsto no artigo 1380.º do Código Civil, por se verificar a situação de exclusão consagrada na alínea a) do artigo 1381.º do mesmo Código, uma vez que o prédio ora transmitido se destina a fim diverso da cultura, designadamente parte componente de prédio urbano de logradouro.`});
-    contrato.push({id:'c-fracionamento',T:'',X:`Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.`});
+      parsLic.push(`Declaram os Primeiros Outorgantes, na qualidade de vendedores, que à presente transmissão não é aplicável o direito de preferência dos proprietários de terrenos confinantes previsto no artigo 1380.º do Código Civil, por se verificar a situação de exclusão consagrada na alínea a) do artigo 1381.º do mesmo Código, uma vez que o prédio ora transmitido se destina a fim diverso da cultura, designadamente parte componente de prédio urbano de logradouro.`);
+    parsLic.push(`Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.`);
   }
-  contrato.push({id:'c-mediacao',T:'MEDIAÇÃO IMOBILIÁRIA',X:chk('t-mediacao')
+  if(parsLic.length)contrato.push({id:'c-licenciamento',T:clausula('Licenciamento'),X:parsLic.join('\n')});
+  contrato.push({id:'c-encargos',T:clausula('Encargos'),X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
+  if(v('f-destino'))contrato.push({id:'c-destino',T:'DESTINO DO IMÓVEL',X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
+  contrato.push({id:'c-mediacao',T:clausula('Mediação Imobiliária'),X:chk('t-mediacao')
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
-  /* A Terceira era a dos ónus, que passou para dentro da Primeira. A numeração
-     das cláusulas seguintes recua um lugar. */
-  let n=3;
-  if(compCGD){contrato.push({id:'c-cl-destino',T:`${['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima'][n]} (Destino do Imóvel adquirido)`,X:txtDestino});n++;}
+  if(compCGD)contrato.push({id:'c-cl-destino',T:clausula('Destino do Imóvel adquirido'),X:txtDestino});
   if(ehCVMH){
     if(fiadores.length){
       const cP=comps.length>1,fiP=fiadores.length>1;
@@ -3181,14 +3279,15 @@ function compor(){
       const O_FIADOR=fiP?'OS FIADORES':'O FIADOR',constitui=fiP?'constituem-se':'constitui-se';
       const pp=fiP?'principais pagadores':'principal pagador';
       const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
-      contrato.push({id:'c-fianca',T:'FIANÇA',X:[
+      contrato.push({id:'c-fianca',T:clausula('Fiança'),X:[
         `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaSEGUNDO} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${doSEGUNDO};`,
         `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${doSEGUNDO} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
         `A presente fiança é prestada com a qualidade de ${pp}, podendo o Banco, em caso de incumprimento por parte ${doSEGUNDO}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${doSEGUNDO}.`
       ].join('\n')});
     }
   }
-  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(b));
+  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(
+    b.T?{...b,T:clausula(TITULOS_MH[b.T]||b.T)}:b));
   if(ehCVMH){
     contrato.push({id:'c-mh-execucao',T:'',X:`A presente hipoteca é suscetível de execução logo que o crédito garantido se torne vencido e exigível, nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
     const S=flexaoMutuario(generosOutorgantes(comps).length);
@@ -3775,7 +3874,36 @@ function restaurarEstado(d){
   insCnt=d.insCnt||0;
   atualizar();
 }
+/* ── RASCUNHO NO BROWSER · uma gaveta por pasta ──
+   A chave era uma só para tudo. Falhando a gravação no SharePoint, o rascunho
+   caía nessa gaveta; e ao carregar noutro processo, era esse que aparecia — o
+   rascunho de outro cliente. Cada pasta passa a ter a sua chave, e sem pasta
+   escolhida usa-se a avulsa, que não se mistura com nenhuma. */
+let rascunhoAtual='';
+function chaveRascunho(){
+  return (pastaSeleccionada?`gerador_rascunho_${pastaSeleccionada.id}`:'gerador_rascunho_avulso')+(rascunhoAtual?'_'+rascunhoAtual:'');
+}
+/* ── RASCUNHOS COM NOME ──
+   Uma pasta pode ter vários contratos do mesmo cliente para o mesmo dia. Cada
+   rascunho leva um nome próprio, e ao abrir mostram-se todos os que a pasta
+   tiver para se escolher. O ficheiro antigo, RASCUNHO_GERADOR.json, continua a
+   ser lido e aparece na lista como «sem nome». */
+function nomeFicheiroRascunho(nome){
+  const limpo=String(nome||'').trim().replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_').slice(0,60);
+  return limpo?`RASCUNHO_${limpo}.json`:'RASCUNHO_GERADOR.json';
+}
+function sugestaoNomeRascunho(){
+  const v0=lerVendedores()[0]||{};
+  const quem=(v0.nome||v0.denom||'').split(/\s+/).filter(Boolean);
+  const apelido=quem.length?quem[quem.length-1]:'';
+  const cod=tipoDeduzido().cod||'';
+  return [cod,apelido].filter(Boolean).join('_')||'rascunho';
+}
 async function guardarRascunho(){
+  const nome=prompt('Nome para este rascunho — para o distinguir dos outros desta pasta:',sugestaoNomeRascunho());
+  if(nome===null)return;
+  const ficheiro=nomeFicheiroRascunho(nome);
+  rascunhoAtual=ficheiro;
   const json=JSON.stringify(estadoCompleto(),null,2);
   sincronizarAlertas();
   const {vivos}=listaAlertas();
@@ -3785,7 +3913,7 @@ async function guardarRascunho(){
   }
   if(pastaSeleccionada){
     try{
-      const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_GERADOR.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});
+      const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${ficheiro}:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});
       if(!r.ok){
         /* Não engolir o erro: o código diz o que se passa.
            401/403 = token expirado ou sem permissão (reabrir a partir do Portal)
@@ -3795,15 +3923,15 @@ async function guardarRascunho(){
         throw new Error(`${r.status}${detalhe?' — '+detalhe:''}`);
       }
       await tratarAlertas(enviar);
-      showToast('Rascunho guardado na pasta!','success');return;
+      showToast(`${ficheiro} guardado na pasta!`,'success');return;
     }catch(e){
-      localStorage.setItem('gerador_rascunho',json);
+      localStorage.setItem(chaveRascunho(),json);
       showToast(`SharePoint recusou (${e.message}). Guardado no browser — recupera com «Carregar rascunho».`,'error');
       console.error('[rascunho] falha ao gravar no SharePoint:',e);
       return;
     }
   }
-  localStorage.setItem('gerador_rascunho',json);
+  localStorage.setItem(chaveRascunho(),json);
   showToast('Sem pasta selecionada — guardado no browser','');
 }
 /* Alertas: por email, ou como bloco de notas ao lado do rascunho. */
@@ -3840,16 +3968,47 @@ async function tratarAlertas(enviar){
 async function carregarRascunho(){
   if(pastaSeleccionada){
     try{
-      const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/RASCUNHO_GERADOR.json:/content`);
-      if(r.ok){restaurarEstado(await r.json());showToast('Rascunho carregado da pasta!','success');return;}
-      /* Não havia na pasta — pode ter caído para o browser numa gravação falhada.
-         Antes desta correção o carregamento desistia aqui, e o rascunho ficava
-         gravado mas inacessível: era o sintoma de «não guarda». */
-    }catch(e){console.error('[rascunho] falha ao ler do SharePoint:',e);}
+      const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}/children?$top=200`);
+      if(r.ok){
+        const d=await r.json();
+        const rasc=(d.value||[]).filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name))
+          .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
+        if(rasc.length===1){await abrirRascunho(rasc[0].name);return;}
+        if(rasc.length>1){mostrarRascunhos(rasc);return;}
+      }
+    }catch(e){console.error('[rascunho] falha ao listar:',e);}
   }
-  const l=localStorage.getItem('gerador_rascunho');
+  /* Só o desta pasta. Nunca o de outra, e nunca o avulso quando há pasta. */
+  const l=localStorage.getItem(chaveRascunho());
   if(l){restaurarEstado(JSON.parse(l));showToast(pastaSeleccionada?'Não havia na pasta — carregado do browser':'Rascunho do browser carregado','success');return;}
-  showToast('Não encontrei rascunho — nem na pasta, nem no browser','');
+  showToast(pastaSeleccionada?'Não encontrei rascunhos nesta pasta':'Não encontrei rascunho no browser','');
+}
+function nomeBonito(f){
+  /* O ficheiro antigo não tinha nome próprio: mostra-se como tal. */
+  if(/^RASCUNHO_GERADOR\.json$/i.test(f))return'sem nome (rascunho antigo)';
+  return f.replace(/^RASCUNHO_?/i,'').replace(/\.json$/i,'').replace(/_/g,' ')||'sem nome';
+}
+function mostrarRascunhos(lista){
+  setProp('rasc-nota','textContent',`${lista.length} rascunhos guardados. Escolhe qual queres abrir.`);
+  document.getElementById('rasc-lista').innerHTML=lista.map(x=>{
+    const d=x.lastModifiedDateTime?new Date(x.lastModifiedDateTime).toLocaleString('pt-PT'):'';
+    return`<button class="btn" style="width:100%;text-align:left;margin-bottom:.4rem;padding:.6rem .7rem"
+      onclick="abrirRascunho('${x.name.replace(/'/g,"\\'")}')">
+      <div style="font-weight:600;font-size:13px">${esc(nomeBonito(x.name))}</div>
+      <div style="font-size:11px;color:var(--text-faint)">${esc(d)}</div></button>`;
+  }).join('');
+  document.getElementById('modal-rascunhos').classList.add('show');
+}
+function fecharRascunhos(){document.getElementById('modal-rascunhos').classList.remove('show');}
+async function abrirRascunho(ficheiro){
+  fecharRascunhos();
+  try{
+    const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(ficheiro)}:/content`);
+    if(!r.ok)throw new Error('estado '+r.status);
+    restaurarEstado(await r.json());
+    rascunhoAtual=ficheiro;
+    showToast(`${nomeBonito(ficheiro)} carregado`,'success');
+  }catch(e){showToast(`Não consegui abrir ${ficheiro} (${e.message})`,'error');}
 }
 
 /* ═══════════ GERAR WORD (template-casca) ═══════════ */
@@ -4036,7 +4195,7 @@ function addPagamento(dados){
           <option value="reforco"${sel(dados.tipo,'reforco')}>Reforço de sinal</option>
         </select></div>
       <div class="form-group"><label class="form-label">Meio</label>
-        <select class="form-select" id="${id}-meio" onchange="onPagMeio('${id}');atualizar()">
+        <select class="form-select" id="${id}-meio" onchange="this.dataset.tocado=1;onPagMeio('${id}');atualizar()">
           <option value="transferencia"${sel(dados.meio,'transferencia')}>Transferência bancária</option>
           <option value="cheque"${sel(dados.meio,'cheque')}>Cheque</option>
           <option value="numerario"${sel(dados.meio,'numerario')}>Numerário</option>
@@ -4114,6 +4273,19 @@ function onRemMeio(){
   setProp('titulo-sinal','textContent',comSinal?'6.1 · Sinal':'6.2 · Pagamentos aos vendedores');
   setProp('btn-add-pag','textContent',comSinal?'+ Adicionar reforço de sinal':'+ Adicionar pagamento a vendedor');
   if(repartido&&!document.querySelectorAll('.pag-block').length)addPagamento();
+  /* ── UM TÍTULO POR VENDEDOR ──
+     A escolha faz-se no remanescente, mas quem se preenche é o 6.2, mais acima.
+     Sem sinal para o justificar, a caixa aparecia sem se perceber porquê e as
+     alíneas saíam vazias. Passa a dizer de onde vem, e o meio de pagamento é
+     herdado da escolha feita, em vez de ficar sempre em transferência. */
+  setDisp('nota-repartido',repartido?'block':'none');
+  if(repartido){
+    const meio=v('f-rem-meio')||'transferencia';
+    document.querySelectorAll('.pag-block').forEach(b=>{
+      const e=document.getElementById(`${b.id}-meio`);
+      if(e&&!e.dataset.tocado&&e.value!==meio){e.value=meio;onPagMeio(b.id);}
+    });
+  }
   setProp('titulo-pagamento','textContent',comSinal?'6.1.1 · Remanescente do preço':'6.2 · Pagamento integral');
   /* 6.3 · APB — forma adicional, que convive com o 6.1 e o 6.2. O banco de
      destino é o titular do ónus que se cancela, e por isso vem de lá; o campo
@@ -4228,6 +4400,21 @@ function flexaoMutuario(n){
    substabelecida, ou um procurador da CAIXA, com poderes para o ato. Estava
    escrito só no tronco do mútuo; a compra e venda com mútuo lia apenas o campo
    de texto livre e, estando vazio, deixava a CAIXA sem representante. */
+/* O código da procuração é o mesmo para as duas solicitadoras; o que as
+   distingue é a data do respetivo substabelecimento, guardada entre parênteses
+   no CONFIG_LBC.json. Vinha em dois formatos — «2026/01/01 23:54:29» e
+   «21/01/2026 15:28» —, e ambos se leem. */
+function partesProcuracao(txt){
+  const t=String(txt||'').trim();
+  const m=t.match(/^([^(]+?)\s*(?:\(([^)]*)\))?$/);
+  const cod=(m?m[1]:t).trim();
+  const bruto=(m&&m[2]||'').trim();
+  let data='';
+  const d=bruto.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})|(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if(d)data=d[1]?`${String(d[3]).padStart(2,'0')}/${String(d[2]).padStart(2,'0')}/${d[1]}`
+               :`${String(d[4]).padStart(2,'0')}/${String(d[5]).padStart(2,'0')}/${d[6]}`;
+  return{cod,data};
+}
 function representanteCAIXA(){
   const quem=v('f-mut-quem')||'liliana';
   const sol=SOLICITADORAS[quem];
@@ -4241,12 +4428,14 @@ function representanteCAIXA(){
       v('f-mut-p-dom')?`com domicílio profissional na ${v('f-mut-p-dom')}`:''
     ].filter(Boolean).join(', ');
     return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-natural'),v('f-mut-p-nif')),
-      qualidade:`na qualidade de procurador${fem?'a':''} com poderes para o ato`,nome:v('f-mut-p-nome')};
+      qualidade:`na qualidade de procurador${fem?'a':''} com poderes para o ato`,nome:v('f-mut-p-nome'),
+      ...partesProcuracao(CGD_PROCURACAO)};
   }
   if(sol)return{id:sol.textoProcuradora,
     curto:idCurta(sol.nome,sol.naturalidade,sol.nif),
-    qualidade:'na qualidade de procuradora substabelecida',nome:sol.nome};
-  return{id:v('f-mut-repr')||'…',curto:v('f-mut-repr')||'…',qualidade:'',nome:''};
+    qualidade:'na qualidade de procuradora substabelecida',nome:sol.nome,
+    ...partesProcuracao(sol.codProcuracao)};
+  return{id:v('f-mut-repr')||'…',curto:v('f-mut-repr')||'…',qualidade:'',nome:'',cod:'',data:''};
 }
 function seloMutuo(){
   const montante=parseValor(v('f-mh-montante'));
@@ -4301,7 +4490,7 @@ const PODERES_MUTUANTE='ponto segundo alínea 1) e 6) e ponto terceiro regra 5.�
    só chega depois da autenticação. O código de cada solicitadora é o mesmo da
    sua procuração, pelo que se aproveita o que já vem na configuração. */
 function procMutuante(q){
-  if(q==='cgd')return{cod:CGD_PROCURACAO,pod:PODERES_MUTUANTE};
+  if(q==='cgd')return{cod:partesProcuracao(CGD_PROCURACAO).cod,pod:PODERES_MUTUANTE};
   const s=SOLICITADORAS[q];
   return{cod:s?(s.codProcuracao||'').replace(/\s*\(.*$/,''):'',pod:PODERES_MUTUANTE};
 }
@@ -4422,8 +4611,9 @@ const TU_NOVO=[['','— por responder —'],
 function aplicarRegimeTU(){
   const sel=document.getElementById('f-tu-caso');if(!sel)return;
   const novo=regimeNovoRJUE();
-  const lista=novo?TU_NOVO:TU_ART19;
-  const marca=novo?'novo':'art19';
+  /* As hipóteses são as mesmas nos dois regimes — o que muda é a advertência. */
+  const lista=TU_NOVO;
+  const marca='novo';
   if(sel.dataset.regime!==marca){
     const antes=sel.value;
     sel.dataset.regime=marca;
@@ -4452,18 +4642,9 @@ function certidaoVelha(){
 function textosTituloUrb(){
   const c=v('f-tu-caso');
   const d=(id)=>v(id)?dPT(v(id)):'…';
-  /* ── REGIME DO ARTIGO 19.º · até 1 de outubro de 2026 ──
-     Nada vai ao contrato: a lei desligou o título urbanístico do ato
-     transacional, e a menção no contrato é exigência do DL 108/2026, que ainda
-     não vigora. Três hipóteses, e todas se resolvem no termo — exibido, isento,
-     ou sem documento, caso em que sai a advertência. */
-  if(!regimeNovoRJUE()){
-    if(c==='apresentado')return{contrato:'',
-      termo:`— o título urbanístico do imóvel, ${v('f-tu-tipo')||'licença de utilização'} n.º ${v('f-tu-num')||'…'}, de ${d('f-tu-data')}, da Câmara Municipal de ${v('f-tu-camara')||'…'}, que me foi apresentado;`};
-    if(c==='isento')return{contrato:'',
-      termo:`— a isenção de controlo prévio da operação urbanística, nos termos ${v('f-tu-norma')||'…'}, que arquivo;`};
-    return{contrato:'',termo:''};   /* sem documento: sai só a advertência */
-  }
+  /* O contrato menciona sempre o título urbanístico, seja qual for o regime.
+     O que muda com a data é só a advertência do termo: não o vendo, a
+     solicitadora adverte nos termos do artigo 19.º do DL 10/2024. */
   if(!c)return{contrato:'',termo:''};
   if(c==='apresentado')
     return{
