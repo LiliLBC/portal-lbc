@@ -2566,6 +2566,10 @@ const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
 const REDIRECT='https://lililbc.github.io/portal-lbc/';
 const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read','Mail.Send'];
 const GRAPH_BASE='https://graph.microsoft.com/v1.0';
+/* Anexos das tarefas. Não se usam os anexos nativos da lista porque o Microsoft
+   Graph não os sabe criar nem ler — só diz se existem. Guardam-se numa
+   biblioteca de documentos, uma pasta por tarefa, com o número por nome. */
+const BIBLIOTECA_TAREFAS='TAREFASDOC';
 const TENANT_HOST='lbcsolicitadorapt.sharepoint.com';
 const SITE_DADOS_PATH='sites/lbcsolicitadora2';
 const SITE_PASTAS_PATH='sites/Escritrio';
@@ -2603,6 +2607,7 @@ const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento'
 const LISTA_AGENDA='Agenda_Escritorio';
 
 let msalApp=null,graphToken=null,contaAtual=null;
+let driveIdTarefas=null;
 let siteIdDados=null,siteIdPastas=null,listaId=null,bibliotecaId=null,listaIdTarefas=null,listaIdAgenda=null,bibliotecaProcessosId=null,listaIdConta=null,listaIdContab=null,bibliotecaFaturasId=null,driveIdSuprimentos=null,driveIdAvencas=null;
 let todosRegistos=[],registosCarregados=false,pastasCarregadas=false;
 let todosRegistosReg=[],registosFiltradosAtual=[],todasPastas=[];
@@ -2685,6 +2690,9 @@ async function resolverSiteIds(){
     bibliotecaFaturasId=drivesDados.value.find(d=>d.name===BIBLIOTECA_FATURAS)?.id;
     driveIdSuprimentos=drivesDados.value.find(d=>d.name===BIBLIOTECA_SUPRIMENTOS)?.id;
     driveIdAvencas=drivesDados.value.find(d=>d.name==='AVENCAS')?.id;
+    /* Procura-se nos dois sites: fica onde a Liliana a tiver criado. */
+    driveIdTarefas=drivesDados.value.find(d=>d.name===BIBLIOTECA_TAREFAS)?.id
+                 ||drives.value.find(d=>d.name===BIBLIOTECA_TAREFAS)?.id;
   }catch(e){console.error('Erro IDs:',e);}
 }
 
@@ -4238,6 +4246,7 @@ function abrirTarefaModal(itemId){
   const i=todasTarefas.find(t=>t.id===itemId);
   if(!i){showToast('Tarefa não encontrada','error');return;}
   modalTarefaId=itemId;
+  carregarAnexosTarefa();
   document.getElementById('mt-titulo').value=i[T.titulo]||'';
   document.getElementById('mt-cliente').value=i[T.cliente]||'';
   document.getElementById('mt-responsavel').value=i[T.responsavel]||'';
@@ -4274,6 +4283,59 @@ function fecharTarefaModal(){
   mtCronoEventos=[];
 }
 
+/* ── ANEXOS DA TAREFA ──
+   Uma pasta por tarefa, criada só ao juntar o primeiro ficheiro: sem pastas
+   vazias a acumular. Apagando a tarefa, a pasta fica — apagar ficheiros por
+   arrasto é como se perdem coisas. */
+function pastaAnexos(){return `Tarefa-${modalTarefaId}`;}
+async function carregarAnexosTarefa(){
+  const lista=document.getElementById('mt-anexos-lista');
+  const resumo=document.getElementById('mt-anexos-resumo');
+  if(!lista)return;
+  if(!driveIdTarefas){
+    lista.innerHTML='<span style="color:var(--red)">Biblioteca '+BIBLIOTECA_TAREFAS+' não encontrada.</span>';
+    resumo.textContent='';return;
+  }
+  lista.innerHTML='<span style="color:var(--text-muted)">A carregar…</span>';
+  try{
+    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdTarefas}/root:/${encodeURIComponent(pastaAnexos())}:/children`,
+      {headers:{'Authorization':'Bearer '+graphToken}});
+    if(r.status===404){lista.innerHTML='<span style="color:var(--text-muted)">Sem anexos.</span>';resumo.textContent='';return;}
+    if(!r.ok)throw new Error('estado '+r.status);
+    const d=await r.json();
+    const fs=(d.value||[]).filter(x=>x.file);
+    if(!fs.length){lista.innerHTML='<span style="color:var(--text-muted)">Sem anexos.</span>';resumo.textContent='';return;}
+    lista.innerHTML=fs.map(f=>`<div style="display:flex;justify-content:space-between;gap:.6rem;padding:.3rem 0;border-bottom:1px solid var(--border-soft)">
+        <a href="${f.webUrl}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</a>
+        <span style="color:var(--text-faint);font-size:11px;white-space:nowrap">${Math.max(1,Math.round(f.size/1024))} KB</span>
+      </div>`).join('');
+    resumo.textContent=`· ${fs.length} ficheiro${fs.length>1?'s':''}`;
+  }catch(e){
+    lista.innerHTML='<span style="color:var(--red)">Não consegui ler os anexos ('+e.message+').</span>';
+    resumo.textContent='';
+  }
+}
+async function anexarTarefa(ficheiros){
+  const estado=document.getElementById('mt-anexo-estado');
+  if(!modalTarefaId){estado.textContent='Grava a tarefa primeiro.';return;}
+  if(!driveIdTarefas){estado.textContent='Biblioteca '+BIBLIOTECA_TAREFAS+' não encontrada.';return;}
+  const lista=[...ficheiros];
+  for(let i=0;i<lista.length;i++){
+    const f=lista[i];
+    estado.textContent=`A enviar ${f.name} (${i+1} de ${lista.length})…`;
+    try{
+      /* Até 4 MB o Graph aceita o conteúdo direto; acima disso precisa de sessão
+         de carregamento, que aqui não vale a pena — são anexos, não arquivos. */
+      if(f.size>4*1024*1024){estado.textContent=`${f.name} tem mais de 4 MB — usa a biblioteca diretamente.`;continue;}
+      const url=`${GRAPH_BASE}/drives/${driveIdTarefas}/root:/${encodeURIComponent(pastaAnexos())}/${encodeURIComponent(f.name)}:/content`;
+      const r=await fetch(url,{method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':f.type||'application/octet-stream'},body:f});
+      if(!r.ok)throw new Error('estado '+r.status);
+    }catch(e){estado.textContent=`Falhou ${f.name}: ${e.message}`;continue;}
+  }
+  estado.textContent='';
+  document.getElementById('mt-anexo-input').value='';
+  await carregarAnexosTarefa();
+}
 function toggleMtSeccao(qual){
   const bloco=document.getElementById(`mt-bloco-${qual}`);
   const arr=document.getElementById(`mt-arr-${qual}`);
@@ -11334,6 +11396,23 @@ init();
           </div>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:.3rem;font-style:italic">Em Falta = (Valor do Serviço + Despesas) − Valor Pago</div>
+      </div>
+    </div>
+
+    <!-- Caixa expansível: Anexos -->
+    <div style="margin-top:.5rem;border:1px solid var(--border-soft);border-radius:8px;overflow:hidden">
+      <div onclick="toggleMtSeccao('anexos')" style="padding:.6rem .85rem;background:var(--bg-secondary);cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+        <div style="font-weight:500;font-size:13px">📎 Anexos <span id="mt-anexos-resumo" style="font-weight:400;color:var(--text-muted);font-size:11px;margin-left:6px"></span></div>
+        <svg id="mt-arr-anexos" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .2s"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+      <div id="mt-bloco-anexos" style="display:none;padding:.85rem;background:var(--bg-primary)">
+        <div id="mt-anexos-lista" style="font-size:12px"></div>
+        <input type="file" id="mt-anexo-input" multiple style="display:none" onchange="anexarTarefa(this.files)">
+        <button type="button" onclick="document.getElementById('mt-anexo-input').click()"
+          style="margin-top:.6rem;padding:.4rem .8rem;border:1px solid var(--border-soft);border-radius:6px;background:var(--bg-secondary);cursor:pointer;font-size:12px">
+          + Juntar ficheiro
+        </button>
+        <div id="mt-anexo-estado" style="font-size:11px;color:var(--text-muted);margin-top:.4rem"></div>
       </div>
     </div>
 
