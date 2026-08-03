@@ -5082,13 +5082,22 @@ function listarOutorgantesEmail(){
   const nomes=[];
   const add=n=>{n=(n||'').trim();if(n&&!nomes.includes(n))nomes.push(n);};
   const cgd=compradoraCGD();
+  /* Quem tem de comparecer com documentos. O cônjuge entra sempre que outorgue,
+     transmitindo ou apenas consentindo nos termos do artigo 1682.º-A do Código
+     Civil: em qualquer dos casos assina e precisa de identificação.
+     Antes procurava-se «conj-out» igual a «sim», valor que o campo nunca tem —
+     as opções são «ambos», «consente» e «nao» —, pelo que o cônjuge nunca era
+     listado. O mesmo com «temproc», que não existe: o campo é «repr-tipo». */
+  const representado=o=>o['repr-tipo']==='procurador';
   [...lerVendedores(),...(cgd?[]:lerCompradores())].forEach(o=>{
     /* Empresa: quem assina é o gerente. Enquanto a representação for texto livre
        (ver «gerentes estruturados»), não há nome isolável — só o procurador, se houver. */
-    if(o.tipo!=='singular'){if(o.temproc)add(o['proc-nome']);return;}
-    add(o.nome);
-    if(o.ec==='casado'&&o['conj-out']==='sim')add(o['conj-nome']);
-    if(o.temproc)add(o['proc-nome']);
+    if(o.tipo!=='singular'){if(representado(o))add(o['proc-nome']);return;}
+    if(representado(o)){add(o['proc-nome']);}
+    else{
+      add(o.nome);
+      if(ehCasado(o.ec)&&(o['conj-out']||'ambos')!=='nao')add(o['conj-nome']);
+    }
   });
   if(cgd)add(v('f-locrep-nome'));
   return nomes.filter(Boolean);
