@@ -551,6 +551,55 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
   </div>
 
+  <!-- ══ RECONHECIMENTO DE ASSINATURAS ══ -->
+  <div class="section-card" id="card-recon" style="display:none">
+    <div class="section-head">
+      <div class="section-num">R</div>
+      <div><div class="section-name">Documento e verificações</div>
+        <div class="section-desc">O documento onde as assinaturas são apostas</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="campo form-group form-full"><label class="form-label">Documento <span>*</span></label>
+        <input class="form-input" id="f-rec-doc" oninput="atualizar()" placeholder="Ex: CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA N.º 100155302">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Sai entre aspas, tal como o escreveres.</div></div>
+      <div class="form-group"><label class="form-label">Datado de</label>
+        <input type="date" class="form-input" id="f-rec-data-doc" onchange="atualizar()"></div>
+      <div class="form-group"><label class="form-label">N.º de páginas</label>
+        <input class="form-input" id="f-rec-paginas" oninput="atualizar()" placeholder="Ex: 13">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Sai por extenso.</div></div>
+      <div class="form-group form-full"><label class="form-label">Ata deliberativa, se houver</label>
+        <input class="form-input" id="f-rec-ata" oninput="atualizar()" placeholder="Ex: n.º 22, datada de 19 de maio de 2025"></div>
+    </div>
+
+    <div class="cond-block" style="margin-top:.8rem">
+      <div class="cond-block-title">Licença de utilização do imóvel</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">Quando o documento respeite a imóvel.</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group form-full"><label class="form-label">Como se prova</label>
+          <select class="form-select" id="f-rec-lic" onchange="atualizar()">
+            <option value="">— não se menciona —</option>
+            <option value="camara">Certidão camarária</option>
+            <option value="averbamento">Averbamento oficioso na certidão predial</option>
+            <option value="anterior">Anterior a 1951 — dispensada</option>
+          </select></div>
+        <div class="form-group rec-lic" style="display:none"><label class="form-label">Licença n.º</label>
+          <input class="form-input" id="f-rec-lic-num" oninput="atualizar()"></div>
+        <div class="form-group rec-lic" style="display:none"><label class="form-label">Emitida em</label>
+          <input type="date" class="form-input" id="f-rec-lic-data" onchange="atualizar()"></div>
+        <div class="form-group rec-lic rec-anterior" style="display:none"><label class="form-label">Câmara Municipal de</label>
+          <input class="form-input" id="f-rec-lic-camara" oninput="atualizar()"></div>
+        <div class="form-group rec-cert" style="display:none"><label class="form-label">Certidão predial — código</label>
+          <input class="form-input" id="f-rec-cert-cod" oninput="atualizar()" placeholder="Ex: PP-2943-19085-111002-000307"></div>
+        <div class="form-group rec-cert" style="display:none"><label class="form-label">Averbamento oficioso</label>
+          <input class="form-input" id="f-rec-averb" oninput="atualizar()" placeholder="Ex: OF. de 2008/09/25"></div>
+        <div class="form-group rec-camara rec-anterior" style="display:none"><label class="form-label">Certidão camarária emitida em</label>
+          <input type="date" class="form-input" id="f-rec-cert-data" onchange="atualizar()"></div>
+        <div class="form-group form-full"><label class="form-label">Outros documentos verificados</label>
+          <textarea class="form-input" id="f-rec-outros" rows="2" oninput="atualizar()" placeholder="Um por linha. Ex: Caderneta Predial Urbana do Serviço de Finanças de Santo Tirso, obtida em 15/02/2024"></textarea></div>
+      </div>
+    </div>
+  </div>
+
   <div class="section-card" id="card-b6">
     <div class="section-card-header"><div class="section-num">6</div><div><div class="section-name">Preço</div><div class="section-desc">Preço e imputação</div></div></div>
 
@@ -1090,6 +1139,7 @@ const capitalCGD=()=>`€${CGD_CAPITAL.replace(/\./g,' ')} (${valorExtenso(CGD_C
 /* A certidão comercial da CAIXA segue o mesmo padrão da procuração: constante
    no topo, que serve de valor inicial ao campo. Muda-se aqui quando a CAIXA
    renovar a certidão, e no ato pontual corrige-se no campo. */
+let CGD_CFG={};          /* bloco cgd inteiro, para as duas procurações */
 let CGD_CRC='';          /* vem do CONFIG_LBC.json */
 let CGD_CRC_VAL='';      /* vem do CONFIG_LBC.json */
 const ESCRITORIO={
@@ -1320,6 +1370,9 @@ function addOutorgante(pref,dados){
         </select></div>
       <div class="form-group form-full"><label class="form-label">Morada</label>
         <input class="form-input" id="${id}-morada" placeholder="Ex: Avenida …, Urbanização …, Ferreiras"></div>
+      <div class="form-group form-full campo-recon" style="display:none"><label class="form-label">Qualidade em que assina</label>
+        <input class="form-input" id="${id}-qualrec" oninput="atualizar()" placeholder="Ex: ÚNICO SÓCIO E GERENTE, PROCURADORA SUBSTABELECIDA">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Fica a seguir à identificação. Vazio, assina em nome próprio.</div></div>
       ${pref==='vend'?`
       <div class="form-group form-full"><label class="form-label">Coincide com o registo predial? <span>*</span></label>
         <select class="form-select" id="${id}-coincide" onchange="onCoincide('${id}')">
@@ -1746,7 +1799,7 @@ function lerOutorgantes(pref){
       coincide:g(`${id}-coincide`),
       'asc-nasc-num':g(`${id}-asc-nasc-num`),'asc-nasc-crc':g(`${id}-asc-nasc-crc`),
       'asc-cas-num':g(`${id}-asc-cas-num`),'asc-cas-crc':g(`${id}-asc-cas-crc`),
-      'repr-tipo':g(`${id}-repr-tipo`)||'proprio',
+      'repr-tipo':g(`${id}-repr-tipo`)||'proprio',qualrec:g(`${id}-qualrec`),
       'proc-nome':g(`${id}-proc-nome`),'proc-natural':g(`${id}-proc-natural`),'proc-ec':g(`${id}-proc-ec`),
       'proc-cc':g(`${id}-proc-cc`),'proc-ccval':g(`${id}-proc-ccval`),'proc-nif':g(`${id}-proc-nif`),'proc-morada':g(`${id}-proc-morada`),
       'pr-data':g(`${id}-pr-data`),'pr-ent':g(`${id}-pr-ent`),'pr-qual':g(`${id}-pr-qual`),'pr-cedula':g(`${id}-pr-cedula`),
@@ -2814,7 +2867,84 @@ function fechoTermo(temMH){
   const dispensa=`As partes dispensaram a leitura do Documento Complementar e Anexo I por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-os, ainda assim, como parte integrante do presente contrato.`;
   return temMH?`${base}\n${dispensa}`:base;
 }
+/* ═══════════ ATO 5 · RECONHECIMENTO DE ASSINATURAS ═══════════
+   Não é contrato nem tem termo: é o ato da solicitadora aposto num documento
+   de outrem — contrato de locação financeira, cessão de posição, rescisão.
+   Sai um documento só.
+
+   FONTE DA REDAÇÃO: minutas cedidas pelo Dr. João Rodrigues da Silva à
+   Liliana, adaptadas ao ato de solicitadora — sai o «O Advogado» e o registo
+   na Ordem dos Advogados, que a Liliana faz na plataforma da OSAE.
+   ⚠ Por validar: a adaptação é minha, o texto é dos modelos.                 */
+function comporRecon(){
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  const sigs=lerVendedores();
+  const blocos=[];
+
+  const foraEscritorio=v('f-local-tipo')==='outro';
+  const localTxt=foraEscritorio?(v('f-local-morada')||'…'):(sol?sol.domicilio:'…');
+  blocos.push({id:'r-cab',T:'',X:sol
+    ?`${(sol.assinNome||sol.nome)}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, número de identificação fiscal ${sol.nif}, com domicílio profissional na ${sol.domicilio}.`
+    :'…'});
+
+  /* ── Identificação de quem assina ──
+     Redação dos modelos: nome, contribuinte, estado civil, naturalidade, e a
+     identidade verificada pela exibição do cartão de cidadão. */
+  const idSig=o=>{
+    if(o.tipo!=='singular')return textoVendedorCurto(o);
+    const fem=/a$/i.test((o.ec||'').split(/[\s,]/)[0]||'')||o.genero==='F';
+    const t=[(o.nome||'…').toUpperCase()];
+    if(o.nif)t.push(`Contribuinte Fiscal ${o.nif}`);
+    if(o.ec)t.push(o.ec);
+    if(o.natural)t.push(`natural de ${o.natural}`);
+    t.push(`cuja identidade verifiquei pela exibição do cartão de cidadão n.º ${o.cc||'…'}${o.ccval?`, válido até ${dPT(o.ccval)}`:''}`);
+    /* A qualidade é de cada um, como no empresas.html: um pode assinar por si e
+       outro em representação da sociedade, no mesmo documento. */
+    if(o.qualrec)t.push(`que o faz na qualidade de ${o.qualrec}`);
+    void fem;
+    return t.join(', ');
+  };
+  const pessoas=sigs.filter(o=>o.tipo==='singular');
+  const plural=pessoas.length>1;
+  const gen=generosOutorgantes(pessoas);
+  const fem=gen.length>0&&gen.every(g=>g==='F');
+  const proprio=plural?'pelos próprios':(fem?'pela própria':'pelo próprio');
+
+  const docNome=v('f-rec-doc')||'…';
+  const pags=v('f-rec-paginas');
+  const detDoc=[v('f-rec-data-doc')?`datado de ${dataExtenso(v('f-rec-data-doc'))}`:'',
+    pags?`que ocupa ${semEuroTxt(valorExtenso(pags).toLowerCase())} páginas`:''].filter(Boolean).join(', ');
+
+  /* Qualidade e representada: sai do próprio bloco do outorgante. */
+  const empresas=sigs.filter(o=>o.tipo!=='singular');
+
+  blocos.push({id:'r-reconheco',T:'',X:
+    `Reconheço, ao abrigo do disposto no artigo 38.º do Decreto-Lei n.º 76-A/2006, de 29 de março, e na Portaria n.º 657-B/2006, de 29 de junho, para os devidos efeitos e nos termos legais, ${plural?'as assinaturas, feitas':'a assinatura, feita'} na minha presença ${proprio}, de ${pessoas.map(idSig).join(' e de ')}, ${plural?'apostas':'aposta'} no documento em anexo, que é ${/^(uma|CESS|RESC)/i.test(docNome)?'uma':'um'} «${docNome}»${detDoc?`, ${detDoc}`:''}.`,
+    negrito:pessoas.map(o=>o.nome).filter(Boolean)});
+
+  /* ── Verificações ── */
+  const ver=[];
+  empresas.map(o=>linhaEmpresa(o,'sociedade representada')).filter(Boolean).forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'')));
+  if(v('f-rec-ata'))ver.push(`— a ata deliberativa ${v('f-rec-ata')}, que após consulta restituo;`);
+  const lic=v('f-rec-lic');
+  if(lic==='camara')
+    ver.push(`— que para o imóvel objeto do documento em que aqui se reconhecem as assinaturas foi emitida a Licença de Utilização n.º ${v('f-rec-lic-num')||'…'}, emitida em ${dPT(v('f-rec-lic-data'))} pela Câmara Municipal de ${v('f-rec-lic-camara')||'…'}, conforme certidão emitida em ${dPT(v('f-rec-cert-data'))} pela mesma Câmara Municipal, que após consulta restituo;`);
+  else if(lic==='averbamento')
+    ver.push(`— que para o imóvel objeto do documento em que aqui se reconhecem as assinaturas foi emitida a Licença de Utilização n.º ${v('f-rec-lic-num')||'…'}, emitida em ${dPT(v('f-rec-lic-data'))} pela Câmara Municipal de ${v('f-rec-lic-camara')||'…'}, conforme certidão permanente do registo predial com o código de acesso ${v('f-rec-cert-cod')||'…'}, onde consta o averbamento oficioso registado pelo ${v('f-rec-averb')||'…'};`);
+  else if(lic==='anterior')
+    ver.push(`— que o imóvel objeto do documento em que aqui se reconhecem as assinaturas é de construção legal e anterior a 1951, pelo que está dispensada a respetiva Licença de Utilização, conforme certidão emitida em ${dPT(v('f-rec-cert-data'))} pela Câmara Municipal de ${v('f-rec-lic-camara')||'…'}, que após consulta restituo;`);
+  (v('f-rec-outros')||'').split('\n').map(l=>l.trim()).filter(Boolean)
+    .forEach(l=>ver.push('— '+l.replace(/^—\s*/,'').replace(/[;.]$/,'')+';'));
+  if(ver.length)blocos.push({id:'r-verifiquei',T:'',X:`Verifiquei:\n${ver.join('\n')}`});
+
+  blocos.push({id:'r-data',T:'',X:`${foraEscritorio?(v('f-local-morada')||'…'):'Évora'}, ${dataExtenso(v('f-data-ato'))}.`});
+  void localTxt;
+  return{termo:[],contrato:blocos,anexo:[]};
+}
+/* Tira os euros do extenso, para o usar em contagens — «treze» e não «treze euros». */
+function semEuroTxt(t){return String(t||'').replace(/\s*euros?$/,'').replace(/\s*euros? e .*$/,'');}
 function compor(){
+  if(atoEscolhido()==='recon')return comporRecon();
   if(atoEscolhido()==='mh'){
     const docs=docsMH().map(comporMH);
     const d0=docs[0]||{termo:[],contrato:[],anexo:[]};
@@ -3389,9 +3519,9 @@ function render(){
   folha.innerHTML=docs.map((d,i)=>
       (i?`<hr class="quebra-pagina">`:'')
       +(docs.length>1?`<div style="text-align:center;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8578;margin:.2rem 0 .9rem">Documento ${i+1} de ${docs.length} · ${esc(d.rot||'')}</div>`:'')
-      +`<div class="termo-pagina">`+seq(d.termo)+assin+`</div>`
-      +`<hr class="quebra-pagina">`
+      +(d.termo&&d.termo.length?`<div class="termo-pagina">`+seq(d.termo)+assin+`</div><hr class="quebra-pagina">`:'')
       +seq(d.contrato)
+      +(d.termo&&d.termo.length?'':assin)
       +((d.anexo&&d.anexo.length)?`<hr class="quebra-pagina">`+seq(d.anexo):'')
     ).join('');
   const colarTexto=el=>el.addEventListener('paste',e=>{
@@ -3512,7 +3642,7 @@ const TIPOS_ATO={
   doacao:       {cod:'DOACAO',       rot:'Doação',                                nome:'Doação',                        pronto:false},
   partilhas:    {cod:'PARTILHAS',    rot:'Partilhas / Divisão de Coisa Comum',    nome:'Partilhas',                     pronto:false},
   mh:           {cod:'MH',           rot:'Mútuo com Hipoteca',                    nome:'Mútuo com Hipoteca',            pronto:true },
-  recon:        {cod:'RECON',        rot:'Reconhecimento de Assinaturas',         nome:'Reconhecimento de Assinaturas', pronto:false},
+  recon:        {cod:'RECON',        rot:'Reconhecimento de Assinaturas',         nome:'Reconhecimento de Assinaturas', pronto:true },
   termoempresas:{cod:'TERMO_EMP',    rot:'Termo de Autenticação — Empresas',      nome:'Termo de Autenticação',         pronto:false},
   permuta:      {cod:'PERMUTA',      rot:'Permuta de Bens Imóveis',               nome:'Permuta de Bens Imóveis',       pronto:false}
 };
@@ -3598,6 +3728,25 @@ function nomearBloco(card,nome,desc){
   const n=c.querySelector('.section-name'),d=c.querySelector('.section-desc');
   if(n)n.textContent=nome;if(d)d.textContent=desc;
 }
+/* ── FUNIL DO ATO 5 · RECONHECIMENTO ──
+   Só entidade autenticadora, quem assina, e o documento. Não há imóvel a
+   transmitir, nem preço, nem impostos, nem mútuo. */
+function funilRecon(){
+  nomearBloco('card-b3','Quem assina','Signatários — pessoas ou sociedades');
+  ['card-b4','card-b5','card-b6','card-b7','card-b8','card-b9','card-b10'].forEach(k=>setDisp(k,'none'));
+  setDisp('card-recon','block');
+  const lic=v('f-rec-lic');
+  document.querySelectorAll('.rec-lic').forEach(e=>e.style.display=(lic==='camara'||lic==='averbamento')?'flex':'none');
+  document.querySelectorAll('.rec-cert').forEach(e=>e.style.display=lic==='averbamento'?'flex':'none');
+  document.querySelectorAll('.rec-camara').forEach(e=>e.style.display=lic==='camara'?'flex':'none');
+  document.querySelectorAll('.rec-anterior').forEach(e=>e.style.display=lic?'flex':'none');
+  const ts=document.getElementById('t-trato-suc');
+  if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='none';
+  if(!document.querySelectorAll('.vend-block').length)addVendedor();
+  document.querySelectorAll('.campo-recon').forEach(e=>e.style.display='flex');
+  const gm=document.getElementById('g-local-morada');
+  if(gm)gm.style.display=v('f-local-tipo')==='outro'?'block':'none';
+}
 function funilMH(){
   const toic=ehTOIC();
   const conexo=temConexo();
@@ -3679,6 +3828,8 @@ function desfazerFunilMH(){
   if(tmh){const r=tmh.closest('.toggle-row');if(r)r.style.display='';
     const h=r&&r.nextElementSibling;if(h&&h.tagName==='DIV'&&!h.id)h.style.display='';}
   setDisp('blk-oic','none');
+  setDisp('card-recon','none');
+  document.querySelectorAll('.campo-recon').forEach(e=>e.style.display='none');
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
 }
 function atualizar(){
@@ -3690,6 +3841,7 @@ function atualizar(){
   setProp('tipo-badge','textContent',t.rot);
   document.body.classList.toggle('ato-por-construir',!t.pronto&&!ehCV&&ato!=='mh');
   setDisp('g-subtipo-mh',ato==='mh'?'flex':'none');
+  if(ato==='recon'){funilRecon();sincronizarAlertas();desenharAlertas();render();return;}
   if(ato==='mh'){funilMH();sincronizarAlertas();desenharAlertas();render();return;}
   desfazerFunilMH();
 
@@ -4416,6 +4568,15 @@ function partesProcuracao(txt){
                :`${String(d[4]).padStart(2,'0')}/${String(d[5]).padStart(2,'0')}/${d[6]}`;
   return{cod,data};
 }
+/* Há duas procurações da CAIXA por solicitadora: a geral, para a compra e venda
+   e o mútuo, e a do leasing, que só serve para os atos de locação financeira.
+   O ato em curso é que decide qual se cita. */
+function ehLeasingCGD(){return atoEscolhido()==='leasing';}
+function codProcDe(o){
+  if(!o)return'';
+  return (ehLeasingCGD()&&(o.codProcuracaoLeasing||o.procuracaoLeasing))
+    ||o.codProcuracao||o.procuracao||'';
+}
 function representanteCAIXA(){
   const quem=v('f-mut-quem')||'liliana';
   const sol=SOLICITADORAS[quem];
@@ -4430,12 +4591,12 @@ function representanteCAIXA(){
     ].filter(Boolean).join(', ');
     return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-natural'),v('f-mut-p-nif')),
       qualidade:`na qualidade de procurador${fem?'a':''} com poderes para o ato`,nome:v('f-mut-p-nome'),
-      ...partesProcuracao(CGD_PROCURACAO)};
+      ...partesProcuracao(codProcDe(CGD_CFG)||CGD_PROCURACAO)};
   }
   if(sol)return{id:sol.textoProcuradora,
     curto:idCurta(sol.nome,sol.naturalidade,sol.nif),
     qualidade:'na qualidade de procuradora substabelecida',nome:sol.nome,
-    ...partesProcuracao(sol.codProcuracao)};
+    ...partesProcuracao(codProcDe(sol))};
   return{id:v('f-mut-repr')||'…',curto:v('f-mut-repr')||'…',qualidade:'',nome:'',cod:'',data:''};
 }
 function seloMutuo(){
@@ -5482,6 +5643,7 @@ function aplicarConfig(cfg){
   if(!cfg||!cfg.solicitadoras)return false;
   SOLICITADORAS=cfg.solicitadoras;
   if(cfg.cgd){
+    CGD_CFG=cfg.cgd;
     CGD_PROCURACAO=cfg.cgd.procuracao||'';
     CGD_CRC=cfg.cgd.certidaoComercial||'';
     CGD_CRC_VAL=cfg.cgd.certidaoValidade||'';
