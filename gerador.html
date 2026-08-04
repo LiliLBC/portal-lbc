@@ -321,6 +321,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="mh">4 · Mútuo com Hipoteca</option>
           <option value="recon">5 · Reconhecimento de Assinaturas (Leasing)</option>
           <option value="termoempresas">6 · Termo de Autenticação — Empresas</option>
+          <option value="leasing">8 · Leasing</option>
           <option value="permuta">7 · Permuta de Bens Imóveis</option>
         </select></div>
       <div class="form-group form-full" id="g-subtipo-cv"><label class="form-label">Tipo de compra e venda <span>*</span></label>
@@ -329,6 +330,13 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="mh">Com Mútuo e Hipoteca</option>
           <option value="superficie">Direito de Superfície</option>
         </select></div>
+      <div class="form-group form-full" id="g-subtipo-lea" style="display:none"><label class="form-label">Saída do leasing <span>*</span></label>
+        <select class="form-select" id="f-lea-tipo" onchange="atualizar()">
+          <option value="entrada">8.1 · Entrada — a CAIXA compra para locar</option>
+          <option value="antecipada">8.2 · Redução de prazo e opção de compra</option>
+          <option value="opcao">8.3 · Exercício da opção de compra — prazo cumprido</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Na entrada a CAIXA compra; nas saídas vende. As partes trocam de posição.</div></div>
       <div class="form-group form-full" id="g-subtipo-mh" style="display:none"><label class="form-label">Contrato <span>*</span></label>
         <select class="form-select" id="f-mh-contrato" onchange="atualizar()">
           <option value="toic">4.1 · TOIC — transferência de crédito de habitação própria permanente</option>
@@ -548,6 +556,50 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <textarea class="form-input" id="f-onus-txt" rows="2" oninput="atualizar()" placeholder="Ónus que se mantêm e que a lista acima não cobre"></textarea>
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Texto livre, acrescentado à cláusula depois dos ónus listados.</div></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ LEASING ══ -->
+  <div class="section-card" id="card-leasing" style="display:none">
+    <div class="section-head">
+      <div class="section-num">L</div>
+      <div><div class="section-name">Locação financeira</div>
+        <div class="section-desc">Prazo, valor residual e cancelamento da inscrição</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Prazo estipulado (meses) <span>*</span></label>
+        <input class="form-input" id="f-lea-prazo" oninput="atualizar()" placeholder="Ex: 120"></div>
+      <div class="form-group"><label class="form-label">Com início em <span>*</span></label>
+        <input type="date" class="form-input" id="f-lea-inicio" onchange="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label">Inscrição da locação financeira <span>*</span></label>
+        <input class="form-input" id="f-lea-ap" oninput="atualizar()" placeholder="Ex: AP. 648 de 2021/03/26">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">A favor do locatário. É esta que se cancela na cláusula final.</div></div>
+      <div class="form-group"><label class="form-label">Valor residual (€) <span>*</span></label>
+        <input class="form-input" id="f-lea-residual" oninput="atualizar()"></div>
+      <div class="form-group"><label class="form-label">Pago em <span>*</span></label>
+        <input type="date" class="form-input" id="f-lea-data-pag" onchange="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label">Meio de pagamento</label>
+        <select class="form-select" id="f-lea-meio" onchange="atualizar()">
+          <option value="transferencia">Transferência bancária</option>
+          <option value="debito">Débito direto</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Conta de origem</label>
+        <input class="form-input" id="f-lea-conta-orig" oninput="atualizar()"></div>
+      <div class="form-group"><label class="form-label">Conta de destino</label>
+        <input class="form-input" id="f-lea-conta-dest" oninput="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label">Licença de utilização</label>
+        <input class="form-input" id="f-lea-licenca" oninput="atualizar()" placeholder="Ex: n.º 25 e 26, emitida em 09/11/1999 pela Câmara Municipal da Amadora"></div>
+      <div class="form-group form-full lea-entrada" style="display:none"><label class="form-label">Preço (€) <span>*</span></label>
+        <input class="form-input" id="f-lea-preco" oninput="atualizar()"></div>
+      <div class="form-group form-full lea-entrada" style="display:none"><label class="form-label">Forma de pagamento</label>
+        <input class="form-input" id="f-lea-pag-entrada" oninput="atualizar()" placeholder="Ex: cheque bancário, com o n.º 5541250572, sacado sobre a Caixa Geral de Depósitos, S.A."></div>
+      <div class="form-group form-full lea-entrada" style="display:none"><label class="form-label">Destinatário da locação <span>*</span></label>
+        <input class="form-input" id="f-lea-destino" oninput="atualizar()" placeholder="Ex: AMADAIMO, LDA, com sede em …, e o NIPC 517321246"></div>
+      <div class="form-group form-full"><label class="form-label">A licença respeita a</label>
+        <select class="form-select" id="f-lea-lic-ambito" onchange="atualizar()">
+          <option value="predio">O prédio de que faz parte integrante</option>
+          <option value="fracao">A fração autónoma objeto do contrato</option>
+        </select></div>
     </div>
   </div>
 
@@ -2943,7 +2995,147 @@ function comporRecon(){
 }
 /* Tira os euros do extenso, para o usar em contagens — «treze» e não «treze euros». */
 function semEuroTxt(t){return String(t||'').replace(/\s*euros?$/,'').replace(/\s*euros? e .*$/,'');}
+/* ═══════════ ATO 8 · LEASING · SAÍDA ═══════════
+   A CAIXA é a PRIMEIRA, locadora e vendedora; o locatário é a SEGUNDA. Duas
+   variantes, com a mesma espinha:
+     8.1 · reduz-se o prazo e altera-se o valor residual antes de exercer;
+     8.2 · o prazo correu até ao fim e exerce-se a opção sem mais.
+   A entrada no leasing — a CAIXA a comprar para locar — não vive aqui: é o
+   ato 1 com a CAIXA como compradora.
+
+   FONTE DA REDAÇÃO: minutas cedidas à Liliana pelo Dr. João Rodrigues da Silva.
+   ⚠ Por validar: transcrição minha, com a identificação das partes montada
+   pelo gerador e a procuração do leasing das solicitadoras.                  */
+function leaTipo(){return v('f-lea-tipo')||'entrada';}
+function ehLeaEntrada(){return leaTipo()==='entrada';}
+function ehLeaAntecipada(){return leaTipo()==='antecipada';}
+function comporLeasing(){
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  const loc=lerVendedores();          /* bloco 3 · locatário */
+  const antec=ehLeaAntecipada();
+  const entrada=ehLeaEntrada();
+  const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} Euros (${valorExtenso(v(x)).toLowerCase()})`:'…';
+  const meses=v('f-lea-prazo');
+  const prazoTxt=meses?`${meses} (${valorExtenso(meses).toLowerCase().replace(/\s*euros?.*$/,'')}) meses`:'… meses';
+
+  /* ── Partes ── */
+  const r=representanteCAIXA();
+  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`;
+  /* Na entrada a CAIXA é a SEGUNDA, compradora; nas saídas é a PRIMEIRA,
+     locadora e vendedora. O texto dela é o mesmo; muda a designação. */
+  const ordCGD=entrada?'Segunda':'Primeira';
+  const txtPrimeira=`${baseCGD}, devidamente representada neste ato por ${r.id||'…'}, ${r.qualidade||'na qualidade de sua procuradora'}, adiante designada por ${ordCGD} Contratante ou CAIXA.`;
+  const ordLoc=entrada?'Primeir':'Segund';
+  const desigLoc=`, adiante designad${loc.length>1?'os':'o'} por ${ordLoc}${loc.length>1?'os':(entrada?'a':'a')} Contratante${loc.length>1?'s':''}.`;
+  const txtSegunda=loc.map(textoVendedor).join(';\n')+desigLoc;
+  const txtSegundaCurto=loc.map(textoVendedorCurto).join(', ')+desigLoc;
+
+  /* ── Imóvel, com as duas inscrições ── */
+  const isFr=v('f-im-tipo')==='fracao';
+  const corpoIm=isFr
+    ?`FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, com tudo o que a compõe, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal, registada pela inscrição ${v('f-im-apph')||'…'}`
+    :`prédio urbano composto de ${v('f-im-descricao')||'…'}`;
+  const mats=isFr?[]:lerMatrizes();
+  const matriz=isFr
+    ?`inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros`
+    :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na ${v('f-im-crp')||'…'}, sob o número ${v('f-im-num')||'…'}, com o registo de aquisição a favor da locadora pela inscrição ${v('f-im-apaq')||'…'}, e a da respetiva locação financeira a favor da locatária pela inscrição ${v('f-lea-ap')||'…'}, ${matriz}, adiante designad${isFr?'a':'o'} por Imóvel.`;
+
+  /* ══════════════ TERMO ══════════════ */
+  const termo=[];
+  const foraEscritorio=v('f-local-tipo')==='outro';
+  const entTxt=sol
+    ?`${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, número de identificação fiscal ${sol.nif}`
+      +(foraEscritorio?`, com domicílio profissional na ${sol.domicilio}`:'')
+    :'…';
+  const localTxt=foraEscritorio?`na ${v('f-local-morada')||'…'}`:(sol?`no meu escritório sito na ${sol.domicilio}`:'…');
+  termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram como Outorgantes:`});
+  /* Na entrada comparece primeiro quem vende; nas saídas, a CAIXA. */
+  const bCGD={id:'t-cgd',T:entrada?'SEGUNDA':'PRIMEIRA',X:entrada?txtPrimeira:`(Locadora) ${txtPrimeira}`};
+  const bLoc={id:'t-loc',T:(entrada?(loc.length>1?'PRIMEIROS':'PRIMEIRA'):(loc.length>1?'SEGUNDOS':'SEGUNDA')),
+    X:entrada?txtSegunda:`(Locatário) ${txtSegunda}`,negrito:loc.map(o=>o.nome||o.denom).filter(Boolean)};
+  if(entrada){termo.push(bLoc);termo.push(bCGD);}else{termo.push(bCGD);termo.push(bLoc);}
+
+  const ver=[];
+  ver.push('— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;');
+  const codP=partesProcuracao(v('f-mut-proc-cod')||r.cod);
+  ver.push(`— a qualidade e poderes d${entrada?'a Segunda':'a Primeira'} Outorgante, para o presente ato, pela consulta da procuração${v('f-mut-quem')==='cgd'?'':', conjugada com a do substabelecimento,'} depositada${v('f-mut-quem')==='cgd'?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codP.cod||'…'}${codP.data||r.data?`, de ${codP.data||r.data}`:''};`);
+  loc.map(o=>linhaEmpresa(o,entrada?'Primeira Outorgante':'Segunda Outorgante')).filter(Boolean)
+    .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
+  const pred=linhaPredio('f-im',null); if(pred)ver.push(pred);
+  termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${ver.join('\n')}`});
+  termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
+  termo.push({id:'t-leitura',T:'',X:fechoTermo(false)});
+
+  /* ══════════════ CONTRATO ══════════════ */
+  const contrato=[];
+  const ORD=['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava'];
+  let n=0; const cl=a=>`${ORD[++n]}\n(${a})`;
+  const sub=entrada?'':(antec?'Redução de Prazo e Opção de Compra em Leasing':'Opção de Compra em Leasing');
+  contrato.push({id:'c-cab',T:sub?`COMPRA E VENDA\n(${sub})`:'COMPRA E VENDA',X:''});
+  const cCGD={id:'c-cgd',T:entrada?'SEGUNDA':'PRIMEIRA',X:entrada?txtPrimeira:`(Locadora) ${txtPrimeira}`};
+  const cLoc={id:'c-loc',T:(entrada?(loc.length>1?'PRIMEIROS':'PRIMEIRA'):(loc.length>1?'SEGUNDOS':'SEGUNDA')),
+    X:entrada?txtSegundaCurto:`(Locatário) ${txtSegundaCurto}`,negrito:loc.map(o=>o.nome||o.denom).filter(Boolean)};
+  if(entrada){contrato.push(cLoc);contrato.push(cCGD);}else{contrato.push(cCGD);contrato.push(cLoc);}
+  contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda${sub?` (${sub})`:''}, que se rege pelas cláusulas seguintes:`});
+
+  if(entrada){
+    /* A entrada é uma compra e venda simples: os primeiros vendem à CAIXA, que
+       depois cede em locação financeira. Sem prazo, sem residual, sem
+       cancelamento — o leasing ainda não existe. */
+    contrato.push({id:'c-lea-obj',T:cl('Objeto'),X:
+      `${loc.length>1?'Os Primeiros Contratantes':'A Primeira Contratante'}, em nome da sua representada, vende${loc.length>1?'m':''} à representada da Segunda Contratante, que a aceita, a ${txtImovel}`});
+    contrato.push({id:'c-lea-preco-e',T:cl('Preço'),X:
+      `1. O Imóvel é vendido pelo preço de ${par('f-lea-preco')}, que ${loc.length>1?'os Primeiros Contratantes, em nome da sua representada, declaram':'a Primeira Contratante, em nome da sua representada, declara'} já ter recebido e de que ${loc.length>1?'dão':'dá'} aqui quitação.\n`
+      +`2. O pagamento foi efetuado integralmente na presente data através de ${v('f-lea-pag-entrada')||'…'}`});
+    contrato.push({id:'c-lea-onus-e',T:cl('Ónus e encargos'),X:`O Imóvel é vendido livre de qualquer ónus ou encargos.`});
+    contrato.push({id:'c-lea-lic-e',T:cl('Licenciamento camarário'),X:
+      `O Imóvel tem a Licença de Utilização ${v('f-lea-licenca')||'…'}, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`});
+    contrato.push({id:'c-lea-dest',T:cl('Destino do Imóvel adquirido'),X:
+      `O Imóvel destina-se a ser cedido em Locação Financeira a ${v('f-lea-destino')||'…'}`});
+    contrato.push({id:'c-lea-data',T:'',X:`${foraEscritorio?(v('f-local-morada')||'…'):'Évora'}, ${dataExtenso(v('f-data-ato'))}.`});
+    return{termo,contrato,anexo:[]};
+  }
+  contrato.push({id:'c-lea1',T:cl('Objeto e Prazo da Locação'),X:
+    `1. A representada da Segunda Contratante é locatária financeira, sendo locadora a representada da Primeira Contratante, da ${txtImovel}\n`
+    +`2. O prazo ${antec?'estipulado':'inicial estipulado'} da referida locação financeira foi de ${prazoTxt}, com início em ${dPT(v('f-lea-inicio'))}${antec?'.':', encontrando-se o mesmo cumprido e igualmente vencidas e pagas a totalidade das rendas.'}`});
+
+  if(antec)
+    contrato.push({id:'c-lea2',T:cl('Redução de Prazo e Alteração do Valor Residual'),X:
+      `As partes acordam em reduzir o prazo do contrato de locação financeira, indicado no número 2 da cláusula antecedente, de forma a que o mesmo cesse na presente data, e em alterar o valor residual previsto no referido contrato, fixando-o em ${par('f-lea-residual')}.`});
+
+  const meio=v('f-lea-meio')==='debito'?'débito direto':'transferência bancária';
+  const contas=`${meio} da conta com o ${v('f-lea-conta-orig')||'…'}, para a conta com o ${v('f-lea-conta-dest')||'…'}, ambas domiciliadas na Caixa Geral de Depósitos, S.A.`;
+  if(antec){
+    contrato.push({id:'c-lea3',T:cl('Exercício da Opção de Compra. Compra e Venda'),X:
+      `1. Na sequência do exercício da opção de compra pela representada da Segunda Contratante, de acordo com o estipulado no contrato de locação financeira, a CGD, pelo presente contrato, vende o Imóvel à representada da Segunda Contratante, pelo preço residual fixado na cláusula anterior, que declara já ter recebido e de que aqui dá quitação.\n`
+      +`2. A Segunda Contratante, em nome da sua representada, aceita a presente venda.\n`
+      +`3. O referido preço residual foi integralmente pago em ${dPT(v('f-lea-data-pag'))}, através de ${contas}`});
+  }else{
+    contrato.push({id:'c-lea3',T:cl('Exercício da Opção de Compra. Compra e Venda'),X:
+      `1. Na sequência do exercício da opção de compra pela representada da Segunda Contratante, de acordo com o estipulado no contrato de locação financeira, a CGD, pelo presente contrato, vende o Imóvel à representada da Segunda Contratante.\n`
+      +`2. A Segunda Contratante, em nome da sua representada, aceita a presente venda.`});
+    contrato.push({id:'c-lea-preco',T:cl('Preço'),X:
+      `1. O Imóvel é vendido pelo preço residual de ${par('f-lea-residual')}, que a Primeira Contratante, em nome da sua representada, declara já ter recebido e de que dá aqui quitação.\n`
+      +`2. O preço residual foi integralmente pago em ${dPT(v('f-lea-data-pag'))}, através de ${contas}`});
+  }
+
+  contrato.push({id:'c-lea-onus',T:cl('Ónus e encargos'),X:
+    `O Imóvel é vendido livre de qualquer ónus ou encargos, sem prejuízo do disposto na cláusula ${ORD[n+3]||'seguinte'}.`});
+  contrato.push({id:'c-lea-lic',T:cl('Licenciamento camarário'),X:
+    `O Imóvel tem a Licença de Utilização ${v('f-lea-licenca')||'…'}, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`});
+  contrato.push({id:'c-lea-decl',T:cl('Outras declarações'),X:
+    `1. A Segunda Contratante, em nome da sua representada, declara que assume a responsabilidade pelo pagamento de todas as despesas, encargos, impostos ou taxas, emergentes do contrato de locação, da transmissão e da titularidade do Imóvel, designadamente Imposto Municipal sobre Imóveis, que sejam originados ou devidos até à presente data, ainda que venham a ser posteriormente apresentados ou reclamados à CGD.\n`
+    +`2. A Segunda Contratante, em nome da sua representada, declara que conhece todos os encargos de condomínio relativos ao imóvel adquirido e que prescinde da declaração do administrador de condomínio prevista no artigo 1424.º-A do Código Civil, aceitando, em consequência, a responsabilidade por qualquer dívida existente ao condomínio.`});
+  contrato.push({id:'c-lea-canc',T:cl('Cancelamento da inscrição do contrato de locação financeira'),X:
+    `1. A CGD dá por cumprido o contrato de locação financeira e autoriza expressamente o cancelamento da respetiva inscrição na ${v('f-im-crp')||'…'}, ${v('f-lea-ap')||'…'}, que incide sobre o Imóvel.\n`
+    +`2. A Segunda Contratante, em nome da sua representada, aceita o cancelamento da inscrição referida no número anterior.`});
+  contrato.push({id:'c-lea-data',T:'',X:`${foraEscritorio?(v('f-local-morada')||'…'):'Évora'}, ${dataExtenso(v('f-data-ato'))}.`});
+
+  return{termo,contrato,anexo:[]};
+}
 function compor(){
+  if(atoEscolhido()==='leasing')return comporLeasing();
   if(atoEscolhido()==='recon')return comporRecon();
   if(atoEscolhido()==='mh'){
     const docs=docsMH().map(comporMH);
@@ -3644,6 +3836,7 @@ const TIPOS_ATO={
   mh:           {cod:'MH',           rot:'Mútuo com Hipoteca',                    nome:'Mútuo com Hipoteca',            pronto:true },
   recon:        {cod:'RECON',        rot:'Reconhecimento de Assinaturas',         nome:'Reconhecimento de Assinaturas', pronto:true },
   termoempresas:{cod:'TERMO_EMP',    rot:'Termo de Autenticação — Empresas',      nome:'Termo de Autenticação',         pronto:false},
+  leasing:      {cod:'LEASING',      rot:'Leasing',                       nome:'Compra e Venda',                pronto:true },
   permuta:      {cod:'PERMUTA',      rot:'Permuta de Bens Imóveis',               nome:'Permuta de Bens Imóveis',       pronto:false}
 };
 function atoEscolhido(){return v('f-tipo-ato')||'cv';}
@@ -3731,6 +3924,40 @@ function nomearBloco(card,nome,desc){
 /* ── FUNIL DO ATO 5 · RECONHECIMENTO ──
    Só entidade autenticadora, quem assina, e o documento. Não há imóvel a
    transmitir, nem preço, nem impostos, nem mútuo. */
+/* ── FUNIL DO ATO 8 ──
+   A CAIXA é a primeira; o bloco 3 passa a ser o locatário e o painel do
+   mutuante sobe para o bloco 4, como no ato 4. Sem preço, sem impostos, sem
+   mediação: o preço é o residual e vive no bloco da locação. */
+function funilLeasing(){
+  const ent=ehLeaEntrada();
+  nomearBloco('card-b3',ent?'Vendedores':'Locatário',ent?'Primeiros Contratantes — quem vende à CAIXA':'Segunda Contratante — quem exerce a opção');
+  nomearBloco('card-b4',ent?'Compradora':'Locadora',ent?'Segunda Contratante — a CAIXA':'Primeira Contratante — a CAIXA');
+  document.querySelectorAll('.lea-entrada').forEach(e=>e.style.display=ent?'flex':'none');
+  ['f-lea-prazo','f-lea-inicio','f-lea-ap','f-lea-residual','f-lea-data-pag','f-lea-meio','f-lea-conta-orig','f-lea-conta-dest']
+    .forEach(id=>{const e=document.getElementById(id);if(e&&e.closest('.form-group'))e.closest('.form-group').style.display=ent?'none':'flex';});
+  nomearBloco('card-b5','Imóvel','Objeto da locação financeira');
+  const blk=document.getElementById('blk-mutuante'),b4=document.getElementById('card-b4');
+  if(blk&&b4&&blk.parentElement!==b4)b4.appendChild(blk);
+  setProp('ttl-mutuante','textContent',ent?'4.1 · Segunda Contratante — a CAIXA':'4.1 · Primeira Contratante — a CAIXA');
+  ['f-desig-vend','f-desig-comp'].forEach(id=>{
+    const g=document.getElementById(id);if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='none';});
+  const ts=document.getElementById('t-trato-suc');
+  if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='none';
+  document.querySelectorAll('#compradores-container').forEach(e=>e.style.display='none');
+  const btn=document.querySelector('#card-b4 > .add-btn'); if(btn)btn.style.display='none';
+  ['card-b6','card-b7','card-b8','card-b9','card-b10','card-recon'].forEach(k=>setDisp(k,'none'));
+  setDisp('card-leasing','block');
+  onMutuante();onMutQuem();semearCertidaoCGD();
+  if(!document.querySelectorAll('.vend-block').length)addVendedor();
+  const isFr=v('f-im-tipo')==='fracao';
+  setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
+  setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
+  ['g-im-artigo','g-im-freg-mat','g-im-vpt','g-im-vpt-ano'].forEach(x=>setDisp(x,isFr?'flex':'none'));
+  setDisp('g-predios-extra','none');setDisp('g-confinantes','none');
+  aplicarAreas();aplicarSnic();aplicarSeccao();aplicarOnus();
+  const gm=document.getElementById('g-local-morada');
+  if(gm)gm.style.display=v('f-local-tipo')==='outro'?'block':'none';
+}
 function funilRecon(){
   nomearBloco('card-b3','Quem assina','Signatários — pessoas ou sociedades');
   ['card-b4','card-b5','card-b6','card-b7','card-b8','card-b9','card-b10'].forEach(k=>setDisp(k,'none'));
@@ -3828,7 +4055,7 @@ function desfazerFunilMH(){
   if(tmh){const r=tmh.closest('.toggle-row');if(r)r.style.display='';
     const h=r&&r.nextElementSibling;if(h&&h.tagName==='DIV'&&!h.id)h.style.display='';}
   setDisp('blk-oic','none');
-  setDisp('card-recon','none');
+  setDisp('card-recon','none');setDisp('card-leasing','none');
   document.querySelectorAll('.campo-recon').forEach(e=>e.style.display='none');
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
 }
@@ -3841,6 +4068,8 @@ function atualizar(){
   setProp('tipo-badge','textContent',t.rot);
   document.body.classList.toggle('ato-por-construir',!t.pronto&&!ehCV&&ato!=='mh');
   setDisp('g-subtipo-mh',ato==='mh'?'flex':'none');
+  setDisp('g-subtipo-lea',ato==='leasing'?'flex':'none');
+  if(ato==='leasing'){funilLeasing();sincronizarAlertas();desenharAlertas();render();return;}
   if(ato==='recon'){funilRecon();sincronizarAlertas();desenharAlertas();render();return;}
   if(ato==='mh'){funilMH();sincronizarAlertas();desenharAlertas();render();return;}
   desfazerFunilMH();
