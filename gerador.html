@@ -3267,7 +3267,7 @@ function compor(){
   }
   if(parsLic.length)contrato.push({id:'c-licenciamento',T:clausula('Licenciamento'),X:parsLic.join('\n')});
   contrato.push({id:'c-encargos',T:clausula('Encargos'),X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
-  if(v('f-destino'))contrato.push({id:'c-destino',T:'DESTINO DO IMÓVEL',X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
+  if(v('f-destino'))contrato.push({id:'c-destino',T:clausula('Destino do Imóvel'),X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
   contrato.push({id:'c-mediacao',T:clausula('Mediação Imobiliária'),X:chk('t-mediacao')
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
