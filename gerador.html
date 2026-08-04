@@ -49,7 +49,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 /* BLOCOS DO DOCUMENTO */
 .bloco{position:relative;border-radius:6px;margin:0 -.6rem;padding:.15rem .6rem}
 .bloco:hover{background:#FBFAF6;outline:1px solid var(--border)}
-.bloco .b-titulo{font-weight:700;white-space:pre-wrap}
+.bloco .b-titulo{font-weight:700;white-space:pre-wrap;text-align:center}
 .bloco .b-texto{white-space:pre-wrap;text-align:justify;outline:none;min-height:1em}
 .bloco.manual{background:var(--amber-light);outline:1px solid #E8D5B5}
 .bloco .b-ferr{position:absolute;top:2px;right:4px;display:none;gap:4px;align-items:center}
@@ -3372,7 +3372,7 @@ function render(){
     const titMan=titulos[b.id]!==undefined;
     return`<div class="bloco${manual||titMan?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
       <div class="b-ferr">${manual||titMan?`<span class="b-badge" title="Este bloco deixou de acompanhar o formulário">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Descartar a redação manual e voltar a acompanhar o formulário">↺ repor</button>`:''}${marcas[b.id]?`<button class="b-repor" onclick="limparMarcas('${b.id}')" title="Remover as marcas deste bloco">🧹 marcas</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}<button class="b-repor" onclick="inserirBloco('${b.id}')" title="Inserir bloco novo por baixo deste">+ bloco</button></div>
-      ${b.T?`<div class="b-titulo" contenteditable="true" data-tit="${b.id}"${b.id.endsWith('-cab')?' style="text-align:center"':''}>${esc(titMan?titulos[b.id]:b.T)}</div>`:''}
+      ${b.T?`<div class="b-titulo" contenteditable="true" data-tit="${b.id}">${esc(titMan?titulos[b.id]:b.T)}</div>`:''}
       ${nota!==undefined?`<div class="nota-bloco"><button class="nota-remover" onclick="removerNota('${b.id}')" title="Remover nota">✕</button><div class="nota-texto" contenteditable="plaintext-only" data-nota="${b.id}">${esc(nota)}</div></div>`:''}
       ${(b.X||manual||b.id.endsWith('-cab')===false)?`<div class="b-texto" contenteditable="true" data-id="${b.id}">${conteudo}</div>`:''}
     </div>`;
@@ -4031,7 +4031,8 @@ function blocosFinais(i){
     const X=m===undefined?b.X:(typeof m==='string'?m:htmlParaTexto(m.html||''));
     const T=titulos[b.id]!==undefined?titulos[b.id]:b.T;
     const temT=!!(T&&String(T).trim());
-    const centro=temT&&/-cab$/.test(b.id);
+    /* Todos os títulos centrados, e não só o do documento. */
+    const centro=temT;
     return{T,X,titCentro:centro,titEsq:temT&&!centro,temX:!!(X&&String(X).trim())};
   };
   const cadeiaDados=id=>{
@@ -4039,7 +4040,7 @@ function blocosFinais(i){
     (inseridos[id]||[]).forEach(x=>{
       const Ti=x.T||'';
       const Xi=x.htmlX!==undefined?htmlParaTexto(x.htmlX):(x.X||'');
-      out.push({T:Ti,X:Xi,titCentro:false,titEsq:!!Ti.trim(),temX:!!Xi.trim()});
+      out.push({T:Ti,X:Xi,titCentro:!!Ti.trim(),titEsq:false,temX:!!Xi.trim()});
       out.push(...cadeiaDados(x.id));
     });
     return out;
