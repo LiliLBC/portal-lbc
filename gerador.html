@@ -1094,8 +1094,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <input class="form-input" id="f-uno-despesas" oninput="atualizar()" placeholder="Ex: 750"></div>
         <div class="form-group"><label class="form-label">Montante máximo da hipoteca (€) <span>*</span></label>
           <input class="form-input" id="f-uno-hipoteca" oninput="atualizar()" placeholder="Ex: 35000"></div>
-        <div class="form-group form-full"><label class="form-label">Cálculo do Imposto do Selo (verba 17.1.3)</label>
-          <input class="form-input" id="f-uno-calculo-is" oninput="atualizar()" placeholder="Deixa vazio para calcular a 6/1000 sobre o montante"></div>
+        <div class="form-group form-full"><label class="form-label">Imposto do Selo — verba 17.1.3 (€)</label>
+          <input class="form-input" id="f-uno-calculo-is" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-is-uno"></div></div>
       </div>
     </div>
 
@@ -2478,7 +2479,14 @@ function onOnus(){
    sujeito muda para «O Imóvel», por aí o imóvel não estar a ser hipotecado e o
    ónus poder não ser uma hipoteca; no mútuo fica palavra por palavra. */
 function textoOnusContrato(o,mh){
-  if(o.canc==='nao'||o.canc==='renuncia')return'';
+  if(o.canc==='renuncia')return'';
+  /* ⚠ Por validar: o ónus que se mantém também tem de ser dito. A frase é a
+     mesma até ao NIF; o fecho — «que se mantém» — é proposta minha, porque a
+     tua só previa o ónus que se cancela. */
+  if(o.canc==='nao'){
+    const cab0=mh?'O imóvel ora hipotecado encontra-se onerado com':'O Imóvel encontra-se onerado com';
+    return`${cab0} ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, que se mantém.`;
+  }
   /* No mútuo o imóvel está a ser hipotecado e a frase é a do mh.html, palavra
      por palavra. Na compra e venda não está — está a ser vendido —, e o sujeito
      muda para «O Imóvel». Confirmado pela Liliana. */
@@ -2690,7 +2698,7 @@ function comporMH(variante){
         :`${v('f-mut-repr')||'…'}, em nome e em representação da ${baseCGD}.`));
   const txtSegundaCurto=outraIC
     ?`${v('f-mutuante-txt')||'…'}, adiante designada por MUTUANTE.`
-    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${procCGD?[nomeP,v('f-mut-p-ec'),v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',v('f-mut-p-nif')?`NIF ${v('f-mut-p-nif')}`:''].filter(Boolean).join(', '):(solMut?solMut.nomeAbrev:(v('f-mut-repr')||'…'))}, adiante designada por CAIXA e/ou MUTUANTE.`;
+    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${representanteCAIXA().curto||'…'}, adiante designada por CAIXA e/ou MUTUANTE.`;
 
   /* ── PRIMEIROS · mutuários (mesmo componente dos outorgantes da compra e venda) ── */
   const consent=linhaConsentimento(mut);
@@ -2722,7 +2730,13 @@ function comporMH(variante){
      no termo do TOIC, que é o crédito que se transfere. Confirmado. */
   const onusLista=lerOnus();
   const clDistrate=toic?onusLista.map(textoOnusTermo).filter(Boolean):[];
-  const clBancoHip=toic?onusLista.map(o=>textoOnusContrato(o,true)).filter(Boolean):[];
+  /* Os ónus que se mantêm dizem-se em qualquer dos contratos; só o cancelamento
+     é que fica no primeiro. E o texto livre do bloco do imóvel entra também —
+     antes era ignorado neste tronco. */
+  const clBancoHip=[
+    ...onusLista.filter(o=>o.canc==='nao'||toic).map(o=>textoOnusContrato(o,true)),
+    v('f-onus-txt')
+  ].filter(Boolean);
   const bancoOIC=bancoACancelar();
 
   /* ── 10.5 · liquidação em OIC · só no TOIC (redações do mh.html) ── */
@@ -4015,6 +4029,29 @@ function funilMH(){
      das entidades públicas. O campo esconde-se, para não sugerir o contrário a
      quem venha de um rascunho de compra e venda. */
   setDisp('g-confinantes','none');
+  /* ── IMPOSTO DO SELO À VISTA ──
+     O documento já saía certo; o que faltava era o formulário mostrar o valor.
+     No TOIC não se mostra valor nenhum: é isento pela alínea j) do n.º 1 do
+     artigo 7.º do CIS, e pôr lá um número seria contradizer o documento. */
+  const encheSelo=(campo,nota,prefixo,isento)=>{
+    const el=document.getElementById(campo), nt=document.getElementById(nota);
+    if(!el)return;
+    if(isento){
+      if(!el.dataset.tocado)el.value='';
+      el.disabled=true;
+      if(nt)nt.textContent='Isento — transferência de crédito de habitação própria permanente.';
+      return;
+    }
+    el.disabled=false;
+    const m=parseValor(v(`${prefixo}-montante`));
+    const calc=m?fmtValor(m*6/1000)+' €':'';
+    if(!el.dataset.tocado&&el.value!==calc)el.value=calc;
+    if(nt)nt.textContent=el.dataset.tocado&&el.value
+      ?'Valor escrito à mão. Apaga-o para voltar ao cálculo.'
+      :(m?'Calculado a 6/1000 sobre o montante do mútuo.':'Preenche o montante para o valor ser calculado.');
+  };
+  encheSelo('f-mh-calculo-is','nota-is-mh','f-mh',toic);
+  if(conexo)encheSelo('f-uno-calculo-is','nota-is-uno','f-uno',false);
   setDisp('blk-oic',toic?'block':'none');
   const fo=v('f-oic-forma');
   document.querySelectorAll('.oic-apb').forEach(e=>e.style.display=fo==='apb'?'block':'none');
