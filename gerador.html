@@ -330,6 +330,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="mh">Com Mútuo e Hipoteca</option>
           <option value="superficie">Direito de Superfície</option>
         </select></div>
+      <div class="form-group form-full" id="g-subtipo-dcc" style="display:none"><label class="form-label">Natureza <span>*</span></label>
+        <select class="form-select" id="f-dcc-tipo" onchange="atualizar()">
+          <option value="divisao">Divisão de Coisa Comum — comproprietários sem casamento entre si</option>
+          <option value="partilha-casal">Partilha — bens adquiridos na constância do casamento</option>
+          <option value="partilha-heranca">Partilha — herdeiros</option>
+        </select></div>
       <div class="form-group form-full" id="g-subtipo-lea" style="display:none"><label class="form-label">Saída do leasing <span>*</span></label>
         <select class="form-select" id="f-lea-tipo" onchange="atualizar()">
           <option value="entrada">8.1 · Entrada — a CAIXA compra para locar</option>
@@ -559,37 +565,35 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
   </div>
 
-  <!-- ══ DIVISÃO DE COISA COMUM ══ -->
+  <!-- ══ DIVISÃO DE COISA COMUM / PARTILHAS ══ -->
   <div class="section-card" id="card-dcc" style="display:none">
     <div class="section-head">
       <div class="section-num">D</div>
-      <div><div class="section-name">Divisão e tornas</div>
-        <div class="section-desc">Quotas, adjudicação, tornas e passivo</div></div>
+      <div><div class="section-name">Bens, quotas e tornas</div>
+        <div class="section-desc">O que se divide, em que proporção, e quem compensa quem</div></div>
     </div>
+
+    <div class="cond-block" style="margin-bottom:.7rem">
+      <div class="cond-block-title">Bens a dividir</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.55rem">Cada bem leva o seu valor atribuído, a dívida que o onera e a quem é adjudicado. Sem dívida, deixa a zero.</div>
+      <div id="bens-container"></div>
+      <button class="add-btn" type="button" onclick="addBem();atualizar()">+ Acrescentar bem</button>
+    </div>
+
+    <div id="dcc-apuramento" style="margin-bottom:.7rem"></div>
+
     <div class="form-grid form-grid-2">
-      <div class="form-group"><label class="form-label">Quota de cada um</label>
-        <input class="form-input" id="f-dcc-quota" oninput="atualizar()" value="metade (1/2)"></div>
-      <div class="form-group"><label class="form-label">Valor atribuído ao imóvel (€) <span>*</span></label>
-        <input class="form-input" id="f-dcc-valor" oninput="atualizar()"></div>
-      <div class="form-group form-full"><label class="form-label">Adjudicado a <span>*</span></label>
-        <select class="form-select" id="f-dcc-adj" onchange="atualizar()"></select>
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Quem fica com o imóvel por inteiro.</div></div>
-      <div class="form-group"><label class="form-label">Tornas (€) <span>*</span></label>
-        <input class="form-input" id="f-dcc-tornas" oninput="atualizar()"></div>
-      <div class="form-group"><label class="form-label">Pagas por</label>
+      <div class="form-group"><label class="form-label">Tornas pagas por</label>
         <select class="form-select" id="f-dcc-tornas-meio" onchange="atualizar()">
           <option value="cheque bancário">Cheque bancário</option>
           <option value="transferência bancária">Transferência bancária</option>
           <option value="numerário">Numerário</option>
         </select></div>
-      <div class="form-group form-full"><label class="form-label">Quando</label>
+      <div class="form-group"><label class="form-label">Quando</label>
         <select class="form-select" id="f-dcc-tornas-quando" onchange="atualizar()">
           <option value="posterior">Em data posterior à outorga</option>
           <option value="neste">Neste ato</option>
         </select></div>
-      <div class="form-group form-full"><label class="form-label">Capital em dívida (€)</label>
-        <input class="form-input" id="f-dcc-passivo" oninput="atualizar()" placeholder="Deixa vazio se não há passivo a assumir">
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Garantido pelas hipotecas do bloco do imóvel. O adjudicatário assume-o e o outro fica exonerado.</div></div>
       <div class="form-group form-full" style="margin-top:.3rem">
         <div class="toggle-row" style="margin:0">
           <span class="toggle-label" style="font-size:12px">Emitir procuração para liquidação das guias</span>
@@ -1362,6 +1366,7 @@ function addOutorgante(pref,dados){
   const c=document.getElementById(P.cont);
   if(!c)return;
   const idx=(pref==='vend'?++vendCnt:pref==='comp'?++compCnt:++quartoCnt),id=`${pref}-${idx}`;
+
   const div=document.createElement('div');
   div.className='outorgante-block '+pref+'-block';div.id=id;
   const sel=(v,x)=>v===x?' selected':'';
@@ -1472,6 +1477,9 @@ function addOutorgante(pref,dados){
         </select></div>
       <div class="form-group form-full"><label class="form-label">Morada</label>
         <input class="form-input" id="${id}-morada" placeholder="Ex: Avenida …, Urbanização …, Ferreiras"></div>
+      <div class="form-group campo-dcc" style="display:none"><label class="form-label">Quota-parte</label>
+        <input class="form-input" id="${id}-quota" oninput="atualizar()" placeholder="Ex: 1/2, 2/3">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Vazio, reparte-se por igual.</div></div>
       <div class="form-group form-full campo-recon" style="display:none"><label class="form-label">Qualidade em que assina</label>
         <input class="form-input" id="${id}-qualrec" oninput="atualizar()" placeholder="Ex: ÚNICO SÓCIO E GERENTE, PROCURADORA SUBSTABELECIDA">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Fica a seguir à identificação. Vazio, assina em nome próprio.</div></div>
@@ -1901,7 +1909,7 @@ function lerOutorgantes(pref){
       coincide:g(`${id}-coincide`),
       'asc-nasc-num':g(`${id}-asc-nasc-num`),'asc-nasc-crc':g(`${id}-asc-nasc-crc`),
       'asc-cas-num':g(`${id}-asc-cas-num`),'asc-cas-crc':g(`${id}-asc-cas-crc`),
-      'repr-tipo':g(`${id}-repr-tipo`)||'proprio',qualrec:g(`${id}-qualrec`),
+      'repr-tipo':g(`${id}-repr-tipo`)||'proprio',qualrec:g(`${id}-qualrec`),quota:g(`${id}-quota`),
       'proc-nome':g(`${id}-proc-nome`),'proc-natural':g(`${id}-proc-natural`),'proc-ec':g(`${id}-proc-ec`),
       'proc-cc':g(`${id}-proc-cc`),'proc-ccval':g(`${id}-proc-ccval`),'proc-nif':g(`${id}-proc-nif`),'proc-morada':g(`${id}-proc-morada`),
       'pr-data':g(`${id}-pr-data`),'pr-ent':g(`${id}-pr-ent`),'pr-qual':g(`${id}-pr-qual`),'pr-cedula':g(`${id}-pr-cedula`),
@@ -3216,6 +3224,138 @@ function femDe(o){
   if(o.genero==='M')return false;
   return /a$/i.test((o.ec||'').split(/[\s,]/)[0]||'');
 }
+/* ══════════ BENS A DIVIDIR ══════════
+   Cada bem leva o seu ativo — o valor que as partes lhe atribuem — e o seu
+   passivo, que é a dívida que o onera. Sendo zero, não há dívida.
+   O bem é adjudicado a um dos outorgantes, e com ele vai a respetiva dívida. */
+let bemCnt=0;
+function addBem(dados){
+  const i=++bemCnt, id='bem-'+i;
+  const div=document.createElement('div');
+  div.className='bem-block'; div.id=id;
+  div.style.cssText='border:1px solid var(--border);border-radius:9px;padding:.7rem;margin-bottom:.6rem;background:var(--surface)';
+  div.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted)">Bem ${i}</div>
+      ${i>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">&times;</button>`:''}
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Natureza</label>
+        <select class="form-select" id="${id}-tipo" onchange="atualizar()">
+          <option value="imovel">Imóvel</option>
+          <option value="veiculo">Veículo</option>
+          <option value="outro">Outro bem</option>
+        </select></div>
+
+      <div class="bem-imovel" style="display:contents">
+        <div class="form-group"><label class="form-label">Tipo de prédio</label>
+          <select class="form-select" id="${id}-im-tipo" onchange="atualizar()">
+            <option value="urbano">Prédio urbano</option>
+            <option value="fracao">Fração autónoma</option>
+            <option value="rustico">Prédio rústico</option>
+            <option value="misto">Prédio misto</option>
+          </select></div>
+        <div class="form-group"><label class="form-label">Letra da fração</label>
+          <input class="form-input" id="${id}-im-letra" oninput="atualizar()"></div>
+        <div class="form-group form-full"><label class="form-label">Descrição</label>
+          <textarea class="form-input" id="${id}-im-desc" rows="2" oninput="atualizar()"></textarea></div>
+        <div class="form-group"><label class="form-label">Inscrição da propriedade horizontal</label>
+          <input class="form-input" id="${id}-im-apph" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Sito em</label>
+          <input class="form-input" id="${id}-im-sito" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Conservatória</label>
+          <input class="form-input" id="${id}-im-crp" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">N.º de descrição</label>
+          <input class="form-input" id="${id}-im-num" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Freguesia (conservatória)</label>
+          <input class="form-input" id="${id}-im-freg" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Inscrição de aquisição</label>
+          <input class="form-input" id="${id}-im-apaq" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Artigo matricial</label>
+          <input class="form-input" id="${id}-im-artigo" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Freguesia (matriz)</label>
+          <input class="form-input" id="${id}-im-fregmat" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">VPT (€)</label>
+          <input class="form-input" id="${id}-im-vpt" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">VPT determinado em</label>
+          <input class="form-input" id="${id}-im-vptano" oninput="atualizar()"></div>
+      </div>
+
+      <div class="bem-veiculo" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Matrícula</label>
+            <input class="form-input" id="${id}-ve-matricula" oninput="atualizar()" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">Ano</label>
+            <input class="form-input" id="${id}-ve-ano" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Marca</label>
+            <input class="form-input" id="${id}-ve-marca" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Modelo</label>
+            <input class="form-input" id="${id}-ve-modelo" oninput="atualizar()"></div>
+        </div>
+      </div>
+
+      <div class="bem-outro" style="display:none">
+        <div class="form-group form-full"><label class="form-label">Descrição do bem</label>
+          <textarea class="form-input" id="${id}-ou-desc" rows="2" oninput="atualizar()"></textarea></div>
+      </div>
+
+      <div class="form-group"><label class="form-label">Valor atribuído (€) <span>*</span></label>
+        <input class="form-input" id="${id}-ativo" oninput="atualizar()"></div>
+      <div class="form-group"><label class="form-label">Valor em dívida (€)</label>
+        <input class="form-input" id="${id}-passivo" oninput="atualizar()" placeholder="0 se não há dívida"></div>
+      <div class="form-group form-full"><label class="form-label">Adjudicado a <span>*</span></label>
+        <select class="form-select" id="${id}-adj" onchange="atualizar()"></select></div>
+      <div class="form-group form-full"><label class="form-label">Credor da dívida</label>
+        <input class="form-input" id="${id}-credor" oninput="atualizar()" placeholder="Ex: CAIXA ECONÓMICA MONTEPIO GERAL"></div>
+      <div class="form-group form-full"><label class="form-label">Inscrições da hipoteca</label>
+        <input class="form-input" id="${id}-hipotecas" oninput="atualizar()" placeholder="Ex: AP. 23 de 2005/10/18 e AP. 24 de 2005/10/18"></div>
+    </div>`;
+  document.getElementById('bens-container').appendChild(div);
+  if(dados)Object.keys(dados).forEach(k=>{const e=document.getElementById(`${id}-${k}`);if(e)e.value=dados[k];});
+}
+function lerBens(){
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  return[...document.querySelectorAll('.bem-block')].map(b=>{
+    const o={id:b.id,tipo:g(`${b.id}-tipo`)||'imovel',
+      ativo:parseValor(g(`${b.id}-ativo`)),passivo:parseValor(g(`${b.id}-passivo`)),
+      adj:parseInt(g(`${b.id}-adj`),10),credor:g(`${b.id}-credor`),hipotecas:g(`${b.id}-hipotecas`)};
+    ['im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg','im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano',
+     've-matricula','ve-marca','ve-modelo','ve-ano','ou-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
+    return o;
+  }).filter(x=>x.ativo||x['im-desc']||x['ve-matricula']||x['ou-desc']);
+}
+/* «1/2», «2/3», «metade» — tudo dá uma fração. */
+function fracao(t){
+  const s=String(t||'').trim().toLowerCase();
+  if(!s)return null;
+  const m=s.match(/(\d+)\s*\/\s*(\d+)/);
+  if(m)return Number(m[1])/Number(m[2]);
+  if(/metade/.test(s))return .5;
+  if(/ter[çc]o/.test(s))return 1/3;
+  if(/quarto/.test(s))return .25;
+  const n=parseValor(s);
+  return n>1?n/100:(n||null);
+}
+/* ── APURAMENTO ──
+   Ativo menos passivo dá o valor a partilhar. A cada um cabe a sua quota-parte
+   desse valor. Quem receber bens de valor líquido superior ao que lhe cabia
+   paga a diferença a quem recebeu menos. */
+function apurarDCC(){
+  const cop=lerVendedores(), bens=lerBens();
+  /* Ou estão todas escritas, e normalizam-se entre si; ou reparte-se por igual.
+     Meias-medidas dariam quotas que não somam um. */
+  const quotas=cop.map(o=>fracao(o.quota));
+  const todas=cop.length>0&&quotas.every(x=>x!=null&&x>0);
+  const soma=quotas.reduce((a,b)=>a+(b||0),0);
+  const q=cop.map((_,i)=>todas?quotas[i]/soma:(cop.length?1/cop.length:0));
+  const ativo=bens.reduce((a,b)=>a+b.ativo,0);
+  const passivo=bens.reduce((a,b)=>a+b.passivo,0);
+  const liquido=ativo-passivo;
+  const cabe=cop.map((_,i)=>liquido*q[i]);
+  const leva=cop.map((_,i)=>bens.filter(b=>b.adj===i).reduce((a,b)=>a+(b.ativo-b.passivo),0));
+  const dif=cop.map((_,i)=>leva[i]-cabe[i]);
+  return{cop,bens,q,ativo,passivo,liquido,cabe,leva,dif};
+}
 function comporProcuracaoGuias(mandante){
   const sol=SOLICITADORAS[v('f-solicitadora')];
   if(!mandante||!sol)return null;
@@ -4158,16 +4298,23 @@ function funilDCC(){
     if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='none';});
   /* Uma divisão precisa de pelo menos dois comproprietários. */
   while(document.querySelectorAll('.vend-block').length<2)addVendedor();
-  /* As listas do adjudicatário e do mandante acompanham os comproprietários. */
+  /* As listas de adjudicação acompanham os outorgantes. */
+  document.querySelectorAll('.campo-dcc').forEach(e=>e.style.display='flex');
   const cop=lerVendedores();
   const opcoes=cop.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</option>`).join('');
-  [['f-dcc-adj',()=>String(Math.max(0,cop.length-1))],['f-proc-quem',()=>v('f-dcc-adj')||'0']].forEach(([id,pref])=>{
-    const sel=document.getElementById(id);
-    if(!sel)return;
-    const antes=sel.value;
-    if(sel.innerHTML!==opcoes){sel.innerHTML=opcoes;sel.value=(antes&&Number(antes)<cop.length)?antes:pref();}
+  if(!document.querySelectorAll('.bem-block').length)addBem();
+  document.querySelectorAll('.bem-block').forEach(b=>{
+    const t=v(`${b.id}-tipo`)||'imovel';
+    b.querySelectorAll('.bem-imovel').forEach(e=>e.style.display=t==='imovel'?'contents':'none');
+    b.querySelectorAll('.bem-veiculo').forEach(e=>e.style.display=t==='veiculo'?'block':'none');
+    b.querySelectorAll('.bem-outro').forEach(e=>e.style.display=t==='outro'?'block':'none');
+    const sel=document.getElementById(`${b.id}-adj`);
+    if(sel&&sel.innerHTML!==opcoes){const a=sel.value;sel.innerHTML=opcoes;sel.value=(a&&Number(a)<cop.length)?a:'0';}
   });
+  const selP=document.getElementById('f-proc-quem');
+  if(selP&&selP.innerHTML!==opcoes){const a=selP.value;selP.innerHTML=opcoes;selP.value=(a&&Number(a)<cop.length)?a:'0';}
   setDisp('g-proc-quem',chk('t-proc-guias')?'flex':'none');
+  desenharApuramento();
   const isFr=v('f-im-tipo')==='fracao';
   setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
   setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
@@ -4176,6 +4323,34 @@ function funilDCC(){
   aplicarAreas();aplicarSnic();aplicarSeccao();aplicarOnus();
   const gm=document.getElementById('g-local-morada');
   if(gm)gm.style.display=v('f-local-tipo')==='outro'?'block':'none';
+}
+/* Mostra as contas à medida que se preenche, para se ver logo quem compensa quem. */
+function desenharApuramento(){
+  const el=document.getElementById('dcc-apuramento');
+  if(!el)return;
+  const a=apurarDCC();
+  if(!a.bens.length||!a.cop.length){el.innerHTML='';return;}
+  const eur=n=>fmtValor(n)+' €';
+  const linhas=a.cop.map((o,i)=>{
+    const d=a.dif[i];
+    const cor=Math.abs(d)<0.005?'var(--text-muted)':(d>0?'var(--red)':'var(--green)');
+    const nota=Math.abs(d)<0.005?'certo':(d>0?`paga ${eur(d)}`:`recebe ${eur(-d)}`);
+    return`<tr><td style="padding:.2rem .5rem .2rem 0">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</td>
+      <td style="text-align:right;padding:.2rem .5rem">${(a.q[i]*100).toFixed(1).replace('.',',')}%</td>
+      <td style="text-align:right;padding:.2rem .5rem">${eur(a.cabe[i])}</td>
+      <td style="text-align:right;padding:.2rem .5rem">${eur(a.leva[i])}</td>
+      <td style="text-align:right;padding:.2rem 0;color:${cor};font-weight:600">${nota}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:.75rem .85rem">
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Apuramento</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem">
+      Ativo ${eur(a.ativo)} &minus; passivo ${eur(a.passivo)} = <b style="color:var(--text)">${eur(a.liquido)}</b> a partilhar.</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr style="font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">
+        <td style="padding-bottom:.2rem"></td><td style="text-align:right">quota</td>
+        <td style="text-align:right">cabe-lhe</td><td style="text-align:right">leva</td><td style="text-align:right">tornas</td></tr>
+      ${linhas}
+    </table></div>`;
 }
 function funilLeasing(){
   const ent=ehLeaEntrada();
@@ -4719,7 +4894,7 @@ function blocosFinais(i){
     }));
     return[...partes,...cadeiaDados(b.id)];
   });
-  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||'')};
+  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temTermo:termo.length>0,temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||'')};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
