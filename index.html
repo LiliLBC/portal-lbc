@@ -431,19 +431,10 @@ tbody tr:hover td{background:#FAFAF8}
             <svg class="chevron" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
           </button>
           <div class="dropdown-menu" id="contratos-menu">
-            <div class="dropdown-item-label">CGD</div>
             <!-- CVMH passou para o Gerador, no subtipo «Com Mútuo e Hipoteca» da
                  compra e venda. O cvmh.html foi arquivado. -->
-            <div class="dropdown-item" onclick="abrirContrato('mh')">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
-              MH CGD
-            </div>
-            <div class="dropdown-divider"></div>
-            <div class="dropdown-item-label">Leasing</div>
-            <div class="dropdown-item" onclick="abrirContrato('cvleasing')">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
-              CV + Leasing
-            </div>
+            <!-- MH CGD passou para o Gerador, ato 4 — TOIC e UNO. O mh.html foi arquivado. -->
+            <!-- CV + Leasing passou para o Gerador, ato 8, subtipo 8.1 — entrada. O cvleasing.html foi arquivado. -->
             <!-- Compra e Venda passou para o Gerador, que faz o ato completo com
                  termo e contrato. O cv.html foi arquivado. -->
             <div class="dropdown-divider"></div>
@@ -2173,13 +2164,7 @@ tbody tr:hover td{background:#FAFAF8}
 
         <!-- CARDS -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin-bottom:1.25rem">
-          <a href="mh.html" target="_blank" style="text-decoration:none">
-            <div class="contract-card" style="padding:1rem;background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);cursor:pointer;transition:all .15s">
-              <div style="font-size:24px;margin-bottom:.4rem">📋</div>
-              <div style="font-weight:600;font-size:14px;color:var(--text-strong);margin-bottom:.2rem">Mútuo com Hipoteca (MH)</div>
-              <div style="font-size:11px;color:var(--text-muted)">CGD — abre nova aba</div>
-            </div>
-          </a>
+          <!-- Cartão do MH retirado: passou para o Gerador. -->
           <!-- Cartão do CVMH retirado: passou para o Gerador. -->
           <div class="contract-card" onclick="abrirJustificacao()" style="padding:1rem;background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:var(--radius-md);cursor:pointer;transition:all .15s">
             <div style="font-size:24px;margin-bottom:.4rem">✍️</div>
@@ -3155,7 +3140,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={mh:'mh.html',cvleasing:'cvleasing.html',cpcv:'cpcv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html',gerador:'gerador.html',divisao_cc:'dcc.html',justificacao:'justificacao.html'};
+  const urls={cpcv:'cpcv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html',gerador:'gerador.html',divisao_cc:'dcc.html',justificacao:'justificacao.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
