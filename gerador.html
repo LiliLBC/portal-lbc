@@ -559,6 +559,45 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
   </div>
 
+  <!-- ══ DIVISÃO DE COISA COMUM ══ -->
+  <div class="section-card" id="card-dcc" style="display:none">
+    <div class="section-head">
+      <div class="section-num">D</div>
+      <div><div class="section-name">Divisão e tornas</div>
+        <div class="section-desc">Quotas, adjudicação, tornas e passivo</div></div>
+    </div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Quota de cada um</label>
+        <input class="form-input" id="f-dcc-quota" oninput="atualizar()" value="metade (1/2)"></div>
+      <div class="form-group"><label class="form-label">Valor atribuído ao imóvel (€) <span>*</span></label>
+        <input class="form-input" id="f-dcc-valor" oninput="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label">Adjudicado a <span>*</span></label>
+        <select class="form-select" id="f-dcc-adj" onchange="atualizar()"></select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Quem fica com o imóvel por inteiro.</div></div>
+      <div class="form-group"><label class="form-label">Tornas (€) <span>*</span></label>
+        <input class="form-input" id="f-dcc-tornas" oninput="atualizar()"></div>
+      <div class="form-group"><label class="form-label">Pagas por</label>
+        <select class="form-select" id="f-dcc-tornas-meio" onchange="atualizar()">
+          <option value="cheque bancário">Cheque bancário</option>
+          <option value="transferência bancária">Transferência bancária</option>
+          <option value="numerário">Numerário</option>
+        </select></div>
+      <div class="form-group form-full"><label class="form-label">Quando</label>
+        <select class="form-select" id="f-dcc-tornas-quando" onchange="atualizar()">
+          <option value="posterior">Em data posterior à outorga</option>
+          <option value="neste">Neste ato</option>
+        </select></div>
+      <div class="form-group form-full"><label class="form-label">Capital em dívida (€)</label>
+        <input class="form-input" id="f-dcc-passivo" oninput="atualizar()" placeholder="Deixa vazio se não há passivo a assumir">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Garantido pelas hipotecas do bloco do imóvel. O adjudicatário assume-o e o outro fica exonerado.</div></div>
+      <div class="form-group form-full"><label class="form-label">Destino do imóvel <span>*</span></label>
+        <select class="form-select" id="f-dcc-destino" onchange="atualizar()">
+          <option value="hpp">Habitação própria permanente</option>
+          <option value="secundaria">Habitação secundária</option>
+        </select></div>
+    </div>
+  </div>
+
   <!-- ══ LEASING ══ -->
   <div class="section-card" id="card-leasing" style="display:none">
     <div class="section-head">
@@ -3148,7 +3187,102 @@ function comporLeasing(){
 
   return{termo,contrato,anexo:[]};
 }
+/* ═══════════ ATO 3 · DIVISÃO DE COISA COMUM ═══════════
+   Comproprietários que põem termo à compropriedade: o imóvel não comporta
+   divisão cómoda, adjudica-se por inteiro a um deles e o outro recebe tornas.
+   Artigos 1412.º e 1413.º do Código Civil.
+   ⚠ Por validar: transcrição do modelo da Liliana, com a numeração e a
+   identificação montadas pelo gerador.                                       */
+function comporDCC(){
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  const cop=lerVendedores();          /* bloco 3 · comproprietários */
+  const par=x=>v(x)?`€ ${fmtValor(parseValor(v(x)))} (${valorExtenso(v(x)).toLowerCase()})`:'…';
+  /* O ordinal concorda com o género de quem o leva. */
+  const femDeCop=i=>{const o=cop[i]||{};return o.genero==='F'||/a$/i.test((o.ec||'').split(/[\s,]/)[0]||'');};
+  const RAIZ=['PRIME','SEGUND','TERCE','QUART','QUINT','SEXT'];
+  const ordDe=i=>{
+    const f=femDeCop(i);
+    return i===0?(f?'PRIMEIRA':'PRIMEIRO'):(i===2?(f?'TERCEIRA':'TERCEIRO'):(RAIZ[i]||('%'+(i+1)))+(f?'A':'O'));
+  };
+  const comOrd=i=>`${femDeCop(i)?'a':'o'} ${ordDe(i)} OUTORGANTE`;
+  const listaOutros=lst=>lst.length?lst.map(comOrd).join(' e '):'…';
+  const idx=parseInt(v('f-dcc-adj'),10);
+  const iAdj=isNaN(idx)?(cop.length-1):idx;
+  const adjFem=(cop[iAdj]||{}).genero==='F'||/a$/i.test(((cop[iAdj]||{}).ec||'').split(/[\s,]/)[0]||'');
+  const outros=cop.map((_,i)=>i).filter(i=>i!==iAdj);
+
+  /* ── Imóvel ── */
+  const isFr=v('f-im-tipo')==='fracao';
+  const corpoIm=isFr
+    ?`fração autónoma designada pela letra «${v('f-im-letra')||'…'}», do prédio composto de ${v('f-im-descricao')||'…'}`
+    :`prédio ${v('f-im-tipo')==='rustico'?'rústico':v('f-im-tipo')==='misto'?'misto':'urbano'} composto de ${v('f-im-descricao')||'…'}`;
+  const mats=isFr?[]:lerMatrizes();
+  const matriz=isFr
+    ?`inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial tributário de € ${v('f-im-vpt')||'…'}`
+    :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, e ${matriz}, a que os outorgantes atribuem o valor de ${par('f-dcc-valor')}.`;
+
+  /* ══════════════ TERMO ══════════════ */
+  const termo=[];
+  const fora=v('f-local-tipo')==='outro';
+  const entTxt=sol?`${(sol.assinNome||sol.nome)}, Solicitadora, cédula profissional n.º ${sol.cedula}, número de identificação fiscal ${sol.nif}`:'…';
+  const local=fora?`na ${v('f-local-morada')||'…'}`:(sol?`sito em ${sol.domicilio}`:'…');
+  termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:
+    `No dia ${dataExtenso(v('f-data-ato'))} no meu escritório ${local}, compareceram perante mim, ${entTxt}, os seguintes outorgantes:`});
+  cop.forEach((o,i)=>termo.push({id:'t-cop'+i,T:ordDe(i),X:textoVendedor(o)+';',
+    negrito:[o.nome].filter(Boolean)}));
+  termo.push({id:'t-apresentaram',T:'',X:
+    `Os signatários apresentaram o documento de contrato de DIVISÃO DE COISA COMUM, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
+  const ver=['— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação, que me foram apresentados;'];
+  const pred=linhaPredio('f-im',null); if(pred)ver.push(pred);
+  cop.map(segmentoProcuracao).filter(Boolean).forEach(t=>ver.push('— '+t.charAt(0).toUpperCase()+t.slice(1)+';'));
+  cop.map(o=>linhaEmpresa(o,'PARTE OUTORGANTE')).filter(Boolean)
+    .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
+  termo.push({id:'t-verifiquei',T:'',X:`VERIFIQUEI\n${ver.join('\n')}`});
+  termo.push({id:'t-informei',T:'',X:
+    `INFORMEI\n— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`});
+  termo.push({id:'t-rgpd',T:'',X:
+    `Com consentimento dos outorgantes, procedi à recolha dos elementos de identificação e à reprodução dos documentos que serviram de base ao presente ato, nos termos da Lei n.º 83/2017, de 18 de agosto, ficando os mesmos arquivados pelo período legal de sete anos.`});
+  termo.push({id:'t-leitura',T:'',X:
+    `O presente Documento Particular Autenticado, foi lido em voz alta e explicado aos signatários, na presença simultânea de todos os outorgantes, os quais declararam encontrar-se plenamente esclarecidos quanto ao respetivo conteúdo.`});
+
+  /* ══════════════ CONTRATO ══════════════ */
+  const contrato=[];
+  contrato.push({id:'c-cab',T:'DIVISÃO DE COISA COMUM',X:''});
+  contrato.push({id:'c-entre',T:'ENTRE',X:''});
+  cop.forEach((o,i)=>{
+    contrato.push({id:'c-cop'+i,T:ordDe(i),
+      X:`${textoVendedorCurto(o)}, adiante identificad${ordDe(i).endsWith('A')?'a':'o'} como ${ordDe(i)} OUTORGANTE;`,
+      negrito:[o.nome].filter(Boolean)});
+    if(i<cop.length-1)contrato.push({id:'c-e'+i,T:'E',X:''});
+  });
+  contrato.push({id:'c-decl',T:'',X:'E declararam, sob sua responsabilidade:'});
+
+  const numeros=[];
+  numeros.push(`Primeiro - Que são comproprietários, em partes iguais, cabendo a cada um a quota ideal de ${v('f-dcc-quota')||'metade (1/2)'}, da ${txtImovel}`);
+  const onus=lerOnus();
+  if(onus.length){
+    const ent=onus[0].ent||'…';
+    const aps=onus.map(o=>o.ap||'…');
+    numeros.push(`Segundo - Que sobre o referido imóvel incidem hipotecas voluntárias a favor de ${ent}, registadas pela Apresentação ${aps.length>1?aps.slice(0,-1).join(', ')+' e '+aps[aps.length-1]:aps[0]}, destinadas a garantir os empréstimos dela constantes, encontrando-se em dívida, à presente data, o capital de ${par('f-dcc-passivo')}.`);
+  }
+  numeros.push(`${onus.length?'Terceiro':'Segundo'} - Que, pretendendo pôr termo à situação de compropriedade e não comportando o imóvel divisão cómoda em substância, acordam em proceder à sua divisão, ao abrigo dos artigos 1412.º e 1413.º do Código Civil, adjudicando-o por inteiro a um dos comproprietários, mediante tornas.`);
+  const nAdj=onus.length?'Quarto':'Terceiro';
+  numeros.push(`${nAdj} (Adjudicação) - Pela presente divisão, o imóvel identificado é adjudicado na sua totalidade ${adjFem?'à':'ao'} ${ordDe(iAdj)} OUTORGANTE, que fica a ser ${adjFem?'dona e legítima possuidora':'dono e legítimo possuidor'} da totalidade do prédio, com efeitos a partir desta data.`);
+  const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
+  numeros.push(`${onus.length?'Quinto':'Quarto'} (Tornas) - Porque o valor do quinhão adjudicado excede a quota-parte que ${adjFem?'à adjudicatária':'ao adjudicatário'} pertencia, est${adjFem?'a':'e'} paga a${outros.length&&femDeCop(outros[0])?'':'o'} ${listaOutros(outros).replace(/^[ao] /,'')}, a título de tornas, a quantia de ${par('f-dcc-tornas')}, mediante ${v('f-dcc-tornas-meio')||'cheque bancário'} ${quando}.`);
+  if(v('f-dcc-passivo'))
+    numeros.push(`${onus.length?'Sexto':'Quinto'} (Assunção do passivo) — ${adjFem?'A adjudicatária assume':'O adjudicatário assume'} integralmente a responsabilidade pelo pagamento do passivo identificado no número Segundo, no montante de ${par('f-dcc-passivo')}, garantido pelas hipotecas que oneram o imóvel, ficando ${listaOutros(outros)} ${outros.length>1?'exonerados':'exonerado'} de toda e qualquer responsabilidade perante o credor hipotecário. ${adjFem?'A':'O'} ${ordDe(iAdj)} OUTORGANTE fica ${adjFem?'responsável':'responsável'} pela liquidação integral do passivo identificado no número Segundo, no montante de ${par('f-dcc-passivo')}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora.`);
+  numeros.push(`${onus.length?(v('f-dcc-passivo')?'Sétimo':'Sexto'):(v('f-dcc-passivo')?'Sexto':'Quinto')} (IMT e Imposto do Selo) - Declara ${adjFem?'a adjudicatária':'o adjudicatário'} que, sobre o excesso da quota-parte por si adquirido, liquida o IMT devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido (verba 1.1 da TGIS).`);
+
+  contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
+  contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
+  contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
+
+  return{termo,contrato,anexo:[]};
+}
 function compor(){
+  if(atoEscolhido()==='partilhas')return comporDCC();
   if(atoEscolhido()==='leasing')return comporLeasing();
   if(atoEscolhido()==='recon')return comporRecon();
   if(atoEscolhido()==='mh'){
@@ -3846,7 +3980,7 @@ function criarNotaSel(){
 const TIPOS_ATO={
   cv:           {cod:'CV',           rot:'Compra e Venda',                        nome:'Compra e Venda',                pronto:true },
   doacao:       {cod:'DOACAO',       rot:'Doação',                                nome:'Doação',                        pronto:false},
-  partilhas:    {cod:'PARTILHAS',    rot:'Partilhas / Divisão de Coisa Comum',    nome:'Partilhas',                     pronto:false},
+  partilhas:    {cod:'DCC',          rot:'Divisão de Coisa Comum',                nome:'Divisão de Coisa Comum',        pronto:true },
   mh:           {cod:'MH',           rot:'Mútuo com Hipoteca',                    nome:'Mútuo com Hipoteca',            pronto:true },
   recon:        {cod:'RECON',        rot:'Reconhecimento de Assinaturas',         nome:'Reconhecimento de Assinaturas', pronto:true },
   termoempresas:{cod:'TERMO_EMP',    rot:'Termo de Autenticação — Empresas',      nome:'Termo de Autenticação',         pronto:false},
@@ -3942,6 +4076,37 @@ function nomearBloco(card,nome,desc){
    A CAIXA é a primeira; o bloco 3 passa a ser o locatário e o painel do
    mutuante sobe para o bloco 4, como no ato 4. Sem preço, sem impostos, sem
    mediação: o preço é o residual e vive no bloco da locação. */
+/* ── FUNIL DO ATO 3 ──
+   Comproprietários no bloco 3, imóvel no 5, e o bloco próprio da divisão.
+   Sem parte compradora, sem preço, sem mútuo: quem paga tornas é um dos
+   comproprietários e o valor vive no bloco da divisão. */
+function funilDCC(){
+  nomearBloco('card-b3','Comproprietários','Quem põe termo à compropriedade');
+  nomearBloco('card-b5','Imóvel','Objeto da divisão');
+  ['card-b4','card-b6','card-b7','card-b8','card-b9','card-b10','card-recon','card-leasing'].forEach(k=>setDisp(k,'none'));
+  setDisp('card-dcc','block');
+  const ts=document.getElementById('t-trato-suc');
+  if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='';
+  ['f-desig-vend'].forEach(id=>{const g=document.getElementById(id);
+    if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='none';});
+  /* Uma divisão precisa de pelo menos dois comproprietários. */
+  while(document.querySelectorAll('.vend-block').length<2)addVendedor();
+  /* A lista dos adjudicatários acompanha os comproprietários. */
+  const sel=document.getElementById('f-dcc-adj');
+  if(sel){
+    const cop=lerVendedores(), antes=sel.value;
+    const novo=cop.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</option>`).join('');
+    if(sel.innerHTML!==novo){sel.innerHTML=novo;sel.value=(antes&&antes<cop.length)?antes:String(Math.max(0,cop.length-1));}
+  }
+  const isFr=v('f-im-tipo')==='fracao';
+  setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
+  setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
+  ['g-im-artigo','g-im-freg-mat','g-im-vpt','g-im-vpt-ano'].forEach(x=>setDisp(x,isFr?'flex':'none'));
+  setDisp('g-predios-extra','none');setDisp('g-confinantes',temMatrizRustica()?'block':'none');
+  aplicarAreas();aplicarSnic();aplicarSeccao();aplicarOnus();
+  const gm=document.getElementById('g-local-morada');
+  if(gm)gm.style.display=v('f-local-tipo')==='outro'?'block':'none';
+}
 function funilLeasing(){
   const ent=ehLeaEntrada();
   nomearBloco('card-b3',ent?'Vendedores':'Locatário',ent?'Primeiros Contratantes — quem vende à CAIXA':'Segunda Contratante — quem exerce a opção');
@@ -4092,7 +4257,7 @@ function desfazerFunilMH(){
   if(tmh){const r=tmh.closest('.toggle-row');if(r)r.style.display='';
     const h=r&&r.nextElementSibling;if(h&&h.tagName==='DIV'&&!h.id)h.style.display='';}
   setDisp('blk-oic','none');
-  setDisp('card-recon','none');setDisp('card-leasing','none');
+  setDisp('card-recon','none');setDisp('card-leasing','none');setDisp('card-dcc','none');
   document.querySelectorAll('.campo-recon').forEach(e=>e.style.display='none');
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
 }
@@ -4106,6 +4271,7 @@ function atualizar(){
   document.body.classList.toggle('ato-por-construir',!t.pronto&&!ehCV&&ato!=='mh');
   setDisp('g-subtipo-mh',ato==='mh'?'flex':'none');
   setDisp('g-subtipo-lea',ato==='leasing'?'flex':'none');
+  if(ato==='partilhas'){funilDCC();sincronizarAlertas();desenharAlertas();render();return;}
   if(ato==='leasing'){funilLeasing();sincronizarAlertas();desenharAlertas();render();return;}
   if(ato==='recon'){funilRecon();sincronizarAlertas();desenharAlertas();render();return;}
   if(ato==='mh'){funilMH();sincronizarAlertas();desenharAlertas();render();return;}
