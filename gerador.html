@@ -590,6 +590,16 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group form-full"><label class="form-label">Capital em dívida (€)</label>
         <input class="form-input" id="f-dcc-passivo" oninput="atualizar()" placeholder="Deixa vazio se não há passivo a assumir">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Garantido pelas hipotecas do bloco do imóvel. O adjudicatário assume-o e o outro fica exonerado.</div></div>
+      <div class="form-group form-full" style="margin-top:.3rem">
+        <div class="toggle-row" style="margin:0">
+          <span class="toggle-label" style="font-size:12px">Emitir procuração para liquidação das guias</span>
+          <label class="toggle-switch"><input type="checkbox" id="t-proc-guias" onchange="atualizar()"><span class="toggle-slider"></span></label>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Quando o cliente quer que sejas tu a liquidar o IMT e o Selo. Sai como documento à parte.</div>
+      </div>
+      <div class="form-group form-full" id="g-proc-quem" style="display:none"><label class="form-label">Quem constitui procuradora</label>
+        <select class="form-select" id="f-proc-quem" onchange="atualizar()"></select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Normalmente quem tem imposto a liquidar.</div></div>
       <div class="form-group form-full"><label class="form-label">Destino do imóvel <span>*</span></label>
         <select class="form-select" id="f-dcc-destino" onchange="atualizar()">
           <option value="hpp">Habitação própria permanente</option>
@@ -3193,22 +3203,57 @@ function comporLeasing(){
    Artigos 1412.º e 1413.º do Código Civil.
    ⚠ Por validar: transcrição do modelo da Liliana, com a numeração e a
    identificação montadas pelo gerador.                                       */
+/* ── PROCURAÇÃO PARA LIQUIDAÇÃO DE GUIAS ──
+   Documento à parte, para quando o cliente quer que seja a solicitadora a
+   liquidar o IMT e o Selo. Redação da Liliana.
+   Sai como documento próprio: tem assinatura da mandante, não da entidade
+   autenticadora, e por isso não leva termo. */
+/* O género escolhido no campo manda. Só não estando preenchido é que se
+   deduz do estado civil, que em português já o denuncia. */
+function femDe(o){
+  if(!o)return false;
+  if(o.genero==='F')return true;
+  if(o.genero==='M')return false;
+  return /a$/i.test((o.ec||'').split(/[\s,]/)[0]||'');
+}
+function comporProcuracaoGuias(mandante){
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  if(!mandante||!sol)return null;
+  const fem=femDe(mandante);
+  const id=[(mandante.nome||'…').toUpperCase(),
+    mandante.natural?`natural de ${mandante.natural}`:'',
+    mandante.cc?`portador${fem?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${mandante.cc}${mandante.ccval?`, válido até ${dPT(mandante.ccval)}`:''}`:'',
+    mandante.nif?`e número de identificação fiscal ${mandante.nif}`:'',
+    mandante.ec,
+    mandante.morada?`residente em ${mandante.morada}`:''
+  ].filter(Boolean).join(', ');
+  const blocos=[
+    {id:'p-cab',T:'PROCURAÇÃO',X:''},
+    {id:'p-mandante',T:'',X:`${id},`,negrito:[mandante.nome].filter(Boolean)},
+    {id:'p-procuradora',T:'',X:`constitui sua bastante procuradora ${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, portadora da cédula profissional n.º ${sol.cedula} da Ordem dos Solicitadores e dos Agentes de Execução, com domicílio profissional na ${sol.domicilio},`},
+    {id:'p-poderes',T:'',X:`a quem confere poderes para, em seu nome e em sua representação, junto da Autoridade Tributária e Aduaneira e de quaisquer outros serviços, repartições ou entidades competentes, por via presencial ou por via digital, proceder à liquidação de quaisquer impostos e requerer e obter as respetivas guias de pagamento, podendo, para o efeito e dentro destes estritos limites, apresentar e assinar requerimentos e declarações, prestar e solicitar informações e elementos, juntar e levantar documentos, efetuar pagamentos e praticar todos os demais atos necessários ao bom e integral cumprimento do presente mandato.`},
+    {id:'p-data',T:'',X:`Évora, ${dPT(v('f-data-ato')).replace(/^(\d{2})\/(\d{2})\/(\d{4})$/,(_,d,m,a)=>`${Number(d)} de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][Number(m)-1]} de ${a}`)}.`},
+    {id:'p-assin',T:'',X:`\n\n${fem?'A Mandante':'O Mandante'}\n(${(mandante.nome||'…').toUpperCase()})`}
+  ];
+  return{termo:[],contrato:blocos,anexo:[],cod:'PROC',rot:'Procuração'};
+}
 function comporDCC(){
   const sol=SOLICITADORAS[v('f-solicitadora')];
   const cop=lerVendedores();          /* bloco 3 · comproprietários */
   const par=x=>v(x)?`€ ${fmtValor(parseValor(v(x)))} (${valorExtenso(v(x)).toLowerCase()})`:'…';
   /* O ordinal concorda com o género de quem o leva. */
-  const femDeCop=i=>{const o=cop[i]||{};return o.genero==='F'||/a$/i.test((o.ec||'').split(/[\s,]/)[0]||'');};
+  const femDeCop=i=>femDe(cop[i]);
   const RAIZ=['PRIME','SEGUND','TERCE','QUART','QUINT','SEXT'];
   const ordDe=i=>{
     const f=femDeCop(i);
     return i===0?(f?'PRIMEIRA':'PRIMEIRO'):(i===2?(f?'TERCEIRA':'TERCEIRO'):(RAIZ[i]||('%'+(i+1)))+(f?'A':'O'));
   };
-  const comOrd=i=>`${femDeCop(i)?'a':'o'} ${ordDe(i)} OUTORGANTE`;
-  const listaOutros=lst=>lst.length?lst.map(comOrd).join(' e '):'…';
+  /* «à SEGUNDA OUTORGANTE», «ao PRIMEIRO OUTORGANTE» — com a contração. */
+  const comOrd=(i,prep)=>`${prep?(femDeCop(i)?'à':'ao'):(femDeCop(i)?'a':'o')} ${ordDe(i)} OUTORGANTE`;
+  const listaOutros=(lst,prep)=>lst.length?lst.map(i=>comOrd(i,prep)).join(' e '):'…';
   const idx=parseInt(v('f-dcc-adj'),10);
   const iAdj=isNaN(idx)?(cop.length-1):idx;
-  const adjFem=(cop[iAdj]||{}).genero==='F'||/a$/i.test(((cop[iAdj]||{}).ec||'').split(/[\s,]/)[0]||'');
+  const adjFem=femDe(cop[iAdj]);
   const outros=cop.map((_,i)=>i).filter(i=>i!==iAdj);
 
   /* ── Imóvel ── */
@@ -3258,28 +3303,50 @@ function comporDCC(){
   });
   contrato.push({id:'c-decl',T:'',X:'E declararam, sob sua responsabilidade:'});
 
+  /* ── NUMERAÇÃO DOS NÚMEROS ──
+     Corre por um contador, e não por casos fixos: cada número só entra se
+     houver matéria para ele. Sem hipotecas salta o passivo; sem tornas salta
+     as tornas; e os seguintes acertam-se sozinhos. */
+  const NUM=['','Primeiro','Segundo','Terceiro','Quarto','Quinto','Sexto','Sétimo','Oitavo','Nono','Décimo'];
+  let nN=0; const num=t=>`${NUM[++nN]||nN+'.º'}${t?` (${t})`:''} - `;
   const numeros=[];
-  numeros.push(`Primeiro - Que são comproprietários, em partes iguais, cabendo a cada um a quota ideal de ${v('f-dcc-quota')||'metade (1/2)'}, da ${txtImovel}`);
+  numeros.push(`${num('')}Que são comproprietários, em partes iguais, cabendo a cada um a quota ideal de ${v('f-dcc-quota')||'metade (1/2)'}, da ${txtImovel}`);
   const onus=lerOnus();
+  const temPassivo=!!parseValor(v('f-dcc-passivo'));
+  const temTornas=!!parseValor(v('f-dcc-tornas'));
+  let nOnus=0;
   if(onus.length){
+    nOnus=nN+1;
     const ent=onus[0].ent||'…';
     const aps=onus.map(o=>o.ap||'…');
-    numeros.push(`Segundo - Que sobre o referido imóvel incidem hipotecas voluntárias a favor de ${ent}, registadas pela Apresentação ${aps.length>1?aps.slice(0,-1).join(', ')+' e '+aps[aps.length-1]:aps[0]}, destinadas a garantir os empréstimos dela constantes, encontrando-se em dívida, à presente data, o capital de ${par('f-dcc-passivo')}.`);
+    numeros.push(`${num('')}Que sobre o referido imóvel incidem hipotecas voluntárias a favor de ${ent}, registadas pela Apresentação ${aps.length>1?aps.slice(0,-1).join(', ')+' e '+aps[aps.length-1]:aps[0]}, destinadas a garantir os empréstimos dela constantes${temPassivo?`, encontrando-se em dívida, à presente data, o capital de ${par('f-dcc-passivo')}`:''}.`);
   }
-  numeros.push(`${onus.length?'Terceiro':'Segundo'} - Que, pretendendo pôr termo à situação de compropriedade e não comportando o imóvel divisão cómoda em substância, acordam em proceder à sua divisão, ao abrigo dos artigos 1412.º e 1413.º do Código Civil, adjudicando-o por inteiro a um dos comproprietários, mediante tornas.`);
-  const nAdj=onus.length?'Quarto':'Terceiro';
-  numeros.push(`${nAdj} (Adjudicação) - Pela presente divisão, o imóvel identificado é adjudicado na sua totalidade ${adjFem?'à':'ao'} ${ordDe(iAdj)} OUTORGANTE, que fica a ser ${adjFem?'dona e legítima possuidora':'dono e legítimo possuidor'} da totalidade do prédio, com efeitos a partir desta data.`);
-  const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
-  numeros.push(`${onus.length?'Quinto':'Quarto'} (Tornas) - Porque o valor do quinhão adjudicado excede a quota-parte que ${adjFem?'à adjudicatária':'ao adjudicatário'} pertencia, est${adjFem?'a':'e'} paga a${outros.length&&femDeCop(outros[0])?'':'o'} ${listaOutros(outros).replace(/^[ao] /,'')}, a título de tornas, a quantia de ${par('f-dcc-tornas')}, mediante ${v('f-dcc-tornas-meio')||'cheque bancário'} ${quando}.`);
-  if(v('f-dcc-passivo'))
-    numeros.push(`${onus.length?'Sexto':'Quinto'} (Assunção do passivo) — ${adjFem?'A adjudicatária assume':'O adjudicatário assume'} integralmente a responsabilidade pelo pagamento do passivo identificado no número Segundo, no montante de ${par('f-dcc-passivo')}, garantido pelas hipotecas que oneram o imóvel, ficando ${listaOutros(outros)} ${outros.length>1?'exonerados':'exonerado'} de toda e qualquer responsabilidade perante o credor hipotecário. ${adjFem?'A':'O'} ${ordDe(iAdj)} OUTORGANTE fica ${adjFem?'responsável':'responsável'} pela liquidação integral do passivo identificado no número Segundo, no montante de ${par('f-dcc-passivo')}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora.`);
-  numeros.push(`${onus.length?(v('f-dcc-passivo')?'Sétimo':'Sexto'):(v('f-dcc-passivo')?'Sexto':'Quinto')} (IMT e Imposto do Selo) - Declara ${adjFem?'a adjudicatária':'o adjudicatário'} que, sobre o excesso da quota-parte por si adquirido, liquida o IMT devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido (verba 1.1 da TGIS).`);
+  numeros.push(`${num('')}Que, pretendendo pôr termo à situação de compropriedade e não comportando o imóvel divisão cómoda em substância, acordam em proceder à sua divisão, ao abrigo dos artigos 1412.º e 1413.º do Código Civil, adjudicando-o por inteiro a um dos comproprietários${temTornas?', mediante tornas':''}.`);
+  numeros.push(`${num('Adjudicação')}Pela presente divisão, o imóvel identificado é adjudicado na sua totalidade ${adjFem?'à':'ao'} ${ordDe(iAdj)} OUTORGANTE, que fica a ser ${adjFem?'dona e legítima possuidora':'dono e legítimo possuidor'} da totalidade do prédio, com efeitos a partir desta data.`);
+  if(temTornas){
+    const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
+    numeros.push(`${num('Tornas')}Porque o valor do quinhão adjudicado excede a quota-parte que ${adjFem?'à adjudicatária':'ao adjudicatário'} pertencia, est${adjFem?'a':'e'} paga ${listaOutros(outros,true)}, a título de tornas, a quantia de ${par('f-dcc-tornas')}, mediante ${v('f-dcc-tornas-meio')||'cheque bancário'} ${quando}.`);
+  }
+  if(temPassivo){
+    const refOnus=NUM[nOnus]||'anterior';
+    numeros.push(`${num('Assunção do passivo')}${adjFem?'A adjudicatária assume':'O adjudicatário assume'} integralmente a responsabilidade pelo pagamento do passivo identificado no número ${refOnus}, no montante de ${par('f-dcc-passivo')}, garantido pelas hipotecas que oneram o imóvel, ficando ${listaOutros(outros)} ${outros.length>1?'exonerados':'exonerado'} de toda e qualquer responsabilidade perante o credor hipotecário. ${adjFem?'A':'O'} ${ordDe(iAdj)} OUTORGANTE fica responsável pela liquidação integral do passivo identificado no número ${refOnus}, no montante de ${par('f-dcc-passivo')}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora.`);
+  }
+  /* ⚠ Por validar: a menção à habitação secundária é proposta minha — o modelo
+     não distingue, e a taxa do IMT depende disso. */
+  numeros.push(`${num('IMT e Imposto do Selo')}Declara ${adjFem?'a adjudicatária':'o adjudicatário'} que, sobre o excesso da quota-parte por si adquirido, liquida o IMT devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido (verba 1.1 da TGIS).`);
 
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
-  return{termo,contrato,anexo:[]};
+  /* Havendo procuração, sai como segundo documento — folha e ficheiro próprios. */
+  const docs=[{termo,contrato,anexo:[],cod:'DCC',rot:'Divisão de Coisa Comum'}];
+  if(chk('t-proc-guias')){
+    const i=parseInt(v('f-proc-quem'),10);
+    const proc=comporProcuracaoGuias(cop[isNaN(i)?iAdj:i]);
+    if(proc)docs.push(proc);
+  }
+  return{termo,contrato,anexo:[],docs};
 }
 function compor(){
   if(atoEscolhido()==='partilhas')return comporDCC();
@@ -4091,13 +4158,16 @@ function funilDCC(){
     if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='none';});
   /* Uma divisão precisa de pelo menos dois comproprietários. */
   while(document.querySelectorAll('.vend-block').length<2)addVendedor();
-  /* A lista dos adjudicatários acompanha os comproprietários. */
-  const sel=document.getElementById('f-dcc-adj');
-  if(sel){
-    const cop=lerVendedores(), antes=sel.value;
-    const novo=cop.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</option>`).join('');
-    if(sel.innerHTML!==novo){sel.innerHTML=novo;sel.value=(antes&&antes<cop.length)?antes:String(Math.max(0,cop.length-1));}
-  }
+  /* As listas do adjudicatário e do mandante acompanham os comproprietários. */
+  const cop=lerVendedores();
+  const opcoes=cop.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</option>`).join('');
+  [['f-dcc-adj',()=>String(Math.max(0,cop.length-1))],['f-proc-quem',()=>v('f-dcc-adj')||'0']].forEach(([id,pref])=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const antes=sel.value;
+    if(sel.innerHTML!==opcoes){sel.innerHTML=opcoes;sel.value=(antes&&Number(antes)<cop.length)?antes:pref();}
+  });
+  setDisp('g-proc-quem',chk('t-proc-guias')?'flex':'none');
   const isFr=v('f-im-tipo')==='fracao';
   setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
   setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
