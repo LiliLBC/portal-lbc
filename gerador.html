@@ -3314,6 +3314,12 @@ function addBem(dados){
           <input class="form-input" id="${id}-im-cert" oninput="atualizar()"></div>
         <div class="form-group"><label class="form-label">Certidão válida até</label>
           <input type="date" class="form-input" id="${id}-im-certval" onchange="atualizar()"></div>
+        <div class="form-group form-full"><label class="form-label">Licença de utilização</label>
+          <input class="form-input" id="${id}-im-licenca" oninput="atualizar()" placeholder="Ex: n.º 47/2006, de 08/02/2006, da Câmara Municipal de Évora"></div>
+        <div class="form-group"><label class="form-label">Certificado energético n.º</label>
+          <input class="form-input" id="${id}-im-ce" oninput="atualizar()" placeholder="Ex: SCE 255540021"></div>
+        <div class="form-group"><label class="form-label">Certificado válido até</label>
+          <input type="date" class="form-input" id="${id}-im-ceval" onchange="atualizar()"></div>
       </div>
 
       <div class="bem-veiculo" style="display:none">
@@ -3354,6 +3360,9 @@ function addBem(dados){
         <input class="form-input" id="${id}-credor" oninput="atualizar()" placeholder="Ex: CAIXA ECONÓMICA MONTEPIO GERAL"></div>
       <div class="form-group form-full"><label class="form-label">Inscrições da hipoteca</label>
         <input class="form-input" id="${id}-hipotecas" oninput="atualizar()" placeholder="Ex: AP. 23 de 2005/10/18 e AP. 24 de 2005/10/18"></div>
+      <div class="form-group form-full"><label class="form-label">Declaração de valores em dívida emitida em</label>
+        <input type="date" class="form-input" id="${id}-decl-data" onchange="atualizar()">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Havendo dívida, arquivas a declaração do credor. Sai no termo.</div></div>
     </div>`;
   document.getElementById('bens-container').appendChild(div);
   /* A lista dos adjudicatários só é preenchida pelo funil, depois de os
@@ -3372,7 +3381,7 @@ function renumerarVerbas(){
 /* Para o rascunho interessa o que está escrito, não o que está apurado: os
    valores vão como texto, para voltarem tal e qual. */
 const CAMPOS_BEM=['tipo','origem','im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg',
-  'im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval',
+  'im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval','im-licenca','im-ce','im-ceval','decl-data',
   've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc',
   'ativo','passivo','adj','credor','hipotecas'];
 function lerBensBruto(){
@@ -3388,7 +3397,7 @@ function lerBens(){
       ativo:parseValor(g(`${b.id}-ativo`)),passivo:parseValor(g(`${b.id}-passivo`)),
       adj:parseInt(g(`${b.id}-adj`),10),credor:g(`${b.id}-credor`),hipotecas:g(`${b.id}-hipotecas`)};
     o.origem=g(`${b.id}-origem`)||'casamento';
-    ['im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg','im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval',
+    ['im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg','im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval','im-licenca','im-ce','im-ceval','decl-data',
      've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
     return o;
   }).filter(x=>x.ativo||x['im-desc']||x['ve-matricula']||x['qt-soc']||x['ou-desc']);
@@ -3529,6 +3538,11 @@ function comporDCC(){
   const ver=['— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação, que me foram apresentados;'];
   const imoveis=bens.filter(b=>b.tipo==='imovel');
   bens.forEach((b,i)=>{const l=linhaDocsBem(b,i+1,imoveis.length>1);if(l)ver.push(l);});
+  /* Havendo dívida, a declaração do credor é documento a arquivar. */
+  bens.forEach((b,i)=>{
+    if(b.passivo>0)
+      ver.push(`— A declaração de valores em dívida${b['decl-data']?`, emitida em ${dPT(b['decl-data'])}`:''}, ${b.credor?`por ${b.credor}`:'pelo credor'}, quanto ${bens.length>1?`à ${VERBAS[i+1]?'VERBA '+VERBAS[i+1]:'verba '+(i+1)}`:'ao bem'}, que arquivo;`);
+  });
   cop.map(segmentoProcuracao).filter(Boolean).forEach(t=>ver.push('— '+t.charAt(0).toUpperCase()+t.slice(1)+';'));
   cop.map(o=>linhaEmpresa(o,'PARTE OUTORGANTE')).filter(Boolean)
     .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
@@ -3658,6 +3672,16 @@ function comporDCC(){
   numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que, sobre o excesso da quota-parte por si adquirido, liquida${adjs.length>1?'m':''} o IMT devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido (verba 1.1 da TGIS).`);
 
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
+  /* ── LICENCIAMENTO E CERTIFICAÇÃO ENERGÉTICA ──
+     Vêm da compra e venda, por verba. Só saem havendo o que dizer. */
+  const licLinhas=[];
+  bens.forEach((b,k)=>{
+    const onde=bens.length>1?`A ${verba(k)}`:'O bem identificado';
+    if(b['im-licenca'])licLinhas.push(`${onde} tem a Licença de Utilização ${b['im-licenca']}.`);
+    if(b['im-ce'])licLinhas.push(`${onde} dispõe do Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios n.º ${b['im-ce']}${b['im-ceval']?`, válido até ${dPT(b['im-ceval'])}`:''}, nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`);
+  });
+  if(licLinhas.length)
+    contrato.push({id:'c-licenciamento',T:'',X:licLinhas.join('\n')});
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
@@ -5811,7 +5835,23 @@ let alertasAbertos=false;
 
 function calcularAlertas(){
   const A=[];
-  const push=(chave,nivel,onde,texto)=>A.push({chave,nivel,onde,texto});
+  /* ── ALERTAS QUE NÃO SE APLICAM A TODOS OS ATOS ──
+     Esconder um bloco não desliga a regra que o lê. Na divisão e nas partilhas
+     não há comprador, nem preço, nem regime fiscal, e o bloco 5 está escondido
+     — os alertas que os exigem estavam a disparar sobre campos que a Liliana
+     não tem sequer à vista. Ficam o título urbanístico e o condomínio, que se
+     aplicam por haver transmissão do excesso da quota-parte. */
+  const SEM_NO_DCC=new Set(['sem-preco','pag-soma','mat-soma','fisc-regime','areas-p0','areas-p0-u',
+    'apb-valor','apb-origem','apb-iban','apb-banco','apb-excede','rem-meio','rem-iban','sinal-valor']);
+  const ehDCC=atoEscolhido()==='partilhas';
+  const push=(chave,nivel,onde,texto)=>{
+    /* c0-nome, c1-nome… são da parte compradora; p0-areas do bloco 5, que aqui
+       não existe; v0-coincide é o trato sucessivo da compra e venda. */
+    if(ehDCC&&(SEM_NO_DCC.has(chave)
+      ||/^c\d+-/.test(chave)||/^pag-/.test(chave)
+      ||/-areas(-u)?$/.test(chave)||/-coincide$/.test(chave)))return;
+    A.push({chave,nivel,onde,texto});
+  };
   const vend=lerVendedores(),comps=lerCompradores();
 
   /* ── Tipo de ato ── */
@@ -6040,9 +6080,14 @@ function calcularAlertas(){
     push('confinantes','bloqueio','Imóvel','Prédio rústico ou misto sem hipótese escolhida quanto à preferência dos confinantes — não sai cláusula.');
 
   /* ── Partilhas · redação por escrever ── */
-  if(atoEscolhido()==='partilhas'&&(v('f-dcc-tipo')||'divisao')!=='divisao')
-    push('dcc-partilha','bloqueio','Tipo de Ato',
-      'A partilha ainda usa a redação da divisão de coisa comum, com os artigos 1412.º e 1413.º, que são de compropriedade. Falta a redação própria.');
+  /* Só quando há mesmo matéria de partilha — verbas adquiridas no casamento
+     ou partilha de herança. Sendo tudo em comum, é divisão e não bloqueia. */
+  if(atoEscolhido()==='partilhas'&&naturezaDCC().casal)
+    push('dcc-partilha','aviso','Tipo de Ato',
+      'A partilha usa ainda os artigos 1412.º e 1413.º, que são de compropriedade. Falta o fundamento próprio da partilha.');
+  if(atoEscolhido()==='partilhas'&&v('f-dcc-tipo')==='partilha-heranca')
+    push('dcc-heranca','bloqueio','Tipo de Ato',
+      'A partilha de herança ainda não tem redação própria — falta a habilitação de herdeiros e o fundamento sucessório.');
 
   /* ── 6.3 · APB ── */
   if(chk('t-apb')){
