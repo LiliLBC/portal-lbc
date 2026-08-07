@@ -4040,7 +4040,10 @@ function compor(){
      A declaração da veracidade do preço fica no termo: não é a cláusula do
      preço, é a declaração dos outorgantes prestada perante a solicitadora. */
   termo.push({id:'t-preco-decl',T:'',X:`Os Outorgantes declararam que o teor da cláusula relativa ao preço, respetivos meios e datas de pagamento corresponde inteiramente à verdade, dando-se aqui a mesma por integralmente reproduzida para todos os efeitos legais.`});
-  if(chk('t-mediacao'))termo.push({id:'t-advert-mediacao',T:'',X:`Adverti as partes, que nos termos do art.º 40.º, n.º 3, da Lei 15/2013 (Regime Jurídico da Atividade de Mediação Imobiliária, de 8 de fevereiro), as partes que omitam ou prestem falsas declarações sobre a intervenção de mediação imobiliária incorrem na pena prevista para o crime de desobediência (art.º 348.º do Código Penal).`});
+  /* A advertência acompanha sempre a declaração, e não só quando há mediação:
+     a norma pune quem omite ou declara falsamente, portanto é justamente na
+     declaração de que não houve intervenção que ela tem sentido. */
+  termo.push({id:'t-advert-mediacao',T:'',X:`Adverti as partes, que nos termos do art.º 40.º, n.º 3, da Lei 15/2013 (Regime Jurídico da Atividade de Mediação Imobiliária, de 8 de fevereiro), as partes que omitam ou prestem falsas declarações sobre a intervenção de mediação imobiliária incorrem na pena prevista para o crime de desobediência (art.º 348.º do Código Penal).`});
   termo.push({id:'t-rgpd',T:'',X:`Com o consentimento dos outorgantes, foram recolhidos e reproduzidos os documentos de identificação nos termos da Lei n.º 83/2017, de 18 de agosto, arquivados pelo prazo legal de 7 anos.`});
   termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
   
