@@ -573,10 +573,10 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="section-desc" id="sub-bens">O que se transmite</div></div>
     </div>
     <div class="cond-block" style="margin-bottom:.7rem">
-      <div class="cond-block-title">Bens a dividir</div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.55rem">Cada bem leva o seu valor atribuído, a dívida que o onera e a quem é adjudicado. Sem dívida, deixa a zero.</div>
+      <div class="cond-block-title" id="ttl-bens-int">Bens a dividir</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.55rem" id="sub-bens-int"></div>
       <div id="bens-container"></div>
-      <button class="add-btn" type="button" onclick="addBem();atualizar()">+ Acrescentar bem</button>
+      <button class="add-btn" type="button" onclick="addBem();atualizar()" id="btn-add-bem">+ Acrescentar bem</button>
     </div>
   </div>
 
@@ -592,12 +592,6 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <select class="form-select" id="f-doa-tipo" onchange="atualizar()">
           <option value="pura">Pura — doa-se a propriedade plena</option>
           <option value="reserva">Com reserva de usufruto — doa-se a raiz</option>
-        </select></div>
-      <div class="form-group form-full"><label class="form-label">Base do Imposto do Selo</label>
-        <select class="form-select" id="f-doa-base" onchange="atualizar()">
-          <option value="maior">O maior dos dois — VPT ou valor atribuído</option>
-          <option value="vpt">Valor patrimonial tributário</option>
-          <option value="atribuido">Valor atribuído</option>
         </select></div>
       <div class="form-group form-full" id="doa-selo"></div>
 
@@ -623,16 +617,24 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <input class="form-input" id="f-doa-vraiz" oninput="atualizar()"></div>
       </div>
 
-      <div class="form-group form-full"><label class="form-label">Relação entre doadores e donatários</label>
-        <input class="form-input" id="f-doa-relacao" oninput="atualizar()" placeholder="Ex: filhos dos doadores">
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Releva para a isenção de Imposto do Selo entre cônjuge, descendentes e ascendentes.</div></div>
-      <div class="form-group form-full">
+      <div class="form-group form-full" style="margin-top:.3rem">
         <div class="toggle-row" style="margin:0">
-          <span class="toggle-label" style="font-size:12px">Isenta de Imposto do Selo</span>
-          <label class="toggle-switch"><input type="checkbox" id="t-doa-isento" onchange="atualizar()" checked><span class="toggle-slider"></span></label>
+          <span class="toggle-label" style="font-size:12px">Emitir procuração para liquidação das guias</span>
+          <label class="toggle-switch"><input type="checkbox" id="t-doa-proc" onchange="atualizar()"><span class="toggle-slider"></span></label>
         </div>
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Alínea e) do artigo 6.º do Código do Imposto do Selo, entre cônjuge, descendentes e ascendentes.</div>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Quando o cliente quer que sejas tu a liquidar o Selo. Sai como documento à parte.</div>
       </div>
+      <div class="form-group form-full" id="g-doa-proc-quem" style="display:none"><label class="form-label">Quem constitui procuradora</label>
+        <select class="form-select" id="f-doa-proc-quem" onchange="atualizar()"></select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Normalmente o donatário, que é quem tem imposto a liquidar.</div></div>
+      <div class="form-group form-full"><label class="form-label">Quem recebe <span>*</span></label>
+        <select class="form-select" id="f-doa-parentesco" onchange="atualizar()">
+          <option value="conjuge">Cônjuge ou unido de facto</option>
+          <option value="descendente">Filhos ou netos — descendentes</option>
+          <option value="ascendente">Pais ou avós — ascendentes</option>
+          <option value="outros">Outros — irmãos, sobrinhos, sem parentesco</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Os três primeiros estão isentos da verba 1.2 pela alínea e) do n.º 1 do artigo 6.º do CIS. Os restantes pagam-na.</div></div>
     </div>
   </div>
 
@@ -3464,7 +3466,9 @@ function lerBens(){
     ['im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg','im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval','im-licenca','im-ce','im-ceval','decl-data',
      've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
     return o;
-  }).filter(x=>x.ativo||x['im-desc']||x['ve-matricula']||x['qt-soc']||x['ou-desc']);
+  /* Uma verba com VPT mas sem valor atribuído é verba na mesma — na doação o
+     valor pode não ser atribuído e a base ser o patrimonial. */
+  }).filter(x=>x.ativo||x['im-vpt']||x['im-desc']||x['ve-matricula']||x['qt-soc']||x['ou-desc']);
 }
 /* «1/2», «2/3», «metade» — tudo dá uma fração. */
 function fracao(t){
@@ -3771,22 +3775,29 @@ function comporDCC(){
    ascendentes, alínea e) do n.º 1 do artigo 6.º do CIS.
    ⚠ A base é o valor patrimonial tributário, nos termos do artigo 13.º do CIS;
    sendo o valor atribuído superior, mostram-se os dois para a Liliana escolher. */
+/* Cônjuge ou unido de facto, descendentes e ascendentes estão isentos da verba
+   1.2; os restantes pagam-na, a acrescer à 1.1. */
+function doaIsento(){return (v('f-doa-parentesco')||'descendente')!=='outros';}
+function doaParentesco(){
+  const q=v('f-doa-parentesco')||'descendente';
+  return q==='conjuge'?'o cônjuge ou unido de facto'
+    :q==='descendente'?'descendentes'
+    :q==='ascendente'?'ascendentes':'';
+}
 function seloDoacao(){
-  const isento=chk('t-doa-isento');
-  const criterio=v('f-doa-base')||'maior';
+  const isento=doaIsento();
+  /* A base é o maior entre o valor patrimonial tributário e o valor atribuído:
+     podendo as partes atribuir valor à doação, prevalece o mais elevado. */
   const linhas=lerBens().map((b,i)=>{
     const vpt=parseValor(b['im-vpt']);
     const atrib=b.ativo;
-    /* A base pode ser um ou outro, conforme o caso — escolhe-se no bloco. */
-    const base=criterio==='vpt'?(vpt||atrib)
-      :criterio==='atribuido'?(atrib||vpt)
-      :Math.max(vpt||0,atrib||0)||vpt||atrib;
+    const base=Math.max(vpt||0,atrib||0)||vpt||atrib;
     return{i,base,vpt,atrib,
       v11:base*0.008,
       v12:isento?0:base*0.10,
       divergente:!!(vpt&&atrib&&Math.abs(vpt-atrib)>0.005)};
   });
-  return{isento,criterio,linhas,
+  return{isento,linhas,
     total11:linhas.reduce((a,x)=>a+x.v11,0),
     total12:linhas.reduce((a,x)=>a+x.v12,0)};
 }
@@ -3800,17 +3811,20 @@ function desenharSeloDoacao(){
     <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Imposto do Selo</div>
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">
-        <td></td><td style="text-align:right">base</td><td style="text-align:right">verba 1.1</td><td style="text-align:right">verba 1.2</td></tr>
+        <td></td><td style="text-align:right">vpt</td><td style="text-align:right">atribuído</td>
+        <td style="text-align:right">base</td><td style="text-align:right">verba 1.1</td><td style="text-align:right">verba 1.2</td></tr>
       ${s.linhas.map(x=>`<tr><td style="padding:.2rem .5rem .2rem 0">${esc('VERBA '+(VERBAS[x.i+1]||(x.i+1)))}</td>
-        <td style="text-align:right;padding:.2rem .5rem">${eur(x.base)}${x.divergente?' <span title="VPT e valor atribuído divergem" style="color:var(--amber)">⚠</span>':''}</td>
+        <td style="text-align:right;padding:.2rem .5rem;color:var(--text-faint)">${x.vpt?eur(x.vpt):'—'}</td>
+        <td style="text-align:right;padding:.2rem .5rem;color:var(--text-faint)">${x.atrib?eur(x.atrib):'—'}</td>
+        <td style="text-align:right;padding:.2rem .5rem;font-weight:600">${eur(x.base)}</td>
         <td style="text-align:right;padding:.2rem .5rem">${eur(x.v11)}</td>
         <td style="text-align:right;padding:.2rem 0">${s.isento?'isenta':eur(x.v12)}</td></tr>`).join('')}
       <tr style="font-weight:600;border-top:1px solid var(--border)">
-        <td style="padding-top:.3rem">Total</td><td></td>
+        <td style="padding-top:.3rem">Total</td><td></td><td></td><td></td>
         <td style="text-align:right;padding-top:.3rem">${eur(s.total11)}</td>
         <td style="text-align:right;padding-top:.3rem">${s.isento?'—':eur(s.total12)}</td></tr>
     </table>
-    <div style="font-size:10.5px;color:var(--text-faint);margin-top:.4rem">Base: ${s.criterio==='vpt'?'valor patrimonial tributário':s.criterio==='atribuido'?'valor atribuído':'o maior entre o VPT e o valor atribuído'}. O ⚠ assinala verbas em que os dois divergem.</div>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:.4rem">A base é o maior entre o valor patrimonial tributário e o valor atribuído pelas partes.</div>
   </div>`;
 }
 function comporDoacao(){
@@ -3861,16 +3875,19 @@ function comporDoacao(){
 
   const inf=[];
   /* ── IMPOSTO DO SELO NA DOAÇÃO ──
-     A isenção da alínea e) do n.º 1 do artigo 6.º do CIS abrange o cônjuge ou
-     unido de facto, descendentes e ascendentes — mas só quanto à verba 1.2.
-     A verba 1.1 é devida na mesma, e é o que o Portal das Finanças esclarece.
-     Fora dos isentos, a verba 1.2 aplica-se por inteiro. */
-  inf.push(chk('t-doa-isento')
-    ?`— os outorgantes de que a presente doação está isenta do Imposto do Selo da verba 1.2 da Tabela Geral, nos termos da alínea e) do n.º 1 do artigo 6.º do Código do Imposto do Selo, por serem beneficiários o cônjuge ou unido de facto, descendentes ou ascendentes, isenção que não abrange o Imposto do Selo da verba 1.1 da mesma Tabela, que é devido;`
-    :`— os outorgantes de que a presente doação está sujeita ao Imposto do Selo da verba 1.2 da Tabela Geral, bem como ao da verba 1.1, cuja liquidação compete à Autoridade Tributária e Aduaneira;`);
-  if(selo.linhas.length)
-    inf.push(`— os outorgantes do valor do Imposto do Selo devido: ${fmtValor(selo.total11)} € a título da verba 1.1${selo.isento?'':`, e ${fmtValor(selo.total12)} € a título da verba 1.2`};`);
-  inf.push(`— os outorgantes de que lhes cabe participar a transmissão gratuita à Autoridade Tributária e Aduaneira, até ao final do terceiro mês seguinte ao do nascimento da obrigação tributária;`);
+     Uma frase só: a verba 1.1, a 0,8%, é sempre devida; a verba 1.2, a 10%,
+     acresce àquela, salvo entre cônjuge ou unido de facto, descendentes e
+     ascendentes, que dela estão isentos pela alínea e) do n.º 1 do artigo 6.º
+     do CIS. A isenção não dispensa a participação. */
+  {
+    const e11=fmtValor(selo.total11);
+    const e12=fmtValor(selo.total12);
+    const base=`— os outorgantes de que a presente doação está sujeita ao Imposto do Selo da verba 1.1 da Tabela Geral, no valor de ${e11} €`;
+    const meio=doaIsento()
+      ? `, estando isenta do imposto da verba 1.2 da mesma Tabela nos termos da alínea e) do n.º 1 do artigo 6.º do Código do Imposto do Selo, por serem beneficiários ${doaParentesco()}`
+      : `, e ao da verba 1.2 da mesma Tabela, que àquela acresce, no valor de ${e12} €`;
+    inf.push(`${base}${meio}, cuja liquidação compete à Autoridade Tributária e Aduaneira, cabendo aos outorgantes participar a transmissão gratuita até ao final do terceiro mês seguinte ao do nascimento da obrigação tributária;`);
+  }
   inf.push(`— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`);
   termo.push({id:'t-informei',T:'',X:`INFORMEI\n${inf.join('\n')}`});
   termo.push({id:'t-rgpd',T:'',X:
@@ -3927,9 +3944,14 @@ function comporDoacao(){
     contrato.push({id:'c-doa4',T:cl('Valor'),X:
       `Do valor global atribuído, ${par('f-doa-vusufruto')} correspondem ao usufruto reservado e ${par('f-doa-vraiz')} à raiz ora doada.`});
 
-  if(v('f-doa-relacao'))
+  if(doaIsento())
     contrato.push({id:'c-doa-rel',T:cl('Relação entre os Outorgantes'),X:
-      `${plN?'Os Segundos Outorgantes são':'O Segundo Outorgante é'} ${v('f-doa-relacao')}.`});
+      `${plN?'Os Segundos Outorgantes são':'O Segundo Outorgante é'} ${(()=>{
+        const q=v('f-doa-parentesco')||'descendente';
+        return q==='conjuge'?`${plD?'cônjuge dos Primeiros Outorgantes':'cônjuge do Primeiro Outorgante'}`
+          :q==='descendente'?`descendente${plN?'s':''} d${plD?'os Primeiros Outorgantes':'o Primeiro Outorgante'}`
+          :`ascendente${plN?'s':''} d${plD?'os Primeiros Outorgantes':'o Primeiro Outorgante'}`;
+      })()}.`});
 
   /* Licenciamento, do tronco da compra e venda. */
   const parsLic=[];
@@ -3940,7 +3962,14 @@ function comporDoacao(){
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
-  return{termo,contrato,anexo:[]};
+  /* Havendo procuração, sai como segundo documento — mesma estrutura do ato 3. */
+  const docs=[{termo,contrato,anexo:[],cod:'DOACAO',rot:'Doação'}];
+  if(chk('t-doa-proc')){
+    const i=parseInt(v('f-doa-proc-quem'),10);
+    const proc=comporProcuracaoGuias(don[isNaN(i)?0:i]);
+    if(proc)docs.push(proc);
+  }
+  return{termo,contrato,anexo:[],docs};
 }
 function compor(){
   if(atoEscolhido()==='doacao')return comporDoacao();
@@ -4780,6 +4809,9 @@ function funilDoacao(){
   setDisp('card-bens','block');setDisp('card-b5','none');
   setProp('ttl-bens','textContent','Bens doados');
   setProp('sub-bens','textContent','O que se doa, e a quem');
+  setProp('ttl-bens-int','textContent','Bens doados');
+  setProp('sub-bens-int','textContent','Cada bem leva o seu valor atribuído e a quem é doado. Não atribuindo valor, o Imposto do Selo calcula-se sobre o VPT.');
+  setProp('btn-add-bem','textContent','+ Acrescentar bem doado');
   document.querySelectorAll('.bem-divida').forEach(e=>e.style.display='none');
   document.querySelectorAll('.bem-rot-adj').forEach(e=>e.innerHTML='Doado a <span>*</span>');
   renumerarVerbas();
@@ -4802,6 +4834,13 @@ function funilDoacao(){
       const org=document.getElementById(`${b.id}-origem`);
       if(org&&org.closest('.form-group'))org.closest('.form-group').style.display='none';
     });
+  }
+  {
+    const don3=lerCompradores();
+    const ops3=don3.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Donatário '+(i+1)))}</option>`).join('');
+    const sp=document.getElementById('f-doa-proc-quem');
+    if(sp&&sp.innerHTML!==ops3){const a=sp.value;sp.innerHTML=ops3;sp.value=(a&&Number(a)<don3.length)?a:'0';}
+    setDisp('g-doa-proc-quem',chk('t-doa-proc')?'flex':'none');
   }
   desenharSeloDoacao();
   const res=v('f-doa-tipo')==='reserva';
@@ -4833,6 +4872,9 @@ function funilDCC(){
   setDisp('card-bens','block');
   setProp('ttl-bens','textContent','Bens a dividir');
   setProp('sub-bens','textContent','O que se divide, e a quem é adjudicado');
+  setProp('ttl-bens-int','textContent','Bens a dividir');
+  setProp('sub-bens-int','textContent','Cada bem leva o seu valor atribuído, a dívida que o onera e a quem é adjudicado. Sem dívida, deixa a zero.');
+  setProp('btn-add-bem','textContent','+ Acrescentar bem');
   document.querySelectorAll('.bem-divida').forEach(e=>e.style.display='');
   document.querySelectorAll('.bem-rot-adj').forEach(e=>e.innerHTML='Adjudicado a <span>*</span>');
   const ts=document.getElementById('t-trato-suc');
