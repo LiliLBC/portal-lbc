@@ -332,10 +332,10 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </select></div>
       <div class="form-group form-full" id="g-subtipo-dcc" style="display:none"><label class="form-label">Natureza <span>*</span></label>
         <select class="form-select" id="f-dcc-tipo" onchange="atualizar()">
-          <option value="divisao">Divisão de Coisa Comum — comproprietários sem casamento entre si</option>
-          <option value="partilha-casal">Partilha — bens adquiridos na constância do casamento</option>
-          <option value="partilha-heranca">Partilha — herdeiros</option>
-        </select></div>
+          <option value="entre-vivos">Entre vivos — a natureza vem de como cada verba foi adquirida</option>
+          <option value="partilha-heranca">Partilha de herança — entre herdeiros</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Entre vivos, cada verba diz se foi adquirida no casamento ou em comum, e o título compõe-se do que existir.</div></div>
       <div class="form-group form-full" id="g-subtipo-lea" style="display:none"><label class="form-label">Saída do leasing <span>*</span></label>
         <select class="form-select" id="f-lea-tipo" onchange="atualizar()">
           <option value="entrada">8.1 · Entrada — a CAIXA compra para locar</option>
@@ -578,6 +578,28 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.55rem">Cada bem leva o seu valor atribuído, a dívida que o onera e a quem é adjudicado. Sem dívida, deixa a zero.</div>
       <div id="bens-container"></div>
       <button class="add-btn" type="button" onclick="addBem();atualizar()">+ Acrescentar bem</button>
+    </div>
+
+    <div class="cond-block" id="blk-divorcio" style="display:none;margin-bottom:.7rem">
+      <div class="cond-block-title">Divórcio</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">Havendo bens adquiridos na constância do matrimónio.</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Regime de bens</label>
+          <input class="form-input" id="f-div-regime" oninput="atualizar()" value="comunhão de adquiridos"></div>
+        <div class="form-group"><label class="form-label">Modalidade</label>
+          <select class="form-select" id="f-div-tipo" onchange="atualizar()">
+            <option value="mutuo">Por mútuo consentimento</option>
+            <option value="litigioso">Sem consentimento do outro cônjuge</option>
+          </select></div>
+        <div class="form-group"><label class="form-label">Sentença de</label>
+          <input type="date" class="form-input" id="f-div-sentenca" onchange="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Transitada em julgado em</label>
+          <input type="date" class="form-input" id="f-div-transito" onchange="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Processo n.º</label>
+          <input class="form-input" id="f-div-proc" oninput="atualizar()" placeholder="Ex: 163/26.5T8MMN"></div>
+        <div class="form-group"><label class="form-label">Tribunal</label>
+          <input class="form-input" id="f-div-tribunal" oninput="atualizar()" placeholder="Ex: Tribunal Judicial da Comarca de Évora, Juízo de Competência Genérica de Montemor-o-Novo, Juiz Um"></div>
+      </div>
     </div>
 
     <div id="dcc-apuramento" style="margin-bottom:.7rem"></div>
@@ -3236,16 +3258,23 @@ function addBem(dados){
   div.style.cssText='border:1px solid var(--border);border-radius:9px;padding:.7rem;margin-bottom:.6rem;background:var(--surface)';
   div.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-      <div style="font-size:11px;font-weight:600;color:var(--text-muted)">Bem ${i}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--accent-dark)" class="verba-rot">Verba ${i}</div>
       ${i>1?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">&times;</button>`:''}
     </div>
     <div class="form-grid form-grid-2">
-      <div class="form-group form-full"><label class="form-label">Natureza</label>
+      <div class="form-group"><label class="form-label">Natureza do bem</label>
         <select class="form-select" id="${id}-tipo" onchange="atualizar()">
           <option value="imovel">Imóvel</option>
           <option value="veiculo">Veículo</option>
+          <option value="quota">Quota de sociedade</option>
           <option value="outro">Outro bem</option>
         </select></div>
+      <div class="form-group"><label class="form-label">Como foi adquirido</label>
+        <select class="form-select" id="${id}-origem" onchange="atualizar()">
+          <option value="casamento">Na constância do matrimónio — partilha</option>
+          <option value="comum">Em comum, fora do casamento — divisão</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">É isto que faz do ato uma partilha, uma divisão, ou as duas.</div></div>
 
       <div class="bem-imovel" style="display:contents">
         <div class="form-group"><label class="form-label">Tipo de prédio</label>
@@ -3255,11 +3284,11 @@ function addBem(dados){
             <option value="rustico">Prédio rústico</option>
             <option value="misto">Prédio misto</option>
           </select></div>
-        <div class="form-group"><label class="form-label">Letra da fração</label>
+        <div class="form-group bem-fr"><label class="form-label">Letra da fração</label>
           <input class="form-input" id="${id}-im-letra" oninput="atualizar()"></div>
         <div class="form-group form-full"><label class="form-label">Descrição</label>
           <textarea class="form-input" id="${id}-im-desc" rows="2" oninput="atualizar()"></textarea></div>
-        <div class="form-group"><label class="form-label">Inscrição da propriedade horizontal</label>
+        <div class="form-group bem-fr"><label class="form-label">Inscrição da propriedade horizontal</label>
           <input class="form-input" id="${id}-im-apph" oninput="atualizar()"></div>
         <div class="form-group"><label class="form-label">Sito em</label>
           <input class="form-input" id="${id}-im-sito" oninput="atualizar()"></div>
@@ -3300,6 +3329,16 @@ function addBem(dados){
         </div>
       </div>
 
+      <div class="bem-quota" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Valor nominal (€)</label>
+            <input class="form-input" id="${id}-qt-nominal" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Titulada em nome de</label>
+            <input class="form-input" id="${id}-qt-titular" oninput="atualizar()"></div>
+          <div class="form-group form-full"><label class="form-label">Sociedade</label>
+            <input class="form-input" id="${id}-qt-soc" oninput="atualizar()" placeholder="Denominação, sede e NIPC"></div>
+        </div>
+      </div>
       <div class="bem-outro" style="display:none">
         <div class="form-group form-full"><label class="form-label">Descrição do bem</label>
           <textarea class="form-input" id="${id}-ou-desc" rows="2" oninput="atualizar()"></textarea></div>
@@ -3317,7 +3356,30 @@ function addBem(dados){
         <input class="form-input" id="${id}-hipotecas" oninput="atualizar()" placeholder="Ex: AP. 23 de 2005/10/18 e AP. 24 de 2005/10/18"></div>
     </div>`;
   document.getElementById('bens-container').appendChild(div);
-  if(dados)Object.keys(dados).forEach(k=>{const e=document.getElementById(`${id}-${k}`);if(e)e.value=dados[k];});
+  /* A lista dos adjudicatários só é preenchida pelo funil, depois de os
+     outorgantes existirem. Guarda-se a escolha e aplica-se então. */
+  if(dados){
+    Object.keys(dados).forEach(k=>{const e=document.getElementById(`${id}-${k}`);if(e&&k!=='adj')e.value=dados[k];});
+    if(dados.adj!==undefined&&dados.adj!=='')div.dataset.adj=dados.adj;
+  }
+}
+const VERBAS=['','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+function renumerarVerbas(){
+  [...document.querySelectorAll('.bem-block .verba-rot')].forEach((e,i)=>{
+    e.textContent='VERBA '+(VERBAS[i+1]||(i+1));
+  });
+}
+/* Para o rascunho interessa o que está escrito, não o que está apurado: os
+   valores vão como texto, para voltarem tal e qual. */
+const CAMPOS_BEM=['tipo','origem','im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg',
+  'im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval',
+  've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc',
+  'ativo','passivo','adj','credor','hipotecas'];
+function lerBensBruto(){
+  const g=id=>document.getElementById(id)?.value??'';
+  return[...document.querySelectorAll('.bem-block')].map(b=>{
+    const o={}; CAMPOS_BEM.forEach(k=>o[k]=g(`${b.id}-${k}`)); return o;
+  });
 }
 function lerBens(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
@@ -3325,10 +3387,11 @@ function lerBens(){
     const o={id:b.id,tipo:g(`${b.id}-tipo`)||'imovel',
       ativo:parseValor(g(`${b.id}-ativo`)),passivo:parseValor(g(`${b.id}-passivo`)),
       adj:parseInt(g(`${b.id}-adj`),10),credor:g(`${b.id}-credor`),hipotecas:g(`${b.id}-hipotecas`)};
+    o.origem=g(`${b.id}-origem`)||'casamento';
     ['im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg','im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval',
-     've-matricula','ve-marca','ve-modelo','ve-ano','ou-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
+     've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
     return o;
-  }).filter(x=>x.ativo||x['im-desc']||x['ve-matricula']||x['ou-desc']);
+  }).filter(x=>x.ativo||x['im-desc']||x['ve-matricula']||x['qt-soc']||x['ou-desc']);
 }
 /* «1/2», «2/3», «metade» — tudo dá uma fração. */
 function fracao(t){
@@ -3357,10 +3420,18 @@ function apurarDCC(){
   const ativo=bens.reduce((a,b)=>a+b.ativo,0);
   const passivo=bens.reduce((a,b)=>a+b.passivo,0);
   const liquido=ativo-passivo;
+  /* O notário raciocina com o ativo e o passivo em separado, e é assim que a
+     compensação se explica: leva-se a mais em ativo, mas assume-se a mais em
+     dívida, e uma coisa paga a outra. O saldo é o mesmo, a narrativa não. */
+  const ativoCabe=cop.map((_,i)=>ativo*q[i]);
+  const passivoCabe=cop.map((_,i)=>passivo*q[i]);
+  const ativoLeva=cop.map((_,i)=>bens.filter(b=>b.adj===i).reduce((a,b)=>a+b.ativo,0));
+  const passivoAssume=cop.map((_,i)=>bens.filter(b=>b.adj===i).reduce((a,b)=>a+b.passivo,0));
   const cabe=cop.map((_,i)=>liquido*q[i]);
-  const leva=cop.map((_,i)=>bens.filter(b=>b.adj===i).reduce((a,b)=>a+(b.ativo-b.passivo),0));
+  const leva=cop.map((_,i)=>ativoLeva[i]-passivoAssume[i]);
   const dif=cop.map((_,i)=>leva[i]-cabe[i]);
-  return{cop,bens,q,ativo,passivo,liquido,cabe,leva,dif};
+  return{cop,bens,q,ativo,passivo,liquido,cabe,leva,dif,
+    ativoCabe,passivoCabe,ativoLeva,passivoAssume};
 }
 function comporProcuracaoGuias(mandante){
   const sol=SOLICITADORAS[v('f-solicitadora')];
@@ -3387,6 +3458,8 @@ function comporProcuracaoGuias(mandante){
 function textoBem(b){
   if(b.tipo==='veiculo')
     return`o veículo automóvel de matrícula ${(b['ve-matricula']||'…').toUpperCase()}, da marca ${b['ve-marca']||'…'}${b['ve-modelo']?`, modelo ${b['ve-modelo']}`:''}${b['ve-ano']?`, do ano de ${b['ve-ano']}`:''}`;
+  if(b.tipo==='quota')
+    return`a quota no valor nominal de € ${b['qt-nominal']||'…'}, titulada em nome ${b['qt-titular']||'…'}, na sociedade ${b['qt-soc']||'…'}`;
   if(b.tipo==='outro')return b['ou-desc']||'…';
   const fr=b['im-tipo']==='fracao';
   const corpo=fr
@@ -3421,6 +3494,10 @@ function comporDCC(){
   };
   /* «à SEGUNDA OUTORGANTE», «ao PRIMEIRO OUTORGANTE» — com a contração. */
   const comOrd=(i,prep)=>`${prep?(femDeCop(i)?'à':'ao'):(femDeCop(i)?'a':'o')} ${ordDe(i)} OUTORGANTE`;
+  const ordDe_=i=>`${femDeCop(i)?'da':'do'} ${ordDe(i)} OUTORGANTE`;      /* de + o */
+  const ordPor=i=>`${femDeCop(i)?'pela':'pelo'} ${ordDe(i)} OUTORGANTE`;  /* por + o */
+  /* «ao Banco X», «à Caixa Y» — o credor leva o seu artigo. */
+  const aoCredor=n=>{const t=String(n||'…').trim();return /^(Caixa|CAIXA)\b/.test(t)?`à ${t}`:`ao ${t}`;};
   const listaOutros=(lst,prep)=>lst.length?lst.map(i=>comOrd(i,prep)).join(' e '):'…';
   const idx=parseInt(v('f-dcc-adj'),10);
   const iAdj=isNaN(idx)?(cop.length-1):idx;
@@ -3482,17 +3559,22 @@ function comporDCC(){
   const NUM=['','Primeiro','Segundo','Terceiro','Quarto','Quinto','Sexto','Sétimo','Oitavo','Nono','Décimo'];
   let nN=0; const num=t=>`${NUM[++nN]||nN+'.º'}${t?` (${t})`:''} - `;
   const numeros=[];
-  const letra=k=>String.fromCharCode(97+k);
+  const verba=k=>`VERBA ${VERBAS[k+1]||(k+1)}`;
   const varios=bens.length>1;
 
   /* ── OS NÚMEROS DA DIVISÃO ──
      A redação base é a do modelo da Liliana — um imóvel, duas pessoas, partes
      iguais. Tudo o que cobre vários bens, quotas desiguais e adjudicação bem a
      bem é construção minha sobre essa base, e vai marcado ⚠ no alerta. */
+  /* ⚠ Redação adaptada da escritura do notário Paulo Xavier, cedida pela
+     Liliana. O divórcio antecede a enumeração das verbas. */
+  const nat=naturezaDCC();
+  if(nat.casal)
+    numeros.push(`${num('')}Que foram entre si casados sob o regime da ${v('f-div-regime')||'comunhão de adquiridos'}, tendo o seu casamento sido dissolvido por divórcio decretado por sentença de ${dPT(v('f-div-sentenca'))}, transitada em julgado em ${dPT(v('f-div-transito'))}, proferida no divórcio${v('f-div-tipo')==='litigioso'?' sem consentimento do outro cônjuge':', por mútuo consentimento'}, que correu seus termos sob o número ${v('f-div-proc')||'…'}, no ${v('f-div-tribunal')||'…'}, conforme certidão que fica arquivada.`);
   const quotasLst=cop.map((o,k)=>`${comOrd(k,true)} a quota ideal de ${o.quota||(cop.length===2?'metade (1/2)':`1/${cop.length}`)}`);
   const quotasTxt=quotasLst.length>1?quotasLst.slice(0,-1).join(', ')+' e '+quotasLst[quotasLst.length-1]:quotasLst[0];
   numeros.push(`${num('')}Que são comproprietários d${varios?'os bens':'o bem'} adiante identificad${varios?'os':'o'}, cabendo ${quotasTxt}:\n`
-    +bens.map((b,k)=>`${letra(k)}) ${textoBem(b)}, a que os outorgantes atribuem o valor de ${eur(b.ativo)};`).join('\n'));
+    +bens.map((b,k)=>`${verba(k)} - ${textoBem(b)}, a que os outorgantes atribuem o valor de ${eur(b.ativo)};`).join('\n'));
 
   const onerados=bens.map((b,k)=>({b,k})).filter(x=>x.b.passivo>0);
   let nOnus=0;
@@ -3501,7 +3583,7 @@ function comporDCC(){
     numeros.push(`${num('')}Que sobre ${varios?'os referidos bens':'o referido bem'} incidem ${onerados.length>1?'os seguintes ónus':'o seguinte ónus'}:\n`
       +onerados.map(({b,k})=>{
         const pl=/\se\s/.test(b.hipotecas||'');
-        return`${letra(k)}) ${varios?`sobre o bem da alínea ${letra(k)}) do número Primeiro, `:''}hipoteca${pl?'s':''} voluntária${pl?'s':''} a favor de ${b.credor||'…'}${b.hipotecas?`, registada${pl?'s':''} pela Apresentação ${b.hipotecas}`:''}, encontrando-se em dívida, à presente data, o capital de ${eur(b.passivo)};`;
+        return`${varios?`sobre a ${verba(k)}, `:''}hipoteca${pl?'s':''} voluntária${pl?'s':''} a favor de ${b.credor||'…'}${b.hipotecas?`, registada${pl?'s':''} pela Apresentação ${b.hipotecas}`:''}, encontrando-se em dívida, à presente data, o capital de ${eur(b.passivo)};`;
       }).join('\n'));
   }
 
@@ -3510,24 +3592,56 @@ function comporDCC(){
   numeros.push(`${num('Adjudicação')}Pela presente divisão, ${varios?'os bens identificados são adjudicados':'o bem identificado é adjudicado'} do seguinte modo:\n`
     +bens.map((b,k)=>{
       const q=isNaN(b.adj)?0:b.adj;
-      return`${letra(k)}) ${varios?`o bem da alínea ${letra(k)})`:'o bem identificado'} é adjudicado na sua totalidade ${comOrd(q,true)}, que fica a ser ${femDeCop(q)?'dona e legítima possuidora':'dono e legítimo possuidor'} da sua totalidade, com efeitos a partir desta data;`;
+      return`${varios?`a ${verba(k)}`:'o bem identificado'} é adjudicado na sua totalidade ${comOrd(q,true)}, que fica a ser ${femDeCop(q)?'dona e legítima possuidora':'dono e legítimo possuidor'} da sua totalidade, com efeitos a partir desta data;`;
     }).join('\n'));
 
+  /* ── MEAÇÕES E PAGAMENTOS ──
+     ⚠ Estrutura e redação adaptadas da escritura do notário Paulo Xavier,
+     cedida pela Liliana: primeiro o que cabe a cada um em ativo e em passivo,
+     depois o que a cada um é adjudicado, e por fim a compensação — que é o
+     ponto onde a dívida assumida a mais paga o ativo levado a mais, e não há
+     tornas a haver. */
   if(ap.bens.length&&cop.length){
-    numeros.push(`${num('Quinhões')}Que o valor global dos bens ora divididos é de ${eur(ap.ativo)}, o qual, deduzido do passivo que os onera, no montante de ${eur(ap.passivo)}, perfaz o valor líquido a partilhar de ${eur(ap.liquido)}, cabendo `
-      +cop.map((o,k)=>`${comOrd(k,true)}, na proporção da sua quota, o valor de ${eur(ap.cabe[k])}`).join(', e ')
-      +'; e recebendo '
-      +cop.map((o,k)=>`${comOrd(k)}, pelos bens que lhe são adjudicados e pelo passivo que assume, o valor líquido de ${eur(ap.leva[k])}`).join(', e ')+'.');
-  }
+    numeros.push(`${num('Meações')}Que o valor global dos bens ora ${nat.casal?'partilhados':'divididos'} é de ${eur(ap.ativo)}, do qual cabe `
+      +cop.map((o,k)=>`${comOrd(k,true)} a importância de ${eur(ap.ativoCabe[k])}, em ativo, como sua ${nat.casal?'meação':'quota-parte'}`).join(', e ')+'.'
+      +(ap.passivo?`\nQue, também no que concerne ao referido passivo de ${eur(ap.passivo)}, é `
+        +cop.map((o,k)=>`${comOrd(k)} responsável pelo pagamento de ${eur(ap.passivoCabe[k])}`).join(', e ')+'.':''));
 
-  const paga=cop.map((_,k)=>k).filter(k=>ap.dif[k]>0.005);
-  const recebe=cop.map((_,k)=>k).filter(k=>ap.dif[k]<-0.005);
-  if(paga.length&&recebe.length){
-    const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
-    const meio=v('f-dcc-tornas-meio')||'cheque bancário';
-    numeros.push(`${num('Tornas')}Porque o valor líquido dos bens adjudicados excede a quota-parte que ${paga.map(k=>comOrd(k,true)).join(' e ')} pertencia, `
-      +paga.map(k=>`${comOrd(k)} paga ${recebe.map(x=>comOrd(x,true)).join(' e ')}, a título de tornas, a quantia de ${eur(ap.dif[k])}`).join('; e ')
-      +`, mediante ${meio} ${quando}.`);
+    const linhasPag=[];
+    cop.forEach((o,k)=>{
+      const suas=bens.map((b,x)=>({b,x})).filter(({b})=>(isNaN(b.adj)?0:b.adj)===k);
+      if(!suas.length)return;
+      const dividas=suas.filter(({b})=>b.passivo>0);
+      linhasPag.push(`Para pagamento d${nat.casal?'a meação':'a quota-parte'} ${ordDe_(k)}, ${(o.nome||'…').toUpperCase()}, ${suas.length>1?'são-lhe adjudicadas e ficam a pertencer-lhe':'é-lhe adjudicada e fica a pertencer-lhe'} ${suas.map(({b,x})=>`a ${verba(x)}, no valor atribuído de ${eur(b.ativo)}`).join(', e ')}`
+        +(dividas.length?`, ficand${femDeCop(k)?'o a mesma':'o o mesmo'} com a obrigação de efetuar o pagamento integral da dívida ${[...new Set(dividas.map(({b})=>b.credor||'…'))].map(aoCredor).join(' e ')}`:'')+'.');
+    });
+
+    /* A compensação, outorgante a outorgante. */
+    cop.forEach((o,k)=>{
+      const excA=ap.ativoLeva[k]-ap.ativoCabe[k];
+      const excP=ap.passivoAssume[k]-ap.passivoCabe[k];
+      const saldo=ap.dif[k];
+      if(Math.abs(excA)<0.005&&Math.abs(excP)<0.005)return;
+      if(excA>0.005){
+        linhasPag.push(`Que, assim, ${comOrd(k)} leva a mais, em relação ao valor da sua ${nat.casal?'meação':'quota-parte'}, em ativo, ${eur(excA)}`
+          +(excP>0.005
+            ?`, como porém tem de pagar ${[...new Set(bens.filter(b=>(isNaN(b.adj)?0:b.adj)===k&&b.passivo>0).map(b=>b.credor||'…'))].map(aoCredor).join(' e ')} a quantia de ${eur(ap.passivoAssume[k])}, na qual se inclui o montante de ${eur(excP)} que competia ${cop.map((_,x)=>x).filter(x=>x!==k).map(x=>comOrd(x,true)).join(' e ')}, ${Math.abs(saldo)<0.005?`não são assim, ${ordPor(k)}, devidas quaisquer tornas`:`sendo por isso devidas tornas na importância de ${eur(saldo)}`}.`
+            :`, sendo por isso devidas tornas na importância de ${eur(saldo)}.`));
+      }else{
+        linhasPag.push(`Em pagamento d${nat.casal?'a meação':'a quota-parte'} ${ordDe_(k)}, est${femDeCop(k)?'a':'e'} tem direito, em ativo, a receber tornas na importância de ${eur(-excA)}`
+          +(excP<-0.005
+            ?`, no entanto, e como fica ${femDeCop(k)?'desobrigada':'desobrigado'}, por este ato, ao cumprimento da parte que lhe competia pagar a título de dívida, ou seja, ${eur(-excP)}, ${Math.abs(saldo)<0.005?`não recebe por isso quaisquer tornas, ficando deste modo, ${femDeCop(k)?'inteirada e paga':'inteirado e pago'}`:`recebe apenas tornas na importância de ${eur(-saldo)}`}.`
+            :`.`));
+      }
+    });
+
+    const paga=cop.map((_,k)=>k).filter(k=>ap.dif[k]>0.005);
+    if(paga.length){
+      const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
+      linhasPag.push(`As tornas são pagas mediante ${v('f-dcc-tornas-meio')||'cheque bancário'} ${quando}.`);
+    }
+    linhasPag.push(`Que, nos termos expostos, dão por concluída a presente ${nat.casal?'partilha':'divisão'}.`);
+    numeros.push(`${num('Pagamentos')}\n`+linhasPag.join('\n'));
   }
 
   if(onerados.length){
@@ -3536,7 +3650,7 @@ function comporDCC(){
       const q=isNaN(b.adj)?0:b.adj;
       const fora=cop.map((_,x)=>x).filter(x=>x!==q);
       const quem=comOrd(q).replace(/^([ao]) /,(m,a)=>a.toUpperCase()+' ');
-      return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${varios?`na alínea ${letra(k)}) do número ${refOnus}`:`no número ${refOnus}`}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')} ${fora.length>1?'exonerados':(fora.length&&femDeCop(fora[0])?'exonerada':'exonerado')} de toda e qualquer responsabilidade perante o credor hipotecário`;
+      return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${varios?`na ${verba(k)} do número ${refOnus}`:`no número ${refOnus}`}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')} ${fora.length>1?'exonerados':(fora.length&&femDeCop(fora[0])?'exonerada':'exonerado')} de toda e qualquer responsabilidade perante o credor hipotecário`;
     }).join('. ')+'.');
   }
 
@@ -4356,12 +4470,25 @@ function nomearBloco(card,nome,desc){
    Sem parte compradora, sem preço, sem mútuo: quem paga tornas é um dos
    comproprietários e o valor vive no bloco da divisão. */
 /* O nome do ato acompanha a natureza escolhida. */
-function rotuloDCC(){
-  const t=v('f-dcc-tipo')||'divisao';
-  return t==='divisao'?{cod:'DCC',rot:'Divisão de Coisa Comum',nome:'DIVISÃO DE COISA COMUM'}
-    :t==='partilha-casal'?{cod:'PARTILHA',rot:'Partilha — bens do casal',nome:'PARTILHA'}
-    :{cod:'PARTILHA_H',rot:'Partilha — herdeiros',nome:'PARTILHA'};
+/* ── A NATUREZA VEM DAS VERBAS ──
+   Bens adquiridos na constância do matrimónio partilham-se; bens adquiridos em
+   comum, fora do casamento, dividem-se. Havendo dos dois, o ato é as duas
+   coisas, e o título di-lo — como na escritura do notário Paulo Xavier,
+   «PARTILHA POR DIVÓRCIO E DIVISÃO DE COISA COMUM». */
+function naturezaDCC(){
+  const bens=lerBens();
+  const heranca=v('f-dcc-tipo')==='partilha-heranca';
+  const casal=bens.some(b=>b.origem==='casamento');
+  const comum=bens.some(b=>b.origem==='comum');
+  if(heranca)return{cod:'PARTILHA_H',casal:false,comum:false,
+    rot:'Partilha — herdeiros',nome:'PARTILHA'};
+  if(casal&&comum)return{cod:'PARTILHA_DCC',casal:true,comum:true,
+    rot:'Partilha por divórcio e divisão de coisa comum',nome:'PARTILHA POR DIVÓRCIO E DIVISÃO DE COISA COMUM'};
+  if(casal)return{cod:'PARTILHA',casal:true,comum:false,
+    rot:'Partilha por divórcio',nome:'PARTILHA POR DIVÓRCIO'};
+  return{cod:'DCC',casal:false,comum:true,rot:'Divisão de Coisa Comum',nome:'DIVISÃO DE COISA COMUM'};
 }
+function rotuloDCC(){return naturezaDCC();}
 function funilDCC(){
   const r=rotuloDCC();
   nomearBloco('card-b3',r.cod==='DCC'?'Comproprietários':'Interessados',
@@ -4386,11 +4513,25 @@ function funilDCC(){
   document.querySelectorAll('.bem-block').forEach(b=>{
     const t=v(`${b.id}-tipo`)||'imovel';
     b.querySelectorAll('.bem-imovel').forEach(e=>e.style.display=t==='imovel'?'contents':'none');
+    /* A letra e a inscrição da propriedade horizontal são da fração, e só dela. */
+    const fr=v(`${b.id}-im-tipo`)==='fracao';
+    b.querySelectorAll('.bem-fr').forEach(e=>e.style.display=(t==='imovel'&&fr)?'flex':'none');
     b.querySelectorAll('.bem-veiculo').forEach(e=>e.style.display=t==='veiculo'?'block':'none');
     b.querySelectorAll('.bem-outro').forEach(e=>e.style.display=t==='outro'?'block':'none');
     const sel=document.getElementById(`${b.id}-adj`);
-    if(sel&&sel.innerHTML!==opcoes){const a=sel.value;sel.innerHTML=opcoes;sel.value=(a&&Number(a)<cop.length)?a:'0';}
+    if(sel&&sel.innerHTML!==opcoes){
+      const guardado=b.dataset.adj;
+      const a=(guardado!==undefined&&guardado!=='')?guardado:sel.value;
+      sel.innerHTML=opcoes;
+      sel.value=(a!==''&&Number(a)<cop.length)?a:'0';
+      delete b.dataset.adj;
+    }
   });
+  renumerarVerbas();
+  document.querySelectorAll('.bem-block').forEach(b=>{
+    b.querySelectorAll('.bem-quota').forEach(e=>e.style.display=v(`${b.id}-tipo`)==='quota'?'block':'none');
+  });
+  setDisp('blk-divorcio',naturezaDCC().casal?'block':'none');
   const selP=document.getElementById('f-proc-quem');
   if(selP&&selP.innerHTML!==opcoes){const a=selP.value;selP.innerHTML=opcoes;selP.value=(a&&Number(a)<cop.length)?a:'0';}
   setDisp('g-proc-quem',chk('t-proc-guias')?'flex':'none');
@@ -4743,7 +4884,9 @@ function estadoCompleto(){
     if(!el.id||el.id==='pasta-search')return;
     campos[el.id]=el.type==='checkbox'?el.checked:el.value;
   });
-  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico};
+  /* As verbas do ato 3 são bloco repetível e têm de ser guardadas à parte, como
+     os restantes: os campos avulsos não as apanham. */
+  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),bens:lerBensBruto(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico};
 }
 function restaurarEstado(d){
 
@@ -4774,6 +4917,7 @@ function restaurarEstado(d){
   if(d.onus&&d.onus.length){setProp('onus-container','innerHTML','');onusCnt=0;d.onus.forEach(x=>addOnus(x));}
   if(d.matrizes&&d.matrizes.length){setProp('matrizes-container','innerHTML','');matCnt=0;d.matrizes.forEach(x=>addMatriz(x));}
   if(d.prediosExtra&&d.prediosExtra.length){setProp('predios-extra-container','innerHTML','');predCnt=0;d.prediosExtra.forEach(x=>addPredioExtra(x));}
+  if(d.bens&&d.bens.length){setProp('bens-container','innerHTML','');bemCnt=0;d.bens.forEach(x=>addBem(x));}
   Object.entries(d.campos||{}).forEach(([id,val])=>{
     const el=document.getElementById(id);if(!el)return;
     if(el.type==='checkbox')el.checked=val;else el.value=val;
