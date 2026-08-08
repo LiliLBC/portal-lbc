@@ -3878,7 +3878,12 @@ function comporDoacao(){
      Uma frase só: a verba 1.1, a 0,8%, é sempre devida; a verba 1.2, a 10%,
      acresce àquela, salvo entre cônjuge ou unido de facto, descendentes e
      ascendentes, que dela estão isentos pela alínea e) do n.º 1 do artigo 6.º
-     do CIS. A isenção não dispensa a participação. */
+     do CIS.
+     ⚠ O prazo de pagamento não é aqui afirmado. O «até ao final do terceiro mês
+     seguinte» que aqui esteve é o da participação do artigo 26.º, pensado para
+     a transmissão por morte, e não serve à doação entre vivos. A Liliana não
+     pode registar sem os impostos pagos, pelo que a liquidação precede o ato —
+     falta a redação dela para o dizer com rigor. */
   {
     const e11=fmtValor(selo.total11);
     const e12=fmtValor(selo.total12);
@@ -3886,7 +3891,7 @@ function comporDoacao(){
     const meio=doaIsento()
       ? `, estando isenta do imposto da verba 1.2 da mesma Tabela nos termos da alínea e) do n.º 1 do artigo 6.º do Código do Imposto do Selo, por serem beneficiários ${doaParentesco()}`
       : `, e ao da verba 1.2 da mesma Tabela, que àquela acresce, no valor de ${e12} €`;
-    inf.push(`${base}${meio}, cuja liquidação compete à Autoridade Tributária e Aduaneira, cabendo aos outorgantes participar a transmissão gratuita até ao final do terceiro mês seguinte ao do nascimento da obrigação tributária;`);
+    inf.push(`${base}${meio}, cuja liquidação precede o presente ato;`);
   }
   inf.push(`— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`);
   termo.push({id:'t-informei',T:'',X:`INFORMEI\n${inf.join('\n')}`});
