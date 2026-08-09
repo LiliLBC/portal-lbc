@@ -6603,6 +6603,22 @@ function calcularAlertas(){
   if(atoEscolhido()==='cv'&&temMatrizRustica()&&!v('f-confinantes'))
     push('confinantes','bloqueio','Imóvel','Prédio rústico ou misto sem hipótese escolhida quanto à preferência dos confinantes — não sai cláusula.');
 
+  /* ── Procuração da CAIXA por preencher ──
+     A solicitadora pode estar no ficheiro sem o código da procuração ainda
+     atribuído. Sem ele o termo sai com o campo em branco e nada avisa. */
+  if(['cv','mh','leasing'].includes(atoEscolhido())){
+    const ehMH=atoEscolhido()==='mh'||atoEscolhido()==='leasing'||(atoEscolhido()==='cv'&&chk('t-mh'));
+    if(ehMH&&v('f-mutuante')!=='outra'){
+      const quem=v('f-mut-quem')||'liliana';
+      const sol=SOLICITADORAS[quem];
+      const escrito=v('f-mut-proc-cod');
+      const dela=quem==='cgd'?codProcDe(CGD_CFG)||CGD_PROCURACAO:(sol?codProcDe(sol):'');
+      if(!escrito&&!partesProcuracao(dela).cod)
+        push('proc-sem-codigo','bloqueio','Mutuante',
+          `${sol?(sol.assinNome||sol.nome):'Quem representa a CAIXA'} não tem código de procuração${ehLeasingCGD()?' de leasing':''} no CONFIG_LBC.json. Escreve-o à mão ou acrescenta-o ao ficheiro.`);
+    }
+  }
+
   /* ── Partilhas · redação por escrever ── */
   /* Só quando há mesmo matéria de partilha — verbas adquiridas no casamento
      ou partilha de herança. Sendo tudo em comum, é divisão e não bloqueia. */
