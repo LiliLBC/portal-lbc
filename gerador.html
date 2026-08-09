@@ -3195,7 +3195,9 @@ function ehLeaEntrada(){return leaTipo()==='entrada';}
 function ehLeaAntecipada(){return leaTipo()==='antecipada';}
 function comporLeasing(){
   const sol=SOLICITADORAS[v('f-solicitadora')];
-  const loc=lerVendedores();          /* bloco 3 · locatário */
+  /* O bloco 3 é sempre quem transmite. Na entrada são os vendedores; nas saídas
+     é a CAIXA, e o locatário passa para o bloco 4. */
+  const loc=ehLeaEntrada()?lerVendedores():lerCompradores();
   const antec=ehLeaAntecipada();
   const entrada=ehLeaEntrada();
   const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} Euros (${valorExtenso(v(x)).toLowerCase()})`:'…';
@@ -5031,26 +5033,38 @@ function desenharApuramento(){
 }
 function funilLeasing(){
   const ent=ehLeaEntrada();
-  nomearBloco('card-b3',ent?'Vendedores':'Locatário',ent?'Primeiros Contratantes — quem vende à CAIXA':'Segunda Contratante — quem exerce a opção');
-  nomearBloco('card-b4',ent?'Compradora':'Locadora',ent?'Segunda Contratante — a CAIXA':'Primeira Contratante — a CAIXA');
+  nomearBloco('card-b3',ent?'Vendedores':'Locadora',
+    ent?'Primeiros Contratantes — quem vende à CAIXA':'Primeira Contratante — a CAIXA, que vende');
+  nomearBloco('card-b4',ent?'Compradora':'Locatário',
+    ent?'Segunda Contratante — a CAIXA':'Segunda Contratante — quem exerce a opção');
   document.querySelectorAll('.lea-entrada').forEach(e=>e.style.display=ent?'flex':'none');
   document.querySelectorAll('.lea-moratoria').forEach(e=>e.style.display=(!ent&&chk('t-lea-moratoria'))?'flex':'none');
   ['f-lea-prazo','f-lea-inicio','f-lea-ap','f-lea-residual','f-lea-data-pag','f-lea-meio','f-lea-conta-orig','f-lea-conta-dest']
     .forEach(id=>{const e=document.getElementById(id);if(e&&e.closest('.form-group'))e.closest('.form-group').style.display=ent?'none':'flex';});
   nomearBloco('card-b5','Imóvel','Objeto da locação financeira');
-  const blk=document.getElementById('blk-mutuante'),b4=document.getElementById('card-b4');
-  if(blk&&b4&&blk.parentElement!==b4)b4.appendChild(blk);
-  setProp('ttl-mutuante','textContent',ent?'4.1 · Segunda Contratante — a CAIXA':'4.1 · Primeira Contratante — a CAIXA');
+  /* O painel da CAIXA vive no bloco de quem ela é: 4 na entrada, 3 nas saídas. */
+  const blk=document.getElementById('blk-mutuante');
+  const destino=document.getElementById(ent?'card-b4':'card-b3');
+  if(blk&&destino&&blk.parentElement!==destino)destino.appendChild(blk);
+  /* E os outorgantes de carne e osso ficam no outro. */
+  const cv=document.getElementById('vendedores-container');
+  const cc=document.getElementById('compradores-container');
+  const btnV=document.querySelector('#card-b3 > .add-btn');
+  const btnC=document.querySelector('#card-b4 > .add-btn');
+  if(cv)cv.style.display=ent?'block':'none';
+  if(btnV)btnV.style.display=ent?'':'none';
+  if(cc)cc.style.display=ent?'none':'block';
+  if(btnC)btnC.style.display=ent?'none':'';
+  if(!ent&&!document.querySelectorAll('.comp-block').length)addComprador();
+  setProp('ttl-mutuante','textContent',ent?'4.1 · Segunda Contratante — a CAIXA':'3.1 · Primeira Contratante — a CAIXA');
   ['f-desig-vend','f-desig-comp'].forEach(id=>{
     const g=document.getElementById(id);if(g&&g.closest('.form-group'))g.closest('.form-group').style.display='none';});
   const ts=document.getElementById('t-trato-suc');
   if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='none';
-  document.querySelectorAll('#compradores-container').forEach(e=>e.style.display='none');
-  const btn=document.querySelector('#card-b4 > .add-btn'); if(btn)btn.style.display='none';
   ['card-b6','card-b7','card-b8','card-b9','card-b10','card-recon'].forEach(k=>setDisp(k,'none'));
   setDisp('card-leasing','block');
   onMutuante();onMutQuem();semearCertidaoCGD();
-  if(!document.querySelectorAll('.vend-block').length)addVendedor();
+  if(ent&&!document.querySelectorAll('.vend-block').length)addVendedor();
   const isFr=v('f-im-tipo')==='fracao';
   setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
   setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
@@ -5684,7 +5698,7 @@ async function gerarWord(){
         return cop[i]||cop[0]||{};
       }
       if(ato==='doacao')return lerCompradores()[0]||lerVendedores()[0]||{};
-      if(ato==='leasing')return lerVendedores()[0]||{};   /* bloco 3 = locatário */
+      if(ato==='leasing')return (ehLeaEntrada()?lerVendedores():lerCompradores())[0]||{};
       if(ato==='recon'||ato==='mh')return lerVendedores()[0]||{};
       return lerCompradores()[0]||lerVendedores()[0]||{}; /* compra e venda */
     })();
