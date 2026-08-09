@@ -2212,6 +2212,35 @@ function generosOutorgantes(arr){
   });
   return g;
 }
+/* ── DECLARAÇÃO DE FIANÇA · texto do termo ──────────────────────────────────
+   Redação da CGD. É declaração prestada perante a solicitadora, por isso vai ao
+   TERMO — a cláusula FIANÇA do contrato mantém-se, são peças distintas.
+     grupo   → todos os outorgantes do bloco (terceiros no MH, quartos no CVMH)
+     fiad    → os que são fiadores (qualidade 'fiador' ou 'ambos')
+     ord     → 'terceiro' ou 'quarto', conforme a posição do bloco no ato
+   Quando só parte do bloco afiança, não se pode escrever «os quartos
+   outorgantes»: a declaração passaria a abranger quem é apenas garante
+   hipotecário. Nesse caso identificam-se pelo nome. */
+function declaracaoFianca(grupo,fiad,ord,mutuanteCaixa){
+  if(!fiad||!fiad.length)return'';
+  const pl=fiad.length>1;
+  const gen=generosOutorgantes(fiad);
+  const fem=gen.length>0&&gen.every(x=>x==='F');
+  const todos=grupo&&grupo.length&&fiad.length===grupo.length;
+  const sujeito=todos
+    ?(pl?`${fem?'as':'os'} ${ord}${fem?'as':'os'} outorgantes`:`${fem?'a':'o'} ${ord}${fem?'a':'o'} outorgante`)
+    :(()=>{const n=fiad.map(f=>f.nome).filter(Boolean);
+       return n.length>1?n.slice(0,-1).join(', ')+' e '+n[n.length-1]:(n[0]||(pl?'os fiadores':'o fiador'));})();
+  const verbo=pl?'Declararam':'Declarou';
+  const fiador=pl?(fem?'fiadoras':'fiadores'):(fem?'fiadora':'fiador');
+  const pagador=pl?(fem?'principais pagadoras':'principais pagadores'):(fem?'principal pagadora':'principal pagador');
+  const constituem=pl?'se constituem':'se constitui';
+  const entreSi=pl?'solidariamente entre si e com a parte mutuária':'solidariamente com a parte mutuária';
+  const renunciam=pl?'renunciam':'renuncia';
+  const credor=mutuanteCaixa?'a Caixa':'a entidade mutuante';
+  return `${verbo} ${sujeito} que, conhecendo integralmente as cláusulas do contrato ora titulado e do documento complementar, ${constituem} ${fiador} e ${pagador}, ${entreSi}, de todas as obrigações dele emergentes, nomeadamente capital, juros remuneratórios e moratórios, comissões, despesas e prémios de seguro, nos termos do artigo 634.º do Código Civil.\n`
+    +`Que ${renunciam} ao benefício da excussão prévia, nos termos dos artigos 638.º, n.º 1, e 640.º, alínea a), do Código Civil, e que a fiança se mantém enquanto subsistir qualquer dívida do contrato afiançado, dando desde já acordo a alterações de taxa de juro, prorrogações de prazo, carências e moratórias que venham a ser convencionadas com ${credor}.`;
+}
 /* «adiante identificado / identificada / identificados / identificadas como …».
    Duas formas de designar a parte, à escolha:
      parte  → PARTE VENDEDORA / PARTE COMPRADORA — invariável
@@ -2970,6 +2999,9 @@ function comporMH(variante){
   if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?'TERCEIROS':'TERCEIRO',X:txtTerceiros,
     negrito:quartos.map(q=>q.nome).filter(Boolean)});
   termo.push({id:P+'t-apresentaram',T:'',X:`Os signatários apresentaram o documento de contrato de ${tipoNome} com DOCUMENTO COMPLEMENTAR e ANEXO I, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
+  /* Aqui os fiadores são o TERCEIRO bloco de outorgantes. */
+  {const dF=declaracaoFianca(quartos,fiadores,'terceir',true);
+   if(dF)termo.push({id:P+'t-fianca-decl',T:'',X:dF});}
 
   /* ── VERIFIQUEI ── */
   /* Também os garantes e fiadores podem outorgar por procuração. */
@@ -4380,6 +4412,9 @@ function compor(){
     ? 'CONTRATO DE COMPRA E VENDA E MÚTUO COM HIPOTECA, COM DOCUMENTO COMPLEMENTAR E ANEXO I'
     : 'CONTRATO DE COMPRA E VENDA';
   termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um ${nomeDocAnexo}, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
+  /* Aqui, havendo compra e venda antes do mútuo, os fiadores são o QUARTO bloco. */
+  {const dF=declaracaoFianca(quartos,fiadores,'quart',v('f-mutuante')==='cgd');
+   if(dF)termo.push({id:'t-fianca-decl',T:'',X:dF});}
   termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${abertura}${extraVerif}`});
   /* ── TRATO SUCESSIVO · legitimidade e imposto do selo por óbito (termo) ── */
   if(ts.legitimidade)termo.push({id:'t-trato-suc',T:'',X:`Verifiquei ainda:\n${ts.legitimidade}`});

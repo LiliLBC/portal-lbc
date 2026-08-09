@@ -1,0 +1,153 @@
+<!-- ════════════════════════════════════════════════════════════════════════
+     AVISO DE PASTA DUPLICADA (Agendamento) — colar antes de </body>.
+     Aditivo: não altera agendar(), só a intercepta.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+let PASTAS=[], carregado=false, aCarregar=false, confirmado=false;
+
+const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s);
+const $=id=>document.getElementById(id);
+/* Compara ignorando acentos, maiúsculas, pontuação e espaços a mais:
+   "JOSÉ M. SILVA" e "Jose M Silva" são o mesmo cliente. */
+const normalizar=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const semData=s=>String(s||'').replace(/^\d{8}\s*/,'');
+const dataDaPasta=s=>{const m=String(s||'').match(/^(\d{4})(\d{2})(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:'';};
+
+async function carregar(forcar){
+  if(aCarregar)return;
+  /* Se o ecrã das Pastas já carregou a listagem, aproveita-se. */
+  if(!forcar&&typeof todasPastas!=='undefined'&&todasPastas&&todasPastas.length){
+    PASTAS=todasPastas;carregado=true;verificar();return;
+  }
+  if(carregado&&!forcar)return;
+  aCarregar=true;
+  try{
+    if(typeof renovarToken==='function')await renovarToken();
+    const d=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$select=name,webUrl,folder,lastModifiedDateTime&$top=999`);
+    PASTAS=(d.value||[]).filter(i=>i.folder);carregado=true;verificar();
+  }catch(e){/* silencioso: o aviso é um extra, não pode impedir o agendamento */}
+  finally{aCarregar=false;}
+}
+
+function analisar(){
+  const nomeEl=$('ag-nome'),dataEl=$('ag-data');
+  if(!nomeEl)return null;
+  const nome=nomeEl.value.toUpperCase().trim();
+  const alvo=normalizar(nome);
+  if(!alvo||alvo.length<3||!carregado)return null;
+  const data=dataEl?dataEl.value:'';
+  const completo=(typeof nomePasta==='function'&&data)?normalizar(nomePasta(nome,data)):'';
+  const iguais=[],semelhantes=[];
+  for(const p of PASTAS){
+    const nomeCli=normalizar(semData(p.name));
+    if(!nomeCli)continue;
+    if(nomeCli===alvo){
+      const exata=completo&&normalizar(p.name)===completo;
+      iguais.push({p,exata});
+    }else if(alvo.length>=6&&(nomeCli.includes(alvo)||alvo.includes(nomeCli))){
+      semelhantes.push({p});
+    }
+  }
+  iguais.sort((a,b)=>(b.exata?1:0)-(a.exata?1:0));
+  return {iguais,semelhantes,nome};
+}
+
+function linhaPasta(x){
+  const d=dataDaPasta(x.p.name);
+  return `<div style="display:flex;align-items:center;gap:.5rem;padding:3px 0;font-size:11.5px">
+    <span style="font-family:'DM Mono',monospace;color:var(--text-muted);white-space:nowrap">${d||'—'}</span>
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.p.name)}</span>
+    ${x.exata?'<span class="badge badge-red" style="font-size:9px">nome idêntico</span>':''}
+    ${x.p.webUrl?`<a href="${typeof embedSP==='function'?embedSP(x.p.webUrl):x.p.webUrl}" target="_blank" class="btn btn-sm" style="padding:1px 7px;font-size:10px">Abrir</a>`:''}
+  </div>`;
+}
+
+function verificar(){
+  const cx=$('dup-aviso');if(!cx)return;
+  const r=analisar();
+  if(!r||(!r.iguais.length&&!r.semelhantes.length)){cx.innerHTML='';return;}
+  if(r.iguais.length){
+    const exata=r.iguais.some(x=>x.exata);
+    const n=r.iguais.length;
+    cx.innerHTML=`<div class="notice notice-warning" style="display:block;margin:.6rem 0 0;font-size:11.5px">
+      <b>${exata?'Já existe uma pasta com este nome exato.':`Já ${n===1?'existe uma pasta':'existem '+n+' pastas'} para este cliente.`}</b>
+      ${exata?'Se criares, o SharePoint acrescenta um número ao fim para não substituir a original.':'Confirma que se trata mesmo de uma escritura nova.'}
+      <div style="margin-top:.4rem">${r.iguais.slice(0,5).map(linhaPasta).join('')}
+      ${n>5?`<div style="font-size:10.5px;color:var(--text-faint)">e mais ${n-5}…</div>`:''}</div>
+      ${r.semelhantes.length?`<div style="margin-top:.45rem;border-top:1px dashed var(--border);padding-top:.35rem">
+        <span style="font-size:10.5px;color:var(--text-faint)">Com nome parecido, a confirmar se é o mesmo cliente:</span>
+        ${r.semelhantes.slice(0,3).map(linhaPasta).join('')}</div>`:''}
+    </div>`;
+  }else{
+    cx.innerHTML=`<div class="notice notice-info" style="display:block;margin:.6rem 0 0;font-size:11.5px">
+      Há ${r.semelhantes.length===1?'uma pasta com nome parecido':'pastas com nomes parecidos'} — vê se é o mesmo cliente escrito de outra forma.
+      <div style="margin-top:.4rem">${r.semelhantes.slice(0,4).map(linhaPasta).join('')}
+      ${r.semelhantes.length>4?`<div style="font-size:10.5px;color:var(--text-faint)">e mais ${r.semelhantes.length-4}…</div>`:''}</div>
+    </div>`;
+  }
+}
+
+function confirmar(r){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:"DM Sans",sans-serif;padding:1rem';
+    const exata=r.iguais.some(x=>x.exata);
+    ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:1.4rem;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25)">
+      <div style="font-size:14px;font-weight:600;margin-bottom:.5rem">Já existe pasta para ${esc(r.nome)}</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5">
+        ${exata?'Uma das pastas tem exatamente o mesmo nome. Se continuares, o SharePoint cria uma segunda com um número ao fim — a original não se perde, mas ficam duas parecidas.'
+               :(r.iguais.length===1?'Encontrei uma pasta do mesmo cliente noutra data.':'Encontrei '+r.iguais.length+' pastas do mesmo cliente noutras datas.')+' Se for mesmo uma escritura nova, podes continuar.'}
+      </div>
+      <div style="margin-top:.7rem;border-top:1px solid var(--border);padding-top:.5rem;max-height:210px;overflow:auto">${r.iguais.map(linhaPasta).join('')}</div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.1rem">
+        <button id="dup-nao" class="btn" style="flex:1">Cancelar</button>
+        <button id="dup-sim" class="btn btn-primary" style="flex:1">Criar mesmo assim</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const fim=v=>{if(ov.parentNode)document.body.removeChild(ov);resolve(v);};
+    ov.querySelector('#dup-nao').onclick=()=>fim(false);
+    ov.querySelector('#dup-sim').onclick=()=>fim(true);
+    ov.addEventListener('click',e=>{if(e.target===ov)fim(false);});
+  });
+}
+
+function instalar(){
+  const prev=$('pasta-preview');
+  if(!prev||$('dup-aviso'))return;
+  const cx=document.createElement('div');cx.id='dup-aviso';
+  const bloco=prev.closest?prev.closest('.form-group'):null;
+  (bloco||prev.parentNode).insertAdjacentElement('afterend',cx);
+
+  if(typeof window.updatePreview==='function'){
+    const _u=window.updatePreview;
+    window.updatePreview=function(){const r=_u.apply(this,arguments);confirmado=false;verificar();return r;};
+  }
+  if(typeof window.agendar==='function'){
+    const _a=window.agendar;
+    window.agendar=async function(){
+      if(!carregado)await carregar();
+      const r=analisar();
+      if(r&&r.iguais.length&&!confirmado){
+        verificar();
+        const ok=await confirmar(r);
+        if(!ok)return;
+        confirmado=true;
+      }
+      const res=await _a.apply(this,arguments);
+      confirmado=false;carregado=false;setTimeout(()=>carregar(true),1200);
+      return res;
+    };
+  }
+  if(typeof window.nav==='function'){
+    const _n=window.nav;
+    window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='agendar')carregar();return r;};
+  }
+  const nomeEl=$('ag-nome');if(nomeEl)nomeEl.addEventListener('blur',verificar);
+  if(document.querySelector('#screen-agendar.active'))carregar();
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
