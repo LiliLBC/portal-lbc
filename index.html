@@ -443,12 +443,7 @@ tbody tr:hover td{background:#FAFAF8}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
               CPCV
             </div>
-            <div class="dropdown-divider"></div>
-            <div class="dropdown-item-label">Divisões e Partilhas</div>
-            <div class="dropdown-item" onclick="abrirContrato('divisao_cc')">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v14M1 8h14"/></svg>
-              Divisão de Coisa Comum
-            </div>
+            <!-- Divisão de Coisa Comum passou para o Gerador, ato 3, que faz também as partilhas. -->
             <div class="dropdown-divider"></div>
             <div class="dropdown-item-label">Procurações</div>
             <div class="dropdown-item" onclick="abrirContrato('procuracao')">
@@ -476,7 +471,7 @@ tbody tr:hover td{background:#FAFAF8}
               Confinantes (preferência)
             </div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-item-label">Gerador (novo — piloto)</div>
+            <div class="dropdown-item-label">Gerador</div>
             <div class="dropdown-item" onclick="abrirContrato('gerador')" style="color:var(--accent-dark);font-weight:600">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v3M8 12v3M1 8h3M12 8h3M3.5 3.5l2 2M10.5 10.5l2 2M12.5 3.5l-2 2M5.5 10.5l-2 2"/></svg>
               Gerador de Contratos
@@ -3140,7 +3135,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cpcv:'cpcv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html',gerador:'gerador.html',divisao_cc:'dcc.html',justificacao:'justificacao.html'};
+  const urls={cpcv:'cpcv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html',gerador:'gerador.html',justificacao:'justificacao.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage

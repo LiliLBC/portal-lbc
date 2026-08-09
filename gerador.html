@@ -749,6 +749,18 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <input class="form-input" id="f-lea-pag-entrada" oninput="atualizar()" placeholder="Ex: cheque bancário, com o n.º 5541250572, sacado sobre a Caixa Geral de Depósitos, S.A."></div>
       <div class="form-group form-full lea-entrada" style="display:none"><label class="form-label">Destinatário da locação <span>*</span></label>
         <input class="form-input" id="f-lea-destino" oninput="atualizar()" placeholder="Ex: AMADAIMO, LDA, com sede em …, e o NIPC 517321246"></div>
+      <div class="form-group form-full" style="margin-top:.3rem;padding-top:.5rem;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Guias de liquidação</div>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">O IMT fica a zero pelo benefício da locação financeira; o Selo é devido.</div>
+      </div>
+      <div class="form-group"><label class="form-label">IMT — n.º de liquidação</label>
+        <input class="form-input" id="f-lea-imt-num" oninput="atualizar()" placeholder="Ex: 16055326"></div>
+      <div class="form-group"><label class="form-label">Valor declarado (€)</label>
+        <input class="form-input" id="f-lea-imt-valor" oninput="atualizar()" placeholder="Vazio, usa o valor residual"></div>
+      <div class="form-group"><label class="form-label">Imposto do Selo — n.º de liquidação</label>
+        <input class="form-input" id="f-lea-is-num" oninput="atualizar()"></div>
+      <div class="form-group"><label class="form-label">Imposto do Selo (€)</label>
+        <input class="form-input" id="f-lea-is-valor" oninput="atualizar()" placeholder="Vazio, calcula a 0,8%"></div>
       <div class="form-group form-full"><label class="form-label">A licença respeita a</label>
         <select class="form-select" id="f-lea-lic-ambito" onchange="atualizar()">
           <option value="predio">O prédio de que faz parte integrante</option>
@@ -3262,6 +3274,15 @@ function comporLeasing(){
   loc.map(o=>linhaEmpresa(o,entrada?'Primeira Outorgante':'Segunda Outorgante')).filter(Boolean)
     .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
   const pred=linhaPredio('f-im',null); if(pred)ver.push(pred);
+  /* ── GUIAS ──
+     Redação da Liliana. Na saída do leasing a transmissão está isenta de IMT
+     pelo benefício 31, do artigo 3.º do Decreto-Lei n.º 311/82; o Imposto do
+     Selo continua devido, à taxa de 0,8% da verba 1.1. */
+  if(!entrada&&(v('f-lea-imt-num')||v('f-lea-is-num'))){
+    const declarado=parseValor(v('f-lea-imt-valor'))||parseValor(v('f-lea-residual'));
+    const selo=parseValor(v('f-lea-is-valor'))||declarado*0.008;
+    ver.push(`— As guias de liquidação apresentadas: a do Imposto Municipal sobre as Transmissões Onerosas de Imóveis, n.º ${v('f-lea-imt-num')||'…'}, sobre o valor declarado de ${fmtValor(declarado)} €, da qual não resultou coleta por a transmissão beneficiar da isenção prevista no artigo 3.º do Decreto-Lei n.º 311/82, de 4 de agosto — benefício 31${v('f-lea-is-num')?`, e a do Imposto do Selo, n.º ${v('f-lea-is-num')}, no valor de ${fmtValor(selo)} €`:''}, documentos que verifiquei e que se arquivam;`);
+  }
   termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${ver.join('\n')}`});
   termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
   termo.push({id:'t-leitura',T:'',X:fechoTermo(false)});
@@ -5645,8 +5666,29 @@ async function gerarWord(){
        com o seu termo, porque o Imposto do Selo e o depósito são de cada um. */
     const R0=compor();
     const nDocs=(R0.docs&&R0.docs.length)?R0.docs.length:1;
-    const vend=lerVendedores()[0]||{};
-    const nomeBase=(vend.nome||vend.denom||'CONTRATO').split(/\s+/);
+    /* ── NOME DO FICHEIRO ──
+       Identifica-se sempre por quem adquire, e não por quem transmite nem pelo
+       representante: é o adquirente que dá nome ao processo.
+         compra e venda, leasing  → comprador ou locatário
+         doação                    → donatário
+         divisão e partilhas       → quem fica com a primeira verba
+         mútuo                     → o mutuário, que é quem contrai
+         reconhecimento            → o primeiro signatário
+       Não havendo adquirente identificado, cai no bloco 3, para não sair sem
+       nome nenhum. */
+    const quemDaNome=(()=>{
+      const ato=atoEscolhido();
+      if(ato==='partilhas'){
+        const bens=lerBens(),cop=lerVendedores();
+        const i=bens.length?(isNaN(bens[0].adj)?0:bens[0].adj):0;
+        return cop[i]||cop[0]||{};
+      }
+      if(ato==='doacao')return lerCompradores()[0]||lerVendedores()[0]||{};
+      if(ato==='leasing')return lerVendedores()[0]||{};   /* bloco 3 = locatário */
+      if(ato==='recon'||ato==='mh')return lerVendedores()[0]||{};
+      return lerCompradores()[0]||lerVendedores()[0]||{}; /* compra e venda */
+    })();
+    const nomeBase=(quemDaNome.nome||quemDaNome.denom||'CONTRATO').split(/\s+/);
     const sufNome=`${(nomeBase[0]||'')}_${(nomeBase.length>1?nomeBase[nomeBase.length-1]:'')}`.replace(/_+$/,'');
     const gerados=[];
     for(let i=0;i<nDocs;i++){
