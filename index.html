@@ -12213,6 +12213,7 @@ let hoje=new Date();
 let mesSel=hoje.getMonth(), anoSel=hoje.getFullYear(), anoFer=hoje.getFullYear();
 let pronto=false, avisoSetup='', carregando=false, movId=null, colId=null, ausId=null;
 let ENCONTRADAS={col:[],mov:[],aus:[]}, OPCOES={col:{},mov:{},aus:{}}, ausIndisponivel=null;
+let dAno=hoje.getFullYear(), dMes=String(hoje.getMonth());
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -12381,10 +12382,89 @@ const CSS=`
 
 // ─── Render principal ────────────────────────────────────────────────────────
 function render(){
-  const corpo=$('pes-corpo');if(!corpo)return;
+  const corpo=$('pes-corpo');
+  renderDash();
+  if(!corpo)return;
   if(!pronto){corpo.innerHTML=avisoSetup||'';return;}
   $('pes-aviso').innerHTML='';
   corpo.innerHTML=cardsHTML()+tabelaHTML()+feriasHTML();
+}
+
+// ─── Cartão no Dashboard financeiro ──────────────────────────────────────────
+const CARD_DASH=`
+  <div class="metric-card" style="padding:1rem;margin-bottom:.75rem">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.7rem;flex-wrap:wrap;gap:.6rem">
+      <div>
+        <div class="metric-label" style="margin:0;font-size:11px">Custos com pessoal</div>
+        <div style="font-size:10px;color:var(--text-faint)">Avenças internas e serviços prestados &middot; custo com colaboradores</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap">
+        <div style="text-align:right">
+          <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">No período</div>
+          <div class="metric-value" id="pd-total" style="font-size:20px;color:var(--red);line-height:1.1">&mdash;</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Por pagar</div>
+          <div class="metric-value" id="pd-porpagar" style="font-size:15px;color:var(--text-muted);line-height:1.1">&mdash;</div>
+        </div>
+        <div style="display:flex;gap:.2rem">
+          <select class="form-select" id="pd-ano" onchange="pesDashFiltro()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+          <select class="form-select" id="pd-mes" onchange="pesDashFiltro()" style="font-size:10px;padding:2px 4px;width:74px">
+            <option value="">Ano todo</option>
+            ${MESES.map((m,i)=>`<option value="${i}">${m}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-sm" onclick="pesIrParaPessoal()">Ver detalhe</button>
+      </div>
+    </div>
+    <div id="pd-lista"></div>
+  </div>`;
+
+function renderDash(){
+  const el=$('pd-lista');if(!el)return;
+  const sa=$('pd-ano'),sm=$('pd-mes');
+  if(sa&&!sa.options.length){const y=hoje.getFullYear();let o='';for(let a=y+1;a>=y-4;a--)o+=`<option value="${a}">${a}</option>`;sa.innerHTML=o;sa.value=String(dAno);}
+  if(sm&&sm.value!==dMes)sm.value=dMes;
+  const tot=$('pd-total'),pp=$('pd-porpagar');
+  if(!pronto){
+    el.innerHTML='<div class="notice notice-info" style="font-size:11px;margin:0">Rubrica ainda por configurar &mdash; abre <b>Pessoal</b>, no menu, para ver o que falta.</div>';
+    if(tot)tot.textContent='—';if(pp)pp.textContent='—';return;
+  }
+  const doPeriodo=MOVS.filter(m=>{
+    const d=mData(m);if(!d)return false;
+    if(parseInt(d.substring(0,4))!==dAno)return false;
+    return dMes===''||parseInt(d.substring(5,7))-1===parseInt(dMes);
+  });
+  const total=doPeriodo.reduce((s,m)=>s+mValor(m),0);
+  const porPagar=doPeriodo.filter(m=>!mPago(m)).reduce((s,m)=>s+mValor(m),0);
+  if(tot)tot.textContent=eur(total);
+  if(pp){pp.textContent=eur(porPagar);pp.style.color=porPagar>0?'var(--amber)':'var(--green)';}
+  const linhas=COLS.map((c,i)=>{
+    const meus=doPeriodo.filter(m=>mRef(m)===String(c.id));
+    return {c,i,n:meus.length,t:meus.reduce((s,m)=>s+mValor(m),0),
+            p:meus.filter(m=>!mPago(m)).reduce((s,m)=>s+mValor(m),0)};
+  }).filter(x=>x.n).sort((a,b)=>b.t-a.t);
+  if(!linhas.length){
+    el.innerHTML=`<div style="color:var(--text-faint);text-align:center;padding:1rem;font-size:11.5px">Sem custos com pessoal ${dMes===''?'em '+dAno:'em '+MESES[parseInt(dMes)].toLowerCase()+' de '+dAno}.</div>`;
+    return;
+  }
+  const maior=Math.max(...linhas.map(x=>x.t))||1;
+  el.innerHTML=linhas.map(x=>{
+    const cor=cCor(x.c,x.i);
+    return `<div style="padding:.45rem 0;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.5rem;font-size:12px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+        <span style="font-weight:500">${esc(cNome(x.c))}</span>
+        <span class="badge ${cTipo(x.c)==='Avença'?'badge-purple':'badge-blue'}" style="font-size:9px">${esc(cTipo(x.c))}</span>
+        <span style="color:var(--text-faint);font-size:10.5px">${x.n} lançamento${x.n===1?'':'s'}${x.p?` · ${eur(x.p)} por pagar`:''}</span>
+        <span style="flex:1"></span>
+        <b style="white-space:nowrap">${eur(x.t)}</b>
+      </div>
+      <div class="pes-bar" style="margin-top:.3rem;height:5px"><i style="width:${Math.round(x.t/maior*100)}%;background:${cor}"></i></div>
+    </div>`;
+  }).join('')+
+  `<div style="display:flex;justify-content:space-between;border-top:2px solid var(--border);margin-top:.4rem;padding-top:.45rem;font-size:12.5px;font-weight:600">
+     <span>Total ${dMes===''?dAno:MESES[parseInt(dMes)].toLowerCase()+' '+dAno}</span><span>${eur(total)}</span></div>`;
 }
 
 function cardsHTML(){
@@ -12856,6 +12936,11 @@ window.pesCalcDias=calcDias;
 window.pesFechar=fecharModal;
 window.pesCopiarFecho=copiarFecho;
 window.pesMarcarTudoPago=marcarTudoPago;
+window.pesDashFiltro=()=>{const a=$('pd-ano'),m=$('pd-mes');if(a)dAno=parseInt(a.value);if(m)dMes=m.value;renderDash();};
+window.pesIrParaPessoal=()=>{const it=$('nav-fin-pessoal');if(it)it.click();else if(typeof window.nav==='function')window.nav('pessoal');};
+/* O cartão do dashboard precisa dos dados mesmo que a página Pessoal nunca
+   tenha sido aberta nesta sessão. */
+async function garantirDados(){ if(!pronto)await init(); else renderDash(); }
 
 // ─── Instalação (ecrã + item de menu + nav) ──────────────────────────────────
 function instalar(){
@@ -12875,9 +12960,23 @@ function instalar(){
 
   if(typeof pageTitles!=='undefined')pageTitles.pessoal='Gastos com pessoal';
 
+  /* Cartão no Dashboard financeiro, logo a seguir às avenças mensais. */
+  const avmLista=$('avm-lista');
+  const cardAvm=avmLista&&avmLista.closest?avmLista.closest('.metric-card'):null;
+  if(cardAvm){
+    const holder=document.createElement('div');
+    holder.id='pes-dash-host';holder.innerHTML=CARD_DASH;
+    cardAvm.insertAdjacentElement('afterend',holder);
+  }
+
   if(typeof window.nav==='function'){
     const _n=window.nav;
-    window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='pessoal')init();return r;};
+    window.nav=function(id,el){
+      const r=_n.apply(this,arguments);
+      if(id==='pessoal')init();
+      if(id==='financeiro')setTimeout(garantirDados,200);
+      return r;
+    };
   }
   if(typeof window.mostrarMenuFinanceiro==='function'){
     const _m=window.mostrarMenuFinanceiro;
