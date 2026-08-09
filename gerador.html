@@ -892,6 +892,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
     </div>
 
+    <div id="preco-apuramento" style="margin-top:.7rem"></div>
+
     <!-- 6.3 · APB -->
     <div class="cond-block" style="margin-top:.7rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
@@ -1632,9 +1634,9 @@ function addOutorgante(pref,dados){
           </select></div>
         <div class="form-group"><label class="form-label">Posição do cônjuge</label>
           <select class="form-select" id="${id}-conj-out" onchange="atualizar()">
-            <option value="ambos"${sel(dados['conj-out'],'ambos')}>Outorga e transmite também</option>
-            <option value="consente"${sel(dados['conj-out'],'consente')}>Outorga só para consentir (art. 1682.º-A CC)</option>
-            <option value="nao"${sel(dados['conj-out'],'nao')}>Não outorga — só identificado</option>
+            <option value="ambos"${sel(dados['conj-out'],'ambos')}>${pref==='comp'?'Adquire também':'Outorga e transmite também'}</option>
+            ${pref==='comp'?'':`<option value="consente"${sel(dados['conj-out'],'consente')}>Outorga só para consentir (art. 1682.º-A CC)</option>`}
+            <option value="nao"${sel(dados['conj-out'],'nao')}>${pref==='comp'?'Não adquire — só identificado':'Não outorga — só identificado'}</option>
           </select></div>
         <div class="form-group form-full"><label class="form-label">Nome do cônjuge</label>
           <input class="form-input" id="${id}-conj-nome" style="text-transform:uppercase"></div>
@@ -5871,10 +5873,56 @@ function onRemMeio(){
   const podeUnica=varios&&meio!=='numerario';
   mostra('.rem-unica',podeUnica,'block');
   mostra('.rem-quem',podeUnica&&(v('f-rem-titulos')||'unico')==='unico','flex');
-  /* Sugestão do valor: preço menos o que já foi imputado nas alíneas. */
-  const falta=parseValor(v('f-preco'))-lerPagamentos().reduce((s,p)=>s+parseValor(p.valor),0);
+  /* Sugestão do valor: preço menos o que já foi imputado nas alíneas e no APB. */
+  const jaImputado=lerPagamentos().reduce((s,p)=>s+parseValor(p.valor),0)
+    +(chk('t-apb')?parseValor(v('f-apb-valor')):0);
+  const falta=parseValor(v('f-preco'))-jaImputado;
   const el=document.getElementById('rem-sugestao');
-  if(el)el.textContent=falta>0?`Diferença para o preço: ${fmtValor(falta)} €`:'';
+  if(el)el.textContent=falta>0?`Diferença para o preço: ${fmtValor(falta)} €`
+    :(falta<-0.005?`Excede o preço em ${fmtValor(-falta)} €`:'O preço fica integralmente imputado.');
+  desenharApuramentoPreco();
+}
+/* ── APURAMENTO DO PREÇO ──
+   O preço vai-se repartindo pelas alíneas do sinal, pelo APB e pelo
+   remanescente. Mostrar a conta a correr evita descobrir a diferença só no
+   fim, quando já custa a refazer. */
+function desenharApuramentoPreco(){
+  const el=document.getElementById('preco-apuramento');
+  if(!el)return;
+  const preco=parseValor(v('f-preco'));
+  if(!preco){el.innerHTML='';return;}
+  const eur=n=>fmtValor(n)+' €';
+  const linhas=[];
+  let soma=0;
+  const letras='abcdefghij';
+  lerPagamentos().forEach((p,i)=>{
+    const val=parseValor(p.valor); soma+=val;
+    linhas.push([`${letras[i]}) ${p.recetor||(chk('t-sinal')?'sinal':'pagamento')}`,val,preco-soma]);
+  });
+  if(chk('t-apb')){
+    const val=parseValor(v('f-apb-valor')); soma+=val;
+    linhas.push(['APB — liquidação do capital em dívida',val,preco-soma]);
+  }
+  const rem=parseValor(v('f-rem-valor'));
+  if(rem){soma+=rem;linhas.push(['Remanescente',rem,preco-soma]);}
+  const falta=preco-soma;
+  const cor=Math.abs(falta)<0.005?'var(--green)':(falta>0?'var(--amber)':'var(--red)');
+  const nota=Math.abs(falta)<0.005?'Bate certo com o preço.'
+    :(falta>0?`Falta imputar ${eur(falta)}.`:`Excede o preço em ${eur(-falta)}.`);
+  el.innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:.75rem .85rem">
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Como se reparte o preço</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr style="font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">
+        <td></td><td style="text-align:right">valor</td><td style="text-align:right">por imputar</td></tr>
+      <tr><td style="padding:.2rem .5rem .2rem 0">Preço convencionado</td>
+        <td style="text-align:right;padding:.2rem .5rem;font-weight:600">${eur(preco)}</td><td></td></tr>
+      ${linhas.map(([r,val,resto])=>`<tr><td style="padding:.2rem .5rem .2rem 0;color:var(--text-muted)">${esc(r)}</td>
+        <td style="text-align:right;padding:.2rem .5rem">&minus; ${eur(val)}</td>
+        <td style="text-align:right;padding:.2rem 0;color:var(--text-faint)">${eur(resto)}</td></tr>`).join('')}
+      <tr style="font-weight:600;border-top:1px solid var(--border)">
+        <td style="padding-top:.3rem" colspan="2">${nota.replace(/ .*/,'')==='Bate'?'':''}</td>
+        <td style="text-align:right;padding-top:.3rem;color:${cor}">${esc(nota)}</td></tr>
+    </table></div>`;
 }
 function lerRemanescente(){
   /* Sem sinal, o valor é o preço todo e o momento é sempre a outorga. */
