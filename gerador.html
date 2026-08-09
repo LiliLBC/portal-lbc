@@ -712,6 +712,15 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <input class="form-input" id="f-lea-prazo" oninput="atualizar()" placeholder="Ex: 120"></div>
       <div class="form-group"><label class="form-label">Com início em <span>*</span></label>
         <input type="date" class="form-input" id="f-lea-inicio" onchange="atualizar()"></div>
+      <div class="form-group form-full">
+        <div class="toggle-row" style="margin:0">
+          <span class="toggle-label" style="font-size:12px">Houve moratória legal</span>
+          <label class="toggle-switch"><input type="checkbox" id="t-lea-moratoria" onchange="atualizar()"><span class="toggle-slider"></span></label>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Decreto-Lei n.º 10-J/2020, de 26 de março. Prolonga o prazo da locação.</div>
+      </div>
+      <div class="form-group lea-moratoria" style="display:none"><label class="form-label">Prazo prolongado para (meses)</label>
+        <input class="form-input" id="f-lea-prazo-mor" oninput="atualizar()" placeholder="Ex: 209"></div>
       <div class="form-group form-full"><label class="form-label">Inscrição da locação financeira <span>*</span></label>
         <input class="form-input" id="f-lea-ap" oninput="atualizar()" placeholder="Ex: AP. 648 de 2021/03/26">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">A favor do locatário. É esta que se cancela na cláusula final.</div></div>
@@ -729,7 +738,11 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group"><label class="form-label">Conta de destino</label>
         <input class="form-input" id="f-lea-conta-dest" oninput="atualizar()"></div>
       <div class="form-group form-full"><label class="form-label">Licença de utilização</label>
-        <input class="form-input" id="f-lea-licenca" oninput="atualizar()" placeholder="Ex: n.º 25 e 26, emitida em 09/11/1999 pela Câmara Municipal da Amadora"></div>
+        <input class="form-input" id="f-lea-licenca" oninput="atualizar()" placeholder="Ex: 19/2013 que se encontra averbada pela AP. 1810 de 2016/09/13"></div>
+      <div class="form-group"><label class="form-label">Certificado energético n.º</label>
+        <input class="form-input" id="f-lea-ce" oninput="atualizar()" placeholder="Ex: SCE0000130917829"></div>
+      <div class="form-group"><label class="form-label">Certificado válido até</label>
+        <input type="date" class="form-input" id="f-lea-ceval" onchange="atualizar()"></div>
       <div class="form-group form-full lea-entrada" style="display:none"><label class="form-label">Preço (€) <span>*</span></label>
         <input class="form-input" id="f-lea-preco" oninput="atualizar()"></div>
       <div class="form-group form-full lea-entrada" style="display:none"><label class="form-label">Forma de pagamento</label>
@@ -3183,11 +3196,33 @@ function comporLeasing(){
   /* Na entrada a CAIXA é a SEGUNDA, compradora; nas saídas é a PRIMEIRA,
      locadora e vendedora. O texto dela é o mesmo; muda a designação. */
   const ordCGD=entrada?'Segunda':'Primeira';
-  const txtPrimeira=`${baseCGD}, devidamente representada neste ato por ${r.id||'…'}, ${r.qualidade||'na qualidade de sua procuradora'}, adiante designada por ${ordCGD} Contratante ou CAIXA.`;
+  /* ── NO TERMO COMPARECE A PESSOA ──
+     Quem comparece perante a solicitadora é o procurador; a CAIXA é quem ele
+     representa. No contrato é ao contrário: a parte é a sociedade, e o
+     procurador vai em identificação simplificada. */
+  const txtCGDTermo=`${r.id||'…'}, ${r.qualidade||'na qualidade de procuradora'}, em nome e em representação da ${baseCGD}.`;
+  /* No contrato a CAIXA vai em NIPC e o procurador em identificação curta, com
+     o estado civil — é assim que a Liliana o escreve. */
+  const solMutL=SOLICITADORAS[v('f-mut-quem')];
+  const curtoCGD=v('f-mut-quem')==='cgd'
+    ? [ (v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-ec'),v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',v('f-mut-p-nif')?`NIF ${v('f-mut-p-nif')}`:'' ].filter(Boolean).join(', ')
+    : (solMutL?[solMutL.nome,solMutL.estadoCivil,solMutL.naturalidade?`natural de ${solMutL.naturalidade}`:'',solMutL.nif?`NIF ${solMutL.nif}`:''].filter(Boolean).join(', '):(r.curto||'…'));
+  const txtCGDContrato=`CAIXA GERAL DE DEPÓSITOS, S.A., NIPC 500960046, devidamente representada neste ato por ${curtoCGD}, adiante designada por ${ordCGD} Contratante, CAIXA ou Locadora.`;
   const ordLoc=entrada?'Primeir':'Segund';
   const desigLoc=`, adiante designad${loc.length>1?'os':'o'} por ${ordLoc}${loc.length>1?'os':(entrada?'a':'a')} Contratante${loc.length>1?'s':''}.`;
   const txtSegunda=loc.map(textoVendedor).join(';\n')+desigLoc;
-  const txtSegundaCurto=loc.map(textoVendedorCurto).join(', ')+desigLoc;
+  /* O locatário em forma curta: NIPC da sociedade e o gerente com NIF. */
+  const curtoLoc=o=>{
+    if(o.tipo==='singular')return textoVendedorCurto(o);
+    /* O gerente vem do mesmo sítio de onde vem no termo, para não divergirem. */
+    const nome=(o['proc-nome']||'').trim();
+    const g=nome?[nome.toUpperCase(),
+      o['proc-natural']?`natural de ${o['proc-natural']}`:'',
+      o['proc-ec']||'',
+      o['proc-nif']?`NIF ${o['proc-nif']}`:''].filter(Boolean).join(', '):'';
+    return`${(o.denom||'…')}, NIPC ${o.nipc||'…'}${g?`, neste ato representada por ${g}`:''}`;
+  };
+  const txtSegundaCurto=loc.map(curtoLoc).join(', ')+desigLoc.replace('Contratante','Contratante ou Locatária').replace('Contratantes','Contratantes ou Locatárias');
 
   /* ── Imóvel, com as duas inscrições ── */
   const isFr=v('f-im-tipo')==='fracao';
@@ -3210,15 +3245,20 @@ function comporLeasing(){
   const localTxt=foraEscritorio?`na ${v('f-local-morada')||'…'}`:(sol?`no meu escritório sito na ${sol.domicilio}`:'…');
   termo.push({id:'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram como Outorgantes:`});
   /* Na entrada comparece primeiro quem vende; nas saídas, a CAIXA. */
-  const bCGD={id:'t-cgd',T:entrada?'SEGUNDA':'PRIMEIRA',X:entrada?txtPrimeira:`(Locadora) ${txtPrimeira}`};
+  const bCGD={id:'t-cgd',T:entrada?'SEGUNDA':'PRIMEIRA',X:entrada?txtCGDTermo:`(Locadora) ${txtCGDTermo}`};
   const bLoc={id:'t-loc',T:(entrada?(loc.length>1?'PRIMEIROS':'PRIMEIRA'):(loc.length>1?'SEGUNDOS':'SEGUNDA')),
     X:entrada?txtSegunda:`(Locatário) ${txtSegunda}`,negrito:loc.map(o=>o.nome||o.denom).filter(Boolean)};
   if(entrada){termo.push(bLoc);termo.push(bCGD);}else{termo.push(bCGD);termo.push(bLoc);}
 
+  /* ── VERIFICAÇÃO · redação da Liliana, do contrato da SANDRA LDA ──
+     O código da procuração sai como ela o escreve, com a data e a hora entre
+     parênteses, e a certidão comercial da CAIXA vem na mesma alínea, com a
+     exclusão do RCBE a fechá-la. */
   const ver=[];
   ver.push('— a identidade dos outorgantes pela exibição dos respetivos documentos de identificação;');
-  const codP=partesProcuracao(v('f-mut-proc-cod')||r.cod);
-  ver.push(`— a qualidade e poderes d${entrada?'a Segunda':'a Primeira'} Outorgante, para o presente ato, pela consulta da procuração${v('f-mut-quem')==='cgd'?'':', conjugada com a do substabelecimento,'} depositada${v('f-mut-quem')==='cgd'?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codP.cod||'…'}${codP.data||r.data?`, de ${codP.data||r.data}`:''};`);
+  const codBruto=(v('f-mut-proc-cod')||r.cod||'…').trim();
+  const cgdProp=v('f-mut-quem')==='cgd';
+  ver.push(`— a qualidade e poderes d${entrada?'a Segunda':'a Primeira'} Outorgante, para o presente ato, pela consulta da procuração${cgdProp?'':', conjugada com a do substabelecimento,'} depositada${cgdProp?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codBruto} e Certidão de Registo Comercial com o código de acesso ${v('f-mut-crc-cod')||CGD_CRC||'…'} disponível em www.eportugal.gov.pt e, verifica-se ainda, a exclusão da Caixa Geral de Depósitos, S.A. do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do referido Regime Jurídico;`);
   loc.map(o=>linhaEmpresa(o,entrada?'Primeira Outorgante':'Segunda Outorgante')).filter(Boolean)
     .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
   const pred=linhaPredio('f-im',null); if(pred)ver.push(pred);
@@ -3232,7 +3272,7 @@ function comporLeasing(){
   let n=0; const cl=a=>`${ORD[++n]}\n(${a})`;
   const sub=entrada?'':(antec?'Redução de Prazo e Opção de Compra em Leasing':'Opção de Compra em Leasing');
   contrato.push({id:'c-cab',T:sub?`COMPRA E VENDA\n(${sub})`:'COMPRA E VENDA',X:''});
-  const cCGD={id:'c-cgd',T:entrada?'SEGUNDA':'PRIMEIRA',X:entrada?txtPrimeira:`(Locadora) ${txtPrimeira}`};
+  const cCGD={id:'c-cgd',T:entrada?'SEGUNDA':'PRIMEIRA',X:entrada?txtCGDContrato:`(Locadora) ${txtCGDContrato}`};
   const cLoc={id:'c-loc',T:(entrada?(loc.length>1?'PRIMEIROS':'PRIMEIRA'):(loc.length>1?'SEGUNDOS':'SEGUNDA')),
     X:entrada?txtSegundaCurto:`(Locatário) ${txtSegundaCurto}`,negrito:loc.map(o=>o.nome||o.denom).filter(Boolean)};
   if(entrada){contrato.push(cLoc);contrato.push(cCGD);}else{contrato.push(cCGD);contrato.push(cLoc);}
@@ -3255,13 +3295,23 @@ function comporLeasing(){
     contrato.push({id:'c-lea-data',T:'',X:`${foraEscritorio?(v('f-local-morada')||'…'):'Évora'}, ${dataExtenso(v('f-data-ato'))}.`});
     return{termo,contrato,anexo:[]};
   }
+  /* Havendo moratória, o prazo passa para a cláusula Segunda, onde se explica o
+     prolongamento — foi assim que a Liliana o fez no contrato da SANDRA LDA. */
+  const mor=chk('t-lea-moratoria');
+  const prazoMor=v('f-lea-prazo-mor');
+  const prazoMorTxt=prazoMor?`${prazoMor} (${valorExtenso(prazoMor).toLowerCase().replace(/\s*euros?.*$/,'')}) meses`:'… meses';
+  const linhaPrazo=`O prazo ${antec?'estipulado':'inicial estipulado'} da referida locação financeira foi de ${prazoTxt}, com início em ${dPT(v('f-lea-inicio'))}`
+    +(mor?`, tendo a locatária aderido à Moratória Legal, prevista no Decreto-Lei n.º 10-J/2020, de 26 de março e respetivas alterações, o referido prazo foi prolongado e fixado em ${prazoMorTxt}.`
+        :(antec?'.':', encontrando-se o mesmo cumprido e igualmente vencidas e pagas a totalidade das rendas.'));
+
   contrato.push({id:'c-lea1',T:cl('Objeto e Prazo da Locação'),X:
-    `1. A representada da Segunda Contratante é locatária financeira, sendo locadora a representada da Primeira Contratante, da ${txtImovel}\n`
-    +`2. O prazo ${antec?'estipulado':'inicial estipulado'} da referida locação financeira foi de ${prazoTxt}, com início em ${dPT(v('f-lea-inicio'))}${antec?'.':', encontrando-se o mesmo cumprido e igualmente vencidas e pagas a totalidade das rendas.'}`});
+    `1. A representada da Segunda Contratante é locatária financeira, sendo locadora a representada da Primeira Contratante, d${/^(a |A )/.test(txtImovel)?'a':'o'} ${txtImovel}`
+    +(mor?'':`\n2. ${linhaPrazo}`)});
 
   if(antec)
     contrato.push({id:'c-lea2',T:cl('Redução de Prazo e Alteração do Valor Residual'),X:
-      `As partes acordam em reduzir o prazo do contrato de locação financeira, indicado no número 2 da cláusula antecedente, de forma a que o mesmo cesse na presente data, e em alterar o valor residual previsto no referido contrato, fixando-o em ${par('f-lea-residual')}.`});
+      (mor?`1. ${linhaPrazo}\n2. `:'')
+      +`As partes acordam em reduzir o prazo do contrato de locação financeira, indicado n${mor?'o número anterior':'o número 2 da cláusula antecedente'}, de forma a que o mesmo cesse na presente data, e em alterar o valor residual previsto no referido contrato, fixando-o em ${par('f-lea-residual')}.`});
 
   const meio=v('f-lea-meio')==='debito'?'débito direto':'transferência bancária';
   const contas=`${meio} da conta com o ${v('f-lea-conta-orig')||'…'}, para a conta com o ${v('f-lea-conta-dest')||'…'}, ambas domiciliadas na Caixa Geral de Depósitos, S.A.`;
@@ -3282,7 +3332,9 @@ function comporLeasing(){
   contrato.push({id:'c-lea-onus',T:cl('Ónus e encargos'),X:
     `O Imóvel é vendido livre de qualquer ónus ou encargos, sem prejuízo do disposto na cláusula ${ORD[n+3]||'seguinte'}.`});
   contrato.push({id:'c-lea-lic',T:cl('Licenciamento camarário'),X:
-    `O Imóvel tem a Licença de Utilização ${v('f-lea-licenca')||'…'}, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`});
+    `O Imóvel tem a Licença de Utilização ${v('f-lea-licenca')||'…'}`
+    +(v('f-lea-ce')?` e Certificação energética com o número ${v('f-lea-ce')}${v('f-lea-ceval')?`, válido até ${dPT(v('f-lea-ceval'))}`:''} que é entregue à parte compradora neste ato.`
+      :`, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`)});
   contrato.push({id:'c-lea-decl',T:cl('Outras declarações'),X:
     `1. A Segunda Contratante, em nome da sua representada, declara que assume a responsabilidade pelo pagamento de todas as despesas, encargos, impostos ou taxas, emergentes do contrato de locação, da transmissão e da titularidade do Imóvel, designadamente Imposto Municipal sobre Imóveis, que sejam originados ou devidos até à presente data, ainda que venham a ser posteriormente apresentados ou reclamados à CGD.\n`
     +`2. A Segunda Contratante, em nome da sua representada, declara que conhece todos os encargos de condomínio relativos ao imóvel adquirido e que prescinde da declaração do administrador de condomínio prevista no artigo 1424.º-A do Código Civil, aceitando, em consequência, a responsabilidade por qualquer dívida existente ao condomínio.`});
@@ -4961,6 +5013,7 @@ function funilLeasing(){
   nomearBloco('card-b3',ent?'Vendedores':'Locatário',ent?'Primeiros Contratantes — quem vende à CAIXA':'Segunda Contratante — quem exerce a opção');
   nomearBloco('card-b4',ent?'Compradora':'Locadora',ent?'Segunda Contratante — a CAIXA':'Primeira Contratante — a CAIXA');
   document.querySelectorAll('.lea-entrada').forEach(e=>e.style.display=ent?'flex':'none');
+  document.querySelectorAll('.lea-moratoria').forEach(e=>e.style.display=(!ent&&chk('t-lea-moratoria'))?'flex':'none');
   ['f-lea-prazo','f-lea-inicio','f-lea-ap','f-lea-residual','f-lea-data-pag','f-lea-meio','f-lea-conta-orig','f-lea-conta-dest']
     .forEach(id=>{const e=document.getElementById(id);if(e&&e.closest('.form-group'))e.closest('.form-group').style.display=ent?'none':'flex';});
   nomearBloco('card-b5','Imóvel','Objeto da locação financeira');
@@ -5856,6 +5909,10 @@ function partesProcuracao(txt){
   const d=bruto.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})|(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
   if(d)data=d[1]?`${String(d[3]).padStart(2,'0')}/${String(d[2]).padStart(2,'0')}/${d[1]}`
                :`${String(d[4]).padStart(2,'0')}/${String(d[5]).padStart(2,'0')}/${d[6]}`;
+  /* A hora não é acessório: no leasing as duas solicitadoras têm o mesmo código
+     e a mesma data, e é a hora que as distingue. */
+  const h=bruto.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if(data&&h)data+=` ${String(h[1]).padStart(2,'0')}:${h[2]}`;
   return{cod,data};
 }
 /* Há duas procurações da CAIXA por solicitadora: a geral, para a compra e venda
@@ -5942,9 +5999,11 @@ const PODERES_MUTUANTE='ponto segundo alínea 1) e 6) e ponto terceiro regra 5.�
    só chega depois da autenticação. O código de cada solicitadora é o mesmo da
    sua procuração, pelo que se aproveita o que já vem na configuração. */
 function procMutuante(q){
-  if(q==='cgd')return{cod:partesProcuracao(CGD_PROCURACAO).cod,pod:PODERES_MUTUANTE};
+  /* O campo mostra o código como está no ficheiro, com a data e a hora entre
+     parênteses — é isso que identifica a procuração de cada uma. */
+  if(q==='cgd')return{cod:codProcDe(CGD_CFG)||CGD_PROCURACAO,pod:PODERES_MUTUANTE};
   const s=SOLICITADORAS[q];
-  return{cod:s?(s.codProcuracao||'').replace(/\s*\(.*$/,''):'',pod:PODERES_MUTUANTE};
+  return{cod:s?codProcDe(s):'',pod:PODERES_MUTUANTE};
 }
 /* Semeia os campos da certidão à primeira vez, e só à primeira: apagados de
    propósito, ficam apagados. É o que o painel do outorgante CGD faz com a
