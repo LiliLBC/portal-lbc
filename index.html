@@ -12160,5 +12160,696 @@ ${eye}${head}
 })();
 </script>
 
+<!-- ════════════════════════════════════════════════════════════════════════
+     GASTOS COM PESSOAL — colar antes de </body>.
+     Aditivo e namespaced (pes…). Não altera nada do que já existe.
+
+     Listas SharePoint necessárias (site lbcsolicitadora2):
+       PessoalColaboradores · Title, TipoServico, ValorMensal, DiasFeriasAno,
+                              NIF, DataInicio, Ativo (ou EstaAtivo), Cor
+       PessoalMovimentos    · Title, ColaboradorRef, ColaboradorNome, DataMov
+                              (ou Data), TipoMov, Valor, ProcessoRef, Pago,
+                              DataPagamento, Obs
+       PessoalAusencias     · Title, ColaboradorRef, ColaboradorNome, DataInicio,
+                              DataFim, DiasUteis, TipoAusencia, Ano, Obs
+     Os nomes das colunas são detetados automaticamente (aceita variantes).
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+// ─── Configuração ────────────────────────────────────────────────────────────
+const L={col:'PessoalColaboradores',mov:'PessoalMovimentos',aus:'PessoalAusencias'};
+
+/* Para cada campo lógico, os nomes internos aceites (por ordem de preferência).
+   Isto evita ter de acertar o código sempre que o SharePoint recusa um nome. */
+const CAND={
+  col:{tipo:['TipoServico','Tipo_Servico','TipoColaborador'],valor:['ValorMensal','Valor_Mensal'],
+       dias:['DiasFeriasAno','Dias_Ferias_Ano','DiasFerias'],nif:['NIF','Nif'],
+       inicio:['DataInicio','Data_Inicio','DataAdmissao'],ativo:['Ativo','EstaAtivo','Activo'],cor:['Cor']},
+  mov:{ref:['ColaboradorRef','Colaborador_Ref','ColabRef'],nome:['ColaboradorNome','Colaborador_Nome','Colaborador'],
+       data:['DataMov','Data','Data_Mov'],tipo:['TipoMov','Tipo_Mov','TipoMovimento'],
+       valor:['Valor','ValorMov'],processo:['ProcessoRef','Processo_Ref','Processo'],
+       pago:['Pago'],dataPag:['DataPagamento','Data_Pagamento','DataPag'],obs:['Obs','Observacoes','Observacao']},
+  aus:{ref:['ColaboradorRef','Colaborador_Ref','ColabRef'],nome:['ColaboradorNome','Colaborador_Nome','Colaborador'],
+       ini:['DataInicio','Data_Inicio','DataIni'],fim:['DataFim','Data_Fim'],
+       dias:['DiasUteis','Dias_Uteis','Dias'],tipo:['TipoAusencia','Tipo_Ausencia'],
+       ano:['Ano'],obs:['Obs','Observacoes','Observacao']}
+};
+const OBRIG={col:['tipo','valor'],mov:['ref','data','tipo','valor'],aus:['ref','ini','fim','dias','tipo']};
+
+const TIPOS_COL=['Avença','Ao serviço'];
+const TIPOS_MOV=['Serviço','Avença','Ajuste','Prémio','Reembolso despesas'];
+const TIPOS_AUS=['Férias','Indisponibilidade justificada','Outra'];
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const PALETA=['#7B6EAF','#2D7D4F','#1A5FA0','#A05C1A','#B53A2F','#6B6860'];
+
+// ─── Estado ──────────────────────────────────────────────────────────────────
+let LID={col:null,mov:null,aus:null};
+let FLD={col:{},mov:{},aus:{}};
+let COLS=[],MOVS=[],AUSE=[];
+let hoje=new Date();
+let mesSel=hoje.getMonth(), anoSel=hoje.getFullYear(), anoFer=hoje.getFullYear();
+let pronto=false, avisoSetup='', carregando=false, movId=null, colId=null, ausId=null;
+
+// ─── Utilitários ─────────────────────────────────────────────────────────────
+const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=(m,t)=>{if(typeof showToast==='function')showToast(m,t||'');};
+const eur=n=>(Number(n)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+function num(str){
+  if(str==null)return 0;
+  let s=String(str).trim().replace(/[€\s]/g,'');
+  if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');
+  const n=parseFloat(s);return isNaN(n)?0:n;
+}
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dia10=v=>v?String(v).substring(0,10):'';
+const dataPT=v=>{const s=dia10(v);if(!s)return '—';const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+const $=id=>document.getElementById(id);
+
+/* Páscoa (algoritmo de Gauss/Meeus) — necessária para Sexta-feira Santa e Corpo de Deus. */
+function pascoa(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,
+        l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        mes=Math.floor((h+l-7*m+114)/31),dd=((h+l-7*m+114)%31)+1;
+  return new Date(y,mes-1,dd);
+}
+const cacheFer={};
+function feriados(ano){
+  if(cacheFer[ano])return cacheFer[ano];
+  const p=pascoa(ano),add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+  const s=new Set([
+    ano+'-01-01',ano+'-04-25',ano+'-05-01',ano+'-06-10',ano+'-08-15',
+    ano+'-10-05',ano+'-11-01',ano+'-12-01',ano+'-12-08',ano+'-12-25',
+    iso(add(p,-2)),   // Sexta-feira Santa
+    iso(p),           // Domingo de Páscoa
+    iso(add(p,60)),   // Corpo de Deus
+    ano+'-06-29'      // Feriado municipal de Évora
+  ]);
+  cacheFer[ano]=s;return s;
+}
+function diasUteis(ini,fim){
+  if(!ini||!fim)return 0;
+  const a=new Date(ini+'T00:00:00'),b=new Date(fim+'T00:00:00');
+  if(isNaN(a)||isNaN(b)||b<a)return 0;
+  let n=0;const d=new Date(a);
+  while(d<=b){
+    const dw=d.getDay();
+    if(dw!==0&&dw!==6&&!feriados(d.getFullYear()).has(iso(d)))n++;
+    d.setDate(d.getDate()+1);
+  }
+  return n;
+}
+
+// ─── Acesso ao Graph ─────────────────────────────────────────────────────────
+async function graphAll(url){
+  let out=[],u=url,i=0;
+  while(u&&i<12){const r=await graphGet(u);out=out.concat(r.value||[]);u=r['@odata.nextLink'];i++;}
+  return out;
+}
+async function graphDelete(url){
+  await renovarToken();
+  const r=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
+  if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
+}
+async function resolverListas(){
+  const todas=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
+  const acha=n=>todas.find(l=>l.name===n||l.displayName===n)?.id||null;
+  LID.col=acha(L.col);LID.mov=acha(L.mov);LID.aus=acha(L.aus);
+  const faltam=Object.keys(L).filter(k=>!LID[k]).map(k=>L[k]);
+  if(faltam.length)throw new Error('LISTAS:'+faltam.join(', '));
+}
+async function resolverCampos(){
+  const inFalta=[];
+  for(const k of ['col','mov','aus']){
+    const cols=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID[k]}/columns?$select=name,displayName&$top=200`);
+    const nomes=new Set(cols.map(c=>c.name));
+    FLD[k]={};
+    for(const [logico,cands] of Object.entries(CAND[k])){
+      FLD[k][logico]=cands.find(c=>nomes.has(c))||null;
+      if(!FLD[k][logico]&&OBRIG[k].includes(logico))inFalta.push(L[k]+' → '+cands[0]);
+    }
+  }
+  if(inFalta.length)throw new Error('COLUNAS:'+inFalta.join(' · '));
+}
+function sel(k){return Object.values(FLD[k]).filter(Boolean).concat(['Title']).join(',');}
+async function carregarDados(){
+  const [c,m,a]=await Promise.all([
+    graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.col}/items?$expand=fields($select=${sel('col')})&$top=200`),
+    graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items?$expand=fields($select=${sel('mov')})&$top=999`),
+    graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.aus}/items?$expand=fields($select=${sel('aus')})&$top=500`)
+  ]);
+  const map=x=>({id:x.id,...x.fields});
+  COLS=c.map(map);MOVS=m.map(map);AUSE=a.map(map);
+}
+
+// ─── Leitura tipada ──────────────────────────────────────────────────────────
+const cNome=c=>c.Title||'—';
+const cTipo=c=>c[FLD.col.tipo]||'Ao serviço';
+const cValor=c=>num(c[FLD.col.valor]);
+const cDias=c=>{const v=FLD.col.dias?num(c[FLD.col.dias]):0;return v||22;};
+const cAtivo=c=>{if(!FLD.col.ativo)return true;const v=c[FLD.col.ativo];return v===true||v==='true'||v===1||v==null||v==='';};
+const cCor=(c,i)=>(FLD.col.cor&&c[FLD.col.cor])||PALETA[i%PALETA.length];
+const mRef=m=>String(m[FLD.mov.ref]||'');
+const mData=m=>dia10(m[FLD.mov.data]);
+const mTipo=m=>m[FLD.mov.tipo]||'Serviço';
+const mValor=m=>num(m[FLD.mov.valor]);
+const mPago=m=>{if(!FLD.mov.pago)return false;const v=m[FLD.mov.pago];return v===true||v==='true'||v===1;};
+const aRef=a=>String(a[FLD.aus.ref]||'');
+const aDias=a=>num(a[FLD.aus.dias]);
+const aTipo=a=>a[FLD.aus.tipo]||'Férias';
+const aAno=a=>{const v=FLD.aus.ano?parseInt(a[FLD.aus.ano]):NaN;return isNaN(v)?parseInt(dia10(a[FLD.aus.ini]).substring(0,4)):v;};
+const colPorId=id=>COLS.find(c=>String(c.id)===String(id));
+function movsDoMes(){return MOVS.filter(m=>{const d=mData(m);return d&&parseInt(d.substring(0,4))===anoSel&&parseInt(d.substring(5,7))-1===mesSel;});}
+
+// ─── HTML base do ecrã ───────────────────────────────────────────────────────
+const SCREEN=`
+  <div id="pes-aviso"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+    <div style="display:flex;align-items:center;gap:.35rem">
+      <button class="btn btn-sm" onclick="pesMes(-1)" title="Mês anterior" style="padding:4px 9px">‹</button>
+      <select class="form-select" id="pes-mes" onchange="pesSetPeriodo()" style="font-size:12px;padding:5px 8px"></select>
+      <select class="form-select" id="pes-ano" onchange="pesSetPeriodo()" style="font-size:12px;padding:5px 8px;width:78px"></select>
+      <button class="btn btn-sm" onclick="pesMes(1)" title="Mês seguinte" style="padding:4px 9px">›</button>
+      <button class="btn btn-sm" onclick="pesRecarregar()" title="Recarregar" style="padding:4px 9px">⟳</button>
+    </div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="pesModalColab()">Colaboradores</button>
+      <button class="btn btn-sm" onclick="pesModalFecho()">Fecho do mês</button>
+      <button class="btn btn-primary btn-sm" onclick="pesModalMov()">+ Novo serviço</button>
+    </div>
+  </div>
+  <div id="pes-loading" style="display:none;justify-content:center;padding:2rem"><div class="spinner"></div></div>
+  <div id="pes-corpo"></div>
+  <div class="modal-overlay" id="pes-ov"><div class="modal-box" id="pes-modal" style="max-width:460px"></div></div>`;
+
+const CSS=`
+.pes-bar{height:7px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.pes-bar>i{display:block;height:100%;border-radius:4px;transition:width .3s}
+.pes-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem;box-shadow:var(--shadow)}
+.pes-th{padding:6px 8px;text-align:left;color:var(--text-faint);font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.pes-td{padding:7px 8px;font-size:12px;vertical-align:middle}
+.pes-tr{border-top:1px solid var(--border)}
+.pes-tr:hover{background:var(--surface2)}
+.pes-chip{cursor:pointer;border:none;font-family:inherit}`;
+
+// ─── Render principal ────────────────────────────────────────────────────────
+function render(){
+  const corpo=$('pes-corpo');if(!corpo)return;
+  if(!pronto){corpo.innerHTML=avisoSetup||'';return;}
+  $('pes-aviso').innerHTML='';
+  corpo.innerHTML=cardsHTML()+tabelaHTML()+feriasHTML();
+}
+
+function cardsHTML(){
+  const ativos=COLS.filter(cAtivo);
+  const doMes=movsDoMes();
+  if(!ativos.length)return '<div class="notice notice-info" style="font-size:11.5px">Ainda não há colaboradores. Abre <b>Colaboradores</b> e adiciona a Andreia (avença) e a Laura (ao serviço).</div>';
+  let total=0,pago=0;
+  const cards=ativos.map((c,i)=>{
+    const meus=doMes.filter(m=>mRef(m)===String(c.id));
+    const t=meus.reduce((s,m)=>s+mValor(m),0);
+    const p=meus.filter(mPago).reduce((s,m)=>s+mValor(m),0);
+    total+=t;pago+=p;
+    const cor=cCor(c,i);
+    const avencaEmFalta=cTipo(c)==='Avença'&&!meus.some(m=>mTipo(m)==='Avença');
+    return `<div class="pes-card">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:.35rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+        <span style="font-size:12.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cNome(c))}</span>
+        <span class="badge ${cTipo(c)==='Avença'?'badge-purple':'badge-blue'}" style="font-size:9.5px">${esc(cTipo(c))}</span>
+      </div>
+      <div style="font-size:21px;font-weight:600;letter-spacing:-.5px;line-height:1.1;color:${cor}">${eur(t)}</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:.2rem">
+        ${meus.length} lançamento${meus.length===1?'':'s'} · ${t-p>0?`<b style="color:var(--amber)">${eur(t-p)} por pagar</b>`:'tudo pago'}
+      </div>
+      ${avencaEmFalta?`<button class="btn btn-sm" onclick="pesLancarAvenca('${c.id}')" style="width:100%;margin-top:.5rem;font-size:10.5px;justify-content:center">Lançar avença · ${eur(cValor(c))}</button>`:''}
+    </div>`;
+  }).join('');
+  const resumo=`<div class="pes-card" style="background:var(--surface2)">
+      <div class="metric-label" style="font-size:10px;margin-bottom:.35rem">Total ${MESES[mesSel].toLowerCase()} ${anoSel}</div>
+      <div style="font-size:21px;font-weight:600;letter-spacing:-.5px;line-height:1.1">${eur(total)}</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:.2rem">${eur(pago)} pago · <b style="color:${total-pago>0?'var(--amber)':'var(--green)'}">${eur(total-pago)} por pagar</b></div>
+      <div class="pes-bar" style="margin-top:.5rem"><i style="width:${total?Math.round(pago/total*100):0}%;background:var(--green)"></i></div>
+    </div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.6rem;margin-bottom:.85rem">${cards}${resumo}</div>`;
+}
+
+function tabelaHTML(){
+  const linhas=movsDoMes().sort((a,b)=>(mData(b)||'').localeCompare(mData(a)||''));
+  const corpo=linhas.length?linhas.map(m=>{
+    const c=colPorId(mRef(m));
+    const i=COLS.findIndex(x=>String(x.id)===mRef(m));
+    return `<tr class="pes-tr">
+      <td class="pes-td" style="white-space:nowrap;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:11px">${dataPT(m[FLD.mov.data])}</td>
+      <td class="pes-td"><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${c?cCor(c,i):'#9ca3af'}"></span>${esc(c?cNome(c):(FLD.mov.nome?m[FLD.mov.nome]:'')||'—')}</span></td>
+      <td class="pes-td"><span class="badge ${mTipo(m)==='Avença'?'badge-purple':'badge-gray'}" style="font-size:9.5px">${esc(mTipo(m))}</span></td>
+      <td class="pes-td">${esc(m.Title||'—')}${FLD.mov.processo&&m[FLD.mov.processo]?`<div style="font-size:10px;color:var(--text-faint)">Proc. ${esc(m[FLD.mov.processo])}</div>`:''}</td>
+      <td class="pes-td" style="text-align:right;font-weight:600;white-space:nowrap">${eur(mValor(m))}</td>
+      <td class="pes-td" style="text-align:center"><button class="badge pes-chip ${mPago(m)?'badge-green':'badge-amber'}" onclick="pesTogglePago('${m.id}')" title="Clica para alternar" style="font-size:9.5px">${mPago(m)?'Pago':'Por pagar'}</button></td>
+      <td class="pes-td" style="text-align:right"><button class="btn btn-sm" onclick="pesModalMov('${m.id}')" style="padding:2px 9px;font-size:10.5px">Editar</button></td>
+    </tr>`;
+  }).join(''):`<tr><td class="pes-td" colspan="7" style="text-align:center;color:var(--text-faint);padding:1.4rem">Sem lançamentos em ${MESES[mesSel].toLowerCase()} de ${anoSel}.</td></tr>`;
+  return `<div class="metric-card" style="padding:1rem;margin-bottom:.85rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
+      <div>
+        <div class="metric-label" style="margin:0;font-size:11px">Lançamentos de ${MESES[mesSel].toLowerCase()} ${anoSel}</div>
+        <div style="font-size:10px;color:var(--text-faint)">Serviços, avenças e ajustes · custo com pessoal</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="pesModalMov()">+ Novo serviço</button>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr><th class="pes-th">Data</th><th class="pes-th">Colaborador</th><th class="pes-th">Tipo</th><th class="pes-th">Descrição</th><th class="pes-th" style="text-align:right">Valor</th><th class="pes-th" style="text-align:center">Estado</th><th class="pes-th"></th></tr></thead>
+      <tbody>${corpo}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function feriasHTML(){
+  const ativos=COLS.filter(cAtivo);
+  const anos=[...new Set([anoFer,hoje.getFullYear(),...AUSE.map(aAno)])].filter(Boolean).sort((a,b)=>b-a);
+  const blocos=ativos.map((c,i)=>{
+    const meus=AUSE.filter(a=>aRef(a)===String(c.id)&&aAno(a)===anoFer);
+    const gozados=meus.filter(a=>aTipo(a)==='Férias').reduce((s,a)=>s+aDias(a),0);
+    const outras=meus.filter(a=>aTipo(a)!=='Férias').reduce((s,a)=>s+aDias(a),0);
+    const lim=cDias(c),pc=Math.min(100,Math.round(gozados/lim*100)),cor=cCor(c,i);
+    const periodos=meus.sort((a,b)=>dia10(a[FLD.aus.ini]).localeCompare(dia10(b[FLD.aus.ini]))).map(a=>`
+      <div style="display:flex;align-items:center;gap:.5rem;padding:5px 0;border-top:1px dashed var(--border);font-size:11.5px">
+        <span style="flex:1">${dataPT(a[FLD.aus.ini])} – ${dataPT(a[FLD.aus.fim])}${a.Title?` <span style="color:var(--text-faint)">· ${esc(a.Title)}</span>`:''}</span>
+        <span class="badge ${aTipo(a)==='Férias'?'badge-green':'badge-gray'}" style="font-size:9px">${esc(aTipo(a))}</span>
+        <b style="width:44px;text-align:right">${aDias(a)} d</b>
+        <button class="btn btn-sm" onclick="pesModalAus('${a.id}')" style="padding:1px 7px;font-size:10px">Editar</button>
+      </div>`).join('')||'<div style="font-size:11px;color:var(--text-faint);padding:6px 0;border-top:1px dashed var(--border)">Sem períodos registados neste ano.</div>';
+    return `<div class="pes-card">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:.45rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:${cor}"></span>
+        <span style="font-size:12.5px;font-weight:600;flex:1">${esc(cNome(c))}</span>
+        <span style="font-size:12px"><b style="color:${gozados>lim?'var(--red)':cor};font-size:15px">${gozados}</b><span style="color:var(--text-faint)"> / ${lim} dias</span></span>
+      </div>
+      <div class="pes-bar"><i style="width:${pc}%;background:${gozados>lim?'var(--red)':cor}"></i></div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:.3rem">${lim-gozados>=0?`${lim-gozados} dias por gozar`:`${gozados-lim} dias acima do previsto`}${outras?` · ${outras} d de outras ausências`:''}</div>
+      <div style="margin-top:.45rem">${periodos}</div>
+      <button class="btn btn-sm" onclick="pesModalAus(null,'${c.id}')" style="width:100%;margin-top:.5rem;font-size:10.5px;justify-content:center">+ Registar período</button>
+    </div>`;
+  }).join('');
+  return `<div class="metric-card" style="padding:1rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;gap:.5rem;flex-wrap:wrap">
+      <div>
+        <div class="metric-label" style="margin:0;font-size:11px">Ausências e férias</div>
+        <div style="font-size:10px;color:var(--text-faint)">Dias úteis, já descontados fins de semana e feriados (nacionais + 29 de junho, Évora)</div>
+      </div>
+      <select class="form-select" onchange="pesSetAnoFerias(this.value)" style="font-size:12px;padding:5px 8px;width:88px">
+        ${anos.map(a=>`<option value="${a}"${a===anoFer?' selected':''}>${a}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.6rem">${blocos||'<div style="font-size:11.5px;color:var(--text-faint)">Sem colaboradores ativos.</div>'}</div>
+  </div>`;
+}
+
+// ─── Modais ──────────────────────────────────────────────────────────────────
+function abrirModal(html){$('pes-modal').innerHTML=html;$('pes-ov').classList.add('show');}
+function fecharModal(){$('pes-ov').classList.remove('show');}
+function optColabs(sel){return COLS.filter(c=>cAtivo(c)||String(c.id)===String(sel)).map(c=>`<option value="${c.id}"${String(c.id)===String(sel)?' selected':''}>${esc(cNome(c))}</option>`).join('');}
+
+// ── Movimento (serviço / avença / ajuste)
+function modalMov(id,pre){
+  if(!COLS.filter(cAtivo).length){toast('Adiciona primeiro um colaborador','error');return modalColab();}
+  const m=id?MOVS.find(x=>String(x.id)===String(id)):null;
+  movId=m?m.id:null;
+  const p=pre||{};
+  const vRef=m?mRef(m):(p.ref||COLS.filter(cAtivo)[0]?.id||'');
+  const vData=m?mData(m):(p.data||iso(new Date()));
+  const vTipo=m?mTipo(m):(p.tipo||'Serviço');
+  const vDesc=m?(m.Title||''):(p.desc||'');
+  const vValor=m?mValor(m):(p.valor||'');
+  const vProc=m&&FLD.mov.processo?(m[FLD.mov.processo]||''):'';
+  const vObs=m&&FLD.mov.obs?(m[FLD.mov.obs]||''):'';
+  abrirModal(`
+    <div class="modal-box-title">${m?'Editar lançamento':'Novo lançamento'}</div>
+    <div class="field-grid">
+      <div class="field-group field-full"><div class="field-label">Colaborador *</div>
+        <select class="form-select" id="pm-ref" style="width:100%">${optColabs(vRef)}</select></div>
+      <div class="field-group"><div class="field-label">Data *</div>
+        <input class="form-input" id="pm-data" type="date" value="${vData}" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Tipo *</div>
+        <select class="form-select" id="pm-tipo" style="width:100%">${TIPOS_MOV.map(t=>`<option${t===vTipo?' selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field-group field-full"><div class="field-label">Descrição do serviço *</div>
+        <input class="form-input" id="pm-desc" value="${esc(vDesc)}" placeholder="Ex: Autenticação MH · Cliente X" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Valor (€) *</div>
+        <input class="form-input" id="pm-valor" inputmode="decimal" value="${vValor===''?'':String(vValor).replace('.',',')}" placeholder="Ex: 35,00" style="width:100%"></div>
+      ${FLD.mov.processo?`<div class="field-group"><div class="field-label">Processo (opcional)</div>
+        <input class="form-input" id="pm-proc" value="${esc(vProc)}" placeholder="Nº ou referência" style="width:100%"></div>`:''}
+      ${FLD.mov.pago?`<div class="field-group field-full"><label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" id="pm-pago"${m&&mPago(m)?' checked':''}> Já pago ao colaborador</label></div>`:''}
+      ${FLD.mov.obs?`<div class="field-group field-full"><div class="field-label">Observações</div>
+        <textarea class="form-input" id="pm-obs" rows="2" style="width:100%;resize:vertical">${esc(vObs)}</textarea></div>`:''}
+    </div>
+    <div class="modal-actions">
+      ${m?`<button class="btn" onclick="pesApagar('mov')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="pesFechar()" style="flex:1">Cancelar</button>
+      <button class="btn btn-success" id="pm-guardar" onclick="pesGuardarMov()" style="flex:2">Guardar</button>
+    </div>`);
+}
+async function guardarMov(){
+  const ref=$('pm-ref').value, data=$('pm-data').value, tipo=$('pm-tipo').value;
+  const desc=$('pm-desc').value.trim(), valor=num($('pm-valor').value);
+  if(!ref){toast('Escolhe o colaborador','error');return;}
+  if(!data){toast('Indica a data','error');return;}
+  if(!desc){toast('Indica a descrição','error');return;}
+  if(!valor){toast('Indica o valor','error');return;}
+  const c=colPorId(ref);
+  const body={Title:desc};
+  body[FLD.mov.ref]=parseInt(ref)||ref;
+  if(FLD.mov.nome)body[FLD.mov.nome]=c?cNome(c):'';
+  body[FLD.mov.data]=data+'T12:00:00Z';
+  body[FLD.mov.tipo]=tipo;
+  body[FLD.mov.valor]=valor;
+  if(FLD.mov.processo&&$('pm-proc'))body[FLD.mov.processo]=$('pm-proc').value.trim();
+  if(FLD.mov.obs&&$('pm-obs'))body[FLD.mov.obs]=$('pm-obs').value.trim();
+  if(FLD.mov.pago&&$('pm-pago')){
+    const pg=$('pm-pago').checked;body[FLD.mov.pago]=pg;
+    if(FLD.mov.dataPag)body[FLD.mov.dataPag]=pg?iso(new Date())+'T12:00:00Z':null;
+  }
+  await gravar('mov',movId,body,'Lançamento guardado');
+}
+
+// ── Colaboradores
+function modalColab(id){
+  const novo=(id==='__novo__');
+  const c=(id&&!novo)?COLS.find(x=>String(x.id)===String(id)):null;
+  colId=c?c.id:null;
+  if(id&&!novo&&!c)id=null;
+  const linhas=COLS.map((x,i)=>`<div style="display:flex;align-items:center;gap:.5rem;padding:6px 0;border-top:1px solid var(--border);font-size:12px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${cCor(x,i)}"></span>
+      <span style="flex:1;${cAtivo(x)?'':'opacity:.45;text-decoration:line-through'}">${esc(cNome(x))}</span>
+      <span class="badge ${cTipo(x)==='Avença'?'badge-purple':'badge-blue'}" style="font-size:9px">${esc(cTipo(x))}</span>
+      <b style="width:78px;text-align:right">${cTipo(x)==='Avença'?eur(cValor(x)):'—'}</b>
+      <button class="btn btn-sm" onclick="pesModalColab('${x.id}')" style="padding:1px 7px;font-size:10px">Editar</button>
+    </div>`).join('')||'<div style="font-size:11.5px;color:var(--text-faint);padding:8px 0">Ainda sem colaboradores.</div>';
+  if(!id){
+    abrirModal(`<div class="modal-box-title">Colaboradores</div>${linhas}
+      <div class="modal-actions"><button class="btn" onclick="pesFechar()" style="flex:1">Fechar</button>
+      <button class="btn btn-primary" onclick="pesModalColab('__novo__')" style="flex:1">+ Novo colaborador</button></div>`);
+    return;
+  }
+  const cc=c;
+  abrirModal(`
+    <div class="modal-box-title">${novo?'Novo colaborador':'Editar colaborador'}</div>
+    <div class="field-grid">
+      <div class="field-group field-full"><div class="field-label">Nome *</div>
+        <input class="form-input" id="pc-nome" value="${cc?esc(cNome(cc)):''}" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Modalidade *</div>
+        <select class="form-select" id="pc-tipo" style="width:100%">${TIPOS_COL.map(t=>`<option${cc&&cTipo(cc)===t?' selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field-group"><div class="field-label">Valor mensal (€)</div>
+        <input class="form-input" id="pc-valor" inputmode="decimal" value="${cc&&cValor(cc)?String(cValor(cc)).replace('.',','):''}" placeholder="Só para avença" style="width:100%"></div>
+      ${FLD.col.dias?`<div class="field-group"><div class="field-label">Dias de férias/ano</div>
+        <input class="form-input" id="pc-dias" type="number" value="${cc?cDias(cc):22}" style="width:100%"></div>`:''}
+      ${FLD.col.nif?`<div class="field-group"><div class="field-label">NIF</div>
+        <input class="form-input" id="pc-nif" value="${cc?esc(cc[FLD.col.nif]||''):''}" style="width:100%"></div>`:''}
+      ${FLD.col.inicio?`<div class="field-group"><div class="field-label">Início</div>
+        <input class="form-input" id="pc-inicio" type="date" value="${cc?dia10(cc[FLD.col.inicio]):''}" style="width:100%"></div>`:''}
+      ${FLD.col.ativo?`<div class="field-group field-full"><label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" id="pc-ativo"${!cc||cAtivo(cc)?' checked':''}> Colaborador ativo</label></div>`:''}
+    </div>
+    <div class="modal-actions">
+      ${cc?`<button class="btn" onclick="pesApagar('col')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="pesModalColab()" style="flex:1">Voltar</button>
+      <button class="btn btn-success" onclick="pesGuardarColab()" style="flex:2">Guardar</button>
+    </div>`);
+}
+async function guardarColab(){
+  const nome=$('pc-nome').value.trim();
+  if(!nome){toast('Indica o nome','error');return;}
+  const body={Title:nome};
+  body[FLD.col.tipo]=$('pc-tipo').value;
+  body[FLD.col.valor]=num($('pc-valor').value);
+  if(FLD.col.dias&&$('pc-dias'))body[FLD.col.dias]=parseInt($('pc-dias').value)||22;
+  if(FLD.col.nif&&$('pc-nif'))body[FLD.col.nif]=$('pc-nif').value.trim();
+  if(FLD.col.inicio&&$('pc-inicio')&&$('pc-inicio').value)body[FLD.col.inicio]=$('pc-inicio').value+'T12:00:00Z';
+  if(FLD.col.ativo&&$('pc-ativo'))body[FLD.col.ativo]=$('pc-ativo').checked;
+  await gravar('col',colId,body,'Colaborador guardado');
+}
+
+// ── Ausências / férias
+function modalAus(id,refPre){
+  const a=id?AUSE.find(x=>String(x.id)===String(id)):null;
+  ausId=a?a.id:null;
+  const vRef=a?aRef(a):(refPre||COLS.filter(cAtivo)[0]?.id||'');
+  const vIni=a?dia10(a[FLD.aus.ini]):'';
+  const vFim=a?dia10(a[FLD.aus.fim]):'';
+  abrirModal(`
+    <div class="modal-box-title">${a?'Editar período':'Registar período de ausência'}</div>
+    <div class="field-grid">
+      <div class="field-group field-full"><div class="field-label">Colaborador *</div>
+        <select class="form-select" id="pa-ref" style="width:100%">${optColabs(vRef)}</select></div>
+      <div class="field-group"><div class="field-label">Início *</div>
+        <input class="form-input" id="pa-ini" type="date" value="${vIni}" onchange="pesCalcDias()" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Fim *</div>
+        <input class="form-input" id="pa-fim" type="date" value="${vFim}" onchange="pesCalcDias()" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Tipo *</div>
+        <select class="form-select" id="pa-tipo" style="width:100%">${TIPOS_AUS.map(t=>`<option${a&&aTipo(a)===t?' selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field-group"><div class="field-label">Dias úteis</div>
+        <input class="form-input" id="pa-dias" type="number" value="${a?aDias(a):0}" style="width:100%"></div>
+      <div class="field-group field-full"><div class="field-label">Nota (opcional)</div>
+        <input class="form-input" id="pa-nota" value="${a?esc(a.Title||''):''}" placeholder="Ex: férias de verão" style="width:100%"></div>
+    </div>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:-.4rem">Os dias úteis são calculados ao escolher as datas, mas podes corrigir à mão.</div>
+    <div class="modal-actions">
+      ${a?`<button class="btn" onclick="pesApagar('aus')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="pesFechar()" style="flex:1">Cancelar</button>
+      <button class="btn btn-success" onclick="pesGuardarAus()" style="flex:2">Guardar</button>
+    </div>`);
+}
+function calcDias(){
+  const i=$('pa-ini'),f=$('pa-fim'),d=$('pa-dias');
+  if(i&&f&&d&&i.value&&f.value)d.value=diasUteis(i.value,f.value);
+}
+async function guardarAus(){
+  const ref=$('pa-ref').value,ini=$('pa-ini').value,fim=$('pa-fim').value;
+  if(!ref){toast('Escolhe o colaborador','error');return;}
+  if(!ini||!fim){toast('Indica as duas datas','error');return;}
+  if(fim<ini){toast('A data de fim é anterior à de início','error');return;}
+  const c=colPorId(ref);
+  const body={Title:$('pa-nota').value.trim()||(($('pa-tipo').value)+' '+ini.substring(0,4))};
+  body[FLD.aus.ref]=parseInt(ref)||ref;
+  if(FLD.aus.nome)body[FLD.aus.nome]=c?cNome(c):'';
+  body[FLD.aus.ini]=ini+'T12:00:00Z';
+  body[FLD.aus.fim]=fim+'T12:00:00Z';
+  body[FLD.aus.dias]=parseInt($('pa-dias').value)||diasUteis(ini,fim);
+  body[FLD.aus.tipo]=$('pa-tipo').value;
+  if(FLD.aus.ano)body[FLD.aus.ano]=parseInt(ini.substring(0,4));
+  anoFer=parseInt(ini.substring(0,4));
+  await gravar('aus',ausId,body,'Período guardado');
+}
+
+// ── Fecho do mês
+function modalFecho(){
+  const ativos=COLS.filter(cAtivo),doMes=movsDoMes();
+  let texto='Pagamentos · '+MESES[mesSel]+' '+anoSel+'\n';
+  const blocos=ativos.map(c=>{
+    const meus=doMes.filter(m=>mRef(m)===String(c.id));
+    if(!meus.length)return '';
+    const t=meus.reduce((s,m)=>s+mValor(m),0);
+    const porPagar=meus.filter(m=>!mPago(m)).reduce((s,m)=>s+mValor(m),0);
+    texto+='\n'+cNome(c)+': '+eur(t)+(porPagar!==t?' (por pagar: '+eur(porPagar)+')':'')+'\n';
+    meus.sort((a,b)=>(mData(a)||'').localeCompare(mData(b)||'')).forEach(m=>{texto+='  '+dataPT(m[FLD.mov.data])+'  '+(m.Title||'')+'  '+eur(mValor(m))+'\n';});
+    return `<div style="border-top:1px solid var(--border);padding:.55rem 0">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:600"><span>${esc(cNome(c))}</span><span>${eur(t)}</span></div>
+      <div style="font-size:10.5px;color:var(--text-faint)">${meus.length} lançamento${meus.length===1?'':'s'}${porPagar?` · <b style="color:var(--amber)">${eur(porPagar)} por pagar</b>`:' · tudo pago'}</div>
+    </div>`;
+  }).join('');
+  const totalPorPagar=doMes.filter(m=>!mPago(m)).reduce((s,m)=>s+mValor(m),0);
+  const total=doMes.reduce((s,m)=>s+mValor(m),0);
+  abrirModal(`
+    <div class="modal-box-title">Fecho de ${MESES[mesSel].toLowerCase()} ${anoSel}</div>
+    ${blocos||'<div style="font-size:12px;color:var(--text-faint)">Sem lançamentos neste mês.</div>'}
+    <div style="border-top:2px solid var(--border);margin-top:.4rem;padding-top:.55rem;display:flex;justify-content:space-between;font-size:14px;font-weight:600">
+      <span>Total do mês</span><span>${eur(total)}</span></div>
+    ${totalPorPagar?`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--amber);margin-top:.2rem"><span>Por pagar</span><span>${eur(totalPorPagar)}</span></div>`:''}
+    <textarea id="pes-fecho-txt" style="position:absolute;left:-9999px">${esc(texto)}</textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="pesCopiarFecho()" style="flex:1">Copiar resumo</button>
+      <button class="btn" onclick="pesFechar()" style="flex:1">Fechar</button>
+      ${totalPorPagar?`<button class="btn btn-success" onclick="pesMarcarTudoPago()" style="flex:2">Marcar tudo como pago</button>`:''}
+    </div>`);
+}
+function copiarFecho(){
+  const t=$('pes-fecho-txt');if(!t)return;
+  navigator.clipboard.writeText(t.value).then(()=>toast('Resumo copiado','success')).catch(()=>{t.select();document.execCommand('copy');toast('Resumo copiado','success');});
+}
+async function marcarTudoPago(){
+  const alvo=movsDoMes().filter(m=>!mPago(m));
+  if(!alvo.length||!FLD.mov.pago)return;
+  if(!confirm(`Marcar ${alvo.length} lançamentos como pagos?`))return;
+  let ok=0;
+  for(const m of alvo){
+    try{
+      const b={};b[FLD.mov.pago]=true;
+      if(FLD.mov.dataPag)b[FLD.mov.dataPag]=iso(new Date())+'T12:00:00Z';
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items/${m.id}/fields`,b);
+      Object.assign(m,b);ok++;
+    }catch(e){}
+  }
+  toast(`${ok} lançamentos marcados como pagos`,'success');
+  fecharModal();render();
+}
+
+// ─── Gravação / eliminação ───────────────────────────────────────────────────
+const CACHE={col:()=>COLS,mov:()=>MOVS,aus:()=>AUSE};
+async function gravar(k,id,body,msg){
+  try{
+    await renovarToken();
+    if(id){
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID[k]}/items/${id}/fields`,body);
+      const it=CACHE[k]().find(x=>String(x.id)===String(id));if(it)Object.assign(it,body);
+    }else{
+      const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID[k]}/items`,{fields:body});
+      if(r&&r.id)CACHE[k]().push({id:r.id,...body});
+    }
+    toast(msg,'success');fecharModal();render();
+  }catch(e){toast('Erro ao guardar: '+e.message,'error');}
+}
+async function apagar(k){
+  const id=k==='mov'?movId:k==='col'?colId:ausId;
+  if(!id)return;
+  if(k==='col'&&MOVS.some(m=>mRef(m)===String(id))){
+    if(!confirm('Este colaborador já tem lançamentos. Se o eliminares, os lançamentos ficam sem ligação. Preferes desativá-lo (desmarcar "ativo"). Eliminar mesmo assim?'))return;
+  }else if(!confirm('Eliminar este registo?'))return;
+  try{
+    await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID[k]}/items/${id}`);
+    if(k==='mov')MOVS=MOVS.filter(x=>String(x.id)!==String(id));
+    if(k==='col')COLS=COLS.filter(x=>String(x.id)!==String(id));
+    if(k==='aus')AUSE=AUSE.filter(x=>String(x.id)!==String(id));
+    toast('Registo eliminado','');fecharModal();render();
+  }catch(e){toast('Erro ao eliminar: '+e.message,'error');}
+}
+async function togglePago(id){
+  if(!FLD.mov.pago)return;
+  const m=MOVS.find(x=>String(x.id)===String(id));if(!m)return;
+  const novo=!mPago(m),b={};
+  b[FLD.mov.pago]=novo;
+  if(FLD.mov.dataPag)b[FLD.mov.dataPag]=novo?iso(new Date())+'T12:00:00Z':null;
+  try{
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items/${id}/fields`,b);
+    Object.assign(m,b);render();
+  }catch(e){toast('Erro: '+e.message,'error');}
+}
+function lancarAvenca(cid){
+  const c=colPorId(cid);if(!c)return;
+  modalMov(null,{ref:cid,tipo:'Avença',valor:cValor(c),data:iso(new Date(anoSel,mesSel,1)),
+    desc:'Avença de '+MESES[mesSel].toLowerCase()+' de '+anoSel});
+}
+
+// ─── Período ─────────────────────────────────────────────────────────────────
+function popularPeriodo(){
+  const sm=$('pes-mes'),sa=$('pes-ano');if(!sm||!sa)return;
+  if(!sm.options.length)sm.innerHTML=MESES.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+  if(!sa.options.length){const y=hoje.getFullYear();let o='';for(let a=y+1;a>=y-4;a--)o+=`<option value="${a}">${a}</option>`;sa.innerHTML=o;}
+  sm.value=String(mesSel);sa.value=String(anoSel);
+}
+function setPeriodo(){mesSel=parseInt($('pes-mes').value);anoSel=parseInt($('pes-ano').value);render();}
+function mudarMes(d){
+  let m=mesSel+d,a=anoSel;
+  if(m<0){m=11;a--;}if(m>11){m=0;a++;}
+  mesSel=m;anoSel=a;popularPeriodo();render();
+}
+
+// ─── Arranque ────────────────────────────────────────────────────────────────
+async function init(forcar){
+  const corpo=$('pes-corpo'),load=$('pes-loading');
+  if(!corpo||carregando)return;
+  popularPeriodo();
+  if(pronto&&!forcar){render();return;}
+  carregando=true;if(load)load.style.display='flex';
+  try{
+    await renovarToken();
+    if(!siteIdDados){for(let i=0;i<25&&!siteIdDados;i++)await new Promise(r=>setTimeout(r,200));}
+    if(!siteIdDados)throw new Error('Sessão ainda a iniciar. Volta a abrir a página daqui a uns segundos.');
+    if(!LID.col||forcar)await resolverListas();
+    await resolverCampos();
+    await carregarDados();
+    pronto=true;avisoSetup='';render();
+  }catch(e){
+    pronto=false;
+    const msg=String(e.message||e);
+    if(msg.startsWith('LISTAS:')){
+      avisoSetup=`<div class="notice notice-warning" style="font-size:11.5px;display:block">
+        <b>Falta criar no SharePoint</b> (site lbcsolicitadora2): <b>${esc(msg.slice(7))}</b>.<br>
+        Depois de criar as listas, carrega em ⟳ para recarregar.</div>`;
+    }else if(msg.startsWith('COLUNAS:')){
+      avisoSetup=`<div class="notice notice-warning" style="font-size:11.5px;display:block">
+        <b>Faltam colunas obrigatórias:</b> ${esc(msg.slice(8))}.<br>
+        Cria-as com estes nomes internos (texto, número, moeda ou data conforme o caso) e carrega em ⟳.</div>`;
+    }else{
+      avisoSetup=`<div class="notice notice-error" style="font-size:11.5px">${esc(msg)}</div>`;
+    }
+    corpo.innerHTML='';$('pes-aviso').innerHTML=avisoSetup;
+  }finally{carregando=false;if(load)load.style.display='none';}
+}
+
+// ─── API pública ─────────────────────────────────────────────────────────────
+window.pesInit=init;
+window.pesRecarregar=()=>init(true);
+window.pesSetPeriodo=setPeriodo;
+window.pesMes=mudarMes;
+window.pesSetAnoFerias=v=>{anoFer=parseInt(v);render();};
+window.pesModalMov=(id,pre)=>modalMov(id,pre);
+window.pesModalColab=id=>modalColab(id);
+window.pesModalAus=(id,ref)=>modalAus(id,ref);
+window.pesModalFecho=modalFecho;
+window.pesGuardarMov=guardarMov;
+window.pesGuardarColab=guardarColab;
+window.pesGuardarAus=guardarAus;
+window.pesApagar=apagar;
+window.pesTogglePago=togglePago;
+window.pesLancarAvenca=lancarAvenca;
+window.pesCalcDias=calcDias;
+window.pesFechar=fecharModal;
+window.pesCopiarFecho=copiarFecho;
+window.pesMarcarTudoPago=marcarTudoPago;
+
+// ─── Instalação (ecrã + item de menu + nav) ──────────────────────────────────
+function instalar(){
+  if($('screen-pessoal'))return;
+  const base=document.querySelector('.screen');if(!base)return;
+  const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+  const scr=document.createElement('div');scr.className='screen';scr.id='screen-pessoal';scr.innerHTML=SCREEN;
+  base.parentNode.appendChild(scr);
+
+  const ref=$('nav-fin-contabilidade');
+  const item=document.createElement('div');
+  item.className='nav-item';item.id='nav-fin-pessoal';item.style.display='none';
+  item.setAttribute('onclick',"nav('pessoal',this)");
+  item.innerHTML='<span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.6"/><path d="M1.2 14c0-2.6 2.1-4.2 4.8-4.2S10.8 11.4 10.8 14"/><circle cx="12.2" cy="5.6" r="2"/><path d="M11 9.9c2.1 0 3.8 1.4 3.8 3.6"/></svg></span>Pessoal';
+  if(ref&&ref.parentNode)ref.insertAdjacentElement('afterend',item);
+  else document.querySelector('.nav-item')?.parentNode?.appendChild(item);
+
+  if(typeof pageTitles!=='undefined')pageTitles.pessoal='Gastos com pessoal';
+
+  if(typeof window.nav==='function'){
+    const _n=window.nav;
+    window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='pessoal')init();return r;};
+  }
+  if(typeof window.mostrarMenuFinanceiro==='function'){
+    const _m=window.mostrarMenuFinanceiro;
+    window.mostrarMenuFinanceiro=function(){const r=_m.apply(this,arguments);const it=$('nav-fin-pessoal');if(it)it.style.display='flex';return r;};
+  }
+  if(typeof window.bloquearFinanceiro==='function'){
+    const _b=window.bloquearFinanceiro;
+    window.bloquearFinanceiro=function(){
+      const act=document.querySelector('.screen.active');
+      const it=$('nav-fin-pessoal');if(it)it.style.display='none';
+      if(act&&act.id==='screen-pessoal')document.querySelector('.nav-item[onclick*="calendario"]')?.click();
+      return _b.apply(this,arguments);
+    };
+  }
+  try{if(typeof financeiroDesbloqueado==='function'&&financeiroDesbloqueado()){const it=$('nav-fin-pessoal');if(it)it.style.display='flex';}}catch(e){}
+  const ov=$('pes-ov');if(ov)ov.addEventListener('click',e=>{if(e.target===ov)fecharModal();});
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
 </body>
 </html>
