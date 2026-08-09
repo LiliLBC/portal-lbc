@@ -30,7 +30,8 @@ const CAND={
        valor:['Valor','ValorMov'],processo:['ProcessoRef','Processo_Ref','Processo'],
        pago:['Pago'],dataPag:['DataPagamento','Data_Pagamento','DataPag'],obs:['Obs','Observacoes','Observacao']},
   aus:{ref:['ColaboradorRef','Colaborador_Ref','ColabRef'],nome:['ColaboradorNome','Colaborador_Nome','Colaborador'],
-       ini:['DataInicio','Data_Inicio','DataIni'],fim:['DataFim','Data_Fim'],
+       ini:['DataInicio','Data_Inicio','DataIni','Inicio','DataDeInicio','InicioAusencia'],
+       fim:['DataFim','Data_Fim','Fim','DataDeFim','FimAusencia'],
        dias:['DiasUteis','Dias_Uteis','Dias'],tipo:['TipoAusencia','Tipo_Ausencia'],
        ano:['Ano'],obs:['Obs','Observacoes','Observacao']}
 };
@@ -49,6 +50,7 @@ let COLS=[],MOVS=[],AUSE=[];
 let hoje=new Date();
 let mesSel=hoje.getMonth(), anoSel=hoje.getFullYear(), anoFer=hoje.getFullYear();
 let pronto=false, avisoSetup='', carregando=false, movId=null, colId=null, ausId=null;
+let ENCONTRADAS={col:[],mov:[],aus:[]}, OPCOES={col:{},mov:{},aus:{}}, ausIndisponivel=null;
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -61,6 +63,11 @@ function num(str){
   const n=parseFloat(s);return isNaN(n)?0:n;
 }
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+/* O SharePoint codifica no nome interno tudo o que não seja letra ou algarismo:
+   "Data Início" fica "Data_x0020_In_x00ed_cio". Descodifica-se e normaliza-se
+   para o reconhecimento das colunas não depender de acentos nem de espaços. */
+const decodeSP=n=>String(n||'').replace(/_x([0-9a-fA-F]{4})_/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+const norm=n=>decodeSP(n).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const dia10=v=>v?String(v).substring(0,10):'';
 const dataPT=v=>{const s=dia10(v);if(!s)return '—';const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
 const $=id=>document.getElementById(id);
@@ -119,24 +126,42 @@ async function resolverListas(){
   if(faltam.length)throw new Error('LISTAS:'+faltam.join(', '));
 }
 async function resolverCampos(){
-  const inFalta=[];
+  const falha={};
   for(const k of ['col','mov','aus']){
-    const cols=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID[k]}/columns?$select=name,displayName&$top=200`);
-    const nomes=new Set(cols.map(c=>c.name));
-    FLD[k]={};
+    const cols=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID[k]}/columns?$select=name,displayName,choice&$top=200`);
+    /* Ignoram-se as colunas de sistema, que só poluem a lista mostrada nos avisos. */
+    const nomes=cols.map(c=>c.name).filter(n=>!/^(ContentType|Attachments|Edit|LinkTitle|DocIcon|ItemChildCount|FolderChildCount|_|AppAuthor|AppEditor|Author|Editor|Created|Modified|ID|_ComplianceFlags|ComplianceAssetId|Order)/.test(n));
+    ENCONTRADAS[k]=nomes;
+    const porNorm={};nomes.forEach(n=>{const x=norm(n);if(!porNorm[x])porNorm[x]=n;});
+    FLD[k]={};OPCOES[k]={};
     for(const [logico,cands] of Object.entries(CAND[k])){
-      FLD[k][logico]=cands.find(c=>nomes.has(c))||null;
-      if(!FLD[k][logico]&&OBRIG[k].includes(logico))inFalta.push(L[k]+' → '+cands[0]);
+      const achado=cands.find(c=>nomes.includes(c))||cands.map(c=>porNorm[norm(c)]).find(Boolean)||null;
+      FLD[k][logico]=achado;
+      /* Se a coluna for do tipo Escolha, usam-se as opções que lá estão mesmo
+         definidas — assim a gravação nunca falha por um acento de diferença. */
+      if(achado){
+        const def=cols.find(c=>c.name===achado);
+        const ch=def&&def.choice&&def.choice.choices;
+        if(ch&&ch.length)OPCOES[k][logico]=ch;
+      }
     }
+    const faltam=OBRIG[k].filter(f=>!FLD[k][f]).map(f=>CAND[k][f][0]);
+    if(faltam.length)falha[k]=faltam;
   }
-  if(inFalta.length)throw new Error('COLUNAS:'+inFalta.join(' · '));
+  return falha;
+}
+/* Opções de um menu: as da coluna, se for do tipo Escolha; senão, as do portal. */
+function opts(k,logico,base,atual){
+  const lista=(OPCOES[k]&&OPCOES[k][logico]&&OPCOES[k][logico].length)?OPCOES[k][logico]:base;
+  const fora=atual&&!lista.includes(atual)?[atual]:[];
+  return [...fora,...lista].map(t=>`<option${t===atual?' selected':''}>${esc(t)}</option>`).join('');
 }
 function sel(k){return Object.values(FLD[k]).filter(Boolean).concat(['Title']).join(',');}
 async function carregarDados(){
   const [c,m,a]=await Promise.all([
     graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.col}/items?$expand=fields($select=${sel('col')})&$top=200`),
     graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items?$expand=fields($select=${sel('mov')})&$top=999`),
-    graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.aus}/items?$expand=fields($select=${sel('aus')})&$top=500`)
+    ausIndisponivel?Promise.resolve([]):graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.aus}/items?$expand=fields($select=${sel('aus')})&$top=500`)
   ]);
   const map=x=>({id:x.id,...x.fields});
   COLS=c.map(map);MOVS=m.map(map);AUSE=a.map(map);
@@ -266,6 +291,17 @@ function tabelaHTML(){
 
 function feriasHTML(){
   const ativos=COLS.filter(cAtivo);
+  if(ausIndisponivel){
+    return `<div class="metric-card" style="padding:1rem">
+      <div class="metric-label" style="margin:0 0 .5rem;font-size:11px">Ausências e férias</div>
+      <div class="notice notice-warning" style="font-size:11.5px;display:block;margin:0">
+        Faltam colunas na lista <b>${esc(L.aus)}</b>: <b>${esc(ausIndisponivel.join(', '))}</b>.<br>
+        Cria-as como <b>Data</b> e carrega em ⟳. O resto do ecrã funciona à mesma.
+        ${ENCONTRADAS.aus.length?`<div style="margin-top:.5rem;font-size:10.5px;color:var(--text-muted)">
+          Colunas que encontrei nessa lista: <span style="font-family:'DM Mono',monospace">${esc(ENCONTRADAS.aus.join(' · '))}</span>.
+          Se alguma destas for afinal a data de início ou de fim, basta renomeá-la.</div>`:''}
+      </div></div>`;
+  }
   const anos=[...new Set([anoFer,hoje.getFullYear(),...AUSE.map(aAno)])].filter(Boolean).sort((a,b)=>b-a);
   const blocos=ativos.map((c,i)=>{
     const meus=AUSE.filter(a=>aRef(a)===String(c.id)&&aAno(a)===anoFer);
@@ -318,7 +354,7 @@ function modalMov(id,pre){
   const p=pre||{};
   const vRef=m?mRef(m):(p.ref||COLS.filter(cAtivo)[0]?.id||'');
   const vData=m?mData(m):(p.data||iso(new Date()));
-  const vTipo=m?mTipo(m):(p.tipo||'Serviço');
+  const vTipo=m?mTipo(m):(p.tipo||null);
   const vDesc=m?(m.Title||''):(p.desc||'');
   const vValor=m?mValor(m):(p.valor||'');
   const vProc=m&&FLD.mov.processo?(m[FLD.mov.processo]||''):'';
@@ -331,7 +367,7 @@ function modalMov(id,pre){
       <div class="field-group"><div class="field-label">Data *</div>
         <input class="form-input" id="pm-data" type="date" value="${vData}" style="width:100%"></div>
       <div class="field-group"><div class="field-label">Tipo *</div>
-        <select class="form-select" id="pm-tipo" style="width:100%">${TIPOS_MOV.map(t=>`<option${t===vTipo?' selected':''}>${t}</option>`).join('')}</select></div>
+        <select class="form-select" id="pm-tipo" style="width:100%">${opts('mov','tipo',TIPOS_MOV,vTipo)}</select></div>
       <div class="field-group field-full"><div class="field-label">Descrição do serviço *</div>
         <input class="form-input" id="pm-desc" value="${esc(vDesc)}" placeholder="Ex: Autenticação MH · Cliente X" style="width:100%"></div>
       <div class="field-group"><div class="field-label">Valor (€) *</div>
@@ -398,7 +434,7 @@ function modalColab(id){
       <div class="field-group field-full"><div class="field-label">Nome *</div>
         <input class="form-input" id="pc-nome" value="${cc?esc(cNome(cc)):''}" style="width:100%"></div>
       <div class="field-group"><div class="field-label">Modalidade *</div>
-        <select class="form-select" id="pc-tipo" style="width:100%">${TIPOS_COL.map(t=>`<option${cc&&cTipo(cc)===t?' selected':''}>${t}</option>`).join('')}</select></div>
+        <select class="form-select" id="pc-tipo" style="width:100%">${opts('col','tipo',TIPOS_COL,cc?cTipo(cc):null)}</select></div>
       <div class="field-group"><div class="field-label">Valor mensal (€)</div>
         <input class="form-input" id="pc-valor" inputmode="decimal" value="${cc&&cValor(cc)?String(cValor(cc)).replace('.',','):''}" placeholder="Só para avença" style="width:100%"></div>
       ${FLD.col.dias?`<div class="field-group"><div class="field-label">Dias de férias/ano</div>
@@ -446,7 +482,7 @@ function modalAus(id,refPre){
       <div class="field-group"><div class="field-label">Fim *</div>
         <input class="form-input" id="pa-fim" type="date" value="${vFim}" onchange="pesCalcDias()" style="width:100%"></div>
       <div class="field-group"><div class="field-label">Tipo *</div>
-        <select class="form-select" id="pa-tipo" style="width:100%">${TIPOS_AUS.map(t=>`<option${a&&aTipo(a)===t?' selected':''}>${t}</option>`).join('')}</select></div>
+        <select class="form-select" id="pa-tipo" style="width:100%">${opts('aus','tipo',TIPOS_AUS,a?aTipo(a):null)}</select></div>
       <div class="field-group"><div class="field-label">Dias úteis</div>
         <input class="form-input" id="pa-dias" type="number" value="${a?aDias(a):0}" style="width:100%"></div>
       <div class="field-group field-full"><div class="field-label">Nota (opcional)</div>
@@ -605,7 +641,16 @@ async function init(forcar){
     if(!siteIdDados){for(let i=0;i<25&&!siteIdDados;i++)await new Promise(r=>setTimeout(r,200));}
     if(!siteIdDados)throw new Error('Sessão ainda a iniciar. Volta a abrir a página daqui a uns segundos.');
     if(!LID.col||forcar)await resolverListas();
-    await resolverCampos();
+    const falha=await resolverCampos();
+    /* Só as listas de colaboradores e de movimentos são impeditivas. Se faltarem
+       colunas às ausências, o resto do ecrã funciona e as férias mostram o aviso. */
+    if(falha.col||falha.mov){
+      const p=[];
+      if(falha.col)p.push(L.col+' → '+falha.col.join(', '));
+      if(falha.mov)p.push(L.mov+' → '+falha.mov.join(', '));
+      throw new Error('COLUNAS:'+p.join(' · '));
+    }
+    ausIndisponivel=falha.aus||null;
     await carregarDados();
     pronto=true;avisoSetup='';render();
   }catch(e){
@@ -616,9 +661,12 @@ async function init(forcar){
         <b>Falta criar no SharePoint</b> (site lbcsolicitadora2): <b>${esc(msg.slice(7))}</b>.<br>
         Depois de criar as listas, carrega em ⟳ para recarregar.</div>`;
     }else if(msg.startsWith('COLUNAS:')){
+      const achadas=['col','mov'].filter(k=>ENCONTRADAS[k].length)
+        .map(k=>`<div style="margin-top:.3rem"><b>${esc(L[k])}:</b> <span style="font-family:'DM Mono',monospace">${esc(ENCONTRADAS[k].join(' · '))}</span></div>`).join('');
       avisoSetup=`<div class="notice notice-warning" style="font-size:11.5px;display:block">
         <b>Faltam colunas obrigatórias:</b> ${esc(msg.slice(8))}.<br>
-        Cria-as com estes nomes internos (texto, número, moeda ou data conforme o caso) e carrega em ⟳.</div>`;
+        Cria-as com estes nomes internos (texto, número, moeda ou data conforme o caso) e carrega em ⟳.
+        ${achadas?`<div style="margin-top:.5rem;font-size:10.5px;color:var(--text-muted)">Colunas que encontrei:${achadas}</div>`:''}</div>`;
     }else{
       avisoSetup=`<div class="notice notice-error" style="font-size:11.5px">${esc(msg)}</div>`;
     }
