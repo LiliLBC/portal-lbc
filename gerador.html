@@ -1235,8 +1235,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
     <div class="cond-block" style="margin-top:.7rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
-        <div><div class="cond-block-title" style="margin-bottom:2px">10.3 · Quartos Outorgantes — fiadores</div>
-          <div style="font-size:10.5px;color:var(--text-faint)">Quando a CAIXA exige garantia pessoal</div></div>
+        <div><div class="cond-block-title" style="margin-bottom:2px">10.3 · Quartos Outorgantes — fiadores e garantes hipotecários</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">Garantia pessoal, garantia real prestada por terceiro, ou ambas — a qualidade escolhe-se em cada pessoa</div></div>
         <label class="toggle-switch"><input type="checkbox" id="t-quartos" onchange="onQuartos()"><span class="toggle-slider"></span></label>
       </div>
       <div id="g-quartos" style="display:none;margin-top:.75rem">
@@ -1496,6 +1496,13 @@ function addOutorgante(pref,dados){
           <option value="cgd"${sel(dados.tipo,'cgd')}>CGD</option>
           <option value="municipio"${sel(dados.tipo,'municipio')}>Município</option>
         </select></div>
+      ${pref==='quarto'?`<div class="form-group form-full"><label class="form-label">Qualidade em que intervém <span>*</span></label>
+        <select class="form-select" id="${id}-qualidade" onchange="atualizar()">
+          <option value="fiador"${sel(dados.qualidade,'fiador')}>Fiador</option>
+          <option value="garante"${sel(dados.qualidade,'garante')}>Garante hipotecário (dono do imóvel)</option>
+          <option value="ambos"${sel(dados.qualidade,'ambos')}>Garante hipotecário e fiador</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">O fiador responde com todo o seu património; o garante hipotecário responde só com o imóvel hipotecado (art.º 717.º do Código Civil). A qualidade escolhida manda nas cláusulas que saem.</div></div>`:''}
     </div>
 
     <!-- 3.1 · REPRESENTAÇÃO — antes da identificação -->
@@ -2024,6 +2031,9 @@ function lerOutorgantes(pref){
       coincide:g(`${id}-coincide`),
       'asc-nasc-num':g(`${id}-asc-nasc-num`),'asc-nasc-crc':g(`${id}-asc-nasc-crc`),
       'asc-cas-num':g(`${id}-asc-cas-num`),'asc-cas-crc':g(`${id}-asc-cas-crc`),
+      /* Só os quartos outorgantes têm este campo. Sem ele, o valor cai em
+         'fiador', que era o pressuposto do bloco 10.3 antes de haver escolha. */
+      qualidade:g(`${id}-qualidade`)||'fiador',
       'repr-tipo':g(`${id}-repr-tipo`)||'proprio',qualrec:g(`${id}-qualrec`),quota:g(`${id}-quota`),
       'proc-nome':g(`${id}-proc-nome`),'proc-natural':g(`${id}-proc-natural`),'proc-ec':g(`${id}-proc-ec`),
       'proc-cc':g(`${id}-proc-cc`),'proc-ccval':g(`${id}-proc-ccval`),'proc-nif':g(`${id}-proc-nif`),'proc-morada':g(`${id}-proc-morada`),
@@ -2240,6 +2250,60 @@ function declaracaoFianca(grupo,fiad,ord,mutuanteCaixa){
   const credor=mutuanteCaixa?'a Caixa':'a entidade mutuante';
   return `${verbo} ${sujeito} que, conhecendo integralmente as cláusulas do contrato ora titulado e do documento complementar, ${constituem} ${fiador} e ${pagador}, ${entreSi}, de todas as obrigações dele emergentes, nomeadamente capital, juros remuneratórios e moratórios, comissões, despesas e prémios de seguro, nos termos do artigo 634.º do Código Civil.\n`
     +`Que ${renunciam} ao benefício da excussão prévia, nos termos dos artigos 638.º, n.º 1, e 640.º, alínea a), do Código Civil, e que a fiança se mantém enquanto subsistir qualquer dívida do contrato afiançado, dando desde já acordo a alterações de taxa de juro, prorrogações de prazo, carências e moratórias que venham a ser convencionadas com ${credor}.`;
+}
+/* ── CLÁUSULA DA FIANÇA ──
+   Um só sítio para os dois ramos, MH e CVMH: antes a mesma redação vivia
+   duplicada e qualquer correção tinha de ser feita a dobrar.
+   Dois parágrafos, não três. Saiu o que se dizia a dobrar: o 2.º parágrafo
+   antigo repetia, por fórmula genérica, o âmbito que o 1.º já enumerava, e a
+   renúncia à excussão aparecia duas vezes — uma pela remissão ao artigo 638.º,
+   outra pela paráfrase «sem prévia interpelação ou execução do património».
+   Fica tudo o que tinha valor próprio: âmbito enumerado, solidariedade,
+   qualidade de principal pagador, renúncia à excussão com a norma, renúncia à
+   divisão («conjunta ou separadamente», art. 649.º, n.º 1) e dispensa de
+   interpelação prévia. Redação simplificada aprovada pela Liliana.
+   refDe  → «da PRIMEIRA» / «dos SEGUNDOS» — quem é o devedor afiançado
+   refPor → «pela PRIMEIRA» / «pelos SEGUNDOS» — o mesmo, com outra preposição */
+function textoFianca(fiad,refDe,refPor){
+  fiad=fiad||[];
+  if(!fiad.length)return'';
+  const fiP=fiad.length>1;
+  const O_FIADOR=fiP?'OS FIADORES':'O FIADOR';
+  const constitui=fiP?'constituem-se':'constitui-se';
+  const pp=fiP?'principais pagadores':'principal pagador';
+  const do_Fiador=fiP?'dos Fiadores':'do Fiador';
+  return[
+    `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${refPor} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} expressa, solidária e irrevogavelmente ${pp} ${refDe};`,
+    `Com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil, poderá o Banco, em caso de incumprimento, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${refDe}.`
+  ].join('\n');
+}
+/* ── CLÁUSULA DO GARANTE HIPOTECÁRIO ──
+   Simétrica da FIANÇA, mas de conteúdo oposto: o garante dá o imóvel, não o
+   património. Por isso não leva «principal pagador» nem renúncia à excussão —
+   essas fórmulas convertem um garante em fiador. Quem for as duas coisas
+   recebe as duas cláusulas, cada uma com o seu âmbito.
+   O 1.º parágrafo é o texto que já saía no ramo MH; os restantes são meus.
+   ⚠ TEXTO NÃO VALIDADO — parágrafos 2 e 3 carecem de confirmação. */
+function textoGaranteHipotecario(gar,ordinalSing,ordinalPlur){
+  gar=gar||[];
+  if(!gar.length)return'';
+  const pl=gar.length>1;
+  const gen=generosOutorgantes(gar);
+  const fem=gen.length>0&&gen.every(x=>x==='F');
+  const O=pl?'Os':(fem?'A':'O');
+  const desig=pl?(ordinalPlur||'Garantes Hipotecários'):(ordinalSing||(fem?'Garante Hipotecária':'Garante Hipotecário'));
+  const declara=pl?'declaram':'declara';
+  const aceita=pl?'os aceitam':(fem?'os aceita':'os aceita');
+  const resp=pl?'respondem':'responde';
+  const assumem=pl?'assumem':'assume';
+  const ficam=pl?'ficando os seus restantes bens':'ficando os seus restantes bens';
+  return[
+    `${O} ${desig} ${declara} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${aceita}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`,
+    /* ⚠ */
+    `${O} ${desig} ${resp} exclusivamente com o imóvel ora hipotecado, nos termos do artigo 717.º do Código Civil, não ${assumem} qualquer responsabilidade pessoal pelo pagamento das obrigações garantidas, ${ficam} alheios à garantia prestada.`,
+    /* ⚠ */
+    `A garantia mantém-se enquanto subsistir qualquer obrigação emergente do contrato garantido, não constituindo causa da sua extinção as alterações de taxa de juro, prorrogações de prazo, carências ou moratórias que venham a ser convencionadas entre a CAIXA e a parte mutuária dentro do montante máximo assegurado.`
+  ].join('\n');
 }
 /* «adiante identificado / identificada / identificados / identificadas como …».
    Duas formas de designar a parte, à escolha:
@@ -3060,20 +3124,15 @@ function comporMH(variante){
   if(clLiquidaOIC)contrato.push({id:P+'c-liquida-oic',T:'',X:clLiquidaOIC});
   if(clLiquidaForma)contrato.push({id:P+'c-liquida-forma',T:'',X:clLiquidaForma});
 
-  /* ── FIANÇA · redação do mh.html, com a concordância pelo número e género ── */
+  /* ── FIANÇA · redação do mh.html, com a concordância pelo número e género ──
+     A cláusula prepara-se aqui, junto ao mútuo de que depende, mas só entra
+     no contrato depois da hipoteca — a ordem fixada pela Liliana é garantia
+     real primeiro, garantias pessoais a seguir, e o fecho por último. */
+  let clFiancaMH=null;
   if(fiadores.length){
-    const fiP=fiadores.length>1;
     const daPRIM=muP?'dos PRIMEIROS':(femM?'da PRIMEIRA':'do PRIMEIRO');
     const pelaPRIM=muP?'pelos PRIMEIROS':(femM?'pela PRIMEIRA':'pelo PRIMEIRO');
-    const O_FIADOR=fiP?'OS FIADORES':'O FIADOR';
-    const constitui=fiP?'constituem-se':'constitui-se';
-    const pp=fiP?'principais pagadores':'principal pagador';
-    const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
-    contrato.push({id:P+'c-fianca',T:'FIANÇA',X:[
-      `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaPRIM} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${daPRIM};`,
-      `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${daPRIM} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
-      `A presente fiança é prestada com a qualidade de ${pp}, podendo o Banco, em caso de incumprimento por parte ${daPRIM}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${daPRIM}.`
-    ].join('\n')});
+    clFiancaMH={id:P+'c-fianca',T:'FIANÇA',X:textoFianca(fiadores,daPRIM,pelaPRIM)};
   }
 
   /* ── HIPOTECA · redação do TEMPL_MH_TOIC_CGD.docx ──
@@ -3102,8 +3161,12 @@ function comporMH(variante){
     +`A CAIXA poderá, sempre que entenda necessário, proceder à inspeção e avaliação do Imóvel para efeitos do disposto no artigo 701.º do Código Civil, ou de qualquer outra norma legal aplicável.`});
   contrato.push({id:P+'c-hip-execucao',T:'',X:
     `A presente hipoteca é suscetível de execução logo que o crédito por ela garantido se torne vencido e exigível nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
-  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'',X:
-    `${garantes.length>1?'Os Terceiros Garantes declaram':'O Terceiro Garante declara'} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${garantes.length>1?'os aceitam':'os aceita'}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`});
+  /* ── GARANTIAS PRESTADAS POR TERCEIRO ──
+     Depois de fechada a hipoteca e antes do fecho do contrato. A real primeiro,
+     a pessoal a seguir. Cada uma com o seu título, como as restantes. */
+  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'GARANTIA PRESTADA POR TERCEIRO',
+    X:textoGaranteHipotecario(garantes,'Terceiro Garante','Terceiros Garantes')});
+  if(clFiancaMH)contrato.push(clFiancaMH);
 
   /* ── Fecho · período de reflexão ──
      A cláusula é única, confirmado pela Liliana: o {Clausula_Renuncia} do
@@ -4553,24 +4616,33 @@ function compor(){
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
   if(compCGD)contrato.push({id:'c-cl-destino',T:clausula('Destino do Imóvel adquirido'),X:txtDestino});
-  if(ehCVMH){
-    if(fiadores.length){
-      const cP=comps.length>1,fiP=fiadores.length>1;
-      const doSEGUNDO=cP?'dos SEGUNDOS':'do SEGUNDO',pelaSEGUNDO=cP?'pelos SEGUNDOS':'pelo SEGUNDO';
-      const O_FIADOR=fiP?'OS FIADORES':'O FIADOR',constitui=fiP?'constituem-se':'constitui-se';
-      const pp=fiP?'principais pagadores':'principal pagador';
-      const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
-      contrato.push({id:'c-fianca',T:clausula('Fiança'),X:[
-        `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaSEGUNDO} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${doSEGUNDO};`,
-        `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${doSEGUNDO} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
-        `A presente fiança é prestada com a qualidade de ${pp}, podendo o Banco, em caso de incumprimento por parte ${doSEGUNDO}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${doSEGUNDO}.`
-      ].join('\n')});
-    }
+  /* O texto da fiança prepara-se aqui; a cláusula só entra depois da hipoteca,
+     pelo que também a numeração se atribui nessa altura. */
+  let xFiancaCV=null;
+  if(ehCVMH&&fiadores.length){
+    const cP=comps.length>1;
+    const doSEGUNDO=cP?'dos SEGUNDOS':'do SEGUNDO',pelaSEGUNDO=cP?'pelos SEGUNDOS':'pelo SEGUNDO';
+    xFiancaCV=textoFianca(fiadores,doSEGUNDO,pelaSEGUNDO);
   }
-  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(
+  /* Havendo garantes hipotecários, quem constitui a hipoteca são eles e não os
+     mutuários: o imóvel é deles. Sem garantes, nada muda. */
+  const hipOv=(ehCVMH&&garantes.length)?(()=>{
+    const gp=garantes.length>1,gen=generosOutorgantes(garantes);
+    const fem=gen.length>0&&gen.every(x=>x==='F');
+    return{art:gp?'os':(fem?'a':'o'),
+           mut:gp?'QUARTOS OUTORGANTES':(fem?'QUARTA OUTORGANTE':'QUARTO OUTORGANTE'),
+           constitui:gp?'constituem':'constitui'};
+  })():null;
+  textosMH(generosOutorgantes(comps).length,hipOv).forEach(b=>contrato.push(
     b.T?{...b,T:clausula(TITULOS_MH[b.T]||b.T)}:b));
   if(ehCVMH){
     contrato.push({id:'c-mh-execucao',T:'',X:`A presente hipoteca é suscetível de execução logo que o crédito garantido se torne vencido e exigível, nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
+    /* ── GARANTIAS PRESTADAS POR TERCEIRO ──
+       Fechada a hipoteca, entram as garantias dos quartos outorgantes: a real
+       primeiro, a pessoal a seguir, ambas com título e numeração próprios. */
+    if(garantes.length)contrato.push({id:'c-garante-hip',T:clausula('Garantia Prestada por Terceiro'),
+      X:textoGaranteHipotecario(garantes,'QUARTO OUTORGANTE','QUARTOS OUTORGANTES')});
+    if(xFiancaCV)contrato.push({id:'c-fianca',T:clausula('Fiança'),X:xFiancaCV});
     const S=flexaoMutuario(generosOutorgantes(comps).length);
     if(chk('t-reflexao'))contrato.push({id:'c-mh-reflexao',T:'',X:`Declara${S.art==='os'?'m':''} ${S.art} ${S.art==='os'?'Segundos Outorgantes':'Segundo Outorgante'} que, nos termos do Decreto-Lei n.º 74-A/2017, de 23 de junho, ${S.reconhece} ter decorrido integralmente o período de reflexão legal de sete dias.`});
   }
@@ -6095,7 +6167,7 @@ function seloMutuo(){
   if(!montante)return{valor:'',origem:'sem-montante'};
   return{valor:fmtValor(montante*6/1000)+' €',origem:'calculado'};
 }
-function textosMH(nComps){
+function textosMH(nComps,hipOv){
   if(!(atoEscolhido()==='cv'&&chk('t-mh')))return[];
   const S=flexaoMutuario(nComps);
   const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} € (${valorExtenso(v(x)).toLowerCase()})`:'…';
@@ -6110,7 +6182,7 @@ function textosMH(nComps){
    {id:'c-mh-condicoes',T:'',X:
     `O presente contrato fica sujeito às condições aqui estipuladas, bem como às cláusulas constantes do Documento Complementar e do Anexo I, que dele fazem parte integrante para todos os efeitos legais e contratuais, sem prejuízo das demais disposições legais aplicáveis.`},
    {id:'c-mh-garantia',T:'GARANTIA HIPOTECÁRIA',X:
-    `Para garantia do capital mutuado e respetivos acessórios, ${S.art} ${S.mut} ${S.constitui} hipoteca sobre o referido imóvel a favor da CAIXA, que a aceita, abrangendo:\n`
+    `Para garantia do capital mutuado e respetivos acessórios, ${(hipOv||S).art} ${(hipOv||S).mut} ${(hipOv||S).constitui} hipoteca sobre o referido imóvel a favor da CAIXA, que a aceita, abrangendo:\n`
     +`a) o capital de ${par('f-mh-montante')};\n`
     +`b) dos juros remuneratórios, fixados em até ${pct('f-mh-juros')} ao ano;\n`
     +`c) dos juros moratórios, correspondentes aos juros remuneratórios acrescidos de uma sobretaxa até ${pct('f-mh-mora')} ao ano, em caso de mora, nos termos e dentro do limite máximo previsto no artigo 8.º do Decreto-Lei n.º 58/2013, de 8 de maio;\n`
