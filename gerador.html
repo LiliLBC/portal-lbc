@@ -459,6 +459,13 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group"><label class="form-label">Nº de descrição <span>*</span></label><input class="form-input" id="f-im-num" placeholder="Ex: 497"></div>
       <div class="form-group"><label class="form-label">Freguesia (conservatória) <span>*</span></label><input class="form-input" id="f-im-freg-crp" placeholder="Ex: Horta das Figueiras"></div>
       <div class="form-group"><label class="form-label">AP aquisição (vendedor) <span>*</span></label><input class="form-input" id="f-im-apaq" placeholder="Ex: AP. 761 de 2012/06/26"></div>
+      <!-- O estado civil do registo é o que consta da certidão à data da
+           aquisição, e pode não ser o de hoje: quem comprou divorciado e
+           entretanto casou continua a ter a inscrição «no estado de
+           divorciado». É esse que o contrato tem de reproduzir. -->
+      <div class="form-group"><label class="form-label">Estado civil no registo de aquisição</label>
+        <input class="form-input" id="f-im-ecaq" oninput="atualizar()" placeholder="Ex: divorciado, solteiro, casado com …">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Só se preenche quando difere do atual. Copiar da certidão predial.</div></div>
       <div class="form-group"><label class="form-label">Código da certidão permanente</label>
         <div style="display:flex;gap:.35rem;align-items:stretch">
           <input class="form-input" id="f-im-cert-cod" placeholder="Ex: PP-1234-5678-9012-3456" style="flex:1;min-width:0">
@@ -2192,11 +2199,19 @@ function textoVendedorCurto(v){
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
   const eu=idCurta(v.nome,v.natural,v.nif);
-  /* Só entram no contrato os que transmitem. Quem apenas consente não é parte:
-     o consentimento é declaração autónoma, feita no termo. */
-  const base=(!ehCasado(v.ec)||(v['conj-out']||'ambos')!=='ambos')
+  /* ── CÔNJUGE · QUEM ENTRA E EM QUE FORMA ──
+     «A e B» → ambos transmitem: são dois titulares do direito.
+     «A, casado com B» → só A transmite; B comparece para consentir
+       (art. 1682.º-A CC) e tem de constar do contrato, sob pena de o
+       consentimento não ter sujeito identificado no próprio título.
+     Só o nome → o cônjuge nem transmite nem consente.
+     A distinção não é de estilo: diz quem é titular e quem consente. */
+  const coV=v['conj-out']||'ambos';
+  const base=!ehCasado(v.ec)||!v['conj-nome']||coV==='nao'
     ? eu
-    : `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
+    : coV==='ambos'
+      ? `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
+      : `${eu}, ${v.ec||'…'} com ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -2574,6 +2589,7 @@ function addPredioExtra(dados){
       <div class="form-group"><label class="form-label">Nº de descrição</label><input class="form-input" id="${id}-num"></div>
       <div class="form-group"><label class="form-label">Freguesia (CRP)</label><input class="form-input" id="${id}-freg"></div>
       <div class="form-group"><label class="form-label">AP aquisição (vendedor)</label><input class="form-input" id="${id}-apaq"></div>
+      <div class="form-group"><label class="form-label">Estado civil no registo</label><input class="form-input" id="${id}-ecaq" oninput="atualizar()" placeholder="Ex: divorciado"></div>
       <div class="form-group"><label class="form-label">Código da certidão permanente</label>
         <div style="display:flex;gap:.35rem;align-items:stretch">
           <input class="form-input" id="${id}-cert-cod" style="flex:1;min-width:0">
@@ -2631,7 +2647,7 @@ function addPredioExtra(dados){
       </div>
     </div>`;
   c.appendChild(div);
-  if(dados){['tipo','descricao','sito','crp','num','freg','apaq','cert-cod','areas','mod1-num','mod1-data','mod1-sf','req-num','req-data','req-sf','cad-data','cad-data-u','cert-val','snic-ficha','snic-nic'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));}
+  if(dados){['tipo','descricao','sito','crp','num','freg','apaq','ecaq','cert-cod','areas','mod1-num','mod1-data','mod1-sf','req-num','req-data','req-sf','cad-data','cad-data-u','cert-val','snic-ficha','snic-nic'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));}
   else addMatriz(null,id);
   return id;
 }
@@ -2639,7 +2655,7 @@ function lerPrediosExtra(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   return[...document.querySelectorAll('.pred-block')].map(b=>{
     const id=b.id;
-    return{tipo:g(`${id}-tipo`)||'urbano',descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),'cert-cod':g(`${id}-cert-cod`),
+    return{tipo:g(`${id}-tipo`)||'urbano',descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),ecaq:g(`${id}-ecaq`),'cert-cod':g(`${id}-cert-cod`),
       areas:g(`${id}-areas`),'mod1-num':g(`${id}-mod1-num`),'mod1-data':g(`${id}-mod1-data`),'mod1-sf':g(`${id}-mod1-sf`),
       'req-num':g(`${id}-req-num`),'req-data':g(`${id}-req-data`),'req-sf':g(`${id}-req-sf`),
       'req-carimbo':!!document.getElementById(`${id}-req-carimbo`)?.checked,
@@ -3196,7 +3212,7 @@ function comporMH(variante){
    A dispensa do Documento Complementar e do Anexo I é redação da Liliana, e
    entra em qualquer mútuo com hipoteca — na compra e venda e no ato 4. */
 function fechoTermo(temMH){
-  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, em seguida nesta mesma data, em www.predialonline.mj.pt.`;
+  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, que será efetuado em seguida nesta mesma data, em www.predialonline.mj.pt.`;
   const dispensa=`As partes dispensaram a leitura do Documento Complementar e Anexo I por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-os, ainda assim, como parte integrante do presente contrato.`;
   return temMH?`${base}\n${dispensa}`:base;
 }
@@ -4227,18 +4243,24 @@ function compor(){
   const txtMatrizes=matrizes.length
     ?(matrizes.length>1?matrizes.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(matrizes[matrizes.length-1],true):textoMatrizG(matrizes[0],false))
     :'na respetiva matriz predial …';
+  /* ── ESTADO CIVIL CONSTANTE DO REGISTO ──
+     Entra entre o beneficiário da inscrição e a AP, como na certidão:
+     «a favor da parte vendedora, no estado de divorciado, pela inscrição …».
+     Só sai quando o campo está preenchido — a esmagadora maioria dos casos
+     não o exige, e a frase tem de continuar a ler-se sem ele. */
+  const ecReg=e=>e?`, no estado de ${e},`:'';
   const txtImovel=isFr
-    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
+    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora${ecReg(v('f-im-ecaq'))} pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
     :(()=>{
       const extras=lerPrediosExtra();
       const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
       const multiVerbas=extras.length>0;
       const multiIMT=p=>p.matrizes.length>1||multiVerbas;
       const txtMats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],true):textoMatrizG(ms[0],multiVerbas)):'na respetiva matriz predial …';
-      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
+      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora${ecReg(v('f-im-ecaq'))} pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
       if(!multiVerbas)return p1+', adiante designado abreviadamente por Imóvel.';
       const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
-      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} da freguesia de ${p.freg||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} da freguesia de ${p.freg||'…'}, com aquisição registada a favor da parte vendedora${ecReg(p.ecaq)} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
       return[p1,...pxs].map((t,i)=>`${CARD[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
     })();
 
@@ -4542,9 +4564,17 @@ function compor(){
   const ORD_CL=['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava','Nona','Décima','Décima Primeira','Décima Segunda','Décima Terceira','Décima Quarta'];
   let nCl=0;
   const clausula=assunto=>`${ORD_CL[++nCl]||nCl+'.ª'} (${assunto})`;
+  /* ── QUALIDADE EM QUE SE VENDE ──
+     Havendo trato sucessivo, quem vende não é o titular inscrito mas quem
+     lhe sucedeu. A qualidade tem de constar da própria cláusula do objeto:
+     a narrativa do óbito explica a proveniência, não supre a menção. */
+  const qualHerd=ts.narrativa
+    ?(nPessoas>1?', na qualidade de herdeiros,'
+      :(generosOutorgantes(vend)[0]==='F'?', na qualidade de herdeira,':', na qualidade de herdeiro,'))
+    :'';
   contrato.push({id:'c-cl1',T:clausula('Objeto'),
     X:(ts.narrativa?`${ts.narrativa}\n`:'')
-      +`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`
+      +`${nPessoas>1?`Os Primeiros Contratantes${qualHerd} vendem`:`O Primeiro Contratante${qualHerd} vende`} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`
       +`\n${txtOnus}`});
   /* ── CLÁUSULA GENÉRICA · Direitos de preferência (Casa Pronta) ──
      Tronco comum: Lei 83/2019, art. 37.º/3 + Lei 89/2021, art. 7.º — anúncio via casapronta.pt
