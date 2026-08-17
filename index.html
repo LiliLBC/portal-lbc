@@ -443,6 +443,12 @@ tbody tr:hover td{background:#FAFAF8}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
               CPCV
             </div>
+            <!-- Em testes, a par do CPCV atual. Quando validado, o cpcv.html passa
+                 a arquivo e este item volta a chamar-se apenas «CPCV». -->
+            <div class="dropdown-item" onclick="abrirContrato('cpcv_v2')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5l-3-3z"/></svg>
+              CPCV (novo)
+            </div>
             <!-- Divisão de Coisa Comum passou para o Gerador, ato 3, que faz também as partilhas. -->
             <div class="dropdown-divider"></div>
             <div class="dropdown-item-label">Procurações</div>
@@ -3135,7 +3141,7 @@ function fecharDropdownFora(e){
 function abrirContrato(tipo){
   document.getElementById('contratos-menu').classList.remove('show');
   document.getElementById('contratos-btn').classList.remove('open');
-  const urls={cpcv:'cpcv.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html',gerador:'gerador.html',justificacao:'justificacao.html'};
+  const urls={cpcv:'cpcv.html',cpcv_v2:'cpcv_v2.html',procuracao:'procuracao.html',procuracao_nif:'procuracao_nif.html',arrendamento:'arrendamento.html',arrendamento_nh:'arrendamento_nh.html',carta_confinante:'carta_confinante.html',clausulas:'clausulas.html',gerador:'gerador.html',justificacao:'justificacao.html'};
   const url=urls[tipo];
   if(url){
     // Passar token para o formulário via localStorage
