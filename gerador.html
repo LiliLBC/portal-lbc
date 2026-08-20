@@ -3230,13 +3230,17 @@ function comporLeasing(){
   /* O locatário em forma curta: NIPC da sociedade e o gerente com NIF. */
   const curtoLoc=o=>{
     if(o.tipo==='singular')return textoVendedorCurto(o);
-    /* O gerente vem do mesmo sítio de onde vem no termo, para não divergirem. */
-    const nome=(o['proc-nome']||'').trim();
-    const g=nome?[nome.toUpperCase(),
-      o['proc-natural']?`natural de ${o['proc-natural']}`:'',
-      o['proc-ec']||'',
-      o['proc-nif']?`NIF ${o['proc-nif']}`:''].filter(Boolean).join(', '):'';
-    return`${(o.denom||'…')}, NIPC ${o.nipc||'…'}${g?`, neste ato representada por ${g}`:''}`;
+    /* ── QUEM REPRESENTA A SOCIEDADE ──
+       Os gerentes vêm de reps[], que é de onde o termo também os tira; só
+       quando a sociedade outorga por procurador é que vêm dos campos proc-*.
+       Lia-se apenas proc-*, e por isso o representante desaparecia do contrato
+       sempre que fosse gerente. Falhando os dois, sai «…» à vista, para não
+       passar despercebido. */
+    const rs=(o.reps&&o.reps.length)?o.reps
+      :(o['proc-nome']?[{nome:o['proc-nome'],natural:o['proc-natural'],ec:o['proc-ec'],nif:o['proc-nif']}]:[{}]);
+    const p=rs.map(r=>[(r.nome||'…').toUpperCase(),`natural de ${r.natural||'…'}`,r.ec||'',`NIF ${r.nif||'…'}`].filter(Boolean).join(', '));
+    const g=p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
+    return`${(o.denom||'…')}, NIPC ${o.nipc||'…'}, neste ato representada por ${g}`;
   };
   const txtSegundaCurto=loc.map(curtoLoc).join(', ')+desigLoc.replace('Contratante','Contratante ou Locatária').replace('Contratantes','Contratantes ou Locatárias');
 
@@ -3249,7 +3253,9 @@ function comporLeasing(){
   const matriz=isFr
     ?`inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros`
     :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
-  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na ${v('f-im-crp')||'…'}, sob o número ${v('f-im-num')||'…'}, com o registo de aquisição a favor da locadora pela inscrição ${v('f-im-apaq')||'…'}, e a da respetiva locação financeira a favor da locatária pela inscrição ${v('f-lea-ap')||'…'}, ${matriz}, adiante designad${isFr?'a':'o'} por Imóvel.`;
+  /* A descrição predial escreve-se como nos restantes atos: conservatória por
+     extenso e freguesia da descrição, que aqui faltavam. */
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com o registo de aquisição a favor da locadora pela inscrição ${v('f-im-apaq')||'…'}, e a da respetiva locação financeira a favor da locatária pela inscrição ${v('f-lea-ap')||'…'}, ${matriz}, adiante designad${isFr?'a':'o'} por Imóvel.`;
 
   /* ══════════════ TERMO ══════════════ */
   const termo=[];
@@ -3342,12 +3348,12 @@ function comporLeasing(){
   const contas=`${meio} da conta com o ${v('f-lea-conta-orig')||'…'}, para a conta com o ${v('f-lea-conta-dest')||'…'}, ambas domiciliadas na Caixa Geral de Depósitos, S.A.`;
   if(antec){
     contrato.push({id:'c-lea3',T:cl('Exercício da Opção de Compra. Compra e Venda'),X:
-      `1. Na sequência do exercício da opção de compra pela representada da Segunda Contratante, de acordo com o estipulado no contrato de locação financeira, a CGD, pelo presente contrato, vende o Imóvel à representada da Segunda Contratante, pelo preço residual fixado na cláusula anterior, que declara já ter recebido e de que aqui dá quitação.\n`
+      `1. Na sequência do exercício da opção de compra pela representada da Segunda Contratante, de acordo com o estipulado no contrato de locação financeira, a CAIXA, pelo presente contrato, vende o Imóvel à representada da Segunda Contratante, pelo preço residual fixado na cláusula anterior, que declara já ter recebido e de que aqui dá quitação.\n`
       +`2. A Segunda Contratante, em nome da sua representada, aceita a presente venda.\n`
       +`3. O referido preço residual foi integralmente pago em ${dPT(v('f-lea-data-pag'))}, através de ${contas}`});
   }else{
     contrato.push({id:'c-lea3',T:cl('Exercício da Opção de Compra. Compra e Venda'),X:
-      `1. Na sequência do exercício da opção de compra pela representada da Segunda Contratante, de acordo com o estipulado no contrato de locação financeira, a CGD, pelo presente contrato, vende o Imóvel à representada da Segunda Contratante.\n`
+      `1. Na sequência do exercício da opção de compra pela representada da Segunda Contratante, de acordo com o estipulado no contrato de locação financeira, a CAIXA, pelo presente contrato, vende o Imóvel à representada da Segunda Contratante.\n`
       +`2. A Segunda Contratante, em nome da sua representada, aceita a presente venda.`});
     contrato.push({id:'c-lea-preco',T:cl('Preço'),X:
       `1. O Imóvel é vendido pelo preço residual de ${par('f-lea-residual')}, que a Primeira Contratante, em nome da sua representada, declara já ter recebido e de que dá aqui quitação.\n`
@@ -3361,10 +3367,10 @@ function comporLeasing(){
     +(v('f-lea-ce')?` e Certificação energética com o número ${v('f-lea-ce')}${v('f-lea-ceval')?`, válido até ${dPT(v('f-lea-ceval'))}`:''} que é entregue à parte compradora neste ato.`
       :`, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`)});
   contrato.push({id:'c-lea-decl',T:cl('Outras declarações'),X:
-    `1. A Segunda Contratante, em nome da sua representada, declara que assume a responsabilidade pelo pagamento de todas as despesas, encargos, impostos ou taxas, emergentes do contrato de locação, da transmissão e da titularidade do Imóvel, designadamente Imposto Municipal sobre Imóveis, que sejam originados ou devidos até à presente data, ainda que venham a ser posteriormente apresentados ou reclamados à CGD.\n`
+    `1. A Segunda Contratante, em nome da sua representada, declara que assume a responsabilidade pelo pagamento de todas as despesas, encargos, impostos ou taxas, emergentes do contrato de locação, da transmissão e da titularidade do Imóvel, designadamente Imposto Municipal sobre Imóveis, que sejam originados ou devidos até à presente data, ainda que venham a ser posteriormente apresentados ou reclamados à CAIXA.\n`
     +`2. A Segunda Contratante, em nome da sua representada, declara que conhece todos os encargos de condomínio relativos ao imóvel adquirido e que prescinde da declaração do administrador de condomínio prevista no artigo 1424.º-A do Código Civil, aceitando, em consequência, a responsabilidade por qualquer dívida existente ao condomínio.`});
   contrato.push({id:'c-lea-canc',T:cl('Cancelamento da inscrição do contrato de locação financeira'),X:
-    `1. A CGD dá por cumprido o contrato de locação financeira e autoriza expressamente o cancelamento da respetiva inscrição na ${v('f-im-crp')||'…'}, ${v('f-lea-ap')||'…'}, que incide sobre o Imóvel.\n`
+    `1. A CAIXA dá por cumprido o contrato de locação financeira e autoriza expressamente o cancelamento da respetiva inscrição na Conservatória do Registo Predial de ${v('f-im-crp')||'…'}, ${v('f-lea-ap')||'…'}, que incide sobre o Imóvel.\n`
     +`2. A Segunda Contratante, em nome da sua representada, aceita o cancelamento da inscrição referida no número anterior.`});
   contrato.push({id:'c-lea-data',T:'',X:`${foraEscritorio?(v('f-local-morada')||'…'):'Évora'}, ${dataExtenso(v('f-data-ato'))}.`});
 
