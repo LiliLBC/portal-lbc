@@ -3577,10 +3577,9 @@ function mostrarCamposVerba(b,ctx){
   b.querySelectorAll('.bem-outro').forEach(e=>e.style.display=t==='outro'?'block':'none');
   const grupo=id=>document.getElementById(`${b.id}-${id}`)?.closest('.form-group');
   const gA=grupo('ativo'); if(gA)gA.style.display=ehDiv?'none':'flex';
-  /* O passivo é do ato 3; na doação não há dívidas a assumir. */
-  b.querySelectorAll('.bem-divida').forEach(e=>e.style.display=(ctx==='doacao'&&!ehDiv)?'none':'flex');
-  /* As inscrições da hipoteca só existem sobre imóvel. */
-  const gH=grupo('hipotecas'); if(gH)gH.style.display=(t==='imovel')?'flex':'none';
+  /* As dívidas foram autonomizadas: um bem vale o que se lhe atribui, e vale-o
+     por inteiro. Credor, montante e hipoteca vivem na verba de dívida. */
+  b.querySelectorAll('.bem-divida').forEach(e=>e.style.display=ehDiv?'flex':'none');
   /* Como foi adquirido não se pergunta a uma dívida. */
   const gO=grupo('origem'); if(gO)gO.style.display=ehDiv?'none':'flex';
   const rot=b.querySelector('.bem-rot-adj');
@@ -3618,7 +3617,8 @@ function lerBens(){
      'ct-banco','ct-produto','ct-iban','ct-titular','ct-data','dv-tipo','dv-contrato','dv-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
     /* Numa verba do passivo não há ativo nenhum: o valor da verba é o que se
        deve, e entra todo do lado do passivo. */
-    if(o.tipo==='divida')o.ativo=0;
+    if(o.tipo==='divida'){o.ativo=0;}
+    else {o.passivo=0;o.credor='';o.hipotecas='';}
     return o;
   /* Uma verba com VPT mas sem valor atribuído é verba na mesma — na doação o
      valor pode não ser atribuído e a base ser o patrimonial. */
@@ -3661,8 +3661,22 @@ function apurarDCC(){
   const cabe=cop.map((_,i)=>liquido*q[i]);
   const leva=cop.map((_,i)=>ativoLeva[i]-passivoAssume[i]);
   const dif=cop.map((_,i)=>leva[i]-cabe[i]);
+  /* ── BASE DO IMT ──
+     A Autoridade Tributária só olha ao excesso da quota-parte nos bens
+     IMÓVEIS — alínea c) do n.º 5 do artigo 2.º do CIMT. As dívidas assumidas
+     não abatem, e os veículos, contas e quotas não entram.
+     O valor de cada imóvel é o maior entre o atribuído e o patrimonial,
+     por força do artigo 12.º do CIMT. */
+  const valIm=b=>Math.max(b.ativo||0,parseValor(b['im-vpt']||'')||0);
+  const imoveis=bens.filter(b=>b.tipo==='imovel');
+  const imovelTotal=imoveis.reduce((x,b)=>x+valIm(b),0);
+  const imovelCabe=cop.map((_,i)=>imovelTotal*q[i]);
+  const imovelLeva=cop.map((_,i)=>imoveis.filter(b=>b.adj===i).reduce((x,b)=>x+valIm(b),0));
+  const excessoIm=cop.map((_,i)=>Math.max(0,imovelLeva[i]-imovelCabe[i]));
+  const seloIm=excessoIm.map(x=>x*0.008);
   return{cop,bens,q,ativo,passivo,liquido,cabe,leva,dif,
-    ativoCabe,passivoCabe,ativoLeva,passivoAssume};
+    ativoCabe,passivoCabe,ativoLeva,passivoAssume,
+    imovelTotal,imovelCabe,imovelLeva,excessoIm,seloIm};
 }
 function comporProcuracaoGuias(mandante){
   const sol=SOLICITADORAS[v('f-solicitadora')];
@@ -3693,8 +3707,16 @@ function textoBem(b){
     return`a quota no valor nominal de € ${b['qt-nominal']||'…'}, titulada em nome ${b['qt-titular']||'…'}, na sociedade ${b['qt-soc']||'…'}`;
   if(b.tipo==='conta')
     return`o saldo d${/^conta/.test(b['ct-produto']||'')?'a':'o'} ${b['ct-produto']||'conta de depósito à ordem'}${b['ct-iban']?` com o ${/^PT/i.test(b['ct-iban'])?'IBAN':'número'} ${b['ct-iban']}`:''}, domiciliad${/^conta/.test(b['ct-produto']||'')?'a':'o'} n${/^(o )?banco/i.test(b['ct-banco']||'')?'o':'a'} ${b['ct-banco']||'…'}${b['ct-titular']?`, ${b['ct-titular']}`:''}${b['ct-data']?`, reportado a ${dPT(b['ct-data'])}`:''}`;
-  if(b.tipo==='divida')
-    return`a dívida emergente de ${b['dv-tipo']||'contrato de crédito'}${b['dv-contrato']?`, titulad${/^d/.test(b['dv-tipo']||'')?'a':'a'} pelo contrato n.º ${b['dv-contrato']}`:''}, de que é credor${b.credor?` ${b.credor}`:'a entidade mutuante'}${b['dv-desc']?`, ${b['dv-desc']}`:''}`;
+  if(b.tipo==='divida'){
+    const hip=b.hipotecas||'';
+    const pl=/\se\s/.test(hip);
+    /* Escrevendo-se já «AP. 23», não se antepõe «Apresentação». */
+    const ap=/^ap\b|^apresenta/i.test(hip.trim())?hip:`Apresentação ${hip}`;
+    const dt=(b['dv-tipo']||'contrato de crédito');
+    /* «dívida emergente de dívida a fornecedores» não se diz. */
+    const nucleo=/^d[íi]vida/i.test(dt)?`a ${dt}`:`a dívida emergente de ${dt}`;
+    return`${nucleo}${b['dv-contrato']?`, titulada pelo contrato n.º ${b['dv-contrato']}`:''}, de que é credor${b.credor?` ${b.credor}`:'a entidade mutuante'}${hip?`, garantida por hipoteca${pl?'s':''} voluntária${pl?'s':''} registada${pl?'s':''} pela ${ap}`:''}${b['dv-desc']?`, ${b['dv-desc']}`:''}`;
+  }
   if(b.tipo==='outro')return b['ou-desc']||'…';
   const fr=b['im-tipo']==='fracao';
   const corpo=fr
@@ -3821,18 +3843,8 @@ function comporDCC(){
       ?`${verba(k)} - ${textoBem(b)}, no montante em dívida de ${eur(b.passivo)};`
       :`${verba(k)} - ${textoBem(b)}, a que os outorgantes atribuem o valor de ${eur(b.ativo)};`).join('\n'));
 
-  /* Só os bens onerados: a verba que já é dívida não volta a ser descrita
-     como ónus, porque foi enumerada como verba própria. */
-  const onerados=bens.map((b,k)=>({b,k})).filter(x=>x.b.passivo>0&&x.b.tipo!=='divida');
-  let nOnus=0;
-  if(onerados.length){
-    nOnus=nN+1;
-    numeros.push(`${num('')}Que sobre ${varios?'os referidos bens':'o referido bem'} incidem ${onerados.length>1?'os seguintes ónus':'o seguinte ónus'}:\n`
-      +onerados.map(({b,k})=>{
-        const pl=/\se\s/.test(b.hipotecas||'');
-        return`${varios?`sobre a ${verba(k)}, `:''}hipoteca${pl?'s':''} voluntária${pl?'s':''} a favor de ${b.credor||'…'}${b.hipotecas?`, registada${pl?'s':''} pela Apresentação ${b.hipotecas}`:''}, encontrando-se em dívida, à presente data, o capital de ${eur(b.passivo)};`;
-      }).join('\n'));
-  }
+  /* Já não há número de ónus: as dívidas são verbas autónomas e ficaram
+     descritas na enumeração, com a hipoteca que as garante. */
 
   numeros.push(`${num('')}Que, pretendendo pôr termo à situação de compropriedade e não comportand${varios?'o os bens':'o o bem'} divisão cómoda em substância, acordam em proceder à sua divisão, ao abrigo dos artigos 1412.º e 1413.º do Código Civil, adjudicand${varios?'o-os':'o-o'} nos termos seguintes.`);
 
@@ -3897,18 +3909,21 @@ function comporDCC(){
      dívida — em ambos os casos há um credor a satisfazer. */
   const assumidos=bens.map((b,k)=>({b,k})).filter(x=>x.b.passivo>0);
   if(assumidos.length){
-    const refOnus=NUM[nOnus]||'anterior';
+
     numeros.push(num('Assunção do passivo')+assumidos.map(({b,k})=>{
       const q=isNaN(b.adj)?0:b.adj;
       const fora=cop.map((_,x)=>x).filter(x=>x!==q);
       const quem=comOrd(q).replace(/^([ao]) /,(m,a)=>a.toUpperCase()+' ');
-      const onde=b.tipo==='divida'?`na ${verba(k)}`:(varios?`na ${verba(k)} do número ${refOnus}`:`no número ${refOnus}`);
+      const onde=`na ${verba(k)}`;
       return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${onde}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')} ${fora.length>1?'exonerados':(fora.length&&femDeCop(fora[0])?'exonerada':'exonerado')} de toda e qualquer responsabilidade perante ${b.tipo==='divida'?'o credor':'o credor hipotecário'}`;
     }).join('. ')+'.');
   }
 
-  const adjs=[...new Set(bens.filter(b=>b.tipo!=='divida').map(b=>isNaN(b.adj)?0:b.adj))];
-  numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que, sobre o excesso da quota-parte por si adquirido, liquida${adjs.length>1?'m':''} o IMT devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido (verba 1.1 da TGIS).`);
+  /* ⚠ Só declara quem leva imóveis a mais do que a sua quota: é esse excesso,
+     e não o saldo da partilha, que a AT tributa. */
+  const adjs=cop.map((_,k)=>k).filter(k=>ap.excessoIm[k]>0.005);
+  if(adjs.length)
+    numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que, sobre o excesso da quota-parte nos bens imóveis por si adquirido, ${adjs.length>1?`nos valores de ${adjs.map(k=>`${eur(ap.excessoIm[k])} quanto ${comOrd(k,true)}`).join(' e ')}`:`no valor de ${eur(ap.excessoIm[adjs[0]])}`}, liquida${adjs.length>1?'m':''} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido nos termos da verba 1.1 da Tabela Geral.`);
 
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
   /* A licença de utilização e o certificado energético saíram deste ato: numa
@@ -5111,6 +5126,26 @@ function desenharApuramento(){
   }).join('');
 
   const th='font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em';
+  /* Para as guias: a AT só quer o excesso nos imóveis, sem abater dívidas. */
+  const comExc=a.cop.map((o,i)=>({o,i})).filter(x=>a.excessoIm[x.i]>0.005);
+  const fisc=!a.imovelTotal?'':`<div style="margin-top:.6rem;border-top:2px solid var(--border);padding-top:.5rem">
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Base do IMT e do Imposto do Selo</div>
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.4rem">
+      Só o excesso da quota-parte nos bens imóveis, sem abater dívidas — alínea c) do n.º 5 do artigo 2.º do CIMT.
+      Imóveis: ${eur(a.imovelTotal)}.</div>
+    ${comExc.length?`<table style="width:100%;font-size:11.5px;border-collapse:collapse">
+      <tr style="${th}"><td style="padding-bottom:.2rem"></td><td style="text-align:right">imóveis que leva</td>
+        <td style="text-align:right">cabe-lhe</td><td style="text-align:right">excesso tributável</td><td style="text-align:right">selo 0,8%</td></tr>
+      ${comExc.map(({o,i})=>`<tr style="border-top:1px solid var(--border)">
+        <td style="padding:.28rem .5rem .28rem 0">${nome(o,i)}</td>
+        <td style="text-align:right;padding:.28rem .5rem">${eur(a.imovelLeva[i])}</td>
+        <td style="text-align:right;padding:.28rem .5rem">${eur(a.imovelCabe[i])}</td>
+        <td style="text-align:right;padding:.28rem .5rem;font-weight:600;color:var(--accent-dark)">${eur(a.excessoIm[i])}</td>
+        <td style="text-align:right;padding:.28rem 0">${eur(a.seloIm[i])}</td></tr>`).join('')}
+    </table>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:.4rem">O IMT calcula-se sobre o excesso, à taxa aplicável ao destino do prédio. Valor de cada imóvel: o maior entre o atribuído e o patrimonial (artigo 12.º do CIMT).</div>`
+    :'<div style="font-size:11.5px;color:var(--text-muted)">Ninguém leva imóveis a mais do que a sua quota — não há excesso tributável.</div>'}
+  </div>`;
   el.innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:.75rem .85rem">
     <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Apuramento por verbas</div>
 
@@ -5135,6 +5170,7 @@ function desenharApuramento(){
       ${linhas}
     </table>
     ${Math.abs(a.dif.reduce((x,y)=>x+Math.abs(y),0))<0.005?'':`<div style="font-size:10.5px;color:var(--text-faint);margin-top:.45rem">As tornas resultam da diferença entre o líquido que cada um leva e o que lhe cabia pela sua quota.</div>`}
+    ${fisc}
   </div>`;
 }
 
