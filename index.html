@@ -11441,6 +11441,7 @@ init();
   const tk=()=>window.graphToken||(typeof graphToken!=='undefined'?graphToken:null);
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const ini=n=>(n||'').split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
+  const _normOvr=s=>(s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
   const waNum=t=>{t=(t||'').replace(/\D/g,'');return t&&t.length===9?'351'+t:t;};
   const val=id=>{const e=document.getElementById(id);return e?e.value:'';};
   async function gGet(u){const r=await fetch(u,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw new Error('Graph '+r.status);return r.json();}
@@ -11691,7 +11692,9 @@ init();
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const ini=n=>(n||'').split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
   const waNum=t=>{t=(t||'').replace(/\D/g,'');return t&&t.length===9?'351'+t:t;};
-  const artigo=g=>g==='F'?'a':'o';
+  /* '' = por preencher. Enquanto não se escolhe, sai «Caro(a)» — errar o
+     género num cartão é pior do que a fórmula dupla. */
+  const artigo=g=>g==='F'?'a':(g==='M'?'o':'o(a)');
   async function gGet(u){const r=await fetch(u,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw new Error('Graph '+r.status);return r.json();}
 
   // ── estilos ──────────────────────────────────────────────────────────────
@@ -11822,6 +11825,17 @@ ${eye}${head}
     await resolver();const C=_cols;
     const rows=((await gGet(`${GBASE}/sites/${_site}/lists/${_list}/items?$expand=fields&$top=2000`)).value||[]);
     const espLS=lerEspeciaisLS();
+    /* ── FICHA GUARDADA ──
+       As entradas vindas do registo de escrituras não têm onde guardar nada.
+       Guarda-se em ListaAniversarios um registo com o mesmo nome e a mesma
+       data, que a deduplicação mais abaixo já esconde, e usa-se apenas como
+       ficha de género e de contacto — assim fica para os anos seguintes. */
+    const _ovr={};
+    rows.forEach(row=>{
+      const fl=row.fields||{};
+      const nm=(fl[C.titulo]||'').trim(); if(!nm)return;
+      _ovr[_normOvr(nm)]={id:row.id,genero:fl[C.genero]||'',email:fl[C.email]||'',tel:fl[C.tel]||''};
+    });
     const hoje=new Date();const evs=[];
     rows.forEach(row=>{
       const fl=row.fields||{};
@@ -11853,7 +11867,10 @@ ${eye}${head}
         const dests=agruparContactos(fl[F.contactos]); const def=defaultDest(dests);
         const da=escrituraDiasAnos(a2,m2,d2);
         regKeys.add(_keyAniv(nome,m2,d2));
-        evs.push({id:'reg:'+r.id,source:'registo',tipoA:'Escritura',finalidade:fin,tipo:ehHPP(fin)?'escritura_hpp':'escritura_outra',nome,genero:'M',dataISO:dd,anos:da.anos,dias:da.dias,contactos:dests,email:def.email,tel:def.tel,especial:!!espLS['reg:'+r.id]});
+        const ov=_ovr[_normOvr(nome)]||{};
+        evs.push({id:'reg:'+r.id,source:'registo',tipoA:'Escritura',finalidade:fin,tipo:ehHPP(fin)?'escritura_hpp':'escritura_outra',nome,
+          genero:ov.genero||'',dataISO:dd,anos:da.anos,dias:da.dias,contactos:dests,
+          email:ov.email||def.email,tel:ov.tel||def.tel,fichaId:ov.id||null,especial:!!espLS['reg:'+r.id]});
       });
     }catch(e){console.warn('Escrituras (registos) p/ aniversários:',e);}
     // Remover escrituras manuais (ListaAniversarios) que já vêm do registo (mesma pessoa + dia/mês)
@@ -11881,7 +11898,7 @@ ${eye}${head}
     const sub=ev.tipo==='aniversario'?'Aniversário':`${p.et} · ${ev.anos} ano${ev.anos>1?'s':''}`;
     return `<div class="aniv-ev"><div class="aniv-av ${p.av}">${ini(ev.nome)}</div>
       <div class="aniv-m"><div class="aniv-nome">${esc(ev.nome)}<span class="aniv-chip ${p.chip}">${p.et}</span></div><div class="aniv-meta">${sub} · ${ev.email||ev.tel||'sem contacto'}</div></div>
-      <div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="aniv-star${ev.especial?' on':''}" data-star="${i}" title="Cliente especial (lembrar presente)">${ev.especial?'⭐':'☆'}</button><button class="aniv-send" data-i="${i}">Enviar</button>${ev.source==='registo'?'':`<button class="aniv-b" data-edit="${i}" style="padding:6px 9px">Editar</button><button class="aniv-b" data-del="${i}" style="padding:6px 9px">Apagar</button>`}</div></div>`;
+      <div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="aniv-star${ev.especial?' on':''}" data-star="${i}" title="Cliente especial (lembrar presente)">${ev.especial?'⭐':'☆'}</button><button class="aniv-send" data-i="${i}">Enviar</button>${ev.source==='registo'?`<button class="aniv-b" data-ficha="${i}" style="padding:6px 9px"${ev.genero?'':' title="Género por escolher — o cartão sai «Caro(a)»"'}>Ficha${ev.genero?'':' ⚠'}</button>`:`<button class="aniv-b" data-edit="${i}" style="padding:6px 9px">Editar</button><button class="aniv-b" data-del="${i}" style="padding:6px 9px">Apagar</button>`}</div></div>`;
   }
   // ── grelha do mês ─────────────────────────────────────────────────────────
   let _gAno=null,_gMes=null;
@@ -11923,6 +11940,7 @@ ${eye}${head}
     scr.querySelector('#aniv-prox').innerHTML=prox.length?prox.map((e)=>evHTML(e,_evs.indexOf(e))).join(''):'<div class="aniv-meta">Nada nos próximos 7 dias.</div>';
     scr.querySelectorAll('.aniv-send').forEach(b=>b.onclick=()=>abrirEnvio(_evs[+b.dataset.i]));
     scr.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>abrirEditar(_evs[+b.dataset.edit]));
+    scr.querySelectorAll('[data-ficha]').forEach(b=>b.onclick=()=>abrirFicha(+b.dataset.ficha));
     scr.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>abrirApagar(_evs[+b.dataset.del]));
     scr.querySelectorAll('[data-star]').forEach(b=>b.onclick=()=>alternaEspecial(_evs[+b.dataset.star]));
     renderGrid();
@@ -11976,6 +11994,49 @@ ${eye}${head}
       if(r.ok){toast('Email enviado ✓');ov.classList.remove('show');}else toast('Falha no envio ('+r.status+')');}catch(e){toast('Erro de rede no envio');}
   }
   function toast(m){if(typeof showToast==='function'){showToast(m,'info');return;}}
+
+  // ── ficha do cliente vindo do registo de escrituras ───────────────────────
+  /* Grava em ListaAniversarios um registo com o mesmo nome e a mesma data da
+     escritura. A deduplicação já existente esconde-o da listagem; serve só
+     para guardar o género e o contacto, que assim ficam para o ano seguinte. */
+  function abrirFicha(i){
+    const ev=_evs[i];if(!ev)return;
+    document.getElementById('aniv-modal').innerHTML=`<h3 style="margin:0 0 4px">Ficha — ${esc(ev.nome)}</h3>
+      <div style="font-size:11px;color:#6B6770;margin-bottom:10px">Fica guardada para os próximos anos.</div>
+      <select class="aniv-fld" id="fc-genero">
+        <option value=""${ev.genero?'':' selected'}>Género — por escolher (sai «Caro(a)»)</option>
+        <option value="F"${ev.genero==='F'?' selected':''}>Feminino — «Cara»</option>
+        <option value="M"${ev.genero==='M'?' selected':''}>Masculino — «Caro»</option>
+      </select>
+      <input class="aniv-fld" id="fc-tel" placeholder="Telemóvel" inputmode="tel" value="${esc(ev.tel||'')}">
+      <input class="aniv-fld" id="fc-email" type="email" placeholder="Email" value="${esc(ev.email||'')}">
+      <div class="aniv-row"><button class="aniv-b" onclick="document.getElementById('aniv-ov').classList.remove('show')">Cancelar</button><button class="aniv-b prim" id="fc-guardar">Guardar ficha</button></div>`;
+    ov.classList.add('show');
+    document.getElementById('fc-guardar').onclick=()=>guardarFicha(i);
+  }
+  async function guardarFicha(i){
+    const ev=_evs[i];if(!ev)return;
+    const token=tk();if(!token){toast('Sem sessão Graph');return;}
+    const genero=document.getElementById('fc-genero').value;
+    const tel=document.getElementById('fc-tel').value.trim();
+    const email=document.getElementById('fc-email').value.trim();
+    try{
+      await resolver();const C=_cols;
+      const campos={[C.titulo]:ev.nome,[C.genero]:genero,[C.tipo]:ev.tipoA||'Escritura',
+        [C.data]:ev.dataISO+'T00:00:00Z',[C.ativo]:true};
+      if(C.tel)campos[C.tel]=tel;
+      if(C.email)campos[C.email]=email;
+      const base=`${GBASE}/sites/${_site}/lists/${_list}/items`;
+      const r=await fetch(ev.fichaId?`${base}/${ev.fichaId}/fields`:base,{
+        method:ev.fichaId?'PATCH':'POST',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(ev.fichaId?campos:{fields:campos})});
+      if(!r.ok)throw new Error('Graph '+r.status);
+      document.getElementById('aniv-ov').classList.remove('show');
+      toast('Ficha guardada');
+      if(typeof window.anivInit==='function')window.anivInit();
+    }catch(e){toast('Erro a guardar: '+e.message);}
+  }
 
   // ── adicionar aniversário à mão (cliente extra, sem contrato) ─────────────
   function abrirNovoAniversario(){
@@ -13016,6 +13077,7 @@ const normalizar=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''
 const semData=s=>String(s||'').replace(/^\d{8}\s*/,'');
 const dataDaPasta=s=>{const m=String(s||'').match(/^(\d{4})(\d{2})(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:'';};
 
+let estado='';   // '', 'a-carregar', 'ok', 'erro'
 async function carregar(forcar){
   if(aCarregar)return;
   /* Se o ecrã das Pastas já carregou a listagem, aproveita-se. */
@@ -13023,13 +13085,16 @@ async function carregar(forcar){
     PASTAS=todasPastas;carregado=true;verificar();return;
   }
   if(carregado&&!forcar)return;
-  aCarregar=true;
+  aCarregar=true;estado='a-carregar';verificar();
   try{
     if(typeof renovarToken==='function')await renovarToken();
+    /* A sessão pode ainda estar a arrancar quando se entra no Agendamento. */
+    for(let i=0;i<25&&!bibliotecaId;i++)await new Promise(r=>setTimeout(r,200));
+    if(!bibliotecaId)throw new Error('sessão ainda a iniciar');
     const d=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$select=name,webUrl,folder,lastModifiedDateTime&$top=999`);
-    PASTAS=(d.value||[]).filter(i=>i.folder);carregado=true;verificar();
-  }catch(e){/* silencioso: o aviso é um extra, não pode impedir o agendamento */}
-  finally{aCarregar=false;}
+    PASTAS=(d.value||[]).filter(i=>i.folder);carregado=true;estado='ok';
+  }catch(e){estado='erro';}
+  finally{aCarregar=false;verificar();}
 }
 
 function analisar(){
@@ -13067,8 +13132,18 @@ function linhaPasta(x){
 
 function verificar(){
   const cx=$('dup-aviso');if(!cx)return;
+  const nomeEl=$('ag-nome');
+  const escrito=((nomeEl&&nomeEl.value)||'').trim();
+  if(escrito.length<3){cx.innerHTML='';return;}
+  /* Se ainda não se carregou a listagem, carrega agora — pode ter-se entrado
+     no Agendamento sem passar pelo menu. */
+  if(!carregado&&!aCarregar&&estado!=='erro'){carregar();return;}
+  const nota=(cor,txt)=>`<div style="font-size:11px;color:${cor};margin:.45rem 0 0;display:flex;align-items:center;gap:5px">${txt}</div>`;
+  if(estado==='a-carregar'){cx.innerHTML=nota('var(--text-faint)','A verificar pastas existentes…');return;}
+  if(estado==='erro'){cx.innerHTML=nota('var(--amber)','Não foi possível verificar as pastas existentes. <a href="#" onclick="dupRecarregar();return false" style="color:var(--accent)">tentar de novo</a>');return;}
   const r=analisar();
-  if(!r||(!r.iguais.length&&!r.semelhantes.length)){cx.innerHTML='';return;}
+  if(!r||(!r.iguais.length&&!r.semelhantes.length)){
+    cx.innerHTML=nota('var(--green)',`✓ Não existe nenhuma pasta para este cliente (${PASTAS.length} verificadas).`);return;}
   if(r.iguais.length){
     const exata=r.iguais.some(x=>x.exata);
     const n=r.iguais.length;
@@ -13145,7 +13220,11 @@ function instalar(){
     const _n=window.nav;
     window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='agendar')carregar();return r;};
   }
-  const nomeEl=$('ag-nome');if(nomeEl)nomeEl.addEventListener('blur',verificar);
+  const nomeEl=$('ag-nome');
+  if(nomeEl){nomeEl.addEventListener('blur',verificar);nomeEl.addEventListener('input',verificar);}
+  window.dupRecarregar=()=>{estado='';carregado=false;carregar(true);};
+  /* Entrando-se directamente no Agendamento, o menu não é usado. */
+  setTimeout(()=>{if(document.querySelector('#screen-agendar.active'))carregar();},900);
   if(document.querySelector('#screen-agendar.active'))carregar();
 }
 if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
