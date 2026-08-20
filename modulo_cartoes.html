@@ -1,0 +1,162 @@
+<!-- ════════════════════════════════════════════════════════════════════════
+     CARTÕES DE AGRADECIMENTO — colar antes de </body>.
+     Aditivo e namespaced (crt…). Não toca em nada do que já existe.
+     Gera até 4 cartões A6 por folha A4, prontos a imprimir e a cortar.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+const TRAT=[
+  {v:'Caro',  lo:'acompanhá-lo',  ve:'vê-lo'},
+  {v:'Cara',  lo:'acompanhá-la',  ve:'vê-la'},
+  {v:'Caros', lo:'acompanhá-los', ve:'vê-los'},
+  {v:'Caras', lo:'acompanhá-las', ve:'vê-las'}
+];
+const CONTACTO='266 104 210 · 960 215 959 · geral@lbc-solicitadora.pt';
+let cartoes=[{nome:'',trat:0},{nome:'',trat:0},{nome:'',trat:0},{nome:'',trat:0}];
+
+const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+
+const CSS=`
+#screen-cartoes{padding:0}
+.crt-wrap{max-width:1080px;margin:0 auto}
+.crt-painel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;box-shadow:var(--shadow);margin-bottom:.9rem}
+.crt-linha{display:grid;grid-template-columns:26px 1fr 118px 30px;gap:.5rem;align-items:center;margin-bottom:.45rem}
+.crt-pos{font-size:10.5px;color:var(--text-faint);text-align:center;font-family:'DM Mono',monospace}
+.crt-folha{background:#fff;width:210mm;min-height:297mm;margin:0 auto;box-shadow:0 2px 14px rgba(0,0,0,.13);
+  display:grid;grid-template-columns:105mm 105mm;grid-template-rows:148.5mm 148.5mm}
+.crt-c{position:relative;padding:6mm;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.crt-guia{border-right:.3mm dashed #D9AFAF;border-bottom:.3mm dashed #D9AFAF}
+.crt-guia2{border-bottom:.3mm dashed #D9AFAF}
+.crt-guia3{border-right:.3mm dashed #D9AFAF}
+.crt-cartao{width:100%;height:100%;background:#FBF1F0;border:.3mm solid #D9AFAF;box-sizing:border-box;
+  padding:5mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  font-family:Georgia,'Times New Roman',serif;color:#8C5E6E}
+.crt-cartao.vazio{background:transparent;border:.3mm dashed #E3C4C4}
+.crt-interior{width:100%;height:100%;border:.2mm solid #E3C4C4;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:4mm;box-sizing:border-box}
+.crt-selo{width:15mm;height:15mm;border-radius:50%;border:.3mm solid #C09B9B;display:flex;align-items:center;
+  justify-content:center;font-size:10pt;letter-spacing:.5pt;color:#8C5E6E;margin-bottom:2mm}
+.crt-marca{font-size:5.4pt;letter-spacing:2.4pt;color:#B08A8A;margin-bottom:6mm}
+.crt-tit{font-size:19pt;line-height:1.24;color:#8C5E6E;margin-bottom:3mm}
+.crt-orn{display:flex;align-items:center;gap:2mm;margin-bottom:3.5mm}
+.crt-orn i{display:block;width:12mm;height:.3mm;background:#D9AFAF}
+.crt-orn b{display:block;width:2.2mm;height:2.2mm;border:.3mm solid #D9AFAF;transform:rotate(45deg)}
+.crt-nome{font-size:9.5pt;font-style:italic;color:#A6819A;margin-bottom:3.5mm}
+.crt-corpo{font-size:8pt;line-height:1.62;color:#8A7FB5;margin-bottom:4.5mm}
+.crt-desp{font-size:8pt;font-style:italic;color:#8C5E6E;margin-bottom:1.5mm}
+.crt-eq{font-size:5.4pt;letter-spacing:1.9pt;color:#B08A8A;margin-bottom:1.5mm}
+.crt-cont{font-size:6.2pt;color:#9A8FA8;letter-spacing:.15pt}
+@media print{
+  @page{size:A4;margin:0}
+  body *{visibility:hidden!important}
+  #crt-folha,#crt-folha *{visibility:visible!important}
+  #crt-folha{position:absolute;left:0;top:0;margin:0;box-shadow:none;width:210mm;height:297mm}
+  .crt-cartao.vazio{border-color:transparent}
+}`;
+
+const SCREEN=`
+  <div class="crt-wrap">
+    <div class="crt-painel">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem">
+        <div>
+          <div class="metric-label" style="margin:0;font-size:11px">Cartões de agradecimento</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">Quatro por folha A4 &middot; corta-se nas guias a tracejado</div>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="crtRepetir()">Repetir o 1.º nos quatro</button>
+          <button class="btn btn-sm" onclick="crtLimpar()">Limpar</button>
+          <button class="btn btn-primary btn-sm" onclick="crtImprimir()">Imprimir folha</button>
+        </div>
+      </div>
+      <div id="crt-campos"></div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:.5rem">
+        Posições sem nome saem em branco. Ao imprimir, escolhe A4, margens nulas e desliga cabeçalhos e rodapés.
+      </div>
+    </div>
+    <div style="overflow:auto;padding-bottom:1rem"><div class="crt-folha" id="crt-folha"></div></div>
+  </div>`;
+
+function campos(){
+  const el=$('crt-campos');if(!el)return;
+  el.innerHTML=cartoes.map((c,i)=>`
+    <div class="crt-linha">
+      <span class="crt-pos">${i+1}</span>
+      <input class="form-input" value="${esc(c.nome)}" placeholder="Nome do cliente"
+        oninput="crtSet(${i},'nome',this.value)" style="width:100%">
+      <select class="form-select" onchange="crtSet(${i},'trat',this.value)" style="width:100%">
+        ${TRAT.map((t,k)=>`<option value="${k}"${k===c.trat?' selected':''}>${t.v}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm" onclick="crtSet(${i},'nome','')" title="Limpar esta posição" style="padding:3px 8px">&times;</button>
+    </div>`).join('');
+}
+
+function cartaoHTML(c){
+  if(!c.nome.trim())return '<div class="crt-cartao vazio"></div>';
+  const t=TRAT[c.trat]||TRAT[0];
+  const nome=c.nome.trim().toUpperCase();
+  return `<div class="crt-cartao"><div class="crt-interior">
+    <div class="crt-selo">LBC</div>
+    <div class="crt-marca">SOLICITADORA</div>
+    <div class="crt-tit">Obrigada pela<br>sua confiança</div>
+    <div class="crt-orn"><i></i><b></b><i></i></div>
+    <div class="crt-nome">${esc(t.v)} ${esc(nome)},</div>
+    <div class="crt-corpo">Agradecemos a sua escolha e a confiança<br>depositada no nosso escritório.<br>
+      Foi um gosto ${esc(t.lo)}. Contamos ${esc(t.ve)} em breve.</div>
+    <div class="crt-desp">Com estima,</div>
+    <div class="crt-eq">A EQUIPA LBC &middot; ÉVORA</div>
+    <div class="crt-cont">${CONTACTO}</div>
+  </div></div>`;
+}
+
+function folha(){
+  const el=$('crt-folha');if(!el)return;
+  const guias=['crt-guia','crt-guia2','crt-guia3',''];
+  el.innerHTML=cartoes.map((c,i)=>`<div class="crt-c ${guias[i]}">${cartaoHTML(c)}</div>`).join('');
+}
+
+function render(){campos();folha();}
+
+window.crtSet=(i,campo,val)=>{
+  cartoes[i][campo]=(campo==='trat')?parseInt(val)||0:val;
+  if(campo==='nome')folha();else render();
+};
+window.crtRepetir=()=>{
+  const p=cartoes[0];
+  if(!p.nome.trim()){if(typeof showToast==='function')showToast('Escreve primeiro o nome na posição 1','error');return;}
+  cartoes=cartoes.map(()=>({nome:p.nome,trat:p.trat}));render();
+};
+window.crtLimpar=()=>{cartoes=cartoes.map(()=>({nome:'',trat:0}));render();};
+window.crtImprimir=()=>{
+  if(!cartoes.some(c=>c.nome.trim())){if(typeof showToast==='function')showToast('Escreve pelo menos um nome','error');return;}
+  window.print();
+};
+window.crtInit=render;
+
+function instalar(){
+  if($('screen-cartoes'))return;
+  const base=document.querySelector('.screen');if(!base)return;
+  const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+  const scr=document.createElement('div');scr.className='screen';scr.id='screen-cartoes';scr.innerHTML=SCREEN;
+  base.parentNode.appendChild(scr);
+
+  const aniv=document.querySelector('.nav-item[onclick*="aniversarios"]');
+  const item=document.createElement('div');
+  item.className='nav-item';item.id='nav-cartoes';
+  item.setAttribute('onclick',"nav('cartoes',this)");
+  item.innerHTML='<span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.2"/><path d="M1.6 6.4h12.8M5.4 3.4v9.2"/></svg></span>Cartões';
+  if(aniv&&aniv.parentNode)aniv.insertAdjacentElement('afterend',item);
+  else document.querySelector('.nav-item')?.parentNode?.appendChild(item);
+
+  if(typeof pageTitles!=='undefined')pageTitles.cartoes='Cartões de agradecimento';
+  if(typeof window.nav==='function'){
+    const _n=window.nav;
+    window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='cartoes')render();return r;};
+  }
+  render();
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
