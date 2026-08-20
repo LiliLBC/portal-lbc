@@ -459,13 +459,6 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group"><label class="form-label">Nº de descrição <span>*</span></label><input class="form-input" id="f-im-num" placeholder="Ex: 497"></div>
       <div class="form-group"><label class="form-label">Freguesia (conservatória) <span>*</span></label><input class="form-input" id="f-im-freg-crp" placeholder="Ex: Horta das Figueiras"></div>
       <div class="form-group"><label class="form-label">AP aquisição (vendedor) <span>*</span></label><input class="form-input" id="f-im-apaq" placeholder="Ex: AP. 761 de 2012/06/26"></div>
-      <!-- O estado civil do registo é o que consta da certidão à data da
-           aquisição, e pode não ser o de hoje: quem comprou divorciado e
-           entretanto casou continua a ter a inscrição «no estado de
-           divorciado». É esse que o contrato tem de reproduzir. -->
-      <div class="form-group"><label class="form-label">Estado civil no registo de aquisição</label>
-        <input class="form-input" id="f-im-ecaq" oninput="atualizar()" placeholder="Ex: divorciado, solteiro, casado com …">
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Só se preenche quando difere do atual. Copiar da certidão predial.</div></div>
       <div class="form-group"><label class="form-label">Código da certidão permanente</label>
         <div style="display:flex;gap:.35rem;align-items:stretch">
           <input class="form-input" id="f-im-cert-cod" placeholder="Ex: PP-1234-5678-9012-3456" style="flex:1;min-width:0">
@@ -1242,8 +1235,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
     <div class="cond-block" style="margin-top:.7rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
-        <div><div class="cond-block-title" style="margin-bottom:2px">10.3 · Quartos Outorgantes — fiadores e garantes hipotecários</div>
-          <div style="font-size:10.5px;color:var(--text-faint)">Garantia pessoal, garantia real prestada por terceiro, ou ambas — a qualidade escolhe-se em cada pessoa</div></div>
+        <div><div class="cond-block-title" style="margin-bottom:2px">10.3 · Quartos Outorgantes — fiadores</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">Quando a CAIXA exige garantia pessoal</div></div>
         <label class="toggle-switch"><input type="checkbox" id="t-quartos" onchange="onQuartos()"><span class="toggle-slider"></span></label>
       </div>
       <div id="g-quartos" style="display:none;margin-top:.75rem">
@@ -1503,13 +1496,6 @@ function addOutorgante(pref,dados){
           <option value="cgd"${sel(dados.tipo,'cgd')}>CGD</option>
           <option value="municipio"${sel(dados.tipo,'municipio')}>Município</option>
         </select></div>
-      ${pref==='quarto'?`<div class="form-group form-full"><label class="form-label">Qualidade em que intervém <span>*</span></label>
-        <select class="form-select" id="${id}-qualidade" onchange="atualizar()">
-          <option value="fiador"${sel(dados.qualidade,'fiador')}>Fiador</option>
-          <option value="garante"${sel(dados.qualidade,'garante')}>Garante hipotecário (dono do imóvel)</option>
-          <option value="ambos"${sel(dados.qualidade,'ambos')}>Garante hipotecário e fiador</option>
-        </select>
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">O fiador responde com todo o seu património; o garante hipotecário responde só com o imóvel hipotecado (art.º 717.º do Código Civil). A qualidade escolhida manda nas cláusulas que saem.</div></div>`:''}
     </div>
 
     <!-- 3.1 · REPRESENTAÇÃO — antes da identificação -->
@@ -2038,9 +2024,6 @@ function lerOutorgantes(pref){
       coincide:g(`${id}-coincide`),
       'asc-nasc-num':g(`${id}-asc-nasc-num`),'asc-nasc-crc':g(`${id}-asc-nasc-crc`),
       'asc-cas-num':g(`${id}-asc-cas-num`),'asc-cas-crc':g(`${id}-asc-cas-crc`),
-      /* Só os quartos outorgantes têm este campo. Sem ele, o valor cai em
-         'fiador', que era o pressuposto do bloco 10.3 antes de haver escolha. */
-      qualidade:g(`${id}-qualidade`)||'fiador',
       'repr-tipo':g(`${id}-repr-tipo`)||'proprio',qualrec:g(`${id}-qualrec`),quota:g(`${id}-quota`),
       'proc-nome':g(`${id}-proc-nome`),'proc-natural':g(`${id}-proc-natural`),'proc-ec':g(`${id}-proc-ec`),
       'proc-cc':g(`${id}-proc-cc`),'proc-ccval':g(`${id}-proc-ccval`),'proc-nif':g(`${id}-proc-nif`),'proc-morada':g(`${id}-proc-morada`),
@@ -2199,19 +2182,11 @@ function textoVendedorCurto(v){
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
   const eu=idCurta(v.nome,v.natural,v.nif);
-  /* ── CÔNJUGE · QUEM ENTRA E EM QUE FORMA ──
-     «A e B» → ambos transmitem: são dois titulares do direito.
-     «A, casado com B» → só A transmite; B comparece para consentir
-       (art. 1682.º-A CC) e tem de constar do contrato, sob pena de o
-       consentimento não ter sujeito identificado no próprio título.
-     Só o nome → o cônjuge nem transmite nem consente.
-     A distinção não é de estilo: diz quem é titular e quem consente. */
-  const coV=v['conj-out']||'ambos';
-  const base=!ehCasado(v.ec)||!v['conj-nome']||coV==='nao'
+  /* Só entram no contrato os que transmitem. Quem apenas consente não é parte:
+     o consentimento é declaração autónoma, feita no termo. */
+  const base=(!ehCasado(v.ec)||(v['conj-out']||'ambos')!=='ambos')
     ? eu
-    : coV==='ambos'
-      ? `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
-      : `${eu}, ${v.ec||'…'} com ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
+    : `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -2236,89 +2211,6 @@ function generosOutorgantes(arr){
       g.push(o['conj-genero']==='F'?'F':'M');
   });
   return g;
-}
-/* ── DECLARAÇÃO DE FIANÇA · texto do termo ──────────────────────────────────
-   Redação da CGD. É declaração prestada perante a solicitadora, por isso vai ao
-   TERMO — a cláusula FIANÇA do contrato mantém-se, são peças distintas.
-     grupo   → todos os outorgantes do bloco (terceiros no MH, quartos no CVMH)
-     fiad    → os que são fiadores (qualidade 'fiador' ou 'ambos')
-     ord     → 'terceiro' ou 'quarto', conforme a posição do bloco no ato
-   Quando só parte do bloco afiança, não se pode escrever «os quartos
-   outorgantes»: a declaração passaria a abranger quem é apenas garante
-   hipotecário. Nesse caso identificam-se pelo nome. */
-function declaracaoFianca(grupo,fiad,ord,mutuanteCaixa){
-  if(!fiad||!fiad.length)return'';
-  const pl=fiad.length>1;
-  const gen=generosOutorgantes(fiad);
-  const fem=gen.length>0&&gen.every(x=>x==='F');
-  const todos=grupo&&grupo.length&&fiad.length===grupo.length;
-  const sujeito=todos
-    ?(pl?`${fem?'as':'os'} ${ord}${fem?'as':'os'} outorgantes`:`${fem?'a':'o'} ${ord}${fem?'a':'o'} outorgante`)
-    :(()=>{const n=fiad.map(f=>f.nome).filter(Boolean);
-       return n.length>1?n.slice(0,-1).join(', ')+' e '+n[n.length-1]:(n[0]||(pl?'os fiadores':'o fiador'));})();
-  const verbo=pl?'Declararam':'Declarou';
-  const fiador=pl?(fem?'fiadoras':'fiadores'):(fem?'fiadora':'fiador');
-  const pagador=pl?(fem?'principais pagadoras':'principais pagadores'):(fem?'principal pagadora':'principal pagador');
-  const constituem=pl?'se constituem':'se constitui';
-  const entreSi=pl?'solidariamente entre si e com a parte mutuária':'solidariamente com a parte mutuária';
-  const renunciam=pl?'renunciam':'renuncia';
-  const credor=mutuanteCaixa?'a Caixa':'a entidade mutuante';
-  return `${verbo} ${sujeito} que, conhecendo integralmente as cláusulas do contrato ora titulado e do documento complementar, ${constituem} ${fiador} e ${pagador}, ${entreSi}, de todas as obrigações dele emergentes, nomeadamente capital, juros remuneratórios e moratórios, comissões, despesas e prémios de seguro, nos termos do artigo 634.º do Código Civil.\n`
-    +`Que ${renunciam} ao benefício da excussão prévia, nos termos dos artigos 638.º, n.º 1, e 640.º, alínea a), do Código Civil, e que a fiança se mantém enquanto subsistir qualquer dívida do contrato afiançado, dando desde já acordo a alterações de taxa de juro, prorrogações de prazo, carências e moratórias que venham a ser convencionadas com ${credor}.`;
-}
-/* ── CLÁUSULA DA FIANÇA ──
-   Um só sítio para os dois ramos, MH e CVMH: antes a mesma redação vivia
-   duplicada e qualquer correção tinha de ser feita a dobrar.
-   Dois parágrafos, não três. Saiu o que se dizia a dobrar: o 2.º parágrafo
-   antigo repetia, por fórmula genérica, o âmbito que o 1.º já enumerava, e a
-   renúncia à excussão aparecia duas vezes — uma pela remissão ao artigo 638.º,
-   outra pela paráfrase «sem prévia interpelação ou execução do património».
-   Fica tudo o que tinha valor próprio: âmbito enumerado, solidariedade,
-   qualidade de principal pagador, renúncia à excussão com a norma, renúncia à
-   divisão («conjunta ou separadamente», art. 649.º, n.º 1) e dispensa de
-   interpelação prévia. Redação simplificada aprovada pela Liliana.
-   refDe  → «da PRIMEIRA» / «dos SEGUNDOS» — quem é o devedor afiançado
-   refPor → «pela PRIMEIRA» / «pelos SEGUNDOS» — o mesmo, com outra preposição */
-function textoFianca(fiad,refDe,refPor){
-  fiad=fiad||[];
-  if(!fiad.length)return'';
-  const fiP=fiad.length>1;
-  const O_FIADOR=fiP?'OS FIADORES':'O FIADOR';
-  const constitui=fiP?'constituem-se':'constitui-se';
-  const pp=fiP?'principais pagadores':'principal pagador';
-  const do_Fiador=fiP?'dos Fiadores':'do Fiador';
-  return[
-    `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${refPor} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} expressa, solidária e irrevogavelmente ${pp} ${refDe};`,
-    `Com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil, poderá o Banco, em caso de incumprimento, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${refDe}.`
-  ].join('\n');
-}
-/* ── CLÁUSULA DO GARANTE HIPOTECÁRIO ──
-   Simétrica da FIANÇA, mas de conteúdo oposto: o garante dá o imóvel, não o
-   património. Por isso não leva «principal pagador» nem renúncia à excussão —
-   essas fórmulas convertem um garante em fiador. Quem for as duas coisas
-   recebe as duas cláusulas, cada uma com o seu âmbito.
-   O 1.º parágrafo é o texto que já saía no ramo MH; os restantes são meus.
-   ⚠ TEXTO NÃO VALIDADO — parágrafos 2 e 3 carecem de confirmação. */
-function textoGaranteHipotecario(gar,ordinalSing,ordinalPlur){
-  gar=gar||[];
-  if(!gar.length)return'';
-  const pl=gar.length>1;
-  const gen=generosOutorgantes(gar);
-  const fem=gen.length>0&&gen.every(x=>x==='F');
-  const O=pl?'Os':(fem?'A':'O');
-  const desig=pl?(ordinalPlur||'Garantes Hipotecários'):(ordinalSing||(fem?'Garante Hipotecária':'Garante Hipotecário'));
-  const declara=pl?'declaram':'declara';
-  const aceita=pl?'os aceitam':(fem?'os aceita':'os aceita');
-  const resp=pl?'respondem':'responde';
-  const assumem=pl?'assumem':'assume';
-  const ficam=pl?'ficando os seus restantes bens':'ficando os seus restantes bens';
-  return[
-    `${O} ${desig} ${declara} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${aceita}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`,
-    /* ⚠ */
-    `${O} ${desig} ${resp} exclusivamente com o imóvel ora hipotecado, nos termos do artigo 717.º do Código Civil, não ${assumem} qualquer responsabilidade pessoal pelo pagamento das obrigações garantidas, ${ficam} alheios à garantia prestada.`,
-    /* ⚠ */
-    `A garantia mantém-se enquanto subsistir qualquer obrigação emergente do contrato garantido, não constituindo causa da sua extinção as alterações de taxa de juro, prorrogações de prazo, carências ou moratórias que venham a ser convencionadas entre a CAIXA e a parte mutuária dentro do montante máximo assegurado.`
-  ].join('\n');
 }
 /* «adiante identificado / identificada / identificados / identificadas como …».
    Duas formas de designar a parte, à escolha:
@@ -2589,7 +2481,6 @@ function addPredioExtra(dados){
       <div class="form-group"><label class="form-label">Nº de descrição</label><input class="form-input" id="${id}-num"></div>
       <div class="form-group"><label class="form-label">Freguesia (CRP)</label><input class="form-input" id="${id}-freg"></div>
       <div class="form-group"><label class="form-label">AP aquisição (vendedor)</label><input class="form-input" id="${id}-apaq"></div>
-      <div class="form-group"><label class="form-label">Estado civil no registo</label><input class="form-input" id="${id}-ecaq" oninput="atualizar()" placeholder="Ex: divorciado"></div>
       <div class="form-group"><label class="form-label">Código da certidão permanente</label>
         <div style="display:flex;gap:.35rem;align-items:stretch">
           <input class="form-input" id="${id}-cert-cod" style="flex:1;min-width:0">
@@ -2647,7 +2538,7 @@ function addPredioExtra(dados){
       </div>
     </div>`;
   c.appendChild(div);
-  if(dados){['tipo','descricao','sito','crp','num','freg','apaq','ecaq','cert-cod','areas','mod1-num','mod1-data','mod1-sf','req-num','req-data','req-sf','cad-data','cad-data-u','cert-val','snic-ficha','snic-nic'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));}
+  if(dados){['tipo','descricao','sito','crp','num','freg','apaq','cert-cod','areas','mod1-num','mod1-data','mod1-sf','req-num','req-data','req-sf','cad-data','cad-data-u','cert-val','snic-ficha','snic-nic'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));}
   else addMatriz(null,id);
   return id;
 }
@@ -2655,7 +2546,7 @@ function lerPrediosExtra(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   return[...document.querySelectorAll('.pred-block')].map(b=>{
     const id=b.id;
-    return{tipo:g(`${id}-tipo`)||'urbano',descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),ecaq:g(`${id}-ecaq`),'cert-cod':g(`${id}-cert-cod`),
+    return{tipo:g(`${id}-tipo`)||'urbano',descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),'cert-cod':g(`${id}-cert-cod`),
       areas:g(`${id}-areas`),'mod1-num':g(`${id}-mod1-num`),'mod1-data':g(`${id}-mod1-data`),'mod1-sf':g(`${id}-mod1-sf`),
       'req-num':g(`${id}-req-num`),'req-data':g(`${id}-req-data`),'req-sf':g(`${id}-req-sf`),
       'req-carimbo':!!document.getElementById(`${id}-req-carimbo`)?.checked,
@@ -3079,9 +2970,6 @@ function comporMH(variante){
   if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?'TERCEIROS':'TERCEIRO',X:txtTerceiros,
     negrito:quartos.map(q=>q.nome).filter(Boolean)});
   termo.push({id:P+'t-apresentaram',T:'',X:`Os signatários apresentaram o documento de contrato de ${tipoNome} com DOCUMENTO COMPLEMENTAR e ANEXO I, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
-  /* Aqui os fiadores são o TERCEIRO bloco de outorgantes. */
-  {const dF=declaracaoFianca(quartos,fiadores,'terceir',true);
-   if(dF)termo.push({id:P+'t-fianca-decl',T:'',X:dF});}
 
   /* ── VERIFIQUEI ── */
   /* Também os garantes e fiadores podem outorgar por procuração. */
@@ -3140,15 +3028,20 @@ function comporMH(variante){
   if(clLiquidaOIC)contrato.push({id:P+'c-liquida-oic',T:'',X:clLiquidaOIC});
   if(clLiquidaForma)contrato.push({id:P+'c-liquida-forma',T:'',X:clLiquidaForma});
 
-  /* ── FIANÇA · redação do mh.html, com a concordância pelo número e género ──
-     A cláusula prepara-se aqui, junto ao mútuo de que depende, mas só entra
-     no contrato depois da hipoteca — a ordem fixada pela Liliana é garantia
-     real primeiro, garantias pessoais a seguir, e o fecho por último. */
-  let clFiancaMH=null;
+  /* ── FIANÇA · redação do mh.html, com a concordância pelo número e género ── */
   if(fiadores.length){
+    const fiP=fiadores.length>1;
     const daPRIM=muP?'dos PRIMEIROS':(femM?'da PRIMEIRA':'do PRIMEIRO');
     const pelaPRIM=muP?'pelos PRIMEIROS':(femM?'pela PRIMEIRA':'pelo PRIMEIRO');
-    clFiancaMH={id:P+'c-fianca',T:'FIANÇA',X:textoFianca(fiadores,daPRIM,pelaPRIM)};
+    const O_FIADOR=fiP?'OS FIADORES':'O FIADOR';
+    const constitui=fiP?'constituem-se':'constitui-se';
+    const pp=fiP?'principais pagadores':'principal pagador';
+    const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
+    contrato.push({id:P+'c-fianca',T:'FIANÇA',X:[
+      `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaPRIM} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${daPRIM};`,
+      `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${daPRIM} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
+      `A presente fiança é prestada com a qualidade de ${pp}, podendo o Banco, em caso de incumprimento por parte ${daPRIM}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${daPRIM}.`
+    ].join('\n')});
   }
 
   /* ── HIPOTECA · redação do TEMPL_MH_TOIC_CGD.docx ──
@@ -3177,12 +3070,8 @@ function comporMH(variante){
     +`A CAIXA poderá, sempre que entenda necessário, proceder à inspeção e avaliação do Imóvel para efeitos do disposto no artigo 701.º do Código Civil, ou de qualquer outra norma legal aplicável.`});
   contrato.push({id:P+'c-hip-execucao',T:'',X:
     `A presente hipoteca é suscetível de execução logo que o crédito por ela garantido se torne vencido e exigível nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
-  /* ── GARANTIAS PRESTADAS POR TERCEIRO ──
-     Depois de fechada a hipoteca e antes do fecho do contrato. A real primeiro,
-     a pessoal a seguir. Cada uma com o seu título, como as restantes. */
-  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'GARANTIA PRESTADA POR TERCEIRO',
-    X:textoGaranteHipotecario(garantes,'Terceiro Garante','Terceiros Garantes')});
-  if(clFiancaMH)contrato.push(clFiancaMH);
+  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'',X:
+    `${garantes.length>1?'Os Terceiros Garantes declaram':'O Terceiro Garante declara'} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${garantes.length>1?'os aceitam':'os aceita'}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`});
 
   /* ── Fecho · período de reflexão ──
      A cláusula é única, confirmado pela Liliana: o {Clausula_Renuncia} do
@@ -3212,7 +3101,7 @@ function comporMH(variante){
    A dispensa do Documento Complementar e do Anexo I é redação da Liliana, e
    entra em qualquer mútuo com hipoteca — na compra e venda e no ato 4. */
 function fechoTermo(temMH){
-  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, que será efetuado em seguida nesta mesma data, em www.predialonline.mj.pt.`;
+  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, em seguida nesta mesma data, em www.predialonline.mj.pt.`;
   const dispensa=`As partes dispensaram a leitura do Documento Complementar e Anexo I por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-os, ainda assim, como parte integrante do presente contrato.`;
   return temMH?`${base}\n${dispensa}`:base;
 }
@@ -3520,8 +3409,10 @@ function addBem(dados){
         <select class="form-select" id="${id}-tipo" onchange="atualizar()">
           <option value="imovel">Imóvel</option>
           <option value="veiculo">Veículo</option>
+          <option value="conta">Conta bancária / produto financeiro</option>
           <option value="quota">Quota de sociedade</option>
           <option value="outro">Outro bem</option>
+          <option value="divida">Dívida (verba do passivo)</option>
         </select></div>
       <div class="form-group"><label class="form-label">Como foi adquirido</label>
         <select class="form-select" id="${id}-origem" onchange="atualizar()">
@@ -3568,12 +3459,6 @@ function addBem(dados){
           <input class="form-input" id="${id}-im-cert" oninput="atualizar()"></div>
         <div class="form-group"><label class="form-label">Certidão válida até</label>
           <input type="date" class="form-input" id="${id}-im-certval" onchange="atualizar()"></div>
-        <div class="form-group form-full"><label class="form-label">Licença de utilização</label>
-          <input class="form-input" id="${id}-im-licenca" oninput="atualizar()" placeholder="Ex: n.º 47/2006, de 08/02/2006, da Câmara Municipal de Évora"></div>
-        <div class="form-group"><label class="form-label">Certificado energético n.º</label>
-          <input class="form-input" id="${id}-im-ce" oninput="atualizar()" placeholder="Ex: SCE 255540021"></div>
-        <div class="form-group"><label class="form-label">Certificado válido até</label>
-          <input type="date" class="form-input" id="${id}-im-ceval" onchange="atualizar()"></div>
       </div>
 
       <div class="bem-veiculo" style="display:none">
@@ -3599,6 +3484,54 @@ function addBem(dados){
             <input class="form-input" id="${id}-qt-soc" oninput="atualizar()" placeholder="Denominação, sede e NIPC"></div>
         </div>
       </div>
+      <div class="bem-conta" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Banco / instituição</label>
+            <input class="form-input" id="${id}-ct-banco" oninput="atualizar()" placeholder="Ex: CAIXA GERAL DE DEPÓSITOS, S.A."></div>
+          <div class="form-group"><label class="form-label">Tipo de produto</label>
+            <select class="form-select" id="${id}-ct-produto" onchange="atualizar()">
+              <option value="conta de dep\u00f3sito \u00e0 ordem">Conta de depósito à ordem</option>
+              <option value="conta de dep\u00f3sito a prazo">Conta de depósito a prazo</option>
+              <option value="conta poupan\u00e7a">Conta poupança</option>
+              <option value="certificados de aforro">Certificados de aforro</option>
+              <option value="certificados do tesouro">Certificados do tesouro</option>
+              <option value="carteira de t\u00edtulos e a\u00e7\u00f5es">Carteira de títulos e ações</option>
+              <option value="fundo de investimento">Fundo de investimento</option>
+              <option value="plano poupan\u00e7a-reforma">Plano poupança-reforma (PPR)</option>
+              <option value="seguro de capitaliza\u00e7\u00e3o">Seguro de capitalização</option>
+              <option value="outro produto financeiro">Outro produto financeiro</option>
+            </select></div>
+          <div class="form-group"><label class="form-label">IBAN ou n.º de conta</label>
+            <input class="form-input" id="${id}-ct-iban" oninput="atualizar()" placeholder="Ex: PT50 0035 0000 0000 0000 0000 0"></div>
+          <div class="form-group"><label class="form-label">Titularidade</label>
+            <input class="form-input" id="${id}-ct-titular" oninput="atualizar()" placeholder="Ex: em nome de ambos os outorgantes"></div>
+          <div class="form-group form-full"><label class="form-label">Saldo reportado a</label>
+            <input type="date" class="form-input" id="${id}-ct-data" onchange="atualizar()">
+            <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">O valor da verba é o saldo nesta data.</div></div>
+        </div>
+      </div>
+
+      <div class="bem-dividaverba" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Tipo de dívida</label>
+            <select class="form-select" id="${id}-dv-tipo" onchange="atualizar()">
+              <option value="cr\u00e9dito hipotec\u00e1rio">Crédito hipotecário</option>
+              <option value="cr\u00e9dito ao consumo">Crédito ao consumo</option>
+              <option value="cr\u00e9dito autom\u00f3vel">Crédito automóvel</option>
+              <option value="cr\u00e9dito pessoal">Crédito pessoal</option>
+              <option value="cart\u00e3o de cr\u00e9dito">Cartão de crédito</option>
+              <option value="d\u00edvida a fornecedores">Dívida a fornecedores</option>
+              <option value="d\u00edvida fiscal ou \u00e0 seguran\u00e7a social">Dívida fiscal ou à segurança social</option>
+              <option value="d\u00edvida a terceiros">Dívida a terceiros</option>
+              <option value="outra d\u00edvida">Outra dívida</option>
+            </select></div>
+          <div class="form-group"><label class="form-label">N.º do contrato</label>
+            <input class="form-input" id="${id}-dv-contrato" oninput="atualizar()"></div>
+          <div class="form-group form-full"><label class="form-label">Descrição complementar</label>
+            <input class="form-input" id="${id}-dv-desc" oninput="atualizar()" placeholder="Opcional — o que a dívida titula"></div>
+        </div>
+      </div>
+
       <div class="bem-outro" style="display:none">
         <div class="form-group form-full"><label class="form-label">Descrição do bem</label>
           <textarea class="form-input" id="${id}-ou-desc" rows="2" oninput="atualizar()"></textarea></div>
@@ -3626,7 +3559,35 @@ function addBem(dados){
     if(dados.adj!==undefined&&dados.adj!=='')div.dataset.adj=dados.adj;
   }
 }
-const VERBAS=['','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+/* ── QUE CAMPOS MOSTRAR EM CADA VERBA ──
+   Uma verba pode ser um bem — imóvel, veículo, conta, quota — ou ser ela
+   própria uma dívida. Sendo dívida, não há valor atribuído: o valor da verba é
+   o que se deve, e por isso o campo do ativo desaparece.
+   ctx: 'dcc' na partilha e na divisão, 'doacao' na doação. */
+function mostrarCamposVerba(b,ctx){
+  const t=v(`${b.id}-tipo`)||'imovel';
+  const ehDiv=(t==='divida');
+  const fr=v(`${b.id}-im-tipo`)==='fracao';
+  b.querySelectorAll('.bem-imovel').forEach(e=>e.style.display=t==='imovel'?'contents':'none');
+  b.querySelectorAll('.bem-fr').forEach(e=>e.style.display=(t==='imovel'&&fr)?'flex':'none');
+  b.querySelectorAll('.bem-veiculo').forEach(e=>e.style.display=t==='veiculo'?'block':'none');
+  b.querySelectorAll('.bem-quota').forEach(e=>e.style.display=t==='quota'?'block':'none');
+  b.querySelectorAll('.bem-conta').forEach(e=>e.style.display=t==='conta'?'block':'none');
+  b.querySelectorAll('.bem-dividaverba').forEach(e=>e.style.display=ehDiv?'block':'none');
+  b.querySelectorAll('.bem-outro').forEach(e=>e.style.display=t==='outro'?'block':'none');
+  const grupo=id=>document.getElementById(`${b.id}-${id}`)?.closest('.form-group');
+  const gA=grupo('ativo'); if(gA)gA.style.display=ehDiv?'none':'flex';
+  /* O passivo é do ato 3; na doação não há dívidas a assumir. */
+  b.querySelectorAll('.bem-divida').forEach(e=>e.style.display=(ctx==='doacao'&&!ehDiv)?'none':'flex');
+  /* As inscrições da hipoteca só existem sobre imóvel. */
+  const gH=grupo('hipotecas'); if(gH)gH.style.display=(t==='imovel')?'flex':'none';
+  /* Como foi adquirido não se pergunta a uma dívida. */
+  const gO=grupo('origem'); if(gO)gO.style.display=ehDiv?'none':'flex';
+  const rot=b.querySelector('.bem-rot-adj');
+  if(rot)rot.innerHTML=ehDiv?'Assumida por <span>*</span>':(ctx==='doacao'?'Doado a <span>*</span>':'Adjudicado a <span>*</span>');
+}
+const VERBAS=['','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ',
+  'ONZE','DOZE','TREZE','CATORZE','QUINZE','DEZASSEIS','DEZASSETE','DEZOITO','DEZANOVE','VINTE'];
 function renumerarVerbas(){
   [...document.querySelectorAll('.bem-block .verba-rot')].forEach((e,i)=>{
     e.textContent='VERBA '+(VERBAS[i+1]||(i+1));
@@ -3637,6 +3598,7 @@ function renumerarVerbas(){
 const CAMPOS_BEM=['tipo','origem','im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg',
   'im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval','im-licenca','im-ce','im-ceval','decl-data',
   've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc',
+  'ct-banco','ct-produto','ct-iban','ct-titular','ct-data','dv-tipo','dv-contrato','dv-desc',
   'ativo','passivo','adj','credor','hipotecas'];
 function lerBensBruto(){
   const g=id=>document.getElementById(id)?.value??'';
@@ -3652,11 +3614,15 @@ function lerBens(){
       adj:parseInt(g(`${b.id}-adj`),10),credor:g(`${b.id}-credor`),hipotecas:g(`${b.id}-hipotecas`)};
     o.origem=g(`${b.id}-origem`)||'casamento';
     ['im-tipo','im-letra','im-desc','im-apph','im-sito','im-crp','im-num','im-freg','im-apaq','im-artigo','im-fregmat','im-vpt','im-vptano','im-cad','im-cert','im-certval','im-licenca','im-ce','im-ceval','decl-data',
-     've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
+     've-matricula','ve-marca','ve-modelo','ve-ano','qt-nominal','qt-titular','qt-soc','ou-desc',
+     'ct-banco','ct-produto','ct-iban','ct-titular','ct-data','dv-tipo','dv-contrato','dv-desc'].forEach(k=>o[k]=g(`${b.id}-${k}`));
+    /* Numa verba do passivo não há ativo nenhum: o valor da verba é o que se
+       deve, e entra todo do lado do passivo. */
+    if(o.tipo==='divida')o.ativo=0;
     return o;
   /* Uma verba com VPT mas sem valor atribuído é verba na mesma — na doação o
      valor pode não ser atribuído e a base ser o patrimonial. */
-  }).filter(x=>x.ativo||x['im-vpt']||x['im-desc']||x['ve-matricula']||x['qt-soc']||x['ou-desc']);
+  }).filter(x=>x.ativo||x.passivo||x['im-vpt']||x['im-desc']||x['ve-matricula']||x['qt-soc']||x['ou-desc']||x['ct-banco']);
 }
 /* «1/2», «2/3», «metade» — tudo dá uma fração. */
 function fracao(t){
@@ -3725,6 +3691,10 @@ function textoBem(b){
     return`o veículo automóvel de matrícula ${(b['ve-matricula']||'…').toUpperCase()}, da marca ${b['ve-marca']||'…'}${b['ve-modelo']?`, modelo ${b['ve-modelo']}`:''}${b['ve-ano']?`, do ano de ${b['ve-ano']}`:''}`;
   if(b.tipo==='quota')
     return`a quota no valor nominal de € ${b['qt-nominal']||'…'}, titulada em nome ${b['qt-titular']||'…'}, na sociedade ${b['qt-soc']||'…'}`;
+  if(b.tipo==='conta')
+    return`o saldo d${/^conta/.test(b['ct-produto']||'')?'a':'o'} ${b['ct-produto']||'conta de depósito à ordem'}${b['ct-iban']?` com o ${/^PT/i.test(b['ct-iban'])?'IBAN':'número'} ${b['ct-iban']}`:''}, domiciliad${/^conta/.test(b['ct-produto']||'')?'a':'o'} n${/^(o )?banco/i.test(b['ct-banco']||'')?'o':'a'} ${b['ct-banco']||'…'}${b['ct-titular']?`, ${b['ct-titular']}`:''}${b['ct-data']?`, reportado a ${dPT(b['ct-data'])}`:''}`;
+  if(b.tipo==='divida')
+    return`a dívida emergente de ${b['dv-tipo']||'contrato de crédito'}${b['dv-contrato']?`, titulad${/^d/.test(b['dv-tipo']||'')?'a':'a'} pelo contrato n.º ${b['dv-contrato']}`:''}, de que é credor${b.credor?` ${b.credor}`:'a entidade mutuante'}${b['dv-desc']?`, ${b['dv-desc']}`:''}`;
   if(b.tipo==='outro')return b['ou-desc']||'…';
   const fr=b['im-tipo']==='fracao';
   const corpo=fr
@@ -3843,10 +3813,17 @@ function comporDCC(){
     numeros.push(`${num('')}Que foram entre si casados sob o regime da ${v('f-div-regime')||'comunhão de adquiridos'}, tendo o seu casamento sido dissolvido por divórcio decretado por sentença de ${dPT(v('f-div-sentenca'))}, transitada em julgado em ${dPT(v('f-div-transito'))}, proferida no divórcio${v('f-div-tipo')==='litigioso'?' sem consentimento do outro cônjuge':', por mútuo consentimento'}, que correu seus termos sob o número ${v('f-div-proc')||'…'}, no ${v('f-div-tribunal')||'…'}, conforme certidão que fica arquivada.`);
   const quotasLst=cop.map((o,k)=>`${comOrd(k,true)} a quota ideal de ${o.quota||(cop.length===2?'metade (1/2)':`1/${cop.length}`)}`);
   const quotasTxt=quotasLst.length>1?quotasLst.slice(0,-1).join(', ')+' e '+quotasLst[quotasLst.length-1]:quotasLst[0];
-  numeros.push(`${num('')}Que são comproprietários d${varios?'os bens':'o bem'} adiante identificad${varios?'os':'o'}, cabendo ${quotasTxt}:\n`
-    +bens.map((b,k)=>`${verba(k)} - ${textoBem(b)}, a que os outorgantes atribuem o valor de ${eur(b.ativo)};`).join('\n'));
+  /* As verbas do passivo entram na mesma numeração, mas não se dizem
+     «bens de que são comproprietários»: dizem-se dívidas por que respondem. */
+  const temDiv=bens.some(b=>b.tipo==='divida');
+  numeros.push(`${num('')}Que são comproprietários d${varios?'os bens':'o bem'} adiante identificad${varios?'os':'o'}${temDiv?', e responsáveis pelas dívidas igualmente adiante identificadas':''}, cabendo ${quotasTxt}:\n`
+    +bens.map((b,k)=>b.tipo==='divida'
+      ?`${verba(k)} - ${textoBem(b)}, no montante em dívida de ${eur(b.passivo)};`
+      :`${verba(k)} - ${textoBem(b)}, a que os outorgantes atribuem o valor de ${eur(b.ativo)};`).join('\n'));
 
-  const onerados=bens.map((b,k)=>({b,k})).filter(x=>x.b.passivo>0);
+  /* Só os bens onerados: a verba que já é dívida não volta a ser descrita
+     como ónus, porque foi enumerada como verba própria. */
+  const onerados=bens.map((b,k)=>({b,k})).filter(x=>x.b.passivo>0&&x.b.tipo!=='divida');
   let nOnus=0;
   if(onerados.length){
     nOnus=nN+1;
@@ -3862,6 +3839,8 @@ function comporDCC(){
   numeros.push(`${num('Adjudicação')}Pela presente divisão, ${varios?'os bens identificados são adjudicados':'o bem identificado é adjudicado'} do seguinte modo:\n`
     +bens.map((b,k)=>{
       const q=isNaN(b.adj)?0:b.adj;
+      if(b.tipo==='divida')
+        return`a ${verba(k)} é assumida integralmente ${comOrd(q,true)}, que se obriga a satisfazê-la junto d${b.credor?'e '+b.credor:'a entidade credora'};`;
       return`${varios?`a ${verba(k)}`:'o bem identificado'} é adjudicado na sua totalidade ${comOrd(q,true)}, que fica a ser ${femDeCop(q)?'dona e legítima possuidora':'dono e legítimo possuidor'} da sua totalidade, com efeitos a partir desta data;`;
     }).join('\n'));
 
@@ -3882,7 +3861,7 @@ function comporDCC(){
       const suas=bens.map((b,x)=>({b,x})).filter(({b})=>(isNaN(b.adj)?0:b.adj)===k);
       if(!suas.length)return;
       const dividas=suas.filter(({b})=>b.passivo>0);
-      linhasPag.push(`Para pagamento d${nat.casal?'a meação':'a quota-parte'} ${ordDe_(k)}, ${(o.nome||'…').toUpperCase()}, ${suas.length>1?'são-lhe adjudicadas e ficam a pertencer-lhe':'é-lhe adjudicada e fica a pertencer-lhe'} ${suas.map(({b,x})=>`a ${verba(x)}, no valor atribuído de ${eur(b.ativo)}`).join(', e ')}`
+      linhasPag.push(`Para pagamento d${nat.casal?'a meação':'a quota-parte'} ${ordDe_(k)}, ${(o.nome||'…').toUpperCase()}, ${suas.length>1?'são-lhe adjudicadas e ficam a pertencer-lhe':'é-lhe adjudicada e fica a pertencer-lhe'} ${suas.filter(({b})=>b.tipo!=='divida').map(({b,x})=>`a ${verba(x)}, no valor atribuído de ${eur(b.ativo)}`).join(', e ')}`
         +(dividas.length?`, ficand${femDeCop(k)?'o a mesma':'o o mesmo'} com a obrigação de efetuar o pagamento integral da dívida ${[...new Set(dividas.map(({b})=>b.credor||'…'))].map(aoCredor).join(' e ')}`:'')+'.');
     });
 
@@ -3914,30 +3893,26 @@ function comporDCC(){
     numeros.push(`${num('Pagamentos')}\n`+linhasPag.join('\n'));
   }
 
-  if(onerados.length){
+  /* Assume-se o passivo dos bens onerados e o das verbas que são elas próprias
+     dívida — em ambos os casos há um credor a satisfazer. */
+  const assumidos=bens.map((b,k)=>({b,k})).filter(x=>x.b.passivo>0);
+  if(assumidos.length){
     const refOnus=NUM[nOnus]||'anterior';
-    numeros.push(num('Assunção do passivo')+onerados.map(({b,k})=>{
+    numeros.push(num('Assunção do passivo')+assumidos.map(({b,k})=>{
       const q=isNaN(b.adj)?0:b.adj;
       const fora=cop.map((_,x)=>x).filter(x=>x!==q);
       const quem=comOrd(q).replace(/^([ao]) /,(m,a)=>a.toUpperCase()+' ');
-      return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${varios?`na ${verba(k)} do número ${refOnus}`:`no número ${refOnus}`}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')} ${fora.length>1?'exonerados':(fora.length&&femDeCop(fora[0])?'exonerada':'exonerado')} de toda e qualquer responsabilidade perante o credor hipotecário`;
+      const onde=b.tipo==='divida'?`na ${verba(k)}`:(varios?`na ${verba(k)} do número ${refOnus}`:`no número ${refOnus}`);
+      return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${onde}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')} ${fora.length>1?'exonerados':(fora.length&&femDeCop(fora[0])?'exonerada':'exonerado')} de toda e qualquer responsabilidade perante ${b.tipo==='divida'?'o credor':'o credor hipotecário'}`;
     }).join('. ')+'.');
   }
 
-  const adjs=[...new Set(bens.map(b=>isNaN(b.adj)?0:b.adj))];
+  const adjs=[...new Set(bens.filter(b=>b.tipo!=='divida').map(b=>isNaN(b.adj)?0:b.adj))];
   numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que, sobre o excesso da quota-parte por si adquirido, liquida${adjs.length>1?'m':''} o IMT devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido (verba 1.1 da TGIS).`);
 
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
-  /* ── LICENCIAMENTO E CERTIFICAÇÃO ENERGÉTICA ──
-     Vêm da compra e venda, por verba. Só saem havendo o que dizer. */
-  const licLinhas=[];
-  bens.forEach((b,k)=>{
-    const onde=bens.length>1?`A ${verba(k)}`:'O bem identificado';
-    if(b['im-licenca'])licLinhas.push(`${onde} tem a Licença de Utilização ${b['im-licenca']}.`);
-    if(b['im-ce'])licLinhas.push(`${onde} dispõe do Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios n.º ${b['im-ce']}${b['im-ceval']?`, válido até ${dPT(b['im-ceval'])}`:''}, nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`);
-  });
-  if(licLinhas.length)
-    contrato.push({id:'c-licenciamento',T:'',X:licLinhas.join('\n')});
+  /* A licença de utilização e o certificado energético saíram deste ato: numa
+     partilha ou divisão não são exigidos, e os campos deixaram de existir. */
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
@@ -4243,24 +4218,18 @@ function compor(){
   const txtMatrizes=matrizes.length
     ?(matrizes.length>1?matrizes.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(matrizes[matrizes.length-1],true):textoMatrizG(matrizes[0],false))
     :'na respetiva matriz predial …';
-  /* ── ESTADO CIVIL CONSTANTE DO REGISTO ──
-     Entra entre o beneficiário da inscrição e a AP, como na certidão:
-     «a favor da parte vendedora, no estado de divorciado, pela inscrição …».
-     Só sai quando o campo está preenchido — a esmagadora maioria dos casos
-     não o exige, e a frase tem de continuar a ler-se sem ele. */
-  const ecReg=e=>e?`, no estado de ${e},`:'';
   const txtImovel=isFr
-    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora${ecReg(v('f-im-ecaq'))} pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
+    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
     :(()=>{
       const extras=lerPrediosExtra();
       const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
       const multiVerbas=extras.length>0;
       const multiIMT=p=>p.matrizes.length>1||multiVerbas;
       const txtMats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],true):textoMatrizG(ms[0],multiVerbas)):'na respetiva matriz predial …';
-      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora${ecReg(v('f-im-ecaq'))} pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
+      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
       if(!multiVerbas)return p1+', adiante designado abreviadamente por Imóvel.';
       const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
-      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} da freguesia de ${p.freg||'…'}, com aquisição registada a favor da parte vendedora${ecReg(p.ecaq)} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} da freguesia de ${p.freg||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
       return[p1,...pxs].map((t,i)=>`${CARD[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
     })();
 
@@ -4497,9 +4466,6 @@ function compor(){
     ? 'CONTRATO DE COMPRA E VENDA E MÚTUO COM HIPOTECA, COM DOCUMENTO COMPLEMENTAR E ANEXO I'
     : 'CONTRATO DE COMPRA E VENDA';
   termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um ${nomeDocAnexo}, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
-  /* Aqui, havendo compra e venda antes do mútuo, os fiadores são o QUARTO bloco. */
-  {const dF=declaracaoFianca(quartos,fiadores,'quart',v('f-mutuante')==='cgd');
-   if(dF)termo.push({id:'t-fianca-decl',T:'',X:dF});}
   termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${abertura}${extraVerif}`});
   /* ── TRATO SUCESSIVO · legitimidade e imposto do selo por óbito (termo) ── */
   if(ts.legitimidade)termo.push({id:'t-trato-suc',T:'',X:`Verifiquei ainda:\n${ts.legitimidade}`});
@@ -4564,17 +4530,9 @@ function compor(){
   const ORD_CL=['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava','Nona','Décima','Décima Primeira','Décima Segunda','Décima Terceira','Décima Quarta'];
   let nCl=0;
   const clausula=assunto=>`${ORD_CL[++nCl]||nCl+'.ª'} (${assunto})`;
-  /* ── QUALIDADE EM QUE SE VENDE ──
-     Havendo trato sucessivo, quem vende não é o titular inscrito mas quem
-     lhe sucedeu. A qualidade tem de constar da própria cláusula do objeto:
-     a narrativa do óbito explica a proveniência, não supre a menção. */
-  const qualHerd=ts.narrativa
-    ?(nPessoas>1?', na qualidade de herdeiros,'
-      :(generosOutorgantes(vend)[0]==='F'?', na qualidade de herdeira,':', na qualidade de herdeiro,'))
-    :'';
   contrato.push({id:'c-cl1',T:clausula('Objeto'),
     X:(ts.narrativa?`${ts.narrativa}\n`:'')
-      +`${nPessoas>1?`Os Primeiros Contratantes${qualHerd} vendem`:`O Primeiro Contratante${qualHerd} vende`} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`
+      +`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`
       +`\n${txtOnus}`});
   /* ── CLÁUSULA GENÉRICA · Direitos de preferência (Casa Pronta) ──
      Tronco comum: Lei 83/2019, art. 37.º/3 + Lei 89/2021, art. 7.º — anúncio via casapronta.pt
@@ -4646,33 +4604,24 @@ function compor(){
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
   if(compCGD)contrato.push({id:'c-cl-destino',T:clausula('Destino do Imóvel adquirido'),X:txtDestino});
-  /* O texto da fiança prepara-se aqui; a cláusula só entra depois da hipoteca,
-     pelo que também a numeração se atribui nessa altura. */
-  let xFiancaCV=null;
-  if(ehCVMH&&fiadores.length){
-    const cP=comps.length>1;
-    const doSEGUNDO=cP?'dos SEGUNDOS':'do SEGUNDO',pelaSEGUNDO=cP?'pelos SEGUNDOS':'pelo SEGUNDO';
-    xFiancaCV=textoFianca(fiadores,doSEGUNDO,pelaSEGUNDO);
+  if(ehCVMH){
+    if(fiadores.length){
+      const cP=comps.length>1,fiP=fiadores.length>1;
+      const doSEGUNDO=cP?'dos SEGUNDOS':'do SEGUNDO',pelaSEGUNDO=cP?'pelos SEGUNDOS':'pelo SEGUNDO';
+      const O_FIADOR=fiP?'OS FIADORES':'O FIADOR',constitui=fiP?'constituem-se':'constitui-se';
+      const pp=fiP?'principais pagadores':'principal pagador';
+      const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
+      contrato.push({id:'c-fianca',T:clausula('Fiança'),X:[
+        `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaSEGUNDO} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${doSEGUNDO};`,
+        `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${doSEGUNDO} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
+        `A presente fiança é prestada com a qualidade de ${pp}, podendo o Banco, em caso de incumprimento por parte ${doSEGUNDO}, exigir ${do_Fiador}, conjunta ou separadamente, o pagamento integral das quantias em dívida, sem necessidade de prévia interpelação ou execução do património ${doSEGUNDO}.`
+      ].join('\n')});
+    }
   }
-  /* Havendo garantes hipotecários, quem constitui a hipoteca são eles e não os
-     mutuários: o imóvel é deles. Sem garantes, nada muda. */
-  const hipOv=(ehCVMH&&garantes.length)?(()=>{
-    const gp=garantes.length>1,gen=generosOutorgantes(garantes);
-    const fem=gen.length>0&&gen.every(x=>x==='F');
-    return{art:gp?'os':(fem?'a':'o'),
-           mut:gp?'QUARTOS OUTORGANTES':(fem?'QUARTA OUTORGANTE':'QUARTO OUTORGANTE'),
-           constitui:gp?'constituem':'constitui'};
-  })():null;
-  textosMH(generosOutorgantes(comps).length,hipOv).forEach(b=>contrato.push(
+  textosMH(generosOutorgantes(comps).length).forEach(b=>contrato.push(
     b.T?{...b,T:clausula(TITULOS_MH[b.T]||b.T)}:b));
   if(ehCVMH){
     contrato.push({id:'c-mh-execucao',T:'',X:`A presente hipoteca é suscetível de execução logo que o crédito garantido se torne vencido e exigível, nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
-    /* ── GARANTIAS PRESTADAS POR TERCEIRO ──
-       Fechada a hipoteca, entram as garantias dos quartos outorgantes: a real
-       primeiro, a pessoal a seguir, ambas com título e numeração próprios. */
-    if(garantes.length)contrato.push({id:'c-garante-hip',T:clausula('Garantia Prestada por Terceiro'),
-      X:textoGaranteHipotecario(garantes,'QUARTO OUTORGANTE','QUARTOS OUTORGANTES')});
-    if(xFiancaCV)contrato.push({id:'c-fianca',T:clausula('Fiança'),X:xFiancaCV});
     const S=flexaoMutuario(generosOutorgantes(comps).length);
     if(chk('t-reflexao'))contrato.push({id:'c-mh-reflexao',T:'',X:`Declara${S.art==='os'?'m':''} ${S.art} ${S.art==='os'?'Segundos Outorgantes':'Segundo Outorgante'} que, nos termos do Decreto-Lei n.º 74-A/2017, de 23 de junho, ${S.reconhece} ter decorrido integralmente o período de reflexão legal de sete dias.`});
   }
@@ -5031,21 +4980,13 @@ function funilDoacao(){
   setProp('ttl-bens-int','textContent','Bens doados');
   setProp('sub-bens-int','textContent','Cada bem leva o seu valor atribuído e a quem é doado. Não atribuindo valor, o Imposto do Selo calcula-se sobre o VPT.');
   setProp('btn-add-bem','textContent','+ Acrescentar bem doado');
-  document.querySelectorAll('.bem-divida').forEach(e=>e.style.display='none');
-  document.querySelectorAll('.bem-rot-adj').forEach(e=>e.innerHTML='Doado a <span>*</span>');
   renumerarVerbas();
   if(!document.querySelectorAll('.bem-block').length)addBem();
   {
     const don2=lerCompradores();
     const ops=don2.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Donatário '+(i+1)))}</option>`).join('');
     document.querySelectorAll('.bem-block').forEach(b=>{
-      const t=v(`${b.id}-tipo`)||'imovel';
-      b.querySelectorAll('.bem-imovel').forEach(e=>e.style.display=t==='imovel'?'contents':'none');
-      const fr=v(`${b.id}-im-tipo`)==='fracao';
-      b.querySelectorAll('.bem-fr').forEach(e=>e.style.display=(t==='imovel'&&fr)?'flex':'none');
-      b.querySelectorAll('.bem-veiculo').forEach(e=>e.style.display=t==='veiculo'?'block':'none');
-      b.querySelectorAll('.bem-quota').forEach(e=>e.style.display=t==='quota'?'block':'none');
-      b.querySelectorAll('.bem-outro').forEach(e=>e.style.display=t==='outro'?'block':'none');
+      mostrarCamposVerba(b,'doacao');
       const sel=document.getElementById(`${b.id}-adj`);
       if(sel&&sel.innerHTML!==ops){const a=b.dataset.adj??sel.value;sel.innerHTML=ops;
         sel.value=(a!==''&&Number(a)<don2.length)?a:'0';delete b.dataset.adj;}
@@ -5094,8 +5035,6 @@ function funilDCC(){
   setProp('ttl-bens-int','textContent','Bens a dividir');
   setProp('sub-bens-int','textContent','Cada bem leva o seu valor atribuído, a dívida que o onera e a quem é adjudicado. Sem dívida, deixa a zero.');
   setProp('btn-add-bem','textContent','+ Acrescentar bem');
-  document.querySelectorAll('.bem-divida').forEach(e=>e.style.display='');
-  document.querySelectorAll('.bem-rot-adj').forEach(e=>e.innerHTML='Adjudicado a <span>*</span>');
   const ts=document.getElementById('t-trato-suc');
   if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='';
   ['f-desig-vend'].forEach(id=>{const g=document.getElementById(id);
@@ -5108,13 +5047,7 @@ function funilDCC(){
   const opcoes=cop.map((o,i)=>`<option value="${i}">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</option>`).join('');
   if(!document.querySelectorAll('.bem-block').length)addBem();
   document.querySelectorAll('.bem-block').forEach(b=>{
-    const t=v(`${b.id}-tipo`)||'imovel';
-    b.querySelectorAll('.bem-imovel').forEach(e=>e.style.display=t==='imovel'?'contents':'none');
-    /* A letra e a inscrição da propriedade horizontal são da fração, e só dela. */
-    const fr=v(`${b.id}-im-tipo`)==='fracao';
-    b.querySelectorAll('.bem-fr').forEach(e=>e.style.display=(t==='imovel'&&fr)?'flex':'none');
-    b.querySelectorAll('.bem-veiculo').forEach(e=>e.style.display=t==='veiculo'?'block':'none');
-    b.querySelectorAll('.bem-outro').forEach(e=>e.style.display=t==='outro'?'block':'none');
+    mostrarCamposVerba(b,'dcc');
     const sel=document.getElementById(`${b.id}-adj`);
     if(sel&&sel.innerHTML!==opcoes){
       const guardado=b.dataset.adj;
@@ -5125,9 +5058,6 @@ function funilDCC(){
     }
   });
   renumerarVerbas();
-  document.querySelectorAll('.bem-block').forEach(b=>{
-    b.querySelectorAll('.bem-quota').forEach(e=>e.style.display=v(`${b.id}-tipo`)==='quota'?'block':'none');
-  });
   setDisp('blk-divorcio',naturezaDCC().casal?'block':'none');
   const selP=document.getElementById('f-proc-quem');
   if(selP&&selP.innerHTML!==opcoes){const a=selP.value;selP.innerHTML=opcoes;selP.value=(a&&Number(a)<cop.length)?a:'0';}
@@ -5149,27 +5079,65 @@ function desenharApuramento(){
   const a=apurarDCC();
   if(!a.bens.length||!a.cop.length){el.innerHTML='';return;}
   const eur=n=>fmtValor(n)+' €';
+  const nome=(o,i)=>esc(o.nome||o.denom||('Outorgante '+(i+1)));
+  /* Verba a verba, para se conferir de onde vem cada total. */
+  const verbas=a.bens.map((b,k)=>{
+    const q=isNaN(b.adj)?0:b.adj;
+    const rot=b.tipo==='divida'?'dívida'
+      :b.tipo==='conta'?'conta'
+      :b.tipo==='veiculo'?'veículo'
+      :b.tipo==='quota'?'quota'
+      :b.tipo==='outro'?'outro':'imóvel';
+    return`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:.22rem .5rem .22rem 0;white-space:nowrap">VERBA ${VERBAS[k+1]||(k+1)}</td>
+      <td style="padding:.22rem .5rem;color:var(--text-faint)">${rot}</td>
+      <td style="padding:.22rem .5rem;overflow:hidden;text-overflow:ellipsis;max-width:150px;white-space:nowrap">${nome(a.cop[q]||{},q)}</td>
+      <td style="text-align:right;padding:.22rem .5rem">${b.ativo?eur(b.ativo):'—'}</td>
+      <td style="text-align:right;padding:.22rem 0;color:${b.passivo?'var(--red)':'inherit'}">${b.passivo?eur(b.passivo):'—'}</td></tr>`;
+  }).join('');
+
   const linhas=a.cop.map((o,i)=>{
     const d=a.dif[i];
     const cor=Math.abs(d)<0.005?'var(--text-muted)':(d>0?'var(--red)':'var(--green)');
     const nota=Math.abs(d)<0.005?'certo':(d>0?`paga ${eur(d)}`:`recebe ${eur(-d)}`);
-    return`<tr><td style="padding:.2rem .5rem .2rem 0">${esc(o.nome||o.denom||('Outorgante '+(i+1)))}</td>
-      <td style="text-align:right;padding:.2rem .5rem">${(a.q[i]*100).toFixed(1).replace('.',',')}%</td>
-      <td style="text-align:right;padding:.2rem .5rem">${eur(a.cabe[i])}</td>
-      <td style="text-align:right;padding:.2rem .5rem">${eur(a.leva[i])}</td>
-      <td style="text-align:right;padding:.2rem 0;color:${cor};font-weight:600">${nota}</td></tr>`;
+    return`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:.28rem .5rem .28rem 0">${nome(o,i)}</td>
+      <td style="text-align:right;padding:.28rem .5rem">${(a.q[i]*100).toFixed(1).replace('.',',')}%</td>
+      <td style="text-align:right;padding:.28rem .5rem">${eur(a.ativoLeva[i])}</td>
+      <td style="text-align:right;padding:.28rem .5rem;color:${a.passivoAssume[i]?'var(--red)':'inherit'}">${eur(a.passivoAssume[i])}</td>
+      <td style="text-align:right;padding:.28rem .5rem;font-weight:600">${eur(a.leva[i])}</td>
+      <td style="text-align:right;padding:.28rem .5rem">${eur(a.cabe[i])}</td>
+      <td style="text-align:right;padding:.28rem 0;color:${cor};font-weight:600">${nota}</td></tr>`;
   }).join('');
+
+  const th='font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em';
   el.innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:.75rem .85rem">
-    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Apuramento</div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem">
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Apuramento por verbas</div>
+
+    <table style="width:100%;font-size:11.5px;border-collapse:collapse;margin-bottom:.6rem">
+      <tr style="${th}"><td style="padding-bottom:.2rem">verba</td><td style="padding-bottom:.2rem">natureza</td>
+        <td style="padding-bottom:.2rem">adjudicada a</td><td style="text-align:right">ativo</td><td style="text-align:right">passivo</td></tr>
+      ${verbas}
+      <tr style="border-top:2px solid var(--border);font-weight:600">
+        <td style="padding:.28rem .5rem .28rem 0" colspan="3">Totais</td>
+        <td style="text-align:right;padding:.28rem .5rem">${eur(a.ativo)}</td>
+        <td style="text-align:right;padding:.28rem 0;color:${a.passivo?'var(--red)':'inherit'}">${eur(a.passivo)}</td></tr>
+    </table>
+
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:.45rem">
       Ativo ${eur(a.ativo)} &minus; passivo ${eur(a.passivo)} = <b style="color:var(--text)">${eur(a.liquido)}</b> a partilhar.</div>
-    <table style="width:100%;font-size:12px;border-collapse:collapse">
-      <tr style="font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">
+
+    <table style="width:100%;font-size:11.5px;border-collapse:collapse">
+      <tr style="${th}">
         <td style="padding-bottom:.2rem"></td><td style="text-align:right">quota</td>
-        <td style="text-align:right">cabe-lhe</td><td style="text-align:right">leva</td><td style="text-align:right">tornas</td></tr>
+        <td style="text-align:right">ativo que leva</td><td style="text-align:right">passivo que assume</td>
+        <td style="text-align:right">líquido</td><td style="text-align:right">cabe-lhe</td><td style="text-align:right">tornas</td></tr>
       ${linhas}
-    </table></div>`;
+    </table>
+    ${Math.abs(a.dif.reduce((x,y)=>x+Math.abs(y),0))<0.005?'':`<div style="font-size:10.5px;color:var(--text-faint);margin-top:.45rem">As tornas resultam da diferença entre o líquido que cada um leva e o que lhe cabia pela sua quota.</div>`}
+  </div>`;
 }
+
 function funilLeasing(){
   const ent=ehLeaEntrada();
   nomearBloco('card-b3',ent?'Vendedores':'Locadora',
@@ -6197,7 +6165,7 @@ function seloMutuo(){
   if(!montante)return{valor:'',origem:'sem-montante'};
   return{valor:fmtValor(montante*6/1000)+' €',origem:'calculado'};
 }
-function textosMH(nComps,hipOv){
+function textosMH(nComps){
   if(!(atoEscolhido()==='cv'&&chk('t-mh')))return[];
   const S=flexaoMutuario(nComps);
   const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} € (${valorExtenso(v(x)).toLowerCase()})`:'…';
@@ -6212,7 +6180,7 @@ function textosMH(nComps,hipOv){
    {id:'c-mh-condicoes',T:'',X:
     `O presente contrato fica sujeito às condições aqui estipuladas, bem como às cláusulas constantes do Documento Complementar e do Anexo I, que dele fazem parte integrante para todos os efeitos legais e contratuais, sem prejuízo das demais disposições legais aplicáveis.`},
    {id:'c-mh-garantia',T:'GARANTIA HIPOTECÁRIA',X:
-    `Para garantia do capital mutuado e respetivos acessórios, ${(hipOv||S).art} ${(hipOv||S).mut} ${(hipOv||S).constitui} hipoteca sobre o referido imóvel a favor da CAIXA, que a aceita, abrangendo:\n`
+    `Para garantia do capital mutuado e respetivos acessórios, ${S.art} ${S.mut} ${S.constitui} hipoteca sobre o referido imóvel a favor da CAIXA, que a aceita, abrangendo:\n`
     +`a) o capital de ${par('f-mh-montante')};\n`
     +`b) dos juros remuneratórios, fixados em até ${pct('f-mh-juros')} ao ano;\n`
     +`c) dos juros moratórios, correspondentes aos juros remuneratórios acrescidos de uma sobretaxa até ${pct('f-mh-mora')} ao ano, em caso de mora, nos termos e dentro do limite máximo previsto no artigo 8.º do Decreto-Lei n.º 58/2013, de 8 de maio;\n`
