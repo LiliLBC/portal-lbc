@@ -2557,8 +2557,8 @@ const BIBLIOTECA_FATURAS='FATURAS';
    O bruto continua guardado em Valor e visível na ficha do movimento. */
 const cbCaixa=i=>{
   if(!i)return 0;
-  const v=cbCaixa(i)||0;
-  const rf=parseFloat(i[CB.retencaoFonte]||0)||0;
+  const v=Number(i[CB.valor])||0;
+  const rf=Number(i[CB.retencaoFonte])||0;
   return rf>0?(v-rf):v;
 };
 const CB={titulo:'Title',data:'Data',tipo:'TipoDespesa',categoria:'Categoria',descricao:'Descricao',valor:'Valor',iva:'IVA',meio:'Meio_Pagamento',conta:'Conta',cliente:'Cliente_Associado',faturaInterna:'Fatura_Interna',estadoFatura:'Estado_Fatura_Externa',ligacaoFatura:'Ligacao_Fatura',observacoes:'Observacoes',pagtoConjunto:'Pagto_Conjunto',refConjunta:'Ref_Conjunta',conciliado:'Conciliado',dataConciliacao:'Data_Conciliacao',retencaoFonte:'Retencao_Fonte',taxaRetencao:'Taxa_Retencao',valorLiquido:'Valor_Liquido'};
