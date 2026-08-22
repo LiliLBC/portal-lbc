@@ -11458,7 +11458,6 @@ init();
   const tk=()=>window.graphToken||(typeof graphToken!=='undefined'?graphToken:null);
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const ini=n=>(n||'').split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
-  const _normOvr=s=>(s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
   const waNum=t=>{t=(t||'').replace(/\D/g,'');return t&&t.length===9?'351'+t:t;};
   const val=id=>{const e=document.getElementById(id);return e?e.value:'';};
   async function gGet(u){const r=await fetch(u,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw new Error('Graph '+r.status);return r.json();}
@@ -11704,6 +11703,10 @@ init();
 (function(){
   const GBASE='https://graph.microsoft.com/v1.0';
   const ANIV={ host:'lbcsolicitadorapt.sharepoint.com', sitePath:'/sites/lbcsolicitadora2', listName:'listaaniversarios' };
+  /* Compara nomes ignorando acentos e espaços a mais, para casar a ficha
+     guardada com a entrada vinda do registo de escrituras. */
+  const _normOvr=s=>(s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+
   const CONTACTOS_LBC='266 104 210 · 960 215 959 · geral@lbc-solicitadora.pt';
   const tk=()=>window.graphToken||(typeof graphToken!=='undefined'?graphToken:null);
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
