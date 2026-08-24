@@ -3169,7 +3169,7 @@ async function carregarDashboard(){
   // 2) carregar registos para alimentar o Dashboard Financeiro (separado)
   try{
     const sel=`${F.titulo},${F.nome},${F.data},${F.produto},${F.entidade},${F.procurador},${F.estado},${F.observacoes},${F.custoSup},${F.valorServico},${F.margemLiq},${F.foiSuprimento},${F.dataFoiSup}`;
-    const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
+    const data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sel})&$top=500`);
     todosRegistos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
 
     const anoAtual=new Date().getFullYear();
@@ -3249,7 +3249,7 @@ async function carregarPastas(){
   document.getElementById('pastas-list').style.display='none';
   document.getElementById('pastas-count').style.display='none';
   try{
-    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
+    const data=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
     todasPastas=(data.value||[]).filter(i=>i.folder);renderPastas(todasPastas);
   }catch(e){document.getElementById('pastas-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
@@ -3349,6 +3349,23 @@ async function resolverColunaFinalidade(){
   _finalidadeResolvida=true;
 }
 
+/* ── LEITURA COMPLETA ──
+   O Graph devolve no máximo os primeiros itens e um @odata.nextLink com o
+   resto. Pedindo só $top=500 e ignorando o nextLink, tudo o que passasse dos
+   500 deixava de aparecer — e, como a ordenação por defeito é por Id
+   crescente, os que desapareciam eram precisamente os mais recentes.
+   O limite de páginas é uma salvaguarda contra um ciclo infinito. */
+async function graphGetAll(url,maxPag=40){
+  let itens=[],u=url,n=0;
+  while(u&&n<maxPag){
+    const r=await graphGet(u);
+    itens=itens.concat(r.value||[]);
+    u=r['@odata.nextLink'];
+    n++;
+  }
+  return {value:itens};
+}
+
 async function carregarRegistos(){
   registosCarregados=true;
   document.getElementById('reg-loading').style.display='flex';
@@ -3361,11 +3378,11 @@ async function carregarRegistos(){
     let data;
     try{
       const sf=[...baseFields,F.contactos].join(',');
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
+      data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
     }catch(_){
       // Fallback: campo Contactos ainda não criado na lista SP
       const sf=baseFields.join(',');
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
+      data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${sf})&$top=500`);
     }
     todosRegistosReg=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     // Ordenar do mais recente para o mais antigo
@@ -3596,7 +3613,7 @@ let painelItemId=null,painelPastaUrl=null,pastasPainel=[];
 async function carregarPastasPainel(){
   if(!bibliotecaId){console.warn('bibliotecaId não disponível ainda');return;}
   try{
-    const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=name asc`);
+    const data=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=name asc`);
     pastasPainel=(data.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));
     const inp=document.getElementById('painel-pasta-search');
     if(inp){inp.placeholder=`Pesquisar entre ${pastasPainel.length} pastas...`;inp.disabled=false;}
@@ -4604,16 +4621,16 @@ async function carregarCalendario(){
       const selSemFim=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
       let data;
       try{
-        data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
+        data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
       }catch(_cgd){
         try{
-          data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
+          data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComObs})&$top=500`);
         }catch(_){
           try{
-            data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
+            data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemObs})&$top=500`);
           }catch(__){
             // Coluna Hora_Fim não existe ainda na lista SP
-            data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemFim})&$top=500`);
+            data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemFim})&$top=500`);
           }
         }
       }
@@ -5060,7 +5077,7 @@ async function sincronizarTodosCGD(){
     const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado},${A.emailAgendamento}`;
     let data;
     try{
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
+      data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
     }catch(_){
       const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD,${A.naoAdjudicado},${A.emailAgendamento}`;
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selAlt})&$top=500`);
