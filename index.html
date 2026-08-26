@@ -13647,13 +13647,14 @@ const RODAPE2 = 'Rua Domingos Franco de Oliveira, n.º 16 · Villas do Alcaide �
 const CSS_IMP = `
 @page{size:A4;margin:0}
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--paper:#F0E8E1;--mark:#7C4E3E;--marksoft:#9A7261;--text:#4E4038;--rule:#DCCBBF;--soft:#9A8578}
+:root{--paper:#FFFFFF;--mark:#7C4E3E;--marksoft:#9A7261;--text:#4E4038;--rule:#DCCBBF;--soft:#9A8578}
 body{font-family:"Lora","EB Garamond",Georgia,serif;color:var(--text);background:#EFEFEC;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pagina{width:210mm;height:297mm;background:var(--paper);position:relative;padding:16mm 17mm 14mm;
+.pagina{width:210mm;height:297mm;background:var(--paper);border:1px solid #eee;position:relative;padding:16mm 17mm 14mm;
   margin:0 auto 14px;box-shadow:0 2px 12px rgba(0,0,0,.10);overflow:hidden;page-break-after:always}
 .pagina:last-child{page-break-after:auto}
-.moldura{position:absolute;inset:8mm;border:.25mm solid var(--rule);pointer-events:none}
+.pagina.verso{--ml:17mm;--mr:27mm}
+.moldura{position:absolute;top:8mm;bottom:8mm;left:calc(var(--ml) - 9mm);right:calc(var(--mr) - 9mm);border:.25mm solid var(--rule);pointer-events:none}
 .logo{text-align:center}
 .mono{color:var(--mark);font-family:"Latin Modern Roman",Georgia,serif;font-size:23mm;line-height:1;
   letter-spacing:-.9mm;height:19mm}
@@ -13685,7 +13686,7 @@ tbody td:last-child,thead th:last-child,tfoot td:last-child{border-right:none}
 tfoot td{height:8mm;padding:0 1.6mm;font-size:3mm;color:var(--mark);
   border-top:.4mm solid var(--marksoft);border-bottom:.4mm solid var(--marksoft);
   border-right:.25mm solid var(--rule);letter-spacing:.3mm}
-.rodape{position:absolute;left:17mm;right:17mm;bottom:13mm;text-align:center;color:var(--soft);
+.rodape{position:absolute;left:var(--ml);right:var(--mr);bottom:13mm;text-align:center;color:var(--soft);
   font-size:2.65mm;line-height:1.7}
 .rodape .orn{margin-bottom:3.2mm}
 .agradecimento{text-align:center;font-style:italic;color:var(--mark);font-size:5.4mm}
@@ -13734,7 +13735,10 @@ function abrirJanela(titulo,corpo){
   if(!w){toast('O browser bloqueou a janela de impressão','error');return;}
   w.document.write(`<!DOCTYPE html><html lang="pt-PT"><head><meta charset="utf-8">
     <title>${esc(titulo)}</title><style>${CSS_IMP}</style></head><body>
-    <div class="barra">${esc(titulo)}<button onclick="window.print()">Imprimir</button></div>
+    <div class="barra">${esc(titulo)}
+      <button onclick="window.print()">Imprimir</button>
+      <button onclick="var r=document.documentElement.style;var c=r.getPropertyValue('--paper').trim()==='#F0E8E1';r.setProperty('--paper',c?'#FFFFFF':'#F0E8E1');this.textContent=c?'Fundo creme':'Fundo branco';">Fundo creme</button>
+    </div>
     <div class="espaco"></div>${corpo}</body></html>`);
   w.document.close();
 }
@@ -13756,10 +13760,10 @@ function impRosto(){
     </div></div>
     <div style="margin-top:9mm;padding-top:5.5mm;border-top:.25mm solid var(--rule)">
       <div class="duo">${linha('Recebido em','')}${linha('Assinatura','')}</div></div>
-    <div class="agradecimento" style="position:absolute;left:17mm;right:17mm;bottom:32mm">Agradecemos a sua preferência</div>
+    <div class="agradecimento" style="position:absolute;left:var(--ml);right:var(--mr);bottom:32mm">Agradecemos a sua preferência</div>
     <div class="rodape"><div class="orn"><i style="width:11mm"></i><b>✦</b><i style="width:11mm"></i></div>${RODAPE1}</div>
   </section>`;
-  const p2=`<section class="pagina"><div class="moldura"></div>
+  const p2=`<section class="pagina verso"><div class="moldura"></div>
     <h1 style="margin-top:2mm">OS NOSSOS SERVIÇOS</h1>
     <div class="orn" style="margin:4.6mm 0 0"><i></i><b>✦</b><i></i></div>
     <div class="colunas">${SERVICOS.map(([t,itens])=>
@@ -13840,8 +13844,8 @@ function impLombadas(){
   const ano=nr.split('/')[0]||String(new Date().getFullYear());
   const css=`@page{size:A4 landscape;margin:0}
     *{box-sizing:border-box;margin:0;padding:0}
-    :root{--paper:#F0E8E1;--mark:#7C4E3E;--marksoft:#9A7261;--rule:#DCCBBF;--soft:#9A8578;
-      --larg:50mm;--comp:280mm;--f1:8mm;--f2:4mm}
+    :root{--paper:#FFFFFF;--mark:#7C4E3E;--marksoft:#9A7261;--rule:#DCCBBF;--soft:#9A8578;
+      --larg:50mm;--comp:280mm;--f1:8mm;--f2:4mm;--paper2:#FFFFFF}
     body{font-family:"Lora",Georgia,serif;background:#EFEFEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .barra{padding:12px 16px;background:#7C4E3E;color:#fff;font-family:system-ui,sans-serif;font-size:13px;
       display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -13896,6 +13900,7 @@ function impLombadas(){
       '<label>Comprimento <input id="comp" type="number" value="280" min="120" max="281"></label>'+
       '<label>Quantidade <input id="qtd" type="number" value="4" min="1" max="24"></label>'+
       '<span id="pf"></span><button onclick="window.print()">Imprimir</button>'+
+      '<button onclick="var r=document.documentElement.style;var c=r.getPropertyValue(\'--paper\').trim()===\'#F0E8E1\';r.setProperty(\'--paper\',c?\'#FFFFFF\':\'#F0E8E1\');this.textContent=c?\'Fundo creme\':\'Fundo branco\';">Fundo creme</button>'+
       '<span style="opacity:.8">O texto é editável — escreva por cima.</span></div>'+
     '<div id="folhas"></div><scr'+'ipt>'+js+'</scr'+'ipt></body></html>');
   w.document.close();
