@@ -13431,5 +13431,517 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
 })();
 </script>
 
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   MÓDULO ORGANIZAÇÃO — registo de processos (n.º de lançamento) + impressos
+   Autónomo: instala o ecrã, o item de menu e as funções sem tocar no resto.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+
+/* ─── CONFIGURAÇÃO — nomes internos das colunas do SharePoint ───────────── */
+const ORG = {
+  lista : 'Processos_Registo',
+  c : { lanc:'Lancamento', ano:'LancAno', seq:'LancSeq', cliente:'Cliente',
+        natureza:'NaturezaAto', estado:'Estado', entrada:'DataEntrada',
+        conclusao:'DataConclusao', pasta:'PastaProcesso', dossie:'Dossie' },
+  cc : { lanc:'Lancamento', titulo:'Title', cliente:'Cliente', data:'Data',
+         obs:'Observacoes', gastos:'Gastos_Conta_Cliente',
+         recebido:'Valor_Recebido', honorarios:'Honorarios' }
+};
+const ESTADOS = ['Em curso','A aguardar cliente','A aguardar serviço','Concluído','Arquivado'];
+const NATUREZAS = ['Compra e venda','CV com mútuo','Mútuo com hipoteca','Doação',
+  'Divisão de coisa comum','Partilha','Habilitação de herdeiros','Registo predial',
+  'Regularização matricial','Arrendamento','Sociedades','Suprimento','Outro'];
+
+let listaOrgId=null, processos=[], filtro='', sel=null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dtBR = d => d? new Date(d).toLocaleDateString('pt-PT') : '';
+const eur = v => (parseFloat(v)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
+const toast = (m,t) => (typeof showToast==='function') ? showToast(m,t) : console.log(m);
+
+/* ─── ESTILOS ──────────────────────────────────────────────────────────── */
+const CSS = `
+#screen-organizacao .org-topo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+#screen-organizacao .org-busca{flex:1;min-width:200px;padding:8px 11px;border:1px solid var(--border,#ddd);border-radius:4px;font-size:13px;font-family:inherit}
+#screen-organizacao table{width:100%;border-collapse:collapse;font-size:13px}
+#screen-organizacao thead th{text-align:left;font-weight:500;font-size:11px;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--text-muted,#8a7a70);padding:0 10px 8px;border-bottom:1px solid var(--border,#e5ddd6)}
+#screen-organizacao tbody td{padding:9px 10px;border-bottom:1px solid var(--border,#f0e9e3)}
+#screen-organizacao tbody tr{cursor:pointer}
+#screen-organizacao tbody tr:hover{background:var(--surface2,#faf7f4)}
+#screen-organizacao tbody tr.sel{background:var(--accent-light,#f5ece7)}
+#screen-organizacao .lanc{font-weight:600;color:var(--accent-dark,#7C4E3E);white-space:nowrap}
+#screen-organizacao .org-form{display:none;gap:12px;flex-wrap:wrap;padding:16px;margin-bottom:16px;
+  border:1px solid var(--border,#e5ddd6);border-radius:6px;background:var(--surface2,#faf7f4)}
+#screen-organizacao .org-form.on{display:flex}
+#screen-organizacao .org-campo{display:flex;flex-direction:column;gap:5px}
+#screen-organizacao .org-campo label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted,#8a7a70)}
+#screen-organizacao .org-campo input,#screen-organizacao .org-campo select{
+  padding:7px 9px;border:1px solid var(--border,#ddd);border-radius:4px;font-size:13px;font-family:inherit;min-width:170px}
+#screen-organizacao .org-impressos{margin-top:22px;padding-top:18px;border-top:1px solid var(--border,#e5ddd6)}
+#screen-organizacao .org-impressos h3{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--text-muted,#8a7a70);font-weight:500;margin-bottom:4px}
+#screen-organizacao .org-impressos p{font-size:12px;color:var(--text-muted,#8a7a70);margin-bottom:12px}
+#screen-organizacao .org-bts{display:flex;gap:9px;flex-wrap:wrap}
+#screen-organizacao .org-vazio{padding:26px;text-align:center;color:var(--text-muted,#8a7a70);font-size:13px}
+`;
+
+/* ─── ECRÃ ─────────────────────────────────────────────────────────────── */
+const SCREEN = `
+  <div class="org-topo">
+    <input class="org-busca" id="org-busca" placeholder="Pesquisar por n.º de lançamento, cliente ou natureza…">
+    <button class="btn btn-primary" id="org-bt-novo">+ Novo processo</button>
+    <button class="btn" id="org-bt-recarregar">Atualizar</button>
+  </div>
+
+  <div class="org-form" id="org-form">
+    <div class="org-campo"><label>N.º de lançamento</label><input id="org-f-lanc" readonly></div>
+    <div class="org-campo"><label>Cliente</label><input id="org-f-cliente" placeholder="Nome do cliente"></div>
+    <div class="org-campo"><label>Descrição</label><input id="org-f-titulo" placeholder="Objeto / imóvel"></div>
+    <div class="org-campo"><label>Natureza do ato</label><select id="org-f-natureza"></select></div>
+    <div class="org-campo"><label>Estado</label><select id="org-f-estado"></select></div>
+    <div class="org-campo"><label>Data de entrada</label><input id="org-f-entrada" type="date"></div>
+    <div class="org-campo"><label>Data de conclusão</label><input id="org-f-conclusao" type="date"></div>
+    <div class="org-campo"><label>Dossiê</label><input id="org-f-dossie" placeholder="Ex.: Dossiê 3 · 2026"></div>
+    <div class="org-campo" style="justify-content:flex-end;flex-direction:row;gap:8px;align-items:flex-end">
+      <button class="btn btn-primary" id="org-bt-guardar">Guardar</button>
+      <button class="btn" id="org-bt-cancelar">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="org-tabela"><div class="org-vazio">A carregar…</div></div>
+
+  <div class="org-impressos">
+    <h3>Impressos</h3>
+    <p id="org-sel-txt">Selecione um processo na lista para sair já preenchido. Sem seleção, sai em branco.</p>
+    <div class="org-bts">
+      <button class="btn" id="org-bt-rosto">Folha de rosto</button>
+      <button class="btn" id="org-bt-ficha">Ficha de processo</button>
+      <button class="btn" id="org-bt-cc">Conta corrente</button>
+      <button class="btn" id="org-bt-lomb">Lombadas</button>
+    </div>
+  </div>
+`;
+
+/* ─── DADOS ────────────────────────────────────────────────────────────── */
+async function resolverLista(){
+  if(listaOrgId)return listaOrgId;
+  const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${ORG.lista}'`);
+  if(!r.value||!r.value.length)throw new Error(`Lista ${ORG.lista} não encontrada no SharePoint`);
+  listaOrgId=r.value[0].id;
+  return listaOrgId;
+}
+
+async function carregar(){
+  const el=$('org-tabela');
+  el.innerHTML='<div class="org-vazio">A carregar…</div>';
+  try{
+    await resolverLista();
+    const sel=[ 'Title',ORG.c.lanc,ORG.c.ano,ORG.c.seq,ORG.c.cliente,ORG.c.natureza,
+                ORG.c.estado,ORG.c.entrada,ORG.c.conclusao,ORG.c.dossie ].join(',');
+    const d=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaOrgId}/items?$expand=fields($select=${sel})&$top=500`);
+    processos=(d.value||[]).map(i=>({id:i.id,...i.fields}));
+    processos.sort((a,b)=>(b[ORG.c.ano]||0)-(a[ORG.c.ano]||0)||(b[ORG.c.seq]||0)-(a[ORG.c.seq]||0));
+    render();
+  }catch(e){
+    el.innerHTML=`<div class="notice notice-error" style="margin:0">${esc(e.message)}
+      <div style="margin-top:6px;font-size:12px">Confirme o nome da lista e das colunas no bloco de configuração do módulo.</div></div>`;
+  }
+}
+
+function render(){
+  const el=$('org-tabela');
+  const f=filtro.toLowerCase().trim();
+  const lst=!f?processos:processos.filter(p=>
+    [p[ORG.c.lanc],p[ORG.c.cliente],p[ORG.c.natureza],p.Title]
+      .some(v=>String(v||'').toLowerCase().includes(f)));
+  if(!lst.length){el.innerHTML='<div class="org-vazio">Sem processos.</div>';return;}
+  el.innerHTML=`<table><thead><tr>
+      <th style="width:110px">Lançamento</th><th>Cliente</th><th>Descrição</th>
+      <th style="width:150px">Natureza</th><th style="width:130px">Estado</th>
+      <th style="width:95px">Entrada</th><th style="width:95px">Conclusão</th>
+    </tr></thead><tbody>${lst.map(p=>`
+      <tr data-id="${p.id}" class="${sel&&sel.id===p.id?'sel':''}">
+        <td class="lanc">${esc(p[ORG.c.lanc])}</td>
+        <td>${esc(p[ORG.c.cliente])}</td>
+        <td>${esc(p.Title)}</td>
+        <td>${esc(p[ORG.c.natureza])}</td>
+        <td>${esc(p[ORG.c.estado])}</td>
+        <td>${dtBR(p[ORG.c.entrada])}</td>
+        <td>${dtBR(p[ORG.c.conclusao])}</td>
+      </tr>`).join('')}</tbody></table>`;
+  el.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>{
+    const p=processos.find(x=>x.id===tr.dataset.id);
+    sel=(sel&&sel.id===p.id)?null:p;
+    $('org-sel-txt').textContent = sel
+      ? `Selecionado: ${sel[ORG.c.lanc]} — ${sel[ORG.c.cliente]||''}`
+      : 'Selecione um processo na lista para sair já preenchido. Sem seleção, sai em branco.';
+    render();
+  });
+}
+
+function proximoNumero(){
+  const ano=new Date().getFullYear();
+  const seq=processos.filter(p=>Number(p[ORG.c.ano])===ano)
+                     .reduce((m,p)=>Math.max(m,Number(p[ORG.c.seq])||0),0)+1;
+  return {ano,seq,lanc:`${ano}/${String(seq).padStart(3,'0')}`};
+}
+
+function abrirNovo(){
+  const n=proximoNumero();
+  $('org-f-lanc').value=n.lanc;
+  $('org-f-cliente').value='';
+  $('org-f-titulo').value='';
+  $('org-f-dossie').value='';
+  $('org-f-conclusao').value='';
+  $('org-f-entrada').value=new Date().toISOString().slice(0,10);
+  $('org-form').classList.add('on');
+  $('org-f-cliente').focus();
+}
+
+async function guardar(){
+  const n=proximoNumero();
+  const cliente=$('org-f-cliente').value.trim();
+  if(!cliente){toast('Indique o cliente','error');return;}
+  const f={};
+  f.Title=$('org-f-titulo').value.trim()||cliente;
+  f[ORG.c.lanc]=n.lanc; f[ORG.c.ano]=n.ano; f[ORG.c.seq]=n.seq;
+  f[ORG.c.cliente]=cliente;
+  f[ORG.c.natureza]=$('org-f-natureza').value;
+  f[ORG.c.estado]=$('org-f-estado').value;
+  if($('org-f-entrada').value)f[ORG.c.entrada]=$('org-f-entrada').value;
+  if($('org-f-conclusao').value)f[ORG.c.conclusao]=$('org-f-conclusao').value;
+  if($('org-f-dossie').value.trim())f[ORG.c.dossie]=$('org-f-dossie').value.trim();
+  try{
+    await resolverLista();
+    await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaOrgId}/items`,{fields:f});
+    toast('Processo '+n.lanc+' criado');
+    $('org-form').classList.remove('on');
+    await carregar();
+  }catch(e){toast('Erro ao guardar: '+e.message,'error');}
+}
+
+/* linhas da conta corrente do processo selecionado */
+async function linhasCC(lanc){
+  if(!lanc||typeof listaIdConta==='undefined'||!listaIdConta)return [];
+  try{
+    const s=[ORG.cc.lanc,ORG.cc.titulo,ORG.cc.data,ORG.cc.obs,ORG.cc.gastos,ORG.cc.recebido,ORG.cc.honorarios].join(',');
+    const d=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${s})&$top=200`);
+    return (d.value||[]).map(i=>i.fields).filter(x=>String(x[ORG.cc.lanc]||'')===String(lanc))
+      .sort((a,b)=>new Date(a[ORG.cc.data]||0)-new Date(b[ORG.cc.data]||0));
+  }catch(e){return [];}
+}
+
+/* ─── IMPRESSOS ────────────────────────────────────────────────────────── */
+const BALANCA = `<svg viewBox="0 0 120 118" fill="none" stroke="currentColor" stroke-width="3.4"
+  stroke-linecap="round" stroke-linejoin="round"><path d="M60 12 V96"/><path d="M16 30 H104"/>
+  <path d="M16 30 L4 58 M16 30 L28 58"/><path d="M3 58 Q16 72 29 58"/>
+  <path d="M104 30 L92 58 M104 30 L116 58"/><path d="M91 58 Q104 72 117 58"/>
+  <path d="M44 96 H76"/><path d="M34 110 H86"/><path d="M44 96 L34 110 M76 96 L86 110"/></svg>`;
+
+const RODAPE1 = 'LBC — SOLICITADORA, SP, RL &nbsp;·&nbsp; Telm. 96 021 5959 &nbsp;·&nbsp; geral@lbc-solicitadora.pt';
+const RODAPE2 = 'Rua Domingos Franco de Oliveira, n.º 16 · Villas do Alcaide · 7005-552 Évora';
+
+const CSS_IMP = `
+@page{size:A4;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#F0E8E1;--mark:#7C4E3E;--marksoft:#9A7261;--text:#4E4038;--rule:#DCCBBF;--soft:#9A8578}
+body{font-family:"Lora","EB Garamond",Georgia,serif;color:var(--text);background:#EFEFEC;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pagina{width:210mm;height:297mm;background:var(--paper);position:relative;padding:16mm 17mm 14mm;
+  margin:0 auto 14px;box-shadow:0 2px 12px rgba(0,0,0,.10);overflow:hidden;page-break-after:always}
+.pagina:last-child{page-break-after:auto}
+.moldura{position:absolute;inset:8mm;border:.25mm solid var(--rule);pointer-events:none}
+.logo{text-align:center}
+.mono{color:var(--mark);font-family:"Latin Modern Roman",Georgia,serif;font-size:23mm;line-height:1;
+  letter-spacing:-.9mm;height:19mm}
+.bwrap{position:relative;display:inline-block}
+.bwrap svg{position:absolute;left:50%;bottom:1.5mm;transform:translateX(-50%);width:8.8mm;height:8.4mm;color:var(--mark)}
+.firma{margin-top:3.4mm;font-family:"Latin Modern Roman",Georgia,serif;font-size:5.6mm;font-weight:700;
+  color:var(--mark);letter-spacing:.85mm;text-indent:.85mm;line-height:1.4;-webkit-text-stroke:.16mm currentColor}
+.firma .l2{letter-spacing:1.15mm;text-indent:1.15mm}
+.orn{display:flex;align-items:center;justify-content:center;gap:2.6mm;color:var(--mark)}
+.orn i{display:block;width:16mm;height:.25mm;background:var(--rule)}
+.orn b{font-size:2.6mm;font-weight:400}
+h1{text-align:center;color:var(--mark);font-size:6.1mm;font-weight:500;letter-spacing:2.1mm;text-indent:2.1mm}
+h2{color:var(--marksoft);font-size:3.4mm;font-weight:500;letter-spacing:.95mm;text-indent:.95mm;
+  padding-bottom:1.6mm;border-bottom:.25mm solid var(--rule)}
+.linha{display:flex;align-items:baseline;gap:2mm;margin-bottom:5.4mm}
+.rot{font-size:3.1mm;color:var(--marksoft);white-space:nowrap}
+.pre{flex:1;border-bottom:.25mm solid var(--rule);height:4.4mm;font-size:3.2mm;color:var(--text)}
+.duo{display:flex;gap:9mm}.duo .linha{flex:1;margin-bottom:0}
+.item{display:flex;align-items:center;gap:3mm;margin-bottom:3.6mm;font-size:3.2mm}
+.cx{width:3.1mm;height:3.1mm;flex:none;border:.3mm solid var(--marksoft)}
+.item .pre{height:3.6mm}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:2.75mm;font-weight:500;color:var(--marksoft);letter-spacing:.45mm;text-align:left;
+  padding:0 1.6mm 1.6mm;border-bottom:.3mm solid var(--rule);border-right:.25mm solid var(--rule)}
+tbody td{height:7mm;border-bottom:.25mm solid var(--rule);border-right:.25mm solid var(--rule);
+  padding:0 1.6mm;font-size:3mm}
+tbody td:last-child,thead th:last-child,tfoot td:last-child{border-right:none}
+.num{text-align:right}
+tfoot td{height:8mm;padding:0 1.6mm;font-size:3mm;color:var(--mark);
+  border-top:.4mm solid var(--marksoft);border-bottom:.4mm solid var(--marksoft);
+  border-right:.25mm solid var(--rule);letter-spacing:.3mm}
+.rodape{position:absolute;left:17mm;right:17mm;bottom:13mm;text-align:center;color:var(--soft);
+  font-size:2.65mm;line-height:1.7}
+.rodape .orn{margin-bottom:3.2mm}
+.agradecimento{text-align:center;font-style:italic;color:var(--mark);font-size:5.4mm}
+.colunas{margin-top:6.5mm;column-count:2;column-gap:9mm;height:220mm}
+.area{break-inside:avoid;margin-bottom:6mm}
+.area h3{color:var(--marksoft);font-size:3.1mm;font-weight:500;letter-spacing:.32mm;
+  padding-bottom:1.4mm;border-bottom:.25mm solid var(--rule);margin-bottom:2.2mm}
+.area ul{list-style:none}
+.area li{position:relative;padding-left:5.2mm;font-size:3.02mm;line-height:5.32mm}
+.area li::before{content:"";position:absolute;left:1.1mm;top:1.9mm;width:1.2mm;height:1.2mm;
+  background:var(--rule);transform:rotate(45deg)}
+.barra{position:fixed;top:0;left:0;right:0;padding:10px;background:#7C4E3E;color:#fff;text-align:center;
+  font-family:system-ui,sans-serif;font-size:13px;z-index:9}
+.barra button{font:inherit;padding:6px 16px;margin-left:10px;border:1px solid #fff;background:#fff;color:#7C4E3E;border-radius:3px;cursor:pointer}
+.espaco{height:52px}
+@media print{.barra,.espaco{display:none!important}body{background:#fff}.pagina{margin:0;box-shadow:none}}
+`;
+
+const CABECALHO = `<div class="logo">
+  <div class="mono">L<span class="bwrap">b${BALANCA}</span>C</div>
+  <div class="firma">SOLICITADORA<div class="l2">SP RL</div></div>
+</div>`;
+
+const SERVICOS = [
+ ['TITULAÇÃO DE NEGÓCIOS SOBRE IMÓVEIS',['Contratos-promessa de compra e venda','Compra e venda, permuta e doação','Mútuo com hipoteca e financiamento','Partilhas de bens imóveis','Constituição de propriedade horizontal','Superfície, usufruto e servidões','Divisão de coisa comum','Alojamento local']],
+ ['REGISTOS E REGULARIZAÇÃO PREDIAL',['Registo predial, comercial e automóvel','Retificação de áreas e confrontações','Justificação para efeitos de registo','Regularização matricial nas Finanças','Cadastro predial','Suprimento de deficiências registais','Certidões prediais e matriciais']],
+ ['ARRENDAMENTO E DESPEJO',['Contratos de arrendamento urbano e rural','Atualização de rendas e comunicações','Resolução, denúncia e oposição à renovação','Procedimento especial de despejo (BNA)','Injunção e cobrança de rendas']],
+ ['PLANEAMENTO SUCESSÓRIO EM VIDA',['Organização do património em vida','Doação com reserva de usufruto','Partilha em vida entre herdeiros','Enquadramento prévio a testamento','Simulação da carga fiscal da transmissão']],
+ ['SUCESSÕES E FAMÍLIA',['Instrução de habilitação de herdeiros','Partilhas e inventário','Aceitação e repúdio de herança','Procurações e representação de herdeiros','Divórcio por mútuo consentimento']],
+ ['SOCIEDADES COMERCIAIS',['Constituição de sociedades','Pacto social e cessão de quotas','Aumentos de capital e fusões','Dissolução e liquidação','Atas e deliberações sociais','Beneficiário efetivo (RCBE)','Apoio jurídico e processual corrente']],
+ ['CONSULTORIA FINANCEIRA E CRÉDITO',['Consultoria económico-financeira a empresas','Organização do dossiê de crédito','Verificação das garantias a prestar','Acompanhamento até à titulação do mútuo']],
+ ['AUTENTICAÇÕES E CERTIFICAÇÕES',['Autenticação de documentos particulares','Reconhecimento de assinaturas','Certificação de fotocópias','Certificação de traduções','Procurações e substabelecimentos']],
+ ['FISCALIDADE, AUTARQUIAS E PARECERES',['Liquidação de IMT e Imposto do Selo','Isenções e benefícios · IMT Jovem','Reclamações graciosas e revisões','IMI, AIMI e avaliações prediais','Regularização de património municipal','Procedimentos urbanísticos (RJUE)','Análise prévia de documentação de imóveis','Pareceres jurídicos']]
+];
+
+const DOCS_ENTREGA = ['Título / instrumento do ato (original)','Certidão permanente do registo predial',
+ 'Caderneta predial (urbana / rústica)','Comprovativo de liquidação de IMT',
+ 'Comprovativo de liquidação de Imposto do Selo','Licença de utilização','Certificado energético',
+ 'Ficha técnica de habitação','Certidão do registo predial após o ato'];
+
+const linha = (rot,val,flex) =>
+  `<div class="linha"${flex?` style="flex:0 0 ${flex}"`:''}><span class="rot">${rot}</span><span class="pre">${esc(val||'')}</span></div>`;
+
+function abrirJanela(titulo,corpo){
+  const w=window.open('','_blank');
+  if(!w){toast('O browser bloqueou a janela de impressão','error');return;}
+  w.document.write(`<!DOCTYPE html><html lang="pt-PT"><head><meta charset="utf-8">
+    <title>${esc(titulo)}</title><style>${CSS_IMP}</style></head><body>
+    <div class="barra">${esc(titulo)}<button onclick="window.print()">Imprimir</button></div>
+    <div class="espaco"></div>${corpo}</body></html>`);
+  w.document.close();
+}
+
+function impRosto(){
+  const p1=`<section class="pagina"><div class="moldura"></div>
+    ${CABECALHO}
+    <div class="orn" style="margin:5mm 0 5.4mm"><i></i><b>✦</b><i></i></div>
+    <h1>ENTREGA DE DOCUMENTOS</h1>
+    <div style="margin-top:7mm"><h2>IDENTIFICAÇÃO DO ATO</h2><div style="margin-top:5.4mm">
+      ${linha('Natureza do ato', sel&&sel[ORG.c.natureza])}
+      ${linha('Outorgantes', sel&&sel[ORG.c.cliente])}
+      ${linha('Imóvel / objeto', sel&&sel.Title)}
+      <div class="duo">${linha('Data','')}${linha('Processo n.º', sel&&sel[ORG.c.lanc])}</div>
+    </div></div>
+    <div style="margin-top:8mm"><h2>DOCUMENTOS ENTREGUES</h2><div style="margin-top:5mm">
+      ${DOCS_ENTREGA.map(d=>`<div class="item"><span class="cx"></span>${d}</div>`).join('')}
+      <div class="item"><span class="cx"></span>Outros<span class="pre"></span></div>
+    </div></div>
+    <div style="margin-top:9mm;padding-top:5.5mm;border-top:.25mm solid var(--rule)">
+      <div class="duo">${linha('Recebido em','')}${linha('Assinatura','')}</div></div>
+    <div class="agradecimento" style="position:absolute;left:17mm;right:17mm;bottom:32mm">Agradecemos a sua preferência</div>
+    <div class="rodape"><div class="orn"><i style="width:11mm"></i><b>✦</b><i style="width:11mm"></i></div>${RODAPE1}</div>
+  </section>`;
+  const p2=`<section class="pagina"><div class="moldura"></div>
+    <h1 style="margin-top:2mm">OS NOSSOS SERVIÇOS</h1>
+    <div class="orn" style="margin:4.6mm 0 0"><i></i><b>✦</b><i></i></div>
+    <div class="colunas">${SERVICOS.map(([t,itens])=>
+      `<div class="area"><h3>${t}</h3><ul>${itens.map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('')}</div>
+    <div class="rodape"><div class="orn"><i style="width:11mm"></i><b>✦</b><i style="width:11mm"></i></div>
+      ${RODAPE1}<br>${RODAPE2}</div>
+  </section>`;
+  abrirJanela('Folha de rosto',p1+p2);
+}
+
+function impFicha(){
+  const filas=Array.from({length:11},()=>'<tr><td></td><td></td><td></td><td></td></tr>').join('');
+  const corpo=`<section class="pagina"><div class="moldura"></div>
+    ${CABECALHO}
+    <div class="orn" style="margin:4.6mm 0 4.8mm"><i></i><b>✦</b><i></i></div>
+    <h1>FICHA DE PROCESSO</h1>
+    <div style="margin-top:6.4mm"><h2>IDENTIFICAÇÃO DO PROCESSO</h2><div style="margin-top:4.6mm">
+      <div class="duo">${linha('Lançamento n.º', sel&&sel[ORG.c.lanc],'52mm')}${linha('Natureza do ato', sel&&sel[ORG.c.natureza])}</div>
+      <div style="height:4.8mm"></div>
+      <div class="duo">${linha('Dossiê', sel&&sel[ORG.c.dossie],'52mm')}${linha('Imóvel / objeto', sel&&sel.Title)}</div>
+      <div style="height:4.8mm"></div>
+      ${linha('Serviço / entidade','')}
+    </div></div>
+    <div style="margin-top:5.4mm"><h2>CLIENTE</h2><div style="margin-top:4.6mm">
+      ${linha('Nome', sel&&sel[ORG.c.cliente])}
+      <div class="duo">${linha('NIF','','52mm')}${linha('Contacto','')}</div>
+      <div style="height:4.8mm"></div>
+      <div class="duo">${linha('Data de entrega', dtBR(sel&&sel[ORG.c.entrada]))}${linha('Prazo','')}${linha('Data de conclusão', dtBR(sel&&sel[ORG.c.conclusao]))}</div>
+    </div></div>
+    <div style="margin-top:6.4mm"><h2>DILIGÊNCIAS E DESLOCAÇÕES</h2>
+      <table style="margin-top:3.4mm"><thead><tr>
+        <th style="width:22mm">DATA</th><th>DILIGÊNCIA</th>
+        <th style="width:38mm">LOCAL / SERVIÇO</th><th style="width:20mm">RUBRICA</th>
+      </tr></thead><tbody>${filas}</tbody></table></div>
+    <div class="rodape"><div class="orn"><i style="width:11mm"></i><b>✦</b><i style="width:11mm"></i></div>${RODAPE1}</div>
+  </section>`;
+  abrirJanela('Ficha de processo',corpo);
+}
+
+async function impCC(){
+  const linhas = sel ? await linhasCC(sel[ORG.c.lanc]) : [];
+  let saldo=0, tDesp=0, tPago=0;
+  const filas = linhas.map(l=>{
+    const desp=(parseFloat(l[ORG.cc.gastos])||0)+(parseFloat(l[ORG.cc.honorarios])||0);
+    const pago=parseFloat(l[ORG.cc.recebido])||0;
+    saldo+=pago-desp; tDesp+=desp; tPago+=pago;
+    return `<tr><td>${dtBR(l[ORG.cc.data])}</td><td>${esc(l[ORG.cc.obs]||l[ORG.cc.titulo]||'')}</td>
+      <td class="num">${desp?eur(desp):''}</td><td class="num">${pago?eur(pago):''}</td>
+      <td class="num">${eur(saldo)}</td></tr>`;
+  }).join('');
+  const vazias=Array.from({length:Math.max(0,26-linhas.length)},
+    ()=>'<tr><td></td><td></td><td class="num"></td><td class="num"></td><td class="num"></td></tr>').join('');
+  const corpo=`<section class="pagina"><div class="moldura"></div>
+    <h1 style="margin-top:2mm">CONTA CORRENTE</h1>
+    <div class="orn" style="margin:4.6mm 0 6mm"><i></i><b>✦</b><i></i></div>
+    <div class="duo">${linha('Lançamento n.º', sel&&sel[ORG.c.lanc],'52mm')}${linha('Cliente', sel&&sel[ORG.c.cliente])}</div>
+    <table style="margin-top:6.4mm"><thead><tr>
+      <th style="width:20mm">DATA</th><th>DESCRIÇÃO</th>
+      <th class="num" style="width:26mm">DESPESA €</th>
+      <th class="num" style="width:26mm">PAGO €</th>
+      <th class="num" style="width:26mm">SALDO €</th>
+    </tr></thead><tbody>${filas}${vazias}</tbody>
+    <tfoot><tr><td colspan="2" style="letter-spacing:.6mm">TOTAIS</td>
+      <td class="num">${tDesp?eur(tDesp):''}</td><td class="num">${tPago?eur(tPago):''}</td>
+      <td class="num">${(tDesp||tPago)?eur(tPago-tDesp):''}</td></tr></tfoot></table>
+    <div style="margin-top:3.4mm;font-size:2.6mm;color:var(--soft);font-style:italic">
+      Provisões recebidas e despesas suportadas por conta do cliente. Documentos de suporte arquivados no processo.</div>
+    <div class="rodape"><div class="orn"><i style="width:11mm"></i><b>✦</b><i style="width:11mm"></i></div>
+      ${RODAPE1}<br>${RODAPE2}</div>
+  </section>`;
+  abrirJanela('Conta corrente',corpo);
+}
+
+function impLombadas(){
+  const l1=sel?String(sel[ORG.c.cliente]||'').toUpperCase():'NOME DO CLIENTE';
+  const l2=sel?String(sel[ORG.c.natureza]||'').toUpperCase():'NATUREZA DO ATO';
+  const nr=sel?String(sel[ORG.c.lanc]||''):new Date().getFullYear()+'/000';
+  const ano=nr.split('/')[0]||String(new Date().getFullYear());
+  const css=`@page{size:A4 landscape;margin:0}
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--paper:#F0E8E1;--mark:#7C4E3E;--marksoft:#9A7261;--rule:#DCCBBF;--soft:#9A8578;
+      --larg:50mm;--comp:280mm;--f1:8mm;--f2:4mm}
+    body{font-family:"Lora",Georgia,serif;background:#EFEFEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .barra{padding:12px 16px;background:#7C4E3E;color:#fff;font-family:system-ui,sans-serif;font-size:13px;
+      display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .barra label{opacity:.85}
+    .barra input{width:64px;padding:5px 7px;border:0;border-radius:3px;font:inherit}
+    .barra button{font:inherit;padding:6px 16px;border:0;border-radius:3px;background:#fff;color:#7C4E3E;cursor:pointer}
+    .folha{width:297mm;height:210mm;background:#fff;margin:14px auto;padding:3mm 8mm;
+      display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+    .lombada{width:var(--comp);height:var(--larg);background:var(--paper);border:.25mm dashed var(--rule);
+      margin-bottom:-.25mm;position:relative;display:flex;align-items:center;justify-content:space-between;
+      padding:0 10mm;gap:8mm;overflow:hidden}
+    .lombada::before{content:"";position:absolute;inset:3mm;border:.25mm solid var(--rule)}
+    .mono{flex:none;text-align:center;color:var(--mark);font-family:"Latin Modern Roman",Georgia,serif;
+      line-height:1;letter-spacing:-.5mm;font-size:calc(var(--larg)*.34)}
+    .bwrap{position:relative;display:inline-block}
+    .bwrap svg{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);width:.40em;height:.38em}
+    .mono small{display:block;margin-top:1.4mm;font-size:.20em;letter-spacing:.14em;-webkit-text-stroke:.12mm currentColor}
+    .centro{flex:1;text-align:center;min-width:0}
+    .l1{font-size:var(--f1);color:var(--mark);letter-spacing:.06em;outline:none}
+    .l2{margin-top:2.4mm;font-size:var(--f2);color:var(--marksoft);letter-spacing:.16em;outline:none}
+    .lado{flex:none;text-align:center;color:var(--mark);border-left:.25mm solid var(--rule);
+      padding-left:8mm;min-width:26mm}
+    .lado .n{font-size:calc(var(--f1)*.62);outline:none}
+    .lado .r{margin-top:1.6mm;font-size:calc(var(--f2)*.8);color:var(--soft);letter-spacing:.18em;outline:none}
+    @media print{.barra{display:none!important}body{background:#fff}.folha{margin:0;box-shadow:none}}`;
+  const js=`
+    var B=${JSON.stringify(BALANCA)};
+    function pf(){var l=parseFloat(document.getElementById('larg').value)||50;return Math.max(1,Math.floor((210-6)/l));}
+    function medidas(){var r=document.documentElement.style;
+      r.setProperty('--larg',document.getElementById('larg').value+'mm');
+      r.setProperty('--comp',document.getElementById('comp').value+'mm');
+      construir();}
+    function lombada(){var d=document.createElement('div');d.className='lombada';
+      d.innerHTML='<div class="mono">L<span class="bwrap">b'+B+'</span>C<small>SOLICITADORA</small></div>'+
+        '<div class="centro"><div class="l1" contenteditable="true">'+${JSON.stringify(l1)}+'</div>'+
+        '<div class="l2" contenteditable="true">'+${JSON.stringify(l2)}+'</div></div>'+
+        '<div class="lado"><div class="n" contenteditable="true">'+${JSON.stringify(nr)}+'</div>'+
+        '<div class="r" contenteditable="true">'+${JSON.stringify(ano)}+'</div></div>';
+      return d;}
+    function construir(){var n=Math.max(1,parseInt(document.getElementById('qtd').value)||1),p=pf(),
+      c=document.getElementById('folhas'),f=null;c.innerHTML='';
+      document.getElementById('pf').textContent=p+' por folha';
+      for(var i=0;i<n;i++){if(i%p===0){f=document.createElement('div');f.className='folha';c.appendChild(f);}f.appendChild(lombada());}}
+    ['larg','comp','qtd'].forEach(function(id){document.getElementById(id).addEventListener('input',medidas);});
+    construir();`;
+  const w=window.open('','_blank');
+  if(!w){toast('O browser bloqueou a janela de impressão','error');return;}
+  w.document.write('<!DOCTYPE html><html lang="pt-PT"><head><meta charset="utf-8"><title>Lombadas</title>'+
+    '<style>'+css+'</style></head><body>'+
+    '<div class="barra"><b>LOMBADAS</b>'+
+      '<label>Largura <input id="larg" type="number" value="50" min="30" max="120"></label>'+
+      '<label>Comprimento <input id="comp" type="number" value="280" min="120" max="281"></label>'+
+      '<label>Quantidade <input id="qtd" type="number" value="4" min="1" max="24"></label>'+
+      '<span id="pf"></span><button onclick="window.print()">Imprimir</button>'+
+      '<span style="opacity:.8">O texto é editável — escreva por cima.</span></div>'+
+    '<div id="folhas"></div><scr'+'ipt>'+js+'</scr'+'ipt></body></html>');
+  w.document.close();
+}
+
+/* ─── INSTALAÇÃO ───────────────────────────────────────────────────────── */
+function instalar(){
+  if($('screen-organizacao'))return;
+  const base=document.querySelector('.screen'); if(!base)return;
+
+  const st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
+  const scr=document.createElement('div'); scr.className='screen'; scr.id='screen-organizacao';
+  scr.innerHTML=SCREEN; base.parentNode.appendChild(scr);
+
+  const ref=document.querySelector('.nav-item[onclick*="processos"]');
+  const item=document.createElement('div');
+  item.className='nav-item'; item.id='nav-organizacao';
+  item.setAttribute('onclick',"nav('organizacao',this)");
+  item.innerHTML='<span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4.2h12v9H2z"/><path d="M2 4.2 3.4 2.4h4l1.2 1.8M5.6 7.2h4.8"/></svg></span>Organização';
+  if(ref&&ref.parentNode)ref.insertAdjacentElement('afterend',item);
+  else document.querySelector('.nav-item')?.parentNode?.appendChild(item);
+
+  if(typeof pageTitles!=='undefined')pageTitles.organizacao='Organização de processos';
+
+  $('org-f-natureza').innerHTML=NATUREZAS.map(n=>`<option>${n}</option>`).join('');
+  $('org-f-estado').innerHTML=ESTADOS.map(n=>`<option>${n}</option>`).join('');
+  $('org-busca').addEventListener('input',e=>{filtro=e.target.value;render();});
+  $('org-bt-novo').onclick=abrirNovo;
+  $('org-bt-cancelar').onclick=()=>$('org-form').classList.remove('on');
+  $('org-bt-guardar').onclick=guardar;
+  $('org-bt-recarregar').onclick=carregar;
+  $('org-bt-rosto').onclick=impRosto;
+  $('org-bt-ficha').onclick=impFicha;
+  $('org-bt-cc').onclick=impCC;
+  $('org-bt-lomb').onclick=impLombadas;
+
+  if(typeof window.nav==='function'){
+    const _n=window.nav;
+    window.nav=function(id,el){const r=_n.apply(this,arguments); if(id==='organizacao')carregar(); return r;};
+  }
+  window.orgCarregar=carregar;
+}
+if(document.readyState!=='loading')instalar();
+else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
 </body>
 </html>
