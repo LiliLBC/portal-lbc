@@ -2221,6 +2221,35 @@ function generosOutorgantes(arr){
    Quando só parte do bloco afiança, não se pode escrever «os quartos
    outorgantes»: a declaração passaria a abranger quem é apenas garante
    hipotecário. Nesse caso identificam-se pelo nome. */
+/* ── DECLARAÇÃO DO GARANTE HIPOTECÁRIO · texto do termo ─────────────────────
+   Quem dá o imóvel em garantia de dívida alheia NÃO assume a dívida: responde
+   só com o bem hipotecado, e não com o restante património. É essa a diferença
+   para o fiador, e é isso que a declaração tem de deixar dito.
+   O acordo antecipado a alterações do contrato é indispensável, porque sem ele
+   a garantia pode não acompanhar as obrigações que venham a ser renegociadas.
+     grupo → todos os outorgantes do bloco     gar → os que são garantes
+     ord   → 'terceir' no MH, 'quart' no CVMH */
+function declaracaoGarante(grupo,gar,ord,mutuanteCaixa){
+  if(!gar||!gar.length)return'';
+  const pl=gar.length>1;
+  const gen=generosOutorgantes(gar);
+  const fem=gen.length>0&&gen.every(x=>x==='F');
+  const todos=grupo&&grupo.length&&gar.length===grupo.length;
+  const sujeito=todos
+    ?(pl?`${fem?'as':'os'} ${ord}${fem?'as':'os'} outorgantes`:`${fem?'a':'o'} ${ord}${fem?'a':'o'} outorgante`)
+    :(()=>{const n=gar.map(g=>g.nome).filter(Boolean);
+       return n.length>1?n.slice(0,-1).join(', ')+' e '+n[n.length-1]:(n[0]||(pl?'os garantes':'o garante'));})();
+  const verbo=pl?'Declararam':'Declarou';
+  const donos=pl?(fem?'donas e legítimas possuidoras':'donos e legítimos possuidores')
+                :(fem?'dona e legítima possuidora':'dono e legítimo possuidor');
+  const constituem=pl?'constituem':'constitui';
+  const assumem=pl?'não assumem':'não assume';
+  const respondem=pl?'respondendo exclusivamente':'respondendo exclusivamente';
+  const seu=pl?'do seu património':'do seu património';
+  const credor=mutuanteCaixa?'a Caixa':'a entidade mutuante';
+  return `${verbo} ${sujeito} que, conhecendo integralmente as cláusulas do contrato ora titulado e do documento complementar, ${constituem} hipoteca voluntária sobre o imóvel identificado, de que ${pl?'são':'é'} ${donos}, para garantia de todas as obrigações emergentes daquele contrato, nomeadamente capital, juros remuneratórios e moratórios, comissões, despesas e prémios de seguro, nos termos do artigo 686.º do Código Civil.\n`
+    +`Que ${assumem} a dívida garantida, ${respondem} com o bem hipotecado e não com o restante ${seu}, e que ${pl?'dão':'dá'} desde já acordo a alterações de taxa de juro, prorrogações de prazo, carências e moratórias que venham a ser convencionadas com ${credor}, mantendo-se a hipoteca enquanto subsistir qualquer obrigação emergente do contrato garantido.`;
+}
 function declaracaoFianca(grupo,fiad,ord,mutuanteCaixa){
   if(!fiad||!fiad.length)return'';
   const pl=fiad.length>1;
@@ -2999,7 +3028,9 @@ function comporMH(variante){
   if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?'TERCEIROS':'TERCEIRO',X:txtTerceiros,
     negrito:quartos.map(q=>q.nome).filter(Boolean)});
   termo.push({id:P+'t-apresentaram',T:'',X:`Os signatários apresentaram o documento de contrato de ${tipoNome} com DOCUMENTO COMPLEMENTAR e ANEXO I, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
-  /* Aqui os fiadores são o TERCEIRO bloco de outorgantes. */
+  /* Aqui, garantes e fiadores são o TERCEIRO bloco de outorgantes. */
+  {const dG=declaracaoGarante(quartos,garantes,'terceir',true);
+   if(dG)termo.push({id:P+'t-garante-decl',T:'',X:dG});}
   {const dF=declaracaoFianca(quartos,fiadores,'terceir',true);
    if(dF)termo.push({id:P+'t-fianca-decl',T:'',X:dF});}
 
@@ -4519,7 +4550,9 @@ function compor(){
     ? 'CONTRATO DE COMPRA E VENDA E MÚTUO COM HIPOTECA, COM DOCUMENTO COMPLEMENTAR E ANEXO I'
     : 'CONTRATO DE COMPRA E VENDA';
   termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um ${nomeDocAnexo}, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
-  /* Aqui, havendo compra e venda antes do mútuo, os fiadores são o QUARTO bloco. */
+  /* Havendo compra e venda antes do mútuo, este é o QUARTO bloco. */
+  {const dG=declaracaoGarante(quartos,garantes,'quart',v('f-mutuante')==='cgd');
+   if(dG)termo.push({id:'t-garante-decl',T:'',X:dG});}
   {const dF=declaracaoFianca(quartos,fiadores,'quart',v('f-mutuante')==='cgd');
    if(dF)termo.push({id:'t-fianca-decl',T:'',X:dF});}
   termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${abertura}${extraVerif}`});
@@ -6137,7 +6170,18 @@ function textoRemanescente(r,letra){
    Vários vendedores e um só título: um recebe pelos demais e fica obrigado a
    entregar-lhes a parte proporcional. Redação fixada pela Liliana. */
 function textoViaUnica(r,nVendedores){
-  if(!r||r.meio==='numerario'||nVendedores<2)return'';
+  if(!r)return'';
+  /* ── VENDEDOR ÚNICO ──
+     Não há recebimento por conta de outrem, mas a quitação faz falta na mesma:
+     é ela que prova que o preço foi pago e extingue a obrigação. Aplica-se
+     qualquer que seja o meio, incluindo numerário.
+     Estando o preço já pago antes deste ato, não se pode declarar recebê-lo
+     «neste ato» — só dar quitação do que se recebeu. */
+  if(nVendedores<2){
+    const ja=(r.quando==='ja');
+    return`A parte vendedora declara ${ja?'ter recebido':'receber, neste ato,'} da parte compradora a totalidade do preço convencionado, do qual dá integral e total quitação.`;
+  }
+  if(r.meio==='numerario')return'';
   if((r.titulos||'unico')==='cada')
     /* Um título por vendedor: não há recebimento por conta de outrem, basta a
        quitação conjunta. */
