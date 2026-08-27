@@ -1045,37 +1045,238 @@ const PODERES=[
   {id:'subrogacao',titulo:'Substabelecimento (sub-rogação)',desc:'Poder de transferir a procuração a terceiros',texto:'Com a faculdade de substabelecer, no todo ou em parte, os poderes ora conferidos, com ou sem reserva dos mesmos para si.'}
 ];
 
+/* ══════════════════════════════════════════════════════════════════════════
+   PROCURAÇÃO v2 — designações dos bens, biblioteca de áreas e cláusulas
+   Substitui textoBensIdentificados / referenciasBens / textoPoderes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ORD_DESIG=['','Um','Dois','Três','Quatro','Cinco','Seis','Sete','Oito','Nove','Dez'];
+
+/* ── DESIGNAÇÕES ──
+   Cada bem identificado passa a ter um nome curto que vale em todo o
+   documento. Havendo um só do tipo, fica «Imóvel»; havendo vários, numera-se.
+   É esta amarração que permite dizer «exclusivamente quanto ao Imóvel Um»
+   em vez do vago «quanto aos bens supra identificados». */
+function inventario(){
+  const cat=(toggle,seletor,fn,singular)=>{
+    if(!document.getElementById(toggle)?.checked)return[];
+    const blocos=[...document.querySelectorAll(`${seletor} .outorgante-block`)];
+    const itens=blocos.map(b=>({id:b.id,texto:fn(b.id)})).filter(x=>x.texto);
+    return itens.map((x,i)=>({...x,desig:itens.length>1?`${singular} ${ORD_DESIG[i+1]||(i+1)}`:singular}));
+  };
+  const her=(()=>{
+    if(!document.getElementById('toggle-herancas')?.checked)return[];
+    const blocos=[...document.querySelectorAll('#herancas-container .outorgante-block')];
+    return blocos.map(b=>{
+      const t=textoHeranca(b.id);if(!t)return null;
+      /* A herança designa-se pelo autor da sucessão, não por número. */
+      const autor=(document.getElementById(`${b.id}-autor-nome`)?.value||'').trim();
+      return{id:b.id,texto:t,desig:autor?`Herança de ${autor}`:'Herança'};
+    }).filter(Boolean);
+  })();
+  return{
+    imoveis:cat('toggle-imoveis','#imoveis-container',textoImovel,'Imóvel'),
+    contas:cat('toggle-contas','#contas-container',textoConta,'Conta'),
+    veiculos:cat('toggle-veiculos','#veiculos-container',textoVeiculo,'Veículo'),
+    herancas:her
+  };
+}
+
+/* Junta designações numa enumeração legível: «o Imóvel Um e o Imóvel Dois». */
+function juntarDesig(lista,artigo){
+  /* «quanto a + o Imóvel» contrai em «ao Imóvel». */
+  const n=lista.map(x=>`${artigo==='a'?'à':'ao'} ${x.desig}`);
+  if(!n.length)return'';
+  return n.length===1?n[0]:n.slice(0,-1).join(', ')+' e '+n[n.length-1];
+}
+
+/* ── CLÁUSULA DO OBJETO ──
+   Cada bem fecha com a sua designação, à maneira do modelo revisto. */
+function textoObjeto(){
+  const inv=inventario();
+  const linhas=[];
+  const emitir=(titulo,itens)=>{
+    if(!itens.length)return;
+    linhas.push(titulo.toUpperCase());
+    itens.forEach((it,i)=>linhas.push(`${letraAlinea(i)} ${it.texto}, adiante designad${/^(Conta|Herança)/.test(it.desig)?'a':'o'} por ${it.desig}.`));
+    linhas.push('');
+  };
+  emitir('Bens Imóveis',inv.imoveis);
+  emitir('Contas Bancárias',inv.contas);
+  emitir('Veículos',inv.veiculos);
+  emitir('Heranças',inv.herancas);
+  (typeof textoOutrosLista==='function'?textoOutrosLista():[]).forEach(c=>{
+    if(!c.itens||!c.itens.length)return;
+    linhas.push(String(c.titulo).toUpperCase());
+    c.itens.forEach((it,i)=>linhas.push(`${letraAlinea(i)} ${it}`));
+    linhas.push('');
+  });
+  while(linhas.length&&!linhas[linhas.length-1])linhas.pop();
+  return linhas.join('\n');
+}
+
+/* ── BIBLIOTECA DE ÁREAS ──
+   Cada área é um bloco temático: cabeçalho a negrito e texto desenvolvido.
+   `bem` diz a que inventário se prende, para o âmbito poder ser restringido
+   a bens concretos. `disposicao` marca as áreas que exigem documento
+   particular autenticado, por força do artigo 262.º, n.º 2, do Código Civil. */
+const AREAS=[
+ {id:'aliena',bem:'imoveis',disposicao:true,titulo:'Alienação e aquisição de imóveis',
+  texto:'comprar, vender, permutar, dar e receber em dação em cumprimento e por qualquer outra forma alienar ou adquirir bens imóveis, frações autónomas e direitos reais sobre os mesmos, pelos preços e com as condições que entender convenientes; outorgar e assinar contratos-promessa, escrituras públicas e documentos particulares autenticados, bem como declarações complementares e retificativas; pagar e receber os preços, dando e recebendo a competente quitação; requerer os registos, averbamentos e cancelamentos que se mostrem necessários; e liquidar e pagar o Imposto Municipal sobre as Transmissões Onerosas de Imóveis e o Imposto do Selo devidos, junto de Conservatórias do Registo Predial, balcões Casa Pronta e Casa Simples, Serviços de Finanças, notários e demais entidades'},
+
+ {id:'admimovel',bem:'imoveis',titulo:'Administração de imóveis',
+  texto:'praticar todos os atos de administração ordinária, designadamente celebrar, renovar, alterar, denunciar, revogar ou resolver contratos de arrendamento urbano, para fins habitacionais ou não habitacionais, fixando a renda, o prazo, a caução e as demais condições, e requerer o procedimento especial de despejo; comunicar à Autoridade Tributária e Aduaneira a celebração, renovação, alteração e cessação dos contratos, entregando a declaração Modelo 2 do Imposto do Selo e liquidando o imposto devido, emitir recibos de renda eletrónicos e entregar a declaração Modelo 44; cobrar e receber rendas, cauções, adiantamentos e indemnizações, dando de tudo a competente quitação; representar em assembleias de condóminos e votar as respetivas deliberações; requerer e levantar licenças, alvarás, certidões, vistorias, licença de utilização, ficha técnica da habitação e certificado energético; e promover, contratar e fiscalizar obras de conservação, reparação e beneficiação'},
+
+ {id:'contas',bem:'contas',titulo:'Contas bancárias e produtos financeiros',
+  texto:'representar perante qualquer instituição de crédito ou sociedade financeira, para abrir, movimentar a débito e a crédito, transferir e encerrar contas; emitir, assinar e endossar cheques e ordens de pagamento; constituir, alterar e cancelar débitos diretos e autorizações de pagamento; subscrever, resgatar e transferir depósitos a prazo, certificados de aforro e do Tesouro, fundos de investimento, seguros de capitalização e demais produtos financeiros; aceder aos serviços de homebanking e a cofres de aluguer; e contratar, renegociar, consolidar e amortizar créditos, com exceção da constituição de garantias reais, salvo quando expressamente conferida'},
+
+ {id:'financas',bem:null,titulo:'Autoridade Tributária e Aduaneira',
+  texto:'representar perante a Autoridade Tributária e Aduaneira, incluindo qualquer Serviço de Finanças, o Portal das Finanças e o e-Balcão, em tudo o que respeite à situação tributária, nomeadamente para entregar declarações, designadamente as de IRS e a Modelo 1 do IMI, aceder e consultar informação fiscal, alterar o domicílio fiscal e nomear representante fiscal, pedir e levantar certidões, requerer avaliações e segundas avaliações e reclamar do valor patrimonial tributário, requerer isenções e benefícios fiscais, aderir a planos prestacionais, e liquidar, pagar, reclamar, contestar e recorrer de tributos, designadamente IMI, AIMI, IMT, IUC, IRS e Imposto do Selo, bem como receber reembolsos'},
+
+ {id:'fornecimentos',bem:'imoveis',titulo:'Contratos de fornecimento de serviços',
+  texto:'celebrar, alterar, transferir a titularidade, suspender e cessar contratos de fornecimento de água, saneamento, eletricidade, gás, comunicações eletrónicas e recolha de resíduos, acordar tarifários e condições, apresentar reclamações e pedidos de reembolso, e pagar os respetivos encargos'},
+
+ {id:'seguros',bem:null,titulo:'Seguros',
+  texto:'celebrar, alterar, transferir, suspender, resgatar e denunciar contratos de seguro de qualquer ramo, fixar capitais, coberturas e franquias, designar beneficiários quando a lei o permita, pagar prémios, participar sinistros, acompanhar peritagens e vistorias, apresentar reclamações e receber as indemnizações devidas, dando a competente quitação'},
+
+ {id:'saude',bem:null,titulo:'Atos administrativos em matéria de saúde',
+  texto:'representar perante estabelecimentos e serviços de saúde, públicos, privados e do setor social, bem como perante subsistemas e seguradoras de saúde, para marcar, remarcar e cancelar consultas, exames e tratamentos, aceder e consultar o processo clínico e a Área do Cidadão do Serviço Nacional de Saúde, requerer a retificação e a atualização dos dados pessoais, levantar resultados, relatórios e receituário, e tratar de comparticipações, faturação e reembolsos. Os poderes ora conferidos são de natureza estritamente administrativa e não abrangem o consentimento para atos médicos, que não é delegável por procuração comum'}
+];
+
+/* ── ÂMBITO DE CADA ÁREA ──
+   'todos' (por defeito), 'alguns' com escolha dos bens, ou 'sem' quando a
+   área não se prende a bem determinado. */
+function ambitoArea(a,inv){
+  if(!a.bem)return'';
+  const modo=document.getElementById(`ambito-${a.id}`)?.value||'todos';
+  if(modo==='sem')return'';
+  const lista=inv[a.bem]||[];
+  if(!lista.length)return'';
+  const art=a.bem==='contas'?'a':'o';
+  const escolhidos=modo==='alguns'
+    ? lista.filter(x=>document.getElementById(`ambito-${a.id}-${x.id}`)?.checked)
+    : lista;
+  if(!escolhidos.length)return'';
+  const plural=escolhidos.length>1;
+  const todos=escolhidos.length===lista.length;
+  if(todos&&plural)return`, exclusivamente quanto ${art==='a'?'às':'aos'} ${a.bem==='contas'?'Contas':a.bem==='imoveis'?'Imóveis':'Veículos'} identificad${art==='a'?'as':'os'} na Cláusula Primeira`;
+  return`, exclusivamente quanto ${juntarDesig(escolhidos,art)}`;
+}
+
+/* ── CLÁUSULA DOS PODERES ── */
+function textoAreas(){
+  const inv=inventario();
+  const ativas=AREAS.filter(a=>document.getElementById(`area-${a.id}`)?.checked);
+  if(!ativas.length)return'[Sem áreas selecionadas]';
+  const blocos=ativas.map((a,i)=>{
+    const txt=document.getElementById(`area-texto-${a.id}`)?.value||a.texto;
+    return `${i+1}. ${a.titulo} - ${txt}${ambitoArea(a,inv)}.`;
+  });
+  blocos.push(`${ativas.length+1}. Atos conexos - em geral, praticar todos os atos e assinar todos os documentos que se mostrem necessários ou convenientes ao exercício dos poderes acima conferidos.`);
+  return blocos.join('\n\n');
+}
+
+/* ── CLÁUSULA DAS LIMITAÇÕES ──
+   Espelho da anterior: o que não foi conferido fica expressamente excluído.
+   Sem esta cláusula, uma procuração ampla é lida como amplíssima. */
+function textoLimitacoes(){
+  const on=id=>!!document.getElementById(`area-${id}`)?.checked;
+  const inv=inventario();
+  const n=[];
+  if(!on('aliena')){
+    n.push('Os poderes ora conferidos não abrangem, em caso algum, atos de disposição.');
+    n.push('Ficam expressamente excluídos os poderes para vender, prometer vender, permutar, dar em dação em cumprimento, doar ou por qualquer outra forma alienar bens imóveis, no todo ou em parte.');
+    n.push('Ficam igualmente excluídos os poderes para onerar bens imóveis, designadamente para constituir hipoteca, penhor, consignação de rendimentos, usufruto, direito de superfície, direito de uso e habitação ou servidões, bem como para constituir propriedade horizontal, promover o fracionamento, divisão ou desanexação de prédios, contrair empréstimos ou prestar garantias.');
+  }else{
+    n.push('Ficam excluídos os poderes para doar ou por qualquer outra forma alienar a título gratuito, bem como para prestar garantias por dívidas de terceiro.');
+  }
+  if(!on('contas'))
+    n.push('Ficam excluídos os poderes para movimentar contas bancárias e para subscrever, resgatar ou transferir produtos financeiros.');
+  if(inv.herancas.length)
+    n.push('Ficam excluídos os poderes para aceitar ou repudiar heranças e para outorgar partilha, que constituem atos de disposição e carecem de poderes expressos.');
+  n.push('Qualquer ato praticado em desrespeito das limitações previstas na presente cláusula é ineficaz em relação ao Mandante, nos termos do artigo 268.º do Código Civil.');
+  return n.map((t,i)=>`${i+1}. ${t}`).join('\n\n');
+}
+
+/* ── FORMA EXIGIDA ──
+   Artigo 262.º, n.º 2, do Código Civil: a procuração reveste a forma exigida
+   para o negócio que o procurador deva realizar. Conferindo-se poderes de
+   disposição sobre imóveis, não basta o reconhecimento de assinatura. */
+function formaExigida(){
+  const disp=AREAS.some(a=>a.disposicao&&document.getElementById(`area-${a.id}`)?.checked);
+  return disp?'autenticacao':'reconhecimento';
+}
+
+const AREA_DESC={
+  aliena:'Comprar, vender, permutar, quitação, IMT e Selo',
+  admimovel:'Arrendamento, rendas, condomínio, obras, licenças',
+  contas:'Movimentar, transferir, produtos financeiros, crédito',
+  financas:'Portal das Finanças, e-Balcão, IRS, IMI, certidões',
+  fornecimentos:'Água, luz, gás, comunicações, resíduos',
+  seguros:'Contratar, alterar, sinistros, indemnizações',
+  saude:'Consultas, exames, processo clínico, reembolsos'
+};
 function renderPoderes(){
   const grid=document.getElementById('poderes-grid');
-  grid.innerHTML=PODERES.map(p=>`
-    <label class="poder-toggle" id="poder-toggle-${p.id}">
-      <input type="checkbox" id="poder-${p.id}" onchange="onPoderToggle('${p.id}')">
+  grid.innerHTML=AREAS.map(a=>`
+    <label class="poder-toggle" id="poder-toggle-${a.id}">
+      <input type="checkbox" id="area-${a.id}" onchange="onPoderToggle('${a.id}')">
       <div class="poder-toggle-label">
-        <div class="poder-toggle-title">${p.titulo}</div>
-        <div class="poder-toggle-desc">${p.desc}</div>
+        <div class="poder-toggle-title">${a.titulo}</div>
+        <div class="poder-toggle-desc">${AREA_DESC[a.id]||''}</div>
       </div>
     </label>`).join('');
 }
 function onPoderToggle(pid){
-  const chk=document.getElementById('poder-'+pid);
+  const chk=document.getElementById('area-'+pid);
   const lbl=document.getElementById('poder-toggle-'+pid);
-  lbl.classList.toggle('active',chk.checked);
+  if(lbl)lbl.classList.toggle('active',chk.checked);
   renderPoderesDetalhes();
+  avisoForma();
+}
+/* Avisa quando os poderes escolhidos exigem termo de autenticação. */
+function avisoForma(){
+  const el=document.getElementById('aviso-forma');
+  if(!el)return;
+  el.innerHTML=formaExigida()==='autenticacao'
+    ? `<div class="cond-block cond-block-amber" style="margin-top:.6rem"><b>Termo de autenticação necessário.</b> Foram conferidos poderes de disposição sobre imóveis. Nos termos do artigo 262.º, n.º 2, do Código Civil, a procuração tem de revestir a forma exigida para o negócio a praticar — não basta o reconhecimento de assinatura.</div>`
+    : `<div class="cond-block" style="margin-top:.6rem"><b>Reconhecimento presencial suficiente.</b> Não foram conferidos poderes de disposição sobre imóveis.</div>`;
 }
 function renderPoderesDetalhes(){
   const det=document.getElementById('poderes-detalhes');
-  const activos=PODERES.filter(p=>document.getElementById('poder-'+p.id)?.checked);
-  if(!activos.length){det.innerHTML='';return;}
+  const ativas=AREAS.filter(a=>document.getElementById('area-'+a.id)?.checked);
+  if(!ativas.length){det.innerHTML='';return;}
+  const inv=inventario();
   det.innerHTML=`
     <div class="cond-block cond-block-amber" style="margin-top:0">
-      <div class="cond-block-title">Texto dos poderes selecionados</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:.6rem">Podes editar o texto de cada bloco antes de gerar o documento. Os blocos aparecem pela ordem em que estão selecionados.</div>
-      ${activos.map(p=>`
-        <div style="margin-bottom:1rem">
-          <label class="form-label" style="display:block;margin-bottom:4px">${p.titulo}</label>
-          <textarea class="form-textarea" id="poder-texto-${p.id}" rows="6" style="width:100%;min-height:130px;line-height:1.55">${document.getElementById('poder-texto-'+p.id)?.value||p.texto}</textarea>
-        </div>`).join('')}
-    </div>`;
+      <div class="cond-block-title">Texto e âmbito de cada área</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:.6rem">Podes editar o texto antes de gerar. O âmbito prende os poderes aos bens identificados na Cláusula Primeira.</div>
+      ${ativas.map(a=>{
+        const lista=a.bem?(inv[a.bem]||[]):[];
+        const modo=document.getElementById('ambito-'+a.id)?.value||'todos';
+        return `
+        <div style="margin-bottom:1.1rem">
+          <label class="form-label" style="display:block;margin-bottom:4px">${a.titulo}</label>
+          <textarea class="form-textarea" id="area-texto-${a.id}" rows="6" style="width:100%;min-height:130px;line-height:1.55">${document.getElementById('area-texto-'+a.id)?.value||a.texto}</textarea>
+          ${a.bem?`
+            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text-muted)">Âmbito:</span>
+              <select class="form-select" id="ambito-${a.id}" onchange="renderPoderesDetalhes()" style="font-size:12px;padding:4px 8px;width:auto">
+                <option value="todos"${modo==='todos'?' selected':''}>Todos os ${a.bem} identificados</option>
+                <option value="alguns"${modo==='alguns'?' selected':''}>Apenas alguns</option>
+                <option value="sem"${modo==='sem'?' selected':''}>Sem bem determinado</option>
+              </select>
+              ${!lista.length?'<span style="font-size:11px;color:var(--amber)">Nenhum bem deste tipo identificado.</span>':''}
+            </div>
+            ${modo==='alguns'&&lista.length?`<div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.35rem">
+              ${lista.map(x=>`<label style="font-size:11.5px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="checkbox" id="ambito-${a.id}-${x.id}"${document.getElementById('ambito-'+a.id+'-'+x.id)?.checked?' checked':''}> ${x.desig}</label>`).join('')}
+            </div>`:''}
+          `:''}
+        </div>`;}).join('')}
+    </div>
+    <div id="aviso-forma"></div>`;
+  avisoForma();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1410,7 +1611,7 @@ async function gerarProcuracao(){
 
     // Garantir que temos template
     if(!templateBuffer){
-      showToast('Selecciona primeiro o template TEMPL_PROC.docx','');
+      showToast('Selecciona primeiro o template TEMPL_PROC_v2.docx','');
       await selecionarTemplate();
       if(!templateBuffer)return; // utilizador cancelou
     }
@@ -1422,10 +1623,20 @@ async function gerarProcuracao(){
 
     const verbo=mandantes.length>1?'constituem':'constitui';
     const possessivo=mandantes.length>1?'seus bastantes procuradores':'seu bastante procurador';
-    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem confere(m) os poderes necessários para que:`;
+    const conf=mandantes.length>1?'conferem':'confere';
+    const TXT_Abertura=`Pelo presente instrumento, ${verbo} ${possessivo} ${mandatarios.length>1?'os Mandatários acima identificados':'o Mandatário acima identificado'}, a quem ${conf} os poderes necessários para praticar, nos termos e com os limites adiante fixados, os seguintes atos:`;
 
-    const TXT_Bens=textoBensIdentificados();
-    const TXT_Poderes=textoPoderes();
+    const TXT_Bens=textoObjeto();
+    const TXT_Poderes=textoAreas();
+    const TXT_Limitacoes=textoLimitacoes();
+    /* Subtítulo que anuncia o âmbito, à maneira do modelo revisto. */
+    const ativas=AREAS.filter(x=>document.getElementById('area-'+x.id)?.checked);
+    const TXT_Subtitulo=ativas.length===1?ativas[0].titulo
+      :ativas.length?`Poderes de ${ativas.slice(0,-1).map(x=>x.titulo.toLowerCase()).join(', ')} e ${ativas[ativas.length-1].titulo.toLowerCase()}`
+      :'Poderes de representação';
+    const Forma_Exigida=formaExigida()==='autenticacao'
+      ?'A presente procuração é outorgada por documento particular autenticado, nos termos do n.º 2 do artigo 262.º do Código Civil.'
+      :'As assinaturas apostas na presente procuração são objeto de reconhecimento presencial.';
     const TXT_Validade=textoValidade();
     const TXT_Atuacao=textoAtuacaoMandatarios(mandatarios);
     const TXT_Substabelecimento=textoSubstabelecimento();
@@ -1443,7 +1654,9 @@ async function gerarProcuracao(){
     const data={
       TXT_Mandantes,TXT_Mandatarios,TXT_Abertura,TXT_Bens,TXT_Poderes,
       TXT_Validade,TXT_Atuacao,TXT_Substabelecimento,TXT_Clausulas_Livres,
-      Local_Outorga,Data_Outorga_Extenso,Tipo_Documento,Cartorio
+      Local_Outorga,Data_Outorga_Extenso,Tipo_Documento,Cartorio,
+      TXT_Limitacoes,TXT_Subtitulo,Forma_Exigida,
+      TXT_Assinatura_Nome:mandantes.map(m=>`(${(m.tipo==='empresa'?m.empNome:m.nome)||''})`).join('   ')
     };
 
     // Importante: usar um clone do ArrayBuffer — PizZip consome-o

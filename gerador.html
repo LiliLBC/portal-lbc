@@ -2058,7 +2058,10 @@ function nomeCurto(n){
    Cônjuges que outorgam sem serem proprietários. */
 function linhaConsentimento(outorgantes){
   const cs=(outorgantes||[])
-    .filter(o=>o.tipo==='singular'&&o.ec==='casado'&&o['conj-out']==='consente'&&o['conj-nome'])
+    /* ehCasado() aceita «casado» e «casada»; comparar com o literal masculino
+       deixava de fora todas as outorgantes mulheres, e a menção do
+       consentimento desaparecia sem aviso. */
+    .filter(o=>o.tipo==='singular'&&ehCasado(o.ec)&&o['conj-out']==='consente'&&o['conj-nome'])
     .map(o=>nomeCurto(o['conj-nome']));
   if(!cs.length)return'';
   const plural=cs.length>1;
