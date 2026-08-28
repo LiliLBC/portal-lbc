@@ -13857,14 +13857,17 @@ function impLombadas(){
     .lombada{width:var(--comp);height:var(--larg);background:var(--paper);border:.25mm dashed var(--rule);
       margin-bottom:-.25mm;position:relative;display:flex;align-items:center;justify-content:space-between;
       padding:0 10mm;gap:8mm;overflow:hidden}
-    .lombada::before{content:"";position:absolute;inset:3mm;border:.25mm solid var(--rule)}
+    .lombada::before{content:"";position:absolute;inset:3mm;border:.25mm solid var(--rule);pointer-events:none}
     .mono{flex:none;text-align:center;color:var(--mark);font-family:"Latin Modern Roman",Georgia,serif;
-      line-height:1;letter-spacing:-.5mm;font-size:calc(var(--larg)*.34)}
+      line-height:1;letter-spacing:-.5mm;font-size:calc(var(--larg)*.34);user-select:none;-webkit-user-modify:read-only}
     .bwrap{position:relative;display:inline-block}
     .bwrap svg{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);width:.40em;height:.38em}
     .mono small{display:block;margin-top:1.4mm;font-size:.20em;letter-spacing:.14em;-webkit-text-stroke:.12mm currentColor}
     .centro{flex:1;text-align:center;min-width:0}
-    .l1{font-size:var(--f1);color:var(--mark);letter-spacing:.06em;outline:none}
+    .l1{font-size:var(--f1);color:var(--mark);letter-spacing:.06em;outline:none;cursor:text}
+    [contenteditable="true"]:hover{background:rgba(124,78,62,.06)}
+    [contenteditable="true"]:focus{background:rgba(124,78,62,.10)}
+    @media print{[contenteditable="true"]{background:none!important}}
     .l2{margin-top:2.4mm;font-size:var(--f2);color:var(--marksoft);letter-spacing:.16em;outline:none}
     .lado{flex:none;text-align:center;color:var(--mark);border-left:.25mm solid var(--rule);
       padding-left:8mm;min-width:26mm}
@@ -13879,7 +13882,7 @@ function impLombadas(){
       r.setProperty('--comp',document.getElementById('comp').value+'mm');
       construir();}
     function lombada(){var d=document.createElement('div');d.className='lombada';
-      d.innerHTML='<div class="mono">L<span class="bwrap">b'+B+'</span>C<small>SOLICITADORA</small></div>'+
+      d.innerHTML='<div class="mono" contenteditable="false">L<span class="bwrap">b'+B+'</span>C<small>SOLICITADORA</small></div>'+
         '<div class="centro"><div class="l1" contenteditable="true">'+${JSON.stringify(l1)}+'</div>'+
         '<div class="l2" contenteditable="true">'+${JSON.stringify(l2)}+'</div></div>'+
         '<div class="lado"><div class="n" contenteditable="true">'+${JSON.stringify(nr)}+'</div>'+

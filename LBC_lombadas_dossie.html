@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LBC — Lombadas de dossiê</title>
+<style>
+  @page { size: A4 landscape; margin: 0; }
+
+  :root{
+    --paper:#F0E8E1;
+    --mark:#7C4E3E;
+    --marksoft:#9A7261;
+    --text:#4E4038;
+    --rule:#DCCBBF;
+    --soft:#9A8578;
+
+    --larg:50mm;   /* largura da lombada (o "gordo" do dossiê) */
+    --comp:280mm;  /* comprimento */
+    --f1:8mm;     /* corpo da linha 1 */
+    --f2:4mm;      /* corpo da linha 2 */
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    font-family:"Lora","EB Garamond",Georgia,serif;
+    color:var(--text); background:#EFEFEC;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---------------- painel de controlo (só no ecrã) ---------------- */
+  .painel{
+    max-width:960px; margin:0 auto; padding:22px 20px 8px;
+  }
+  .painel h1{
+    font-size:20px; font-weight:500; color:var(--mark);
+    letter-spacing:3px; margin-bottom:4px;
+  }
+  .painel p{ font-size:13px; color:var(--soft); margin-bottom:18px; line-height:1.6; }
+  .grelha{ display:flex; flex-wrap:wrap; gap:14px 22px; align-items:flex-end; }
+  .campo{ display:flex; flex-direction:column; gap:5px; }
+  .campo label{
+    font-size:10px; letter-spacing:1.2px; color:var(--marksoft); text-transform:uppercase;
+  }
+  .campo input{
+    font-family:inherit; font-size:14px; color:var(--text);
+    padding:7px 9px; width:110px;
+    border:1px solid var(--rule); border-radius:2px; background:#fff;
+  }
+  .botoes{ display:flex; gap:10px; margin:20px 0 6px; flex-wrap:wrap; }
+  button{
+    font-family:inherit; font-size:13px; letter-spacing:0.6px;
+    padding:9px 18px; border:1px solid var(--mark); border-radius:2px;
+    background:var(--mark); color:#fff; cursor:pointer;
+  }
+  button.sec{ background:transparent; color:var(--mark); }
+  .dica{
+    max-width:960px; margin:0 auto 16px; padding:0 20px;
+    font-size:12px; color:var(--soft); line-height:1.7;
+  }
+
+  /* ---------------- folhas ---------------- */
+  .folhas{ padding:0 20px 60px; }
+  .folha{
+    width:297mm; height:210mm;
+    background:#fff; margin:0 auto 18px;
+    padding:3mm 8mm;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    gap:0;
+    box-shadow:0 2px 14px rgba(0,0,0,.10);
+    page-break-after:always;
+  }
+  .folha:last-child{ page-break-after:auto; }
+
+  .lombada{
+    width:var(--comp); height:var(--larg);
+    background:var(--paper);
+    border:0.25mm dashed var(--rule);
+    margin-bottom:-0.25mm;
+    position:relative;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 10mm;
+    gap:8mm;
+    overflow:hidden;
+  }
+  .lombada::before{
+    content:""; position:absolute; inset:3mm;
+    border:0.25mm solid var(--rule); pointer-events:none;
+  }
+
+  /* monograma */
+  .mono{
+    flex:none; text-align:center; color:var(--mark);
+    font-family:"Latin Modern Roman","LM Roman 10",Georgia,serif;
+    line-height:1; letter-spacing:-0.5mm;
+    font-size:calc(var(--larg) * 0.34);
+    user-select:none;
+  }
+  .bwrap{ position:relative; display:inline-block; }
+  .bwrap svg{
+    position:absolute; left:50%; bottom:6%;
+    transform:translateX(-50%);
+    width:0.40em; height:0.38em; color:var(--mark);
+  }
+  .mono small{
+    display:block; margin-top:1.4mm;
+    font-size:0.20em; letter-spacing:0.14em; text-indent:0.14em;
+    -webkit-text-stroke:0.12mm currentColor;
+  }
+
+  .centro{ flex:1; text-align:center; min-width:0; }
+  [contenteditable="true"]{ cursor:text; }
+  [contenteditable="true"]:hover{ background:rgba(124,78,62,.06); }
+  [contenteditable="true"]:focus{ background:rgba(124,78,62,.10); }
+  .l1{
+    font-size:var(--f1); color:var(--mark); line-height:1.15;
+    letter-spacing:0.06em; text-indent:0.06em;
+    outline:none;
+  }
+  .l2{
+    margin-top:2.4mm; font-size:var(--f2); color:var(--marksoft);
+    letter-spacing:0.16em; text-indent:0.16em; line-height:1.3;
+    outline:none;
+  }
+
+  .lado{
+    flex:none; text-align:center; color:var(--mark);
+    border-left:0.25mm solid var(--rule);
+    padding-left:8mm; min-width:26mm;
+  }
+  .lado .n{ font-size:calc(var(--f1) * 0.62); letter-spacing:0.04em; outline:none; }
+  .lado .r{
+    margin-top:1.6mm; font-size:calc(var(--f2) * 0.8); color:var(--soft);
+    letter-spacing:0.18em; text-indent:0.18em; outline:none;
+  }
+
+  /* marcas de corte */
+  .marca{ position:absolute; background:var(--rule); }
+
+  @media print{
+    [contenteditable="true"]{ background:none !important; }
+    .painel, .dica{ display:none !important; }
+    .folhas{ padding:0; }
+    .folha{ margin:0; box-shadow:none; }
+    body{ background:#fff; }
+  }
+</style>
+</head>
+<body>
+
+<div class="painel">
+  <h1>LOMBADAS DE DOSSIÊ</h1>
+  <p>Escreva diretamente nos campos da lombada — todo o texto é editável. Ajuste as medidas à sua pasta e imprima.</p>
+
+  <div class="grelha">
+    <div class="campo"><label>Largura da lombada (mm)</label><input id="larg" type="number" value="50" min="30" max="120"></div>
+    <div class="campo"><label>Comprimento (mm)</label><input id="comp" type="number" value="280" min="120" max="281"></div>
+    <div class="campo"><label>Corpo linha 1 (mm)</label><input id="f1" type="number" value="8" min="4" max="30" step="0.5"></div>
+    <div class="campo"><label>Corpo linha 2 (mm)</label><input id="f2" type="number" value="4" min="2" max="16" step="0.5"></div>
+    <div class="campo"><label>N.º de lombadas</label><input id="qtd" type="number" value="4" min="1" max="24"></div>
+    <div class="campo"><label>Por folha</label><div id="porfolha" style="font-size:14px;padding:7px 0;color:var(--mark)">—</div></div>
+  </div>
+
+  <div class="botoes">
+    <button onclick="window.print()">Imprimir</button>
+    <button class="sec" onclick="construir()">Repor lombadas</button>
+    <button class="sec" onclick="fundo()">Fundo creme / branco</button>
+  </div>
+</div>
+
+<div class="dica">
+  As lombadas por folha são calculadas a partir da largura: com 50 mm cabem 4, com 65 mm cabem 3, com 80 mm cabem 2.
+  Imprima a 100 % / “tamanho real”, ao baixo (horizontal), e corte pelo tracejado. O comprimento não pode passar de 281 mm — a folha tem 297 mm e a impressora precisa de margem para agarrar o papel.
+</div>
+
+<div class="folhas" id="folhas"></div>
+
+<script>
+const SVG = `<svg viewBox="0 0 120 118" fill="none" stroke="currentColor"
+    stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 12 V96"/><path d="M16 30 H104"/>
+    <path d="M16 30 L4 58 M16 30 L28 58"/><path d="M3 58 Q16 72 29 58"/>
+    <path d="M104 30 L92 58 M104 30 L116 58"/><path d="M91 58 Q104 72 117 58"/>
+    <path d="M44 96 H76"/><path d="M34 110 H86"/>
+    <path d="M44 96 L34 110 M76 96 L86 110"/></svg>`;
+
+function lombada(){
+  const d = document.createElement('div');
+  d.className = 'lombada';
+  d.innerHTML = `
+    <div class="mono" contenteditable="false">L<span class="bwrap">b${SVG}</span>C<small>SOLICITADORA</small></div>
+    <div class="centro">
+      <div class="l1" contenteditable="true">NOME DO CLIENTE</div>
+      <div class="l2" contenteditable="true">NATUREZA DO ATO</div>
+    </div>
+    <div class="lado">
+      <div class="n" contenteditable="true">2026/000</div>
+      <div class="r" contenteditable="true">2026</div>
+    </div>`;
+  return d;
+}
+
+function porFolha(){
+  const larg = parseFloat(document.getElementById('larg').value) || 50;
+  // A4 ao baixo: 210 mm de altura, 3 mm de margem em cima e em baixo; lombadas encostadas
+  return Math.max(1, Math.floor((210 - 6) / larg));
+}
+
+function construir(){
+  const n = Math.max(1, parseInt(document.getElementById('qtd').value) || 1);
+  const pf = porFolha();
+  document.getElementById('porfolha').textContent = pf + (pf === 1 ? ' lombada' : ' lombadas');
+  const cont = document.getElementById('folhas');
+  cont.innerHTML = '';
+  let folha = null;
+  for (let i = 0; i < n; i++){
+    if (i % pf === 0){
+      folha = document.createElement('div');
+      folha.className = 'folha';
+      cont.appendChild(folha);
+    }
+    folha.appendChild(lombada());
+  }
+}
+
+function medidas(){
+  const r = document.documentElement.style;
+  r.setProperty('--larg', document.getElementById('larg').value + 'mm');
+  r.setProperty('--comp', document.getElementById('comp').value + 'mm');
+  r.setProperty('--f1', document.getElementById('f1').value + 'mm');
+  r.setProperty('--f2', document.getElementById('f2').value + 'mm');
+  construir();
+}
+
+let creme = true;
+function fundo(){
+  creme = !creme;
+  document.documentElement.style.setProperty('--paper', creme ? '#F0E8E1' : '#FFFFFF');
+}
+
+['larg','comp','f1','f2'].forEach(id =>
+  document.getElementById(id).addEventListener('input', medidas));
+document.getElementById('qtd').addEventListener('input', construir);
+
+construir();
+</script>
+</body>
+</html>
