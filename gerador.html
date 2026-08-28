@@ -7298,7 +7298,21 @@ function abrirModalComunicacao(){
   const outorgantes=listarOutorgantesEmail();
   const fraseOutorgantes=`Os outorgantes ${outorgantes.length?listarComEVirgula(outorgantes)+' ':''}deverão fazer-se acompanhar dos documentos de identificação originais e, caso se façam representar por terceiros, deverão remeter-nos, com a maior brevidade possível, os respetivos documentos de identificação e procuração.`;
   const fraseCheques=comCaixa?`\n\nMais informamos que os cheques para pagamento devem ser solicitados na agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento do pedido.`:'';
-  setProp('com-email-corpo','value',`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de ${t.nome} se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n${fraseOutorgantes}\n\nTodos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (licença de utilização, certidão de isenção, habilitações de herdeiros, certidões de nascimento/casamento e imposto do selo). Deverão ainda fazer-se acompanhar das guias de liquidação de IMT/IS impressas.${assentosPorPedir.length?`\n\n⚠ Em falta, a requerer com urgência — certidão do assento de ${assentosPorPedir.join('; ')}.`:''}${fraseCheques}${blocoEscritorio()}\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`);
+
+  /* ── DOCUMENTOS A PEDIR ──
+     O texto era fixo e igual para todos os atos. Num mútuo com hipoteca não há
+     transmissão, logo não há guias de IMT nem de Selo a apresentar, e a licença
+     de utilização e a certidão de isenção também não vêm ao caso. */
+  /* Só o mútuo com hipoteca isolado. O CVMH tem compra e venda, logo tem IMT e
+     Selo; a partilha tem IMT sobre o excesso; a doação tem Selo. */
+  const soHipoteca=ehMH();
+  const fraseDocs=soHipoteca
+    ? `Todos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (caderneta predial, certidão permanente do registo predial, habilitações de herdeiros e certidões de nascimento/casamento, quando aplicáveis).`
+    : `Todos os documentos instrutórios deverão ser originais ou cópias devidamente certificadas (licença de utilização, certidão de isenção, habilitações de herdeiros, certidões de nascimento/casamento e imposto do selo). Deverão ainda fazer-se acompanhar das guias de liquidação de IMT/IS impressas.`;
+
+  /* Custos de registo e titulação: pagos por transferência com a outorga. */
+  const fraseCustos=`\n\nOs custos suportados com registos e titulação terão que ser efetuados por transferência bancária com a outorga do contrato.`;
+  setProp('com-email-corpo','value',`Exmo(a). Sr(a). ${nome||'___'},\n\nNo seguimento do processo em curso, informamos que o contrato de ${t.nome} se encontra agendado para o dia ${data||'___'} pelas ______ horas no nosso escritório.\n\n${fraseOutorgantes}\n\n${fraseDocs}${assentosPorPedir.length?`\n\n⚠ Em falta, a requerer com urgência — certidão do assento de ${assentosPorPedir.join('; ')}.`:''}${fraseCustos}${fraseCheques}${blocoEscritorio()}\n\nPara qualquer esclarecimento, estamos ao dispor.\n\nCom os melhores cumprimentos,\nLBC Solicitadora`);
   setProp('com-wa-telefone','value','351');
   setProp('com-wa-mensagem','value',`Bom dia${nome?' '+nome:''},\n\nInformamos que o seu processo de ${t.nome} está em preparação para a escritura de ${data||'___'}.${comCaixa?`\n\nNota: os cheques para pagamento devem ser pedidos à agência 0297 da CGD (Rua da República, Évora), dando-nos conhecimento.`:''}\n\nQualquer dúvida, não hesite em contactar-nos.\n\nLBC Solicitadora`);
   comSetTab('email');
