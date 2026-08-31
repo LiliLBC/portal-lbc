@@ -2164,9 +2164,11 @@ function textoVendedor(v){
   return`${eu}, ${v.ec||'…'} com ${v['conj-nome']||'…'}, número de identificação fiscal ${v['conj-nif']||'…'}, sob o regime de ${regime}, residente em ${v.morada||'…'}`;
 }
 /* ── IDENTIFICAÇÃO CURTA · CORPO DO CONTRATO ──
-   Só nome, naturalidade e NIF. */
-function idCurta(nome,natural,nif){
-  return`${nome||'…'}, natural de ${natural||'…'}, número de identificação fiscal ${nif||'…'}`;
+   Só nome e NIF. A naturalidade saiu: é elemento do termo de autenticação,
+   não do contrato — e sem o campo preenchido saía «natural de …» no meio da
+   identificação das partes. Regra fixada pela Liliana. */
+function idCurta(nome,nif){
+  return`${nome||'…'}, número de identificação fiscal ${nif||'…'}`;
 }
 function textoVendedorCurto(v){
   /* ── ENTIDADES · CONTRATO ──
@@ -2175,7 +2177,7 @@ function textoVendedorCurto(v){
      Sem regime de bens: no contrato não interessa. */
   const repCurto=o=>{
     const rs=(o.reps&&o.reps.length)?o.reps:[{}];
-    const p=rs.map(r=>`${r.nome||'…'}, natural de ${r.natural||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
+    const p=rs.map(r=>`${idCurta(r.nome,r.nif)}${r.ec?`, ${r.ec}`:''}`);
     return p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
   };
   if(v.tipo==='cgd')
@@ -2184,12 +2186,21 @@ function textoVendedorCurto(v){
     return`MUNICÍPIO DE ${(v['mun-nome']||'…').toUpperCase()}, pessoa coletiva n.º ${v['mun-nipc']||'…'}, com sede em ${v['mun-sede']||'…'}, neste ato representado por ${repCurto(v)}`;
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
-  const eu=idCurta(v.nome,v.natural,v.nif);
-  /* Só entram no contrato os que transmitem. Quem apenas consente não é parte:
-     o consentimento é declaração autónoma, feita no termo. */
-  const base=(!ehCasado(v.ec)||(v['conj-out']||'ambos')!=='ambos')
-    ? eu
-    : `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
+  /* ── PESSOAS SINGULARES · CONTRATO ──
+     Nome, NIF e estado civil. Sendo casado, o cônjuge aparece SEMPRE — mesmo
+     quando só outorga para consentir, e mesmo quando não outorga de todo —,
+     identificado por nome e NIF, na forma «casado com». Antes só aparecia
+     quando era ele próprio parte, e desaparecia do contrato nos restantes
+     casos. Sem regime de bens: esse fica no termo.
+     A concordância («casado»/«casada») segue o outorgante, não o cônjuge,
+     porque v.ec já vem flexionado pelo género escolhido no formulário. */
+  const eu=idCurta(v.nome,v.nif);
+  const conjuge=()=>idCurta(v['conj-nome'],v['conj-nif']);
+  const base=!ehCasado(v.ec)
+    ? `${eu}, ${v.ec||'…'}`
+    : ((v['conj-out']||'ambos')==='ambos'
+        ? `${eu} e ${conjuge()}, casados entre si`
+        : `${eu}, ${v.ec||'…'} com ${conjuge()}`);
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -2200,7 +2211,7 @@ function textoVendedorCurto(v){
   const varios=ehCasado(v.ec)&&(v['conj-out']||'ambos')==='ambos'&&v['conj-nome'];
   const fem=varios?false:(v.genero==='F'||/a$/.test(((v.ec||'').split(/[\s,]/)[0]||'')));
   const flex=varios?'representados':(fem?'representada':'representado');
-  return`${base}, neste ato ${flex} por ${idCurta(v['proc-nome'],v['proc-natural'],v['proc-nif'])}`;
+  return`${base}, neste ato ${flex} por ${idCurta(v['proc-nome'],v['proc-nif'])}`;
 }
 /* Géneros de todos os que outorgam — inclui cônjuges que outorgam.
    Empresa e CGD são femininas («a firma», «a Caixa»); Município é masculino. */
@@ -2348,7 +2359,13 @@ function addFalecido(dados={}){
     <div class="cond-block falecido-${idx}-is" style="margin-top:.5rem">
       <div class="cond-block-title">Participação de Imposto do Selo (óbito) — art. 26.º CIS</div>
       <div class="falecido-${idx}-is-dispensa" style="display:none;font-size:11.5px;background:var(--surface2);border-radius:6px;padding:.5rem .6rem;color:var(--text-faint)">
-        Óbito há mais de 8 anos — não há obrigação de verificar a participação. Os campos ficam desligados e a linha não sai no termo.</div>
+        Óbito há mais de 8 anos — não há obrigação de verificar a participação. Os campos ficam desligados e a linha não sai no termo.
+        <div class="form-group form-full" style="margin-top:.5rem"><label class="form-label">Verificar a participação mesmo assim?</label>
+          <select class="form-select" id="falecido-${idx}-is-forcar" onchange="onSeloVisivel(${idx});atualizar()">
+            <option value=""${sel(dados.isForcar,'')}>Não — seguir a dispensa</option>
+            <option value="sim"${sel(dados.isForcar,'sim')}>Sim — a participação foi exibida</option>
+          </select>
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Reabre os campos e faz sair a linha no termo.</div></div></div>
       <div class="falecido-${idx}-is-campos">
         <div class="form-grid form-grid-3">
           <div class="form-group"><label class="form-label">N.º da participação</label>
@@ -2403,7 +2420,10 @@ function removerFalecido(idx){document.getElementById(`falecido-${idx}`)?.remove
 function onSeloVisivel(idx){
   const d=document.getElementById(`falecido-${idx}-data-obito`)?.value||'';
   const exig=seloExigivel(d);
-  document.querySelectorAll(`.falecido-${idx}-is-campos`).forEach(e=>e.style.display=exig?'block':'none');
+  /* A dispensa continua à vista mesmo quando forçada: é ela que dá acesso ao
+     interruptor, e é preciso poder voltar atrás. */
+  const forcado=(document.getElementById(`falecido-${idx}-is-forcar`)?.value||'')==='sim';
+  document.querySelectorAll(`.falecido-${idx}-is-campos`).forEach(e=>e.style.display=(exig||forcado)?'block':'none');
   document.querySelectorAll(`.falecido-${idx}-is-dispensa`).forEach(e=>e.style.display=exig?'none':'block');
 }
 function onHabTipoChange(idx){
@@ -2420,7 +2440,7 @@ function lerFalecidos(){
     b.querySelectorAll(`[id^="falecido-${idx}-herdeiro-"][id$="-nome"]`).forEach(el=>{if(el.value.trim())herdeiros.push({nome:el.value.trim()});});
     return{nome:g('nome'),dataObito:g('data-obito'),freguesia:g('freguesia'),habTipo:g('hab-tipo'),habData:g('hab-data'),
       habCodigo:g('hab-codigo'),habCopia:g('hab-copia'),habNumero:g('hab-numero'),habNotario:g('hab-notario'),
-      isNumero:g('is-numero'),isData:g('is-data'),isSF:g('is-sf'),
+      isNumero:g('is-numero'),isData:g('is-data'),isSF:g('is-sf'),isForcar:g('is-forcar'),
       isConsta:g('is-consta'),habConferida:g('hab-conferida'),
       herdeiros};
   });
@@ -2470,7 +2490,7 @@ function textosTratoSuc(){
     if(f.habTipo==='simplificado')return`— a legitimidade ${quem} pelo Procedimento Simplificado de Habilitação de Herdeiros n.º ${f.habNumero||'…'}, lavrado em ${d}, na Conservatória de ${n};`;
     return`— a legitimidade ${quem} pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, que arquivo;`;
   });
-  const selo=fs.filter(f=>seloExigivel(f.dataObito)&&(f.isNumero||f.isData||f.isSF)).map(f=>
+  const selo=fs.filter(f=>(seloExigivel(f.dataObito)||f.isForcar==='sim')&&(f.isNumero||f.isData||f.isSF)).map(f=>
     `— nos termos e para os efeitos do disposto no artigo 63.º-A do Código do Imposto do Selo, o cumprimento das obrigações declarativas relativas ao Imposto do Selo devido pela transmissão gratuita por óbito de ${(f.nome||'…').toUpperCase()}, mediante a exibição da participação a que se refere o artigo 26.º do mesmo Código, registada sob o n.º ${f.isNumero||'…'}, apresentada no Serviço de Finanças de ${f.isSF||'…'} em ${dPT(f.isData)}, da qual consta a relação dos bens objeto do presente contrato;`);
   const narr=fs.map(f=>
     `${(f.nome||'…').toUpperCase()} faleceu em ${dPT(f.dataObito)}, na freguesia de ${f.freguesia||'…'}, sem deixar testamento ou disposição de última vontade, sucedendo-lhe como herdeiros ${listaEVirgula(f.herdeiros.map(x=>(x.nome||'').toUpperCase()).filter(Boolean))}.`);
@@ -6269,12 +6289,12 @@ function representanteCAIXA(){
       v('f-mut-p-nif')?`número de identificação fiscal ${v('f-mut-p-nif')}`:'',
       v('f-mut-p-dom')?`com domicílio profissional na ${v('f-mut-p-dom')}`:''
     ].filter(Boolean).join(', ');
-    return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-natural'),v('f-mut-p-nif')),
+    return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-nif')),
       qualidade:`na qualidade de procurador${fem?'a':''} com poderes para o ato`,nome:v('f-mut-p-nome'),
       ...partesProcuracao(codProcDe(CGD_CFG)||CGD_PROCURACAO)};
   }
   if(sol)return{id:sol.textoProcuradora,
-    curto:idCurta(sol.nome,sol.naturalidade,sol.nif),
+    curto:idCurta(sol.nome,sol.nif),
     qualidade:'na qualidade de procuradora substabelecida',nome:sol.nome,
     ...partesProcuracao(codProcDe(sol))};
   return{id:v('f-mut-repr')||'…',curto:v('f-mut-repr')||'…',qualidade:'',nome:'',cod:'',data:''};
