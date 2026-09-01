@@ -803,13 +803,19 @@ tbody tr:hover td{background:#FAFAF8}
                 </button>
               </div>
             </div>
-            <div class="field-group field-full">
+            <div class="field-group">
               <div class="field-label">Estado</div>
               <select class="form-select" id="p-estado">
                 <option value="">—</option>
                 <option>Concluido</option><option>Suprimento</option><option>Desistência</option>
                 <option>Em curso</option><option>Apresentado</option><option>Depositado</option>
               </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Submetido a registo</div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;padding:7px 0">
+                <input type="checkbox" id="p-regPedido"> <span id="p-regPedido-txt">Por submeter</span>
+              </label>
             </div>
 
             <div class="section-divider">Valores</div>
@@ -13968,8 +13974,15 @@ const P={titulo:'Title',escrituraId:'EscrituraId',cliente:'Cliente',data:'DataRe
   dataPag:'DataPagamento',estado:'EstadoPedido',ap:'APObtida',notas:'NotasPedido',atos:'AtosJSON'};
 
 const ORIGENS=['Depósito eletrónico','Notário','Câmara Municipal','Registo Predial','Autoridade Tributária','Outra'];
+/* O que o depósito contém. Escreve-se à mão; isto são só atalhos. */
+const SUGESTOES=['Aquisição','Hipoteca','Aquisição + hipoteca','Cancelamento de hipoteca',
+  'Locação financeira','Cancelamento de locação financeira','Propriedade horizontal','Ónus','Outro'];
 const REGIMES=['Normal — a pagar','Isento — regime jovem','Isento — outro'];
 const ESTADOS=['Por submeter','Submetido','Pendente / dúvidas','Concluído'];
+const QUALIDADES=['Ativo','Passivo'];
+const TIPOS_SUJ=['Singular','Coletivo'];
+const ESTADOS_CIVIS=['solteiro(a), maior','casado(a)','divorciado(a)','viúvo(a)','separado(a) de pessoas e bens','união de facto'];
+const REGIMES_BENS=['comunhão de adquiridos','comunhão geral de bens','separação de bens','regime estrangeiro'];
 const ATOS=['Aquisição','Hipoteca','Cancelamento de hipoteca','Propriedade horizontal',
   'Ónus de não fracionamento','Ónus de inalienabilidade','Servidão','Usufruto','Direito de superfície',
   'Conversão de provisório','Averbamento','Cancelamento de ónus','Outro'];
@@ -14003,68 +14016,187 @@ async function carregar(id){
   DOCS=(d.value||[]).filter(meu).map(x=>({id:x.id,...x.fields}));
   PEDS=(p.value||[]).filter(meu).map(x=>({id:x.id,...x.fields}))
        .sort((a,b)=>(a[P.titulo]||'').localeCompare(b[P.titulo]||''));
-  PEDS.forEach(x=>{try{x._atos=JSON.parse(x[P.atos]||'[]');}catch(e){x._atos=[];}});
   render();
 }
 
 // ─── Interface ───────────────────────────────────────────────────────────
+/* ── UM CARTÃO POR REGISTO ──
+   A mesma escritura pode dar origem a vários registos — tipicamente um a
+   pagar e outro isento. Cada um leva os seus próprios códigos de depósito,
+   o seu pagamento, os seus atos e as suas notas, porque nada disso é comum.
+   Tudo o que é variável em número vive no AtosJSON do próprio registo:
+     { "codigos":[{desc,cod,obs}], "atos":[{tipo,valor,detalhe,sujeitos}] }
+   As colunas verdadeiras guardam o que é preciso filtrar — entidade,
+   referência, valor e data — para a conferência contra o extrato. */
+function conteudo(p){
+  let o={};
+  try{o=JSON.parse(p[P.atos]||'{}');}catch(e){o={};}
+  if(Array.isArray(o))o={codigos:[],atos:o};           // formato antigo
+  return {codigos:o.codigos||[],atos:o.atos||[]};
+}
+
 function render(){
   const el=$('rc-corpo');if(!el)return;
-  el.innerHTML=blocoDocs()+blocoPedidos();
+  if(!escId){el.innerHTML='<div style="font-size:11.5px;color:var(--text-faint)">Guarda primeiro a escritura.</div>';return;}
+  const cartoes=PEDS.map((p,i)=>cartao(p,i)).join('');
+  el.innerHTML=`
+    <datalist id="rc-sug">${SUGESTOES.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+    ${cartoes||'<div style="font-size:11.5px;color:var(--text-faint);margin-bottom:.5rem">Ainda sem registos.</div>'}
+    <button class="btn btn-sm" onclick="rcNovoRegisto()" style="width:100%;justify-content:center">+ Registo</button>`;
 }
 
-function blocoDocs(){
-  const linhas=DOCS.length?DOCS.map(d=>`
+function cartao(p,i){
+  const c=conteudo(p);
+  const isento=/^Isento/i.test(p[P.regime]||'');
+  const total=c.atos.reduce((a,x)=>a+num(x.valor),0);
+  const id=p.id;
+  const cods=(c.codigos.length?c.codigos:[{}]).map((d,k)=>`
+    <tr data-k="${k}">
+      <td><input class="form-input rc-in" list="rc-sug" value="${esc(d.desc||'')}" placeholder="Ex: Aquisição + hipoteca"></td>
+      <td><input class="form-input rc-in mono" value="${esc(d.cod||'')}" placeholder="Ex: 1881-6075-8127-6666"></td>
+      <td><input class="form-input rc-in" value="${esc(d.obs||'')}" placeholder="Observações"></td>
+      <td style="text-align:right"><button class="btn btn-sm" onclick="rcTiraCod('${id}',${k})" style="padding:2px 8px;font-size:11px">&times;</button></td>
+    </tr>`).join('');
+  const atos=c.atos.length?c.atos.map((a,k)=>`
     <tr>
-      <td>${esc(d[D.titulo]||'')}</td>
-      <td>${esc(d[D.origem]||'')}</td>
-      <td style="font-family:'DM Mono',monospace">${esc(d[D.codigo]||'')}</td>
-      <td style="color:var(--text-muted)">${esc(d[D.obs]||'')}</td>
-      <td style="text-align:right"><button class="btn btn-sm" onclick="rcDoc('${d.id}')" style="padding:2px 8px;font-size:10px">Editar</button></td>
-    </tr>`).join(''):`<tr><td colspan="5" style="color:var(--text-faint);padding:.6rem">Sem documentos.</td></tr>`;
-  return `<div class="rc-cx">
-    <div class="rc-h"><span>Documentos e códigos</span><button class="btn btn-sm" onclick="rcDoc()">+ Documento</button></div>
-    <table class="rc-t"><thead><tr><th>Documento</th><th style="width:150px">Origem</th><th style="width:170px">Código</th><th>Observações</th><th style="width:66px"></th></tr></thead>
-    <tbody>${linhas}</tbody></table></div>`;
+      <td class="mono">${k+1}</td>
+      <td>${esc(a.tipo||'')}</td>
+      <td style="color:var(--text-muted);font-size:11px">${resumoPred(a)}${resumoCanc(a)}${esc(a.detalhe||'')}${resumoSuj(a)}</td>
+      <td style="text-align:right" class="mono">${eur(a.valor)}</td>
+      <td style="text-align:right"><button class="btn btn-sm" onclick="rcAto('${id}',${k})" style="padding:2px 7px;font-size:10px">Editar</button></td>
+    </tr>`).join(''):'<tr><td colspan="5" style="color:var(--text-faint)">Sem atos.</td></tr>';
+
+  return `<div class="rc-cx${isento?' rc-isen':''}" data-ped="${id}">
+    <div class="rc-h">
+      <span>Registo ${i+1}</span>
+      <span style="display:flex;gap:.35rem;align-items:center">
+        <select class="form-select rc-in" data-f="regime" onchange="rcRegimeCartao('${id}')" style="width:auto;font-size:11px">${opts(REGIMES,p[P.regime])}</select>
+        <select class="form-select rc-in" data-f="estado" style="width:auto;font-size:11px">${opts(ESTADOS,p[P.estado])}</select>
+        <button class="btn btn-sm" onclick="rcAto('${id}')" style="font-size:10.5px">+ Ato</button>
+        <button class="btn btn-success btn-sm" onclick="rcGuardarRegisto('${id}')" style="font-size:10.5px">Guardar</button>
+        <button class="btn btn-sm" onclick="rcApagarPed('${id}')" style="font-size:10.5px;color:var(--red);border-color:var(--red)">Eliminar</button>
+      </span>
+    </div>
+
+    <div class="rc-sub">Códigos de depósito</div>
+    <table class="rc-t rc-cods"><thead><tr>
+      <th style="width:34%">Depósito de</th><th style="width:30%">Código</th><th>Observações</th><th style="width:44px"></th>
+    </tr></thead><tbody>${cods}</tbody></table>
+    <button class="btn btn-sm" onclick="rcJuntaCod('${id}')" style="font-size:10.5px;margin:.25rem 0 .5rem">+ Linha</button>
+
+    <div class="rc-sub">Pagamento</div>
+    <div class="rc-pag" ${isento?'style="display:none"':''}>
+      <label>Entidade<input class="form-input rc-in" data-f="entidade" value="${esc(p[P.entidade]||'')}"></label>
+      <label>Referência<input class="form-input rc-in" data-f="referencia" value="${esc(p[P.referencia]||'')}"></label>
+      <label>Valor (€)<input class="form-input rc-in" data-f="valor" inputmode="decimal" value="${p[P.valor]?String(p[P.valor]).replace('.',','):''}"></label>
+      <label>Data pagamento<input class="form-input rc-in" data-f="datapag" type="date" value="${d10(p[P.dataPag])}"></label>
+    </div>
+    <div class="rc-isento-txt" ${isento?'':'style="display:none"'}>Isento — sem referência de pagamento.</div>
+
+    <div class="rc-sub">Atos a registar</div>
+    <table class="rc-t"><thead><tr><th style="width:34px">#</th><th style="width:34%">Ato</th><th>Detalhe</th><th style="width:96px;text-align:right">Valor</th><th style="width:60px"></th></tr></thead>
+      <tbody>${atos}
+        <tr class="rc-tot"><td colspan="3" style="text-align:right">Total do registo</td><td style="text-align:right" class="mono">${eur(total)}</td><td></td></tr>
+      </tbody></table>
+
+    <div class="rc-pag" style="margin-top:.5rem">
+      <label>Data do registo<input class="form-input rc-in" data-f="data" type="date" value="${d10(p[P.data])}"></label>
+      <label>AP obtida<input class="form-input rc-in" data-f="ap" value="${esc(p[P.ap]||'')}"></label>
+      <label style="grid-column:span 2">Notas<input class="form-input rc-in" data-f="notas" value="${esc(p[P.notas]||'')}"></label>
+    </div>
+  </div>`;
 }
 
-function blocoPedidos(){
-  if(!PEDS.length)return `<div class="rc-cx">
-    <div class="rc-h"><span>Pedidos a submeter</span><button class="btn btn-sm" onclick="rcPed()">+ Pedido</button></div>
-    <div style="font-size:11.5px;color:var(--text-faint);padding:.5rem">Sem pedidos.</div></div>`;
-  const cx=PEDS.map(p=>{
-    const isento=/^Isento/i.test(p[P.regime]||'');
-    const atos=(p._atos||[]);
-    const total=atos.reduce((a,x)=>a+num(x.valor),0);
-    return `<div class="rc-cx${isento?' rc-isen':''}">
-      <div class="rc-h">
-        <span>${esc(p[P.titulo]||'Pedido')} · <span class="badge ${isento?'badge-green':'badge-amber'}" style="font-size:9.5px">${esc(p[P.regime]||'')}</span></span>
-        <span style="display:flex;gap:.35rem">
-          <button class="btn btn-sm" onclick="rcAto('${p.id}')" style="font-size:10px">+ Ato</button>
-          <button class="btn btn-sm" onclick="rcPed('${p.id}')" style="font-size:10px">Editar</button>
-        </span>
-      </div>
-      <div class="rc-meta">
-        <span><b>Códigos</b> ${esc(p[P.codigos]||'—')}</span>
-        <span><b>Pagamento</b> ${isento?'<i style="color:var(--green)">isento</i>':`${esc(p[P.entidade]||'—')} · ${esc(p[P.referencia]||'—')} · ${eur(p[P.valor])}${p[P.dataPag]?' · '+d10(p[P.dataPag]).split('-').reverse().join('/'):''}`}</span>
-        <span><b>Estado</b> ${esc(p[P.estado]||'—')}</span>
-        <span><b>AP</b> ${esc(p[P.ap]||'—')}</span>
-      </div>
-      <table class="rc-t"><thead><tr><th style="width:34px">#</th><th>Ato</th><th>Detalhe</th><th style="width:96px;text-align:right">Valor</th><th style="width:60px"></th></tr></thead><tbody>
-        ${atos.length?atos.map((a,k)=>`<tr>
-          <td style="font-family:'DM Mono',monospace">${k+1}</td>
-          <td>${esc(a.tipo||'')}</td>
-          <td style="color:var(--text-muted);font-size:11px">${esc(a.detalhe||'')}</td>
-          <td style="text-align:right;font-family:'DM Mono',monospace">${eur(a.valor)}</td>
-          <td style="text-align:right"><button class="btn btn-sm" onclick="rcAto('${p.id}',${k})" style="padding:2px 7px;font-size:10px">Editar</button></td>
-        </tr>`).join(''):`<tr><td colspan="5" style="color:var(--text-faint)">Sem atos.</td></tr>`}
-        <tr class="rc-tot"><td colspan="3" style="text-align:right">Total do pedido</td>
-            <td style="text-align:right;font-family:'DM Mono',monospace">${eur(total)}</td><td></td></tr>
-      </tbody></table>
-      ${p[P.notas]?`<div class="rc-notas">${esc(p[P.notas])}</div>`:''}
-    </div>`;
-  }).join('');
-  return `<div class="rc-h" style="margin:.8rem 0 .4rem"><span>Pedidos a submeter</span><button class="btn btn-sm" onclick="rcPed()">+ Pedido</button></div>${cx}`;
+// ─── Leitura do cartão ───────────────────────────────────────────────────
+/* O que se cancela, à vista na tabela. */
+function resumoCanc(a){
+  const l=Array.isArray(a.cancs)?a.cancs:[];
+  if(!l.length)return'';
+  return `<div style="font-size:10.5px;color:var(--red)">cancela ${l.map(x=>
+    `${esc(x.ap||'AP. …')}${x.data?' de '+esc(x.data.split('-').reverse().join('/')):''}${x.facto?' · '+esc(x.facto):''}`
+  ).join(' | ')}</div>`;
+}
+/* Prédios em linha, para se ver sobre o que incide o facto. */
+function resumoPred(a){
+  const l=Array.isArray(a.predios)?a.predios:[];
+  if(!l.length)return'';
+  const t=l.map(x=>`${esc(x.crp||'…')} n.º ${esc(x.num||'…')}${x.freg?' · '+esc(x.freg):''}`).join(' | ');
+  return `<div style="font-size:10.5px;color:var(--text)">${t}</div>`;
+}
+/* Resumo dos sujeitos, para se ver o essencial sem abrir o ato. */
+function resumoSuj(a){
+  const l=Array.isArray(a.sujeitos)?a.sujeitos:[];
+  if(!l.length)return'';
+  const p=q=>l.filter(x=>x.qual===q).map(x=>esc(x.nome||'…')).join(', ');
+  const at=p('Ativo'), pa=p('Passivo');
+  return `<div style="margin-top:2px;font-size:10.5px">
+    ${at?`<span style="color:var(--green)">a favor de</span> ${at}`:''}
+    ${pa?` <span style="color:var(--red)">contra</span> ${pa}`:''}</div>`;
+}
+function cartaoEl(id){return document.querySelector(`.rc-cx[data-ped="${id}"]`);}
+function campo(id,nome){const c=cartaoEl(id);return c?c.querySelector(`[data-f="${nome}"]`):null;}
+function lerCods(id){
+  const c=cartaoEl(id);if(!c)return[];
+  return [...c.querySelectorAll('.rc-cods tbody tr')].map(tr=>{
+    const i=tr.querySelectorAll('input');
+    return {desc:i[0].value.trim(),cod:i[1].value.trim(),obs:i[2].value.trim()};
+  }).filter(x=>x.desc||x.cod);
+}
+/* Num registo isento não há referência de pagamento nenhuma. */
+function regimeCartao(id){
+  const c=cartaoEl(id);if(!c)return;
+  const is=/^Isento/i.test(campo(id,'regime')?.value||'');
+  const pag=c.querySelector('.rc-pag'); if(pag)pag.style.display=is?'none':'grid';
+  const txt=c.querySelector('.rc-isento-txt'); if(txt)txt.style.display=is?'block':'none';
+}
+function juntaCod(id){
+  const c=cartaoEl(id);if(!c)return;
+  const tb=c.querySelector('.rc-cods tbody');
+  const k=tb.children.length;
+  const tr=document.createElement('tr');tr.setAttribute('data-k',String(k));
+  tr.innerHTML=`<td><input class="form-input rc-in" list="rc-sug" placeholder="Ex: Aquisição + hipoteca"></td>
+    <td><input class="form-input rc-in mono" placeholder="Ex: 1881-6075-8127-6666"></td>
+    <td><input class="form-input rc-in" placeholder="Observações"></td>
+    <td style="text-align:right"><button class="btn btn-sm" onclick="rcTiraCod('${id}',${k})" style="padding:2px 8px;font-size:11px">&times;</button></td>`;
+  tb.appendChild(tr);
+}
+function tiraCod(id,k){
+  const c=cartaoEl(id);if(!c)return;
+  const tr=c.querySelector(`.rc-cods tbody tr[data-k="${k}"]`);
+  if(tr)tr.remove();
+}
+
+// ─── Gravação de um registo inteiro ──────────────────────────────────────
+async function guardarRegisto(id){
+  const p=PEDS.find(x=>String(x.id)===String(id));if(!p)return;
+  const is=/^Isento/i.test(campo(id,'regime')?.value||'');
+  const cods=lerCods(id);
+  const c=conteudo(p);
+  const b={
+    [P.escrituraId]:parseInt(escId)||0,
+    [P.cliente]:(document.getElementById('p-nome')?.value||'').trim(),
+    [P.regime]:campo(id,'regime')?.value||'',
+    [P.estado]:campo(id,'estado')?.value||'',
+    [P.ap]:campo(id,'ap')?.value.trim()||'',
+    [P.notas]:campo(id,'notas')?.value.trim()||'',
+    [P.codigos]:cods.map(x=>x.cod).filter(Boolean).join(' · '),
+    [P.atos]:JSON.stringify({codigos:cods,atos:c.atos}),
+    [P.entidade]:is?'':(campo(id,'entidade')?.value.trim()||''),
+    [P.referencia]:is?'':(campo(id,'referencia')?.value.trim()||''),
+    [P.valor]:is?0:num(campo(id,'valor')?.value)
+  };
+  const dr=campo(id,'data')?.value; b[P.data]=dr?dr+'T12:00:00Z':null;
+  const dp=campo(id,'datapag')?.value; b[P.dataPag]=(!is&&dp)?dp+'T12:00:00Z':null;
+  await gravar(idListaPed,id,b,'Registo guardado');
+}
+
+async function novoRegisto(){
+  if(!escId){showToast('Guarda primeiro a escritura','error');return;}
+  await resolver();
+  const b={[P.titulo]:`Registo ${PEDS.length+1}`,[P.escrituraId]:parseInt(escId)||0,
+    [P.cliente]:(document.getElementById('p-nome')?.value||'').trim(),
+    [P.regime]:REGIMES[0],[P.estado]:ESTADOS[0],[P.atos]:JSON.stringify({codigos:[],atos:[]})};
+  await gravar(idListaPed,null,b,'Registo criado');
 }
 
 // ─── Modais ──────────────────────────────────────────────────────────────
@@ -14074,127 +14206,213 @@ function fechar(){ov().classList.remove('show');}
 const opts=(lista,sel)=>lista.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
 
 // ── Documento
-function modalDoc(id){
-  const d=id?DOCS.find(x=>String(x.id)===String(id)):null;
-  abrir(`<div class="modal-box-title">${d?'Editar documento':'Novo documento'}</div>
-    <div class="field-grid">
-      <div class="field-group field-full"><div class="field-label">Documento *</div>
-        <input class="form-input" id="rd-titulo" value="${d?esc(d[D.titulo]||''):''}" placeholder="Ex: DPA, distrate, certidão camarária" style="width:100%"></div>
-      <div class="field-group"><div class="field-label">Origem *</div>
-        <select class="form-select" id="rd-origem" style="width:100%">${opts(ORIGENS,d?d[D.origem]:null)}</select></div>
-      <div class="field-group"><div class="field-label">Código / referência</div>
-        <input class="form-input" id="rd-codigo" value="${d?esc(d[D.codigo]||''):''}" style="width:100%"></div>
-      <div class="field-group field-full"><div class="field-label">Observações</div>
-        <input class="form-input" id="rd-obs" value="${d?esc(d[D.obs]||''):''}" style="width:100%"></div>
-    </div>
-    <div class="modal-actions">
-      ${d?`<button class="btn" onclick="rcApagarDoc('${d.id}')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
-      <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
-      <button class="btn btn-success" onclick="rcGuardarDoc(${d?`'${d.id}'`:'null'})" style="flex:2">Guardar</button>
-    </div>`);
-}
-async function guardarDoc(id){
-  const t=$('rd-titulo').value.trim();
-  if(!t){showToast('Indica o documento','error');return;}
-  const b={[D.titulo]:t,[D.escrituraId]:parseInt(escId)||0,[D.origem]:$('rd-origem').value,
-    [D.codigo]:$('rd-codigo').value.trim(),[D.obs]:$('rd-obs').value.trim()};
-  await gravar(idListaDoc,id,b,'Documento guardado');
-}
-
 // ── Pedido
-function modalPed(id){
-  const p=id?PEDS.find(x=>String(x.id)===String(id)):null;
-  const nome=p?p[P.titulo]:`Pedido ${PEDS.length+1}`;
-  const isento=p?/^Isento/i.test(p[P.regime]||''):false;
-  abrir(`<div class="modal-box-title">${p?'Editar pedido':'Novo pedido'}</div>
-    <div class="field-grid">
-      <div class="field-group"><div class="field-label">Designação *</div>
-        <input class="form-input" id="rp-titulo" value="${esc(nome)}" style="width:100%"></div>
-      <div class="field-group"><div class="field-label">Regime *</div>
-        <select class="form-select" id="rp-regime" onchange="rcRegime()" style="width:100%">${opts(REGIMES,p?p[P.regime]:null)}</select></div>
-      <div class="field-group"><div class="field-label">Data do registo</div>
-        <input class="form-input" id="rp-data" type="date" value="${p?d10(p[P.data]):''}" style="width:100%"></div>
-      <div class="field-group"><div class="field-label">Estado</div>
-        <select class="form-select" id="rp-estado" style="width:100%">${opts(ESTADOS,p?p[P.estado]:null)}</select></div>
-      <div class="field-group field-full"><div class="field-label">Códigos a usar</div>
-        <input class="form-input" id="rp-codigos" value="${p?esc(p[P.codigos]||''):''}" placeholder="Ex: 20260814-1234" style="width:100%"></div>
-      <div class="field-group" id="rp-w-ent"><div class="field-label">Entidade</div>
-        <input class="form-input" id="rp-entidade" value="${p?esc(p[P.entidade]||''):''}" style="width:100%"></div>
-      <div class="field-group" id="rp-w-ref"><div class="field-label">Referência</div>
-        <input class="form-input" id="rp-referencia" value="${p?esc(p[P.referencia]||''):''}" style="width:100%"></div>
-      <div class="field-group" id="rp-w-val"><div class="field-label">Valor (€)</div>
-        <input class="form-input" id="rp-valor" inputmode="decimal" value="${p&&p[P.valor]?String(p[P.valor]).replace('.',','):''}" style="width:100%"></div>
-      <div class="field-group" id="rp-w-dp"><div class="field-label">Data de pagamento</div>
-        <input class="form-input" id="rp-datapag" type="date" value="${p?d10(p[P.dataPag]):''}" style="width:100%"></div>
-      <div class="field-group"><div class="field-label">AP obtida</div>
-        <input class="form-input" id="rp-ap" value="${p?esc(p[P.ap]||''):''}" style="width:100%"></div>
-      <div class="field-group field-full"><div class="field-label">Notas do pedido</div>
-        <textarea class="form-input" id="rp-notas" rows="2" style="width:100%;resize:vertical">${p?esc(p[P.notas]||''):''}</textarea></div>
-    </div>
-    <div class="modal-actions">
-      ${p?`<button class="btn" onclick="rcApagarPed('${p.id}')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
-      <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
-      <button class="btn btn-success" onclick="rcGuardarPed(${p?`'${p.id}'`:'null'})" style="flex:2">Guardar</button>
-    </div>`);
-  if(isento)regime();
-}
 /* Num pedido isento não há referência de pagamento nenhuma. */
 function regime(){
   const is=/^Isento/i.test($('rp-regime').value||'');
   ['rp-w-ent','rp-w-ref','rp-w-val','rp-w-dp'].forEach(id=>{const e=$(id);if(e)e.style.display=is?'none':'flex';});
 }
-async function guardarPed(id){
-  const t=$('rp-titulo').value.trim();
-  if(!t){showToast('Indica a designação','error');return;}
-  const is=/^Isento/i.test($('rp-regime').value||'');
-  const p=id?PEDS.find(x=>String(x.id)===String(id)):null;
-  const cliente=(document.getElementById('p-nome')?.value||'').trim();
-  const b={[P.titulo]:t,[P.escrituraId]:parseInt(escId)||0,[P.cliente]:cliente,
-    [P.regime]:$('rp-regime').value,[P.codigos]:$('rp-codigos').value.trim(),
-    [P.estado]:$('rp-estado').value,[P.ap]:$('rp-ap').value.trim(),
-    [P.notas]:$('rp-notas').value.trim(),[P.atos]:JSON.stringify(p?(p._atos||[]):[]),
-    [P.entidade]:is?'':$('rp-entidade').value.trim(),
-    [P.referencia]:is?'':$('rp-referencia').value.trim(),
-    [P.valor]:is?0:num($('rp-valor').value)};
-  b[P.data]=$('rp-data').value?$('rp-data').value+'T12:00:00Z':null;
-  b[P.dataPag]=(!is&&$('rp-datapag').value)?$('rp-datapag').value+'T12:00:00Z':null;
-  await gravar(idListaPed,id,b,'Pedido guardado');
-}
-
 // ── Ato (guardado em AtosJSON dentro do pedido)
 function modalAto(pedId,k){
   const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
-  const a=(k!==undefined&&k!==null)?(p._atos[k]||{}):{};
+  const c=conteudo(p);
+  const a=(k!==undefined&&k!==null)?(c.atos[k]||{}):{};
+  atoTipo=a.tipo||'';
+  atoCancs=Array.isArray(a.cancs)?a.cancs.map(x=>({...x})):[];
+  atoPredios=Array.isArray(a.predios)?a.predios.map(x=>({...x})):[];
+  if(!atoPredios.length)atoPredios=[{}];
+  atoSujeitos=Array.isArray(a.sujeitos)?a.sujeitos.map(x=>({...x})):[];
+  if(!atoSujeitos.length)atoSujeitos=[{qual:'Ativo',tipo:'Singular'},{qual:'Passivo',tipo:'Singular'}];
   abrir(`<div class="modal-box-title">${k!==undefined&&k!==null?'Editar ato':'Novo ato'} — ${esc(p[P.titulo]||'')}</div>
     <div class="field-grid">
       <div class="field-group"><div class="field-label">Ato *</div>
-        <select class="form-select" id="ra-tipo" style="width:100%">${opts(ATOS,a.tipo)}</select></div>
+        <select class="form-select" id="ra-tipo" onchange="rcTipoAto()" style="width:100%">${opts(ATOS,a.tipo)}</select></div>
       <div class="field-group"><div class="field-label">Valor (€)</div>
         <input class="form-input" id="ra-valor" inputmode="decimal" value="${a.valor?String(a.valor).replace('.',','):''}" style="width:100%"></div>
       <div class="field-group field-full"><div class="field-label">Detalhe</div>
-        <textarea class="form-input" id="ra-detalhe" rows="3" placeholder="AP. a cancelar, prédio onerado, servidão, o que for próprio deste ato" style="width:100%;resize:vertical">${esc(a.detalhe||'')}</textarea></div>
-      <div class="field-group field-full"><div class="field-label">Sujeitos</div>
-        <textarea class="form-input" id="ra-sujeitos" rows="4" placeholder="Um por linha: Ativo|Singular|NOME|NIF|estado civil|regime|cônjuge|NIF cônjuge|quota" style="width:100%;resize:vertical;font-family:'DM Mono',monospace;font-size:11px">${esc(a.sujeitos||'')}</textarea></div>
+        <textarea class="form-input" id="ra-detalhe" rows="2" placeholder="AP. a cancelar, prédio onerado, servidão — o que for próprio deste ato" style="width:100%;resize:vertical">${esc(a.detalhe||'')}</textarea></div>
     </div>
+    <div id="ra-canc-wrap">
+      <div class="rc-sub" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Apresentações a cancelar</span>
+        <button class="btn btn-sm" onclick="rcJuntaCanc()" style="font-size:10.5px">+ AP.</button>
+      </div>
+      <div id="ra-cancs"></div>
+    </div>
+    <div class="rc-sub" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Prédios</span>
+      <span style="display:flex;gap:.35rem;align-items:center">
+        <button class="btn btn-sm" onclick="rcPredioDaFicha()" style="font-size:10.5px" title="Trazer o prédio da escritura">Da ficha</button>
+        <button class="btn btn-sm" onclick="rcJuntaPredio()" style="font-size:10.5px">+ Prédio</button>
+      </span>
+    </div>
+    <div id="ra-predios"></div>
+    <div class="rc-sub" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Sujeitos</span>
+      <button class="btn btn-sm" onclick="rcJuntaSuj()" style="font-size:10.5px">+ Sujeito</button>
+    </div>
+    <div id="ra-sujeitos"></div>
     <div class="modal-actions">
       ${k!==undefined&&k!==null?`<button class="btn" onclick="rcApagarAto('${pedId}',${k})" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
       <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
       <button class="btn btn-success" onclick="rcGuardarAto('${pedId}',${k===undefined||k===null?'null':k})" style="flex:2">Guardar</button>
     </div>`);
+  desenharCancs();
+  desenharPredios();
+  desenharSujeitos();
+}
+
+/* ── APRESENTAÇÕES A CANCELAR ──
+   Num cancelamento não basta dizer que se cancela: tem de se identificar o
+   que se cancela. A AP. é a apresentação a cancelar, a data é aquela em que
+   o ónus foi constituído no registo, e o facto é o que ali está inscrito —
+   hipoteca, penhora, ónus de não fracionamento. */
+const FACTOS_CANC=['Hipoteca voluntária','Hipoteca legal','Penhora','Arresto','Usufruto',
+  'Ónus de não fracionamento','Ónus de inalienabilidade','Servidão','Locação financeira','Outro'];
+let atoCancs=[], atoTipo='';
+/* Não depende só de ler o menu: ao abrir o ato o menu ainda pode não estar
+   pronto, e o bloco tem de aparecer à mesma se o ato guardado for de
+   cancelamento. */
+function ehCancelamento(){return /cancelamento/i.test($('ra-tipo')?.value||atoTipo||'');}
+function desenharCancs(){
+  const w=$('ra-canc-wrap'), el=$('ra-cancs');
+  if(!w||!el)return;
+  w.style.display=ehCancelamento()?'block':'none';
+  if(!ehCancelamento())return;
+  if(!atoCancs.length)atoCancs=[{}];
+  el.innerHTML=atoCancs.map((x,i)=>`
+    <div class="rc-canc" data-i="${i}">
+      <label>AP. a cancelar<input class="form-input rc-in mono" data-c="ap" value="${esc(x.ap||'')}" placeholder="Ex: AP. 3421"></label>
+      <label>Data da AP.<input class="form-input rc-in" data-c="data" type="date" value="${esc(x.data||'')}"></label>
+      <label>Facto cancelado<input class="form-input rc-in" data-c="facto" list="rc-facts" value="${esc(x.facto||'')}" placeholder="Ex: Hipoteca voluntária — CGD"></label>
+      <button class="btn btn-sm" onclick="rcTiraCanc(${i})" style="padding:2px 8px;font-size:11px;align-self:end;margin-bottom:1px">&times;</button>
+    </div>`).join('')
+    +`<datalist id="rc-facts">${FACTOS_CANC.map(f=>`<option value="${esc(f)}">`).join('')}</datalist>`;
+}
+function lerCancs(){
+  const el=$('ra-cancs');if(!el||!ehCancelamento())return[];
+  return [...el.querySelectorAll('.rc-canc')].map(b=>{
+    const o={};b.querySelectorAll('[data-c]').forEach(c=>{o[c.getAttribute('data-c')]=(c.value||'').trim();});
+    return o;
+  }).filter(x=>x.ap||x.facto);
+}
+function juntaCanc(){atoCancs=lerCancs();atoCancs.push({});desenharCancs();}
+function tiraCanc(i){atoCancs=lerCancs();atoCancs.splice(i,1);if(!atoCancs.length)atoCancs=[{}];desenharCancs();}
+/* Mudando o tipo do ato, o bloco aparece ou desaparece. */
+function tipoAto(){atoCancs=lerCancs();atoTipo=$('ra-tipo')?.value||'';desenharCancs();}
+
+/* ── PRÉDIOS DO FACTO ──
+   Um facto pode incidir sobre mais do que um prédio — uma hipoteca que onera
+   dois, um cancelamento com duas apresentações. Só interessa a descrição
+   predial: conservatória, número, freguesia e concelho. A matriz é da AT e
+   não entra no pedido de registo. */
+let atoPredios=[];
+function desenharPredios(){
+  const el=$('ra-predios');if(!el)return;
+  el.innerHTML=atoPredios.map((x,i)=>`
+    <div class="rc-pred" data-i="${i}">
+      <label>Conservatória<input class="form-input rc-in" data-p="crp" value="${esc(x.crp||'')}" placeholder="Ex: Évora"></label>
+      <label>N.º da descrição<input class="form-input rc-in mono" data-p="num" value="${esc(x.num||'')}" placeholder="Ex: 928"></label>
+      <label>Freguesia<input class="form-input rc-in" data-p="freg" value="${esc(x.freg||'')}" placeholder="Ex: Bacelo"></label>
+      <label>Concelho<input class="form-input rc-in" data-p="conc" value="${esc(x.conc||'')}" placeholder="Ex: Évora"></label>
+      <button class="btn btn-sm" onclick="rcTiraPredio(${i})" style="padding:2px 8px;font-size:11px;align-self:end;margin-bottom:1px">&times;</button>
+    </div>`).join('')||'<div style="font-size:11.5px;color:var(--text-faint)">Sem prédios.</div>';
+}
+function lerPredios(){
+  const el=$('ra-predios');if(!el)return[];
+  return [...el.querySelectorAll('.rc-pred')].map(b=>{
+    const o={};b.querySelectorAll('[data-p]').forEach(c=>{o[c.getAttribute('data-p')]=(c.value||'').trim();});
+    return o;
+  }).filter(x=>x.crp||x.num||x.freg);
+}
+function juntaPredio(){atoPredios=lerPredios();atoPredios.push({});desenharPredios();}
+function tiraPredio(i){atoPredios=lerPredios();atoPredios.splice(i,1);if(!atoPredios.length)atoPredios=[{}];desenharPredios();}
+/* Atalho: o prédio já está preenchido na ficha da escritura. */
+function predioDaFicha(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const p={crp:g('p-apConserv'),num:g('p-predio'),freg:g('p-freguesia'),conc:g('p-concelho')};
+  if(!p.crp&&!p.num&&!p.freg&&!p.conc){showToast('A ficha não tem prédio preenchido','error');return;}
+  atoPredios=lerPredios().filter(x=>x.crp||x.num||x.freg);
+  atoPredios.push(p);desenharPredios();
+}
+
+/* ── SUJEITOS DO FACTO ──
+   Todo o facto tem ativo e passivo. Sendo singular, o estado civil manda: só
+   quem é casado tem regime de bens e cônjuge, e é aí que o NIF do cônjuge
+   passa a fazer falta. Sendo coletivo, nada disso se aplica. */
+let atoSujeitos=[];
+function desenharSujeitos(){
+  const el=$('ra-sujeitos');if(!el)return;
+  el.innerHTML=atoSujeitos.map((x,i)=>{
+    const col=(x.tipo||'Singular')==='Coletivo';
+    const cas=!col&&/^casad/i.test(x.ec||'');
+    return `<div class="rc-suj" data-i="${i}">
+      <div class="rc-suj-h">
+        <select class="form-select rc-in" data-s="qual" onchange="rcSujMuda(${i})" style="width:auto;font-size:11px">${opts(QUALIDADES,x.qual)}</select>
+        <select class="form-select rc-in" data-s="tipo" onchange="rcSujMuda(${i})" style="width:auto;font-size:11px">${opts(TIPOS_SUJ,x.tipo)}</select>
+        <span style="flex:1"></span>
+        <button class="btn btn-sm" onclick="rcTiraSuj(${i})" style="padding:1px 8px;font-size:11px">&times;</button>
+      </div>
+      <div class="rc-suj-g">
+        <label style="grid-column:span 2">${col?'Denominação':'Nome'}<input class="form-input rc-in" data-s="nome" value="${esc(x.nome||'')}"></label>
+        <label>${col?'NIPC':'NIF'}<input class="form-input rc-in mono" data-s="nif" value="${esc(x.nif||'')}"></label>
+        <label>Quota<input class="form-input rc-in mono" data-s="quota" value="${esc(x.quota||'')}" placeholder="1/1"></label>
+        ${col?'':`
+        <label>Estado civil<select class="form-select rc-in" data-s="ec" onchange="rcSujMuda(${i})">
+          <option value="">—</option>${opts(ESTADOS_CIVIS,x.ec)}</select></label>
+        ${cas?`
+        <label>Regime de bens<select class="form-select rc-in" data-s="regime">
+          <option value="">—</option>${opts(REGIMES_BENS,x.regime)}</select></label>
+        <label>Cônjuge<input class="form-input rc-in" data-s="conj" value="${esc(x.conj||'')}"></label>
+        <label>NIF do cônjuge<input class="form-input rc-in mono" data-s="conjNif" value="${esc(x.conjNif||'')}"></label>`:''}`}
+      </div>
+    </div>`;
+  }).join('')||'<div style="font-size:11.5px;color:var(--text-faint)">Sem sujeitos.</div>';
+}
+function lerSujeitos(){
+  const el=$('ra-sujeitos');if(!el)return[];
+  return [...el.querySelectorAll('.rc-suj')].map(b=>{
+    const o={};
+    b.querySelectorAll('[data-s]').forEach(c=>{o[c.getAttribute('data-s')]=(c.value||'').trim();});
+    return o;
+  }).filter(x=>x.nome||x.nif);
+}
+/* Guarda o que está escrito antes de voltar a desenhar, senão perde-se. */
+function sujMuda(i){
+  const lidos=[...$('ra-sujeitos').querySelectorAll('.rc-suj')].map(b=>{
+    const o={};b.querySelectorAll('[data-s]').forEach(c=>{o[c.getAttribute('data-s')]=(c.value||'').trim();});return o;});
+  atoSujeitos=lidos;
+  if(atoSujeitos[i]&&atoSujeitos[i].tipo==='Coletivo'){
+    delete atoSujeitos[i].ec;delete atoSujeitos[i].regime;
+    delete atoSujeitos[i].conj;delete atoSujeitos[i].conjNif;
+  }
+  desenharSujeitos();
+}
+function juntaSuj(){
+  atoSujeitos=lerSujeitos();
+  atoSujeitos.push({qual:'Passivo',tipo:'Singular'});
+  desenharSujeitos();
+}
+function tiraSuj(i){
+  atoSujeitos=lerSujeitos();
+  atoSujeitos.splice(i,1);
+  desenharSujeitos();
 }
 async function guardarAto(pedId,k){
   const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
   const a={tipo:$('ra-tipo').value,valor:num($('ra-valor').value),
-    detalhe:$('ra-detalhe').value.trim(),sujeitos:$('ra-sujeitos').value.trim()};
-  const lista=(p._atos||[]).slice();
+    detalhe:$('ra-detalhe').value.trim(),cancs:lerCancs(),predios:lerPredios(),sujeitos:lerSujeitos()};
+  const c=conteudo(p);
+  const lista=c.atos.slice();
   if(k===null||k===undefined)lista.push(a);else lista[k]=a;
-  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify(lista)},'Ato guardado');
+  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify({codigos:c.codigos,atos:lista})},'Ato guardado');
 }
 async function apagarAto(pedId,k){
   const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
   if(!confirm('Eliminar este ato?'))return;
-  const lista=(p._atos||[]).slice();lista.splice(k,1);
-  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify(lista)},'Ato eliminado');
+  const c=conteudo(p);
+  const lista=c.atos.slice();lista.splice(k,1);
+  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify({codigos:c.codigos,atos:lista})},'Ato eliminado');
 }
 
 // ─── Persistência ────────────────────────────────────────────────────────
@@ -14218,17 +14436,34 @@ async function apagar(lista,id,msg){
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────
-window.rcDoc=id=>modalDoc(id);
-window.rcPed=id=>modalPed(id);
+window.rcNovoRegisto=novoRegisto;
+window.rcGuardarRegisto=id=>guardarRegisto(id);
+window.rcJuntaCod=id=>juntaCod(id);
+window.rcTiraCod=(id,k)=>tiraCod(id,k);
+window.rcRegimeCartao=id=>regimeCartao(id);
+window.rcJuntaCanc=juntaCanc;
+window.rcTiraCanc=i=>tiraCanc(i);
+window.rcTipoAto=tipoAto;
+window.rcJuntaPredio=juntaPredio;
+window.rcTiraPredio=i=>tiraPredio(i);
+window.rcPredioDaFicha=predioDaFicha;
+window.rcJuntaSuj=juntaSuj;
+window.rcTiraSuj=i=>tiraSuj(i);
+window.rcSujMuda=i=>sujMuda(i);
 window.rcAto=(p,k)=>modalAto(p,k);
-window.rcGuardarDoc=id=>guardarDoc(id);
-window.rcGuardarPed=id=>guardarPed(id);
 window.rcGuardarAto=(p,k)=>guardarAto(p,k);
-window.rcApagarDoc=id=>apagar(idListaDoc,id,'Documento eliminado');
 window.rcApagarPed=id=>apagar(idListaPed,id,'Pedido eliminado');
 window.rcApagarAto=(p,k)=>apagarAto(p,k);
-window.rcRegime=regime;
 window.rcFechar=fechar;
+
+/* O rótulo ao lado do toggle diz em que pé está, para não haver dúvida. */
+function rotuloToggle(){
+  const t=$('p-regPedido'), r=$('p-regPedido-txt');
+  if(!t||!r)return;
+  r.textContent=t.checked?'Submetido a registo':'Por submeter';
+  r.style.color=t.checked?'var(--green)':'var(--text-muted)';
+  r.style.fontWeight=t.checked?'600':'400';
+}
 
 // ─── Instalação ──────────────────────────────────────────────────────────
 const CSS=`
@@ -14245,6 +14480,27 @@ const CSS=`
 .rc-tot td{font-weight:600;background:var(--surface2);border-bottom:none}
 .rc-meta{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-size:11px;color:var(--text-muted);margin-bottom:.45rem}
 .rc-meta b{color:var(--text-faint);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em}
+.rc-in{width:100%;padding:4px 7px;font-size:11.5px}
+.mono{font-family:'DM Mono',monospace}
+.rc-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);
+  font-weight:600;margin:.55rem 0 .25rem}
+.rc-pag{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
+.rc-pag label{display:flex;flex-direction:column;gap:2px;font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-canc{display:grid;grid-template-columns:1fr 1fr 2fr 40px;gap:.35rem;margin-bottom:.35rem;
+  border:1px solid #E3C4C4;border-radius:6px;padding:.4rem .5rem;background:#FBF1F0}
+.rc-canc label{display:flex;flex-direction:column;gap:2px;font-size:9px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-pred{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 40px;gap:.35rem;margin-bottom:.35rem;
+  border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;background:var(--surface2)}
+.rc-pred label{display:flex;flex-direction:column;gap:2px;font-size:9px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-suj{border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;margin-bottom:.4rem;background:var(--surface2)}
+.rc-suj-h{display:flex;align-items:center;gap:.35rem;margin-bottom:.35rem}
+.rc-suj-g{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem}
+.rc-suj-g label{display:flex;flex-direction:column;gap:2px;font-size:9px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-isento-txt{font-size:11.5px;color:var(--green);font-weight:600}
 .rc-notas{font-size:11px;color:var(--text-muted);background:var(--surface2);border-radius:5px;padding:5px 7px;margin-top:.4rem}
 `;
 function instalar(){
@@ -14257,20 +14513,17 @@ function instalar(){
   const bloco=document.createElement('div');
   bloco.innerHTML=`
     <div class="rc-sec">Registo Conservatória</div>
-    <div class="field-group" style="margin-bottom:.5rem">
-      <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
-        <input type="checkbox" id="p-regPedido"> Registo já pedido
-      </label>
-    </div>
     <div id="rc-corpo"></div>
     <div class="field-group" style="margin-top:.5rem">
       <div class="field-label">Notas gerais do registo</div>
       <textarea class="form-textarea" id="p-regNotas" rows="2" placeholder="—" style="width:100%"></textarea>
     </div>
-    <div class="modal-overlay" id="rc-ov"><div class="modal-box" id="rc-modal" style="max-width:520px"></div></div>`;
+    <div class="modal-overlay" id="rc-ov"><div class="modal-box" id="rc-modal" style="max-width:720px"></div></div>`;
   const alvo=obs.closest('.field-group')||obs.parentNode;
   alvo.insertAdjacentElement('afterend',bloco);
   $('rc-ov').addEventListener('click',e=>{if(e.target===$('rc-ov'))fechar();});
+  const tg=$('p-regPedido');
+  if(tg)tg.addEventListener('change',rotuloToggle);
 
   /* Ao abrir a ficha, carregar o que já está gravado. */
   if(typeof window.abrirPainelRegisto==='function'){
@@ -14278,7 +14531,8 @@ function instalar(){
     window.abrirPainelRegisto=function(itemId){
       const r=_a.apply(this,arguments);
       const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===itemId)||{};
-      const t=$('p-regPedido'); if(t)t.checked=(i['RegPedido']===true||i['RegPedido']==='true');
+      const t=$('p-regPedido');
+      if(t){t.checked=(i['RegPedido']===true||i['RegPedido']==='true');rotuloToggle();}
       const n=$('p-regNotas'); if(n)n.value=i['RegNotasGerais']||'';
       carregar(itemId).catch(e=>{const c=$('rc-corpo');if(c)c.innerHTML=`<div class="notice notice-warning" style="font-size:11.5px">${esc(e.message)}</div>`;});
       return r;
