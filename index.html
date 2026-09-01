@@ -14037,7 +14037,11 @@ function conteudo(p){
 
 function render(){
   const el=$('rc-corpo');if(!el)return;
-  if(!escId){el.innerHTML='<div style="font-size:11.5px;color:var(--text-faint)">Guarda primeiro a escritura.</div>';return;}
+  if(!escId){
+    el.innerHTML=`<div class="notice notice-info" style="font-size:11.5px;display:block">
+      Guarda primeiro a escritura. Os registos ficam disponíveis assim que ela existir.</div>`;
+    return;
+  }
   const cartoes=PEDS.map((p,i)=>cartao(p,i)).join('');
   el.innerHTML=`
     <datalist id="rc-sug">${SUGESTOES.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
@@ -14048,7 +14052,6 @@ function render(){
 function cartao(p,i){
   const c=conteudo(p);
   const isento=/^Isento/i.test(p[P.regime]||'');
-  const total=c.atos.reduce((a,x)=>a+num(x.valor),0);
   const id=p.id;
   const cods=(c.codigos.length?c.codigos:[{}]).map((d,k)=>`
     <tr data-k="${k}">
@@ -14062,9 +14065,8 @@ function cartao(p,i){
       <td class="mono">${k+1}</td>
       <td>${esc(a.tipo||'')}</td>
       <td style="color:var(--text-muted);font-size:11px">${resumoPred(a)}${resumoCanc(a)}${esc(a.detalhe||'')}${resumoSuj(a)}</td>
-      <td style="text-align:right" class="mono">${eur(a.valor)}</td>
       <td style="text-align:right"><button class="btn btn-sm" onclick="rcAto('${id}',${k})" style="padding:2px 7px;font-size:10px">Editar</button></td>
-    </tr>`).join(''):'<tr><td colspan="5" style="color:var(--text-faint)">Sem atos.</td></tr>';
+    </tr>`).join(''):'<tr><td colspan="4" style="color:var(--text-faint)">Sem atos.</td></tr>';
 
   return `<div class="rc-cx${isento?' rc-isen':''}" data-ped="${id}">
     <div class="rc-h">
@@ -14094,9 +14096,8 @@ function cartao(p,i){
     <div class="rc-isento-txt" ${isento?'':'style="display:none"'}>Isento — sem referência de pagamento.</div>
 
     <div class="rc-sub">Atos a registar</div>
-    <table class="rc-t"><thead><tr><th style="width:34px">#</th><th style="width:34%">Ato</th><th>Detalhe</th><th style="width:96px;text-align:right">Valor</th><th style="width:60px"></th></tr></thead>
+    <table class="rc-t"><thead><tr><th style="width:34px">#</th><th style="width:34%">Ato</th><th>Detalhe</th><th style="width:60px"></th></tr></thead>
       <tbody>${atos}
-        <tr class="rc-tot"><td colspan="3" style="text-align:right">Total do registo</td><td style="text-align:right" class="mono">${eur(total)}</td><td></td></tr>
       </tbody></table>
 
     <div class="rc-pag" style="margin-top:.5rem">
@@ -14225,10 +14226,8 @@ function modalAto(pedId,k){
   if(!atoSujeitos.length)atoSujeitos=[{qual:'Ativo',tipo:'Singular'},{qual:'Passivo',tipo:'Singular'}];
   abrir(`<div class="modal-box-title">${k!==undefined&&k!==null?'Editar ato':'Novo ato'} — ${esc(p[P.titulo]||'')}</div>
     <div class="field-grid">
-      <div class="field-group"><div class="field-label">Ato *</div>
+      <div class="field-group field-full"><div class="field-label">Ato *</div>
         <select class="form-select" id="ra-tipo" onchange="rcTipoAto()" style="width:100%">${opts(ATOS,a.tipo)}</select></div>
-      <div class="field-group"><div class="field-label">Valor (€)</div>
-        <input class="form-input" id="ra-valor" inputmode="decimal" value="${a.valor?String(a.valor).replace('.',','):''}" style="width:100%"></div>
       <div class="field-group field-full"><div class="field-label">Detalhe</div>
         <textarea class="form-input" id="ra-detalhe" rows="2" placeholder="AP. a cancelar, prédio onerado, servidão — o que for próprio deste ato" style="width:100%;resize:vertical">${esc(a.detalhe||'')}</textarea></div>
     </div>
@@ -14400,7 +14399,7 @@ function tiraSuj(i){
 }
 async function guardarAto(pedId,k){
   const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
-  const a={tipo:$('ra-tipo').value,valor:num($('ra-valor').value),
+  const a={tipo:$('ra-tipo').value,
     detalhe:$('ra-detalhe').value.trim(),cancs:lerCancs(),predios:lerPredios(),sujeitos:lerSujeitos()};
   const c=conteudo(p);
   const lista=c.atos.slice();
@@ -14538,17 +14537,40 @@ function instalar(){
       return r;
     };
   }
+  /* Numa escritura nova o painel abre por outro caminho. Sem isto, o bloco
+     ficava em branco e parecia não existir. */
+  if(typeof window.abrirPainelNovo==='function'){
+    const _n=window.abrirPainelNovo;
+    window.abrirPainelNovo=function(){
+      const r=_n.apply(this,arguments);
+      const t=$('p-regPedido'); if(t){t.checked=false;rotuloToggle();}
+      const n=$('p-regNotas'); if(n)n.value='';
+      escId=null;DOCS=[];PEDS=[];render();
+      return r;
+    };
+  }
+
   /* Guardar o toggle e as notas junto com o resto da ficha. */
   if(typeof window.guardarPainel==='function'){
     const _g=window.guardarPainel;
     window.guardarPainel=async function(){
       const r=await _g.apply(this,arguments);
       try{
-        if(!escId&&typeof painelItemId!=='undefined')escId=painelItemId;
+        /* Numa escritura nova, o Id só existe depois de gravada — é aqui que
+           o bloco passa a saber a que escritura pertence. */
+        if(typeof painelItemId!=='undefined'&&painelItemId)escId=painelItemId;
+        if(!escId){
+          const ref=(document.getElementById('painel-ref')?.textContent||'').trim();
+          const nome=(document.getElementById('p-nome')?.value||'').trim();
+          const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+          const achado=lista.find(x=>((x['Title']||'')===ref)||((x['Nome_Cliente']||'')===nome&&nome));
+          if(achado)escId=achado.id;
+        }
         if(escId){
           await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${escId}/fields`,
             {RegPedido:!!$('p-regPedido')?.checked, RegNotasGerais:$('p-regNotas')?.value||''});
         }
+        if(escId)await carregar(escId);
       }catch(e){console.warn('Registo Conservatória:',e.message);}
       return r;
     };
