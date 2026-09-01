@@ -13951,5 +13951,358 @@ else document.addEventListener('DOMContentLoaded',instalar);
 })();
 </script>
 
+<!-- ════════════════════════════════════════════════════════════════════════
+     REGISTO CONSERVATÓRIA — colar antes de </body>.
+     Aditivo. Não altera o bloco do registo de escrituras, que fica como está.
+     Listas: RegistoPedidos · RegistoDocumentos
+     Colunas novas em Escritura_Listagem: RegPedido · RegNotasGerais
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+const LD='RegistoDocumentos', LP='RegistoPedidos';
+const D={titulo:'Title',escrituraId:'EscrituraId',origem:'Origem',codigo:'CodigoAcesso',obs:'ObsDocumento'};
+const P={titulo:'Title',escrituraId:'EscrituraId',cliente:'Cliente',data:'DataRegisto',regime:'Regime',
+  codigos:'CodigosUsar',entidade:'EntidadeMB',referencia:'ReferenciaMB',valor:'ValorPedido',
+  dataPag:'DataPagamento',estado:'EstadoPedido',ap:'APObtida',notas:'NotasPedido',atos:'AtosJSON'};
+
+const ORIGENS=['Depósito eletrónico','Notário','Câmara Municipal','Registo Predial','Autoridade Tributária','Outra'];
+const REGIMES=['Normal — a pagar','Isento — regime jovem','Isento — outro'];
+const ESTADOS=['Por submeter','Submetido','Pendente / dúvidas','Concluído'];
+const ATOS=['Aquisição','Hipoteca','Cancelamento de hipoteca','Propriedade horizontal',
+  'Ónus de não fracionamento','Ónus de inalienabilidade','Servidão','Usufruto','Direito de superfície',
+  'Conversão de provisório','Averbamento','Cancelamento de ónus','Outro'];
+
+let idListaDoc=null, idListaPed=null;
+let DOCS=[], PEDS=[], escId=null;
+
+const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+const eur=n=>(Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const num=s=>{if(s==null)return 0;let t=String(s).replace(/[€\s]/g,'');if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');const n=parseFloat(t);return isNaN(n)?0:n;};
+const d10=v=>v?String(v).substring(0,10):'';
+
+async function resolver(){
+  if(idListaDoc&&idListaPed)return;
+  const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
+  const acha=n=>(r.value||[]).find(l=>l.name===n||l.displayName===n)?.id||null;
+  idListaDoc=acha(LD); idListaPed=acha(LP);
+  if(!idListaDoc||!idListaPed)throw new Error('Listas '+LD+' / '+LP+' não encontradas');
+}
+
+async function carregar(id){
+  escId=id;DOCS=[];PEDS=[];
+  if(!id)return render();
+  await resolver();
+  const [d,p]=await Promise.all([
+    graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaDoc}/items?$expand=fields&$top=500`),
+    graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items?$expand=fields&$top=500`)
+  ]);
+  const meu=x=>String((x.fields||{})[D.escrituraId]||'')===String(id);
+  DOCS=(d.value||[]).filter(meu).map(x=>({id:x.id,...x.fields}));
+  PEDS=(p.value||[]).filter(meu).map(x=>({id:x.id,...x.fields}))
+       .sort((a,b)=>(a[P.titulo]||'').localeCompare(b[P.titulo]||''));
+  PEDS.forEach(x=>{try{x._atos=JSON.parse(x[P.atos]||'[]');}catch(e){x._atos=[];}});
+  render();
+}
+
+// ─── Interface ───────────────────────────────────────────────────────────
+function render(){
+  const el=$('rc-corpo');if(!el)return;
+  el.innerHTML=blocoDocs()+blocoPedidos();
+}
+
+function blocoDocs(){
+  const linhas=DOCS.length?DOCS.map(d=>`
+    <tr>
+      <td>${esc(d[D.titulo]||'')}</td>
+      <td>${esc(d[D.origem]||'')}</td>
+      <td style="font-family:'DM Mono',monospace">${esc(d[D.codigo]||'')}</td>
+      <td style="color:var(--text-muted)">${esc(d[D.obs]||'')}</td>
+      <td style="text-align:right"><button class="btn btn-sm" onclick="rcDoc('${d.id}')" style="padding:2px 8px;font-size:10px">Editar</button></td>
+    </tr>`).join(''):`<tr><td colspan="5" style="color:var(--text-faint);padding:.6rem">Sem documentos.</td></tr>`;
+  return `<div class="rc-cx">
+    <div class="rc-h"><span>Documentos e códigos</span><button class="btn btn-sm" onclick="rcDoc()">+ Documento</button></div>
+    <table class="rc-t"><thead><tr><th>Documento</th><th style="width:150px">Origem</th><th style="width:170px">Código</th><th>Observações</th><th style="width:66px"></th></tr></thead>
+    <tbody>${linhas}</tbody></table></div>`;
+}
+
+function blocoPedidos(){
+  if(!PEDS.length)return `<div class="rc-cx">
+    <div class="rc-h"><span>Pedidos a submeter</span><button class="btn btn-sm" onclick="rcPed()">+ Pedido</button></div>
+    <div style="font-size:11.5px;color:var(--text-faint);padding:.5rem">Sem pedidos.</div></div>`;
+  const cx=PEDS.map(p=>{
+    const isento=/^Isento/i.test(p[P.regime]||'');
+    const atos=(p._atos||[]);
+    const total=atos.reduce((a,x)=>a+num(x.valor),0);
+    return `<div class="rc-cx${isento?' rc-isen':''}">
+      <div class="rc-h">
+        <span>${esc(p[P.titulo]||'Pedido')} · <span class="badge ${isento?'badge-green':'badge-amber'}" style="font-size:9.5px">${esc(p[P.regime]||'')}</span></span>
+        <span style="display:flex;gap:.35rem">
+          <button class="btn btn-sm" onclick="rcAto('${p.id}')" style="font-size:10px">+ Ato</button>
+          <button class="btn btn-sm" onclick="rcPed('${p.id}')" style="font-size:10px">Editar</button>
+        </span>
+      </div>
+      <div class="rc-meta">
+        <span><b>Códigos</b> ${esc(p[P.codigos]||'—')}</span>
+        <span><b>Pagamento</b> ${isento?'<i style="color:var(--green)">isento</i>':`${esc(p[P.entidade]||'—')} · ${esc(p[P.referencia]||'—')} · ${eur(p[P.valor])}${p[P.dataPag]?' · '+d10(p[P.dataPag]).split('-').reverse().join('/'):''}`}</span>
+        <span><b>Estado</b> ${esc(p[P.estado]||'—')}</span>
+        <span><b>AP</b> ${esc(p[P.ap]||'—')}</span>
+      </div>
+      <table class="rc-t"><thead><tr><th style="width:34px">#</th><th>Ato</th><th>Detalhe</th><th style="width:96px;text-align:right">Valor</th><th style="width:60px"></th></tr></thead><tbody>
+        ${atos.length?atos.map((a,k)=>`<tr>
+          <td style="font-family:'DM Mono',monospace">${k+1}</td>
+          <td>${esc(a.tipo||'')}</td>
+          <td style="color:var(--text-muted);font-size:11px">${esc(a.detalhe||'')}</td>
+          <td style="text-align:right;font-family:'DM Mono',monospace">${eur(a.valor)}</td>
+          <td style="text-align:right"><button class="btn btn-sm" onclick="rcAto('${p.id}',${k})" style="padding:2px 7px;font-size:10px">Editar</button></td>
+        </tr>`).join(''):`<tr><td colspan="5" style="color:var(--text-faint)">Sem atos.</td></tr>`}
+        <tr class="rc-tot"><td colspan="3" style="text-align:right">Total do pedido</td>
+            <td style="text-align:right;font-family:'DM Mono',monospace">${eur(total)}</td><td></td></tr>
+      </tbody></table>
+      ${p[P.notas]?`<div class="rc-notas">${esc(p[P.notas])}</div>`:''}
+    </div>`;
+  }).join('');
+  return `<div class="rc-h" style="margin:.8rem 0 .4rem"><span>Pedidos a submeter</span><button class="btn btn-sm" onclick="rcPed()">+ Pedido</button></div>${cx}`;
+}
+
+// ─── Modais ──────────────────────────────────────────────────────────────
+function ov(){return $('rc-ov');}
+function abrir(html){$('rc-modal').innerHTML=html;ov().classList.add('show');}
+function fechar(){ov().classList.remove('show');}
+const opts=(lista,sel)=>lista.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
+
+// ── Documento
+function modalDoc(id){
+  const d=id?DOCS.find(x=>String(x.id)===String(id)):null;
+  abrir(`<div class="modal-box-title">${d?'Editar documento':'Novo documento'}</div>
+    <div class="field-grid">
+      <div class="field-group field-full"><div class="field-label">Documento *</div>
+        <input class="form-input" id="rd-titulo" value="${d?esc(d[D.titulo]||''):''}" placeholder="Ex: DPA, distrate, certidão camarária" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Origem *</div>
+        <select class="form-select" id="rd-origem" style="width:100%">${opts(ORIGENS,d?d[D.origem]:null)}</select></div>
+      <div class="field-group"><div class="field-label">Código / referência</div>
+        <input class="form-input" id="rd-codigo" value="${d?esc(d[D.codigo]||''):''}" style="width:100%"></div>
+      <div class="field-group field-full"><div class="field-label">Observações</div>
+        <input class="form-input" id="rd-obs" value="${d?esc(d[D.obs]||''):''}" style="width:100%"></div>
+    </div>
+    <div class="modal-actions">
+      ${d?`<button class="btn" onclick="rcApagarDoc('${d.id}')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
+      <button class="btn btn-success" onclick="rcGuardarDoc(${d?`'${d.id}'`:'null'})" style="flex:2">Guardar</button>
+    </div>`);
+}
+async function guardarDoc(id){
+  const t=$('rd-titulo').value.trim();
+  if(!t){showToast('Indica o documento','error');return;}
+  const b={[D.titulo]:t,[D.escrituraId]:parseInt(escId)||0,[D.origem]:$('rd-origem').value,
+    [D.codigo]:$('rd-codigo').value.trim(),[D.obs]:$('rd-obs').value.trim()};
+  await gravar(idListaDoc,id,b,'Documento guardado');
+}
+
+// ── Pedido
+function modalPed(id){
+  const p=id?PEDS.find(x=>String(x.id)===String(id)):null;
+  const nome=p?p[P.titulo]:`Pedido ${PEDS.length+1}`;
+  const isento=p?/^Isento/i.test(p[P.regime]||''):false;
+  abrir(`<div class="modal-box-title">${p?'Editar pedido':'Novo pedido'}</div>
+    <div class="field-grid">
+      <div class="field-group"><div class="field-label">Designação *</div>
+        <input class="form-input" id="rp-titulo" value="${esc(nome)}" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Regime *</div>
+        <select class="form-select" id="rp-regime" onchange="rcRegime()" style="width:100%">${opts(REGIMES,p?p[P.regime]:null)}</select></div>
+      <div class="field-group"><div class="field-label">Data do registo</div>
+        <input class="form-input" id="rp-data" type="date" value="${p?d10(p[P.data]):''}" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">Estado</div>
+        <select class="form-select" id="rp-estado" style="width:100%">${opts(ESTADOS,p?p[P.estado]:null)}</select></div>
+      <div class="field-group field-full"><div class="field-label">Códigos a usar</div>
+        <input class="form-input" id="rp-codigos" value="${p?esc(p[P.codigos]||''):''}" placeholder="Ex: 20260814-1234" style="width:100%"></div>
+      <div class="field-group" id="rp-w-ent"><div class="field-label">Entidade</div>
+        <input class="form-input" id="rp-entidade" value="${p?esc(p[P.entidade]||''):''}" style="width:100%"></div>
+      <div class="field-group" id="rp-w-ref"><div class="field-label">Referência</div>
+        <input class="form-input" id="rp-referencia" value="${p?esc(p[P.referencia]||''):''}" style="width:100%"></div>
+      <div class="field-group" id="rp-w-val"><div class="field-label">Valor (€)</div>
+        <input class="form-input" id="rp-valor" inputmode="decimal" value="${p&&p[P.valor]?String(p[P.valor]).replace('.',','):''}" style="width:100%"></div>
+      <div class="field-group" id="rp-w-dp"><div class="field-label">Data de pagamento</div>
+        <input class="form-input" id="rp-datapag" type="date" value="${p?d10(p[P.dataPag]):''}" style="width:100%"></div>
+      <div class="field-group"><div class="field-label">AP obtida</div>
+        <input class="form-input" id="rp-ap" value="${p?esc(p[P.ap]||''):''}" style="width:100%"></div>
+      <div class="field-group field-full"><div class="field-label">Notas do pedido</div>
+        <textarea class="form-input" id="rp-notas" rows="2" style="width:100%;resize:vertical">${p?esc(p[P.notas]||''):''}</textarea></div>
+    </div>
+    <div class="modal-actions">
+      ${p?`<button class="btn" onclick="rcApagarPed('${p.id}')" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
+      <button class="btn btn-success" onclick="rcGuardarPed(${p?`'${p.id}'`:'null'})" style="flex:2">Guardar</button>
+    </div>`);
+  if(isento)regime();
+}
+/* Num pedido isento não há referência de pagamento nenhuma. */
+function regime(){
+  const is=/^Isento/i.test($('rp-regime').value||'');
+  ['rp-w-ent','rp-w-ref','rp-w-val','rp-w-dp'].forEach(id=>{const e=$(id);if(e)e.style.display=is?'none':'flex';});
+}
+async function guardarPed(id){
+  const t=$('rp-titulo').value.trim();
+  if(!t){showToast('Indica a designação','error');return;}
+  const is=/^Isento/i.test($('rp-regime').value||'');
+  const p=id?PEDS.find(x=>String(x.id)===String(id)):null;
+  const cliente=(document.getElementById('p-nome')?.value||'').trim();
+  const b={[P.titulo]:t,[P.escrituraId]:parseInt(escId)||0,[P.cliente]:cliente,
+    [P.regime]:$('rp-regime').value,[P.codigos]:$('rp-codigos').value.trim(),
+    [P.estado]:$('rp-estado').value,[P.ap]:$('rp-ap').value.trim(),
+    [P.notas]:$('rp-notas').value.trim(),[P.atos]:JSON.stringify(p?(p._atos||[]):[]),
+    [P.entidade]:is?'':$('rp-entidade').value.trim(),
+    [P.referencia]:is?'':$('rp-referencia').value.trim(),
+    [P.valor]:is?0:num($('rp-valor').value)};
+  b[P.data]=$('rp-data').value?$('rp-data').value+'T12:00:00Z':null;
+  b[P.dataPag]=(!is&&$('rp-datapag').value)?$('rp-datapag').value+'T12:00:00Z':null;
+  await gravar(idListaPed,id,b,'Pedido guardado');
+}
+
+// ── Ato (guardado em AtosJSON dentro do pedido)
+function modalAto(pedId,k){
+  const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
+  const a=(k!==undefined&&k!==null)?(p._atos[k]||{}):{};
+  abrir(`<div class="modal-box-title">${k!==undefined&&k!==null?'Editar ato':'Novo ato'} — ${esc(p[P.titulo]||'')}</div>
+    <div class="field-grid">
+      <div class="field-group"><div class="field-label">Ato *</div>
+        <select class="form-select" id="ra-tipo" style="width:100%">${opts(ATOS,a.tipo)}</select></div>
+      <div class="field-group"><div class="field-label">Valor (€)</div>
+        <input class="form-input" id="ra-valor" inputmode="decimal" value="${a.valor?String(a.valor).replace('.',','):''}" style="width:100%"></div>
+      <div class="field-group field-full"><div class="field-label">Detalhe</div>
+        <textarea class="form-input" id="ra-detalhe" rows="3" placeholder="AP. a cancelar, prédio onerado, servidão, o que for próprio deste ato" style="width:100%;resize:vertical">${esc(a.detalhe||'')}</textarea></div>
+      <div class="field-group field-full"><div class="field-label">Sujeitos</div>
+        <textarea class="form-input" id="ra-sujeitos" rows="4" placeholder="Um por linha: Ativo|Singular|NOME|NIF|estado civil|regime|cônjuge|NIF cônjuge|quota" style="width:100%;resize:vertical;font-family:'DM Mono',monospace;font-size:11px">${esc(a.sujeitos||'')}</textarea></div>
+    </div>
+    <div class="modal-actions">
+      ${k!==undefined&&k!==null?`<button class="btn" onclick="rcApagarAto('${pedId}',${k})" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
+      <button class="btn btn-success" onclick="rcGuardarAto('${pedId}',${k===undefined||k===null?'null':k})" style="flex:2">Guardar</button>
+    </div>`);
+}
+async function guardarAto(pedId,k){
+  const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
+  const a={tipo:$('ra-tipo').value,valor:num($('ra-valor').value),
+    detalhe:$('ra-detalhe').value.trim(),sujeitos:$('ra-sujeitos').value.trim()};
+  const lista=(p._atos||[]).slice();
+  if(k===null||k===undefined)lista.push(a);else lista[k]=a;
+  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify(lista)},'Ato guardado');
+}
+async function apagarAto(pedId,k){
+  const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
+  if(!confirm('Eliminar este ato?'))return;
+  const lista=(p._atos||[]).slice();lista.splice(k,1);
+  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify(lista)},'Ato eliminado');
+}
+
+// ─── Persistência ────────────────────────────────────────────────────────
+async function gravar(lista,id,body,msg){
+  try{
+    await renovarToken();
+    if(id)await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${lista}/items/${id}/fields`,body);
+    else   await graphPost (`${GRAPH_BASE}/sites/${siteIdDados}/lists/${lista}/items`,{fields:body});
+    showToast(msg,'success');fechar();await carregar(escId);
+  }catch(e){showToast('Erro ao guardar: '+e.message,'error');}
+}
+async function apagar(lista,id,msg){
+  if(!confirm('Eliminar este registo?'))return;
+  try{
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${lista}/items/${id}`,
+      {method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
+    if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
+    showToast(msg,'');fechar();await carregar(escId);
+  }catch(e){showToast('Erro ao eliminar: '+e.message,'error');}
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────
+window.rcDoc=id=>modalDoc(id);
+window.rcPed=id=>modalPed(id);
+window.rcAto=(p,k)=>modalAto(p,k);
+window.rcGuardarDoc=id=>guardarDoc(id);
+window.rcGuardarPed=id=>guardarPed(id);
+window.rcGuardarAto=(p,k)=>guardarAto(p,k);
+window.rcApagarDoc=id=>apagar(idListaDoc,id,'Documento eliminado');
+window.rcApagarPed=id=>apagar(idListaPed,id,'Pedido eliminado');
+window.rcApagarAto=(p,k)=>apagarAto(p,k);
+window.rcRegime=regime;
+window.rcFechar=fechar;
+
+// ─── Instalação ──────────────────────────────────────────────────────────
+const CSS=`
+.rc-sec{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;
+  padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem}
+.rc-cx{border:1px solid var(--border);border-radius:8px;padding:.6rem .7rem;margin-bottom:.6rem;background:var(--surface)}
+.rc-isen{background:#F4F9F4;border-color:#C4DCC4}
+.rc-h{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.4rem;
+  font-size:11.5px;font-weight:600;color:var(--text-muted)}
+.rc-t{width:100%;border-collapse:collapse;font-size:11.5px}
+.rc-t th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);
+  font-weight:600;padding:3px 5px;border-bottom:1px solid var(--border)}
+.rc-t td{padding:4px 5px;border-bottom:1px solid var(--border);vertical-align:top}
+.rc-tot td{font-weight:600;background:var(--surface2);border-bottom:none}
+.rc-meta{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-size:11px;color:var(--text-muted);margin-bottom:.45rem}
+.rc-meta b{color:var(--text-faint);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em}
+.rc-notas{font-size:11px;color:var(--text-muted);background:var(--surface2);border-radius:5px;padding:5px 7px;margin-top:.4rem}
+`;
+function instalar(){
+  const anexos=[...document.querySelectorAll('#painel-registo .field-label, #painel-registo div')]
+    .find(e=>/Anexos \(Suprimentos\)/.test(e.textContent||'')&&e.children.length===0);
+  const obs=document.getElementById('p-observacoes');
+  if(!obs||$('rc-corpo'))return;
+  const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+
+  const bloco=document.createElement('div');
+  bloco.innerHTML=`
+    <div class="rc-sec">Registo Conservatória</div>
+    <div class="field-group" style="margin-bottom:.5rem">
+      <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" id="p-regPedido"> Registo já pedido
+      </label>
+    </div>
+    <div id="rc-corpo"></div>
+    <div class="field-group" style="margin-top:.5rem">
+      <div class="field-label">Notas gerais do registo</div>
+      <textarea class="form-textarea" id="p-regNotas" rows="2" placeholder="—" style="width:100%"></textarea>
+    </div>
+    <div class="modal-overlay" id="rc-ov"><div class="modal-box" id="rc-modal" style="max-width:520px"></div></div>`;
+  const alvo=obs.closest('.field-group')||obs.parentNode;
+  alvo.insertAdjacentElement('afterend',bloco);
+  $('rc-ov').addEventListener('click',e=>{if(e.target===$('rc-ov'))fechar();});
+
+  /* Ao abrir a ficha, carregar o que já está gravado. */
+  if(typeof window.abrirPainelRegisto==='function'){
+    const _a=window.abrirPainelRegisto;
+    window.abrirPainelRegisto=function(itemId){
+      const r=_a.apply(this,arguments);
+      const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===itemId)||{};
+      const t=$('p-regPedido'); if(t)t.checked=(i['RegPedido']===true||i['RegPedido']==='true');
+      const n=$('p-regNotas'); if(n)n.value=i['RegNotasGerais']||'';
+      carregar(itemId).catch(e=>{const c=$('rc-corpo');if(c)c.innerHTML=`<div class="notice notice-warning" style="font-size:11.5px">${esc(e.message)}</div>`;});
+      return r;
+    };
+  }
+  /* Guardar o toggle e as notas junto com o resto da ficha. */
+  if(typeof window.guardarPainel==='function'){
+    const _g=window.guardarPainel;
+    window.guardarPainel=async function(){
+      const r=await _g.apply(this,arguments);
+      try{
+        if(!escId&&typeof painelItemId!=='undefined')escId=painelItemId;
+        if(escId){
+          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${escId}/fields`,
+            {RegPedido:!!$('p-regPedido')?.checked, RegNotasGerais:$('p-regNotas')?.value||''});
+        }
+      }catch(e){console.warn('Registo Conservatória:',e.message);}
+      return r;
+    };
+  }
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
 </body>
 </html>
