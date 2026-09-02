@@ -675,7 +675,7 @@
       let m={}; try{m=JSON.parse(f[P.atos]||'{}');}catch(err){m={};}
       if(f[P.estado]==='Submetido')m.submetido=true;
       return {id:x.id, escrituraId:f[P.escrituraId], cliente:f[P.cliente]||e[E.nome]||'', entidade:e[E.entidade]||'', dataEscritura:(e[E.data]||m.dataDoc||'').substring(0,10), ref:(e[E.titulo]?e[E.titulo]+' · ':'')+(f[P.titulo]||''), mapa:m};
-    });
+    }).filter(it=>(it.mapa.codDPA||'').trim());   /* só entra na lista depois de ter código de depósito */
     window.RegistosLista.setItems(items);
   }
 
