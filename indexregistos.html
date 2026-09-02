@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registos prediais — LBC</title>
+<style>
+  :root{
+    --ink:#3a2f31; --muted:#8a7a7d; --line:#e4d6d8; --panel:#f8f2f1; --panel2:#efe3e2;
+    --green:#b76e79; --green-soft:#f3e2e5; --red:#a63d3d; --red-soft:#f7e3e3; --amber:#8a5a00; --amber-soft:#fbf1dc;
+    --bg:#fffdfc; --radius:8px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;color:var(--ink);background:var(--bg);line-height:1.4}
+  .mr{max-width:900px;margin:0 auto;padding:16px 20px 120px}
+  h2{font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:600;margin:32px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--green);display:flex;justify-content:space-between;align-items:center}
+  h2 .num{color:var(--green);margin-right:8px}
+  h3{font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
+  .hint{font-size:12px;color:var(--muted)}
+  label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:3px;letter-spacing:.02em}
+  input[type=text],input[type=date],input[type=number],select,textarea{
+    width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;font:inherit;color:var(--ink)
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+  input[readonly]{background:var(--panel2);color:var(--muted)}
+  textarea{resize:vertical;min-height:120px}
+  .row{display:grid;gap:10px;margin-bottom:10px}
+  .card{background:var(--panel);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;position:relative}
+  .card .card{background:#fff;border:1px solid var(--line)}
+  .btn{font:inherit;font-size:13px;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  .btn:hover{border-color:var(--green);color:var(--green)}
+  .btn.primary{background:var(--green);color:#fff;border-color:var(--green);font-weight:600;padding:10px 18px}
+  .btn.primary:hover{background:#a05c67;color:#fff}
+  .btn.x{padding:2px 9px;line-height:1.2;position:absolute;top:8px;right:8px}
+  .btn.small{padding:4px 10px;font-size:12px}
+  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}
+  .toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
+  .toggle input{width:auto;margin:0}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .badge.ativo{background:var(--green-soft);color:var(--green)}
+  .badge.passivo{background:var(--panel2);color:var(--ink)}
+  .note{background:var(--amber-soft);color:var(--amber);padding:6px 10px;border-radius:6px;font-size:12px;margin-top:6px}
+  .empty{color:var(--muted);font-size:13px;padding:10px 0}
+  /* header */
+  .head{background:var(--panel);border-radius:var(--radius);padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;font-size:13px}
+  .head div span{color:var(--muted);display:inline-block;min-width:130px}
+  .head .data{grid-column:1/-1;margin-top:8px;display:flex;align-items:center;gap:10px}
+  .head .data label{margin:0}
+  .head .data input{width:180px}
+  .legit{margin-top:8px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap}
+  .legit label{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--ink);font-weight:500}
+  .legit input{width:auto;margin:0}
+  /* totals */
+  .totals{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;background:var(--panel);border-radius:var(--radius);padding:12px 14px;margin-top:8px}
+  .totals .big{font-size:20px;font-weight:700}
+  .status{padding:8px 12px;border-radius:6px;font-weight:700;font-size:13px;min-width:170px;text-align:center}
+  .status.ok{background:#e7efe6;color:#4f7a5a}
+  .status.bad{background:var(--red-soft);color:var(--red)}
+  .status.idle{background:var(--panel2);color:var(--muted)}
+    .split{background:var(--red-soft);color:var(--red);border-left:4px solid var(--red);padding:10px 14px;border-radius:6px;font-size:13px;margin:8px 0 10px;font-weight:600}
+  .split small{display:block;font-weight:400;margin-top:4px;color:var(--ink)}
+  .totals.dois{grid-template-columns:1fr 1fr auto}
+  .counter{text-align:right;font-size:12px;color:var(--muted)}
+  .counter.over{color:var(--red);font-weight:700}
+  /* footer */
+  .footer{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;margin-top:30px}
+  .footer .btn.primary{flex:1}
+  .footer .btn{flex:0 0 auto}
+  .copy{cursor:pointer}
+  .copy:hover{background:var(--green-soft)}
+  .flash{outline:2px solid var(--green)!important}
+  @media (max-width:640px){.head{grid-template-columns:1fr}.totals{grid-template-columns:1fr}}
+  @media print{.footer,.btn,.toolbar{display:none!important}}
+
+  /* ---- modo colaboradora (só leitura, exceto bloco 7) ---- */
+  #mapa.ro .ro-lock input:not([type=checkbox]),#mapa.ro .ro-lock select,#mapa.ro .ro-lock textarea{background:var(--panel2);color:var(--ink);pointer-events:auto}
+  #mapa.ro .ro-lock .btn.x,#mapa.ro .ro-lock .btn.small,#mapa.ro .ro-lock .toggle input,#mapa.ro h2 .btn{display:none!important}
+  #mapa.ro .ro-lock .toggle,#mapa.ro .ro-lock .legit label{pointer-events:none}
+  #mapa.ro .ro-lock input[type=radio]{pointer-events:none}
+  #mapa.ro .ro-lock input[type=text]{cursor:pointer}
+  /* ---- login / app ---- */
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--panel)}
+  .login-box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:32px 36px;max-width:380px;text-align:center}
+  .login-logo{font-family:Georgia,serif;font-size:28px;color:var(--green);letter-spacing:.1em;margin-bottom:6px}
+  .login-box h1{font-family:Georgia,serif;font-size:20px;font-weight:600;margin:0 0 6px}
+  .login-box p{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .login-box .btn.primary{width:100%}
+  .login-err{margin-top:12px;color:var(--red);font-size:12px}
+  .hdr{display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:5}
+  .hdr-t{font-family:Georgia,serif;font-size:15px;color:var(--green);flex:1}
+  .hdr-u{font-size:12px;color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+  .toast.show{opacity:1}.toast.err{background:var(--red)}
+  .carregando{text-align:center;color:var(--muted);padding:40px 0}
+  @media print{.hdr{display:none!important}}
+  /* ---- lista ---- */
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .mapa-titulo{font-family:Georgia,serif;font-size:16px;flex:1}
+  .pill{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill.pend{background:#fbe9c9;color:#8a5a00}
+  .pill.sub{background:#e7efe6;color:#4f7a5a}
+  .lista{max-width:1000px;margin:0 auto;padding:16px 20px 60px}
+  .lista h1{font-family:Georgia,serif;font-size:22px;font-weight:600;margin:6px 0 14px;color:var(--ink)}
+  .filtros{display:grid;grid-template-columns:1fr 150px 150px 160px auto;gap:10px;align-items:end;background:var(--panel);padding:12px 14px;border-radius:var(--radius);margin-bottom:14px}
+  .resumo{display:flex;gap:18px;font-size:13px;color:var(--muted);margin:0 0 10px 2px}
+  .resumo b{color:var(--ink)}
+  table.reg{width:100%;border-collapse:separate;border-spacing:0 6px}
+  table.reg th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:0 10px 2px;letter-spacing:.02em}
+  table.reg td{padding:10px;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+  table.reg td:first-child{border-left:5px solid #d9a441;border-radius:8px 0 0 8px}
+  table.reg td:last-child{border-right:1px solid var(--line);border-radius:0 8px 8px 0}
+  table.reg tr.pend td{background:#fffaf1}
+  table.reg tr.sub td{background:#f3f7f2;color:var(--muted)}
+  table.reg tr.sub td:first-child{border-left-color:#6f9a78}
+  table.reg tr{cursor:pointer}
+  table.reg tr:hover td{border-color:var(--green)}
+  table.reg td.num{text-align:right;white-space:nowrap}
+  .leg{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:8px}
+  .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  @media (max-width:760px){.filtros{grid-template-columns:1fr 1fr}}
+  @media print{.lista,.topbar{display:none!important}#mapa[hidden]{display:none}.mr{padding:0}body{font-size:12px}h2{margin-top:18px}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="login" id="login">
+  <div class="login-box">
+    <div class="login-logo">LBC</div>
+    <h1>Registos prediais</h1>
+    <p>Lista de registos a submeter no Predial Online.</p>
+    <button class="btn primary" id="btnLogin" onclick="tentarLogin()">Entrar com conta Microsoft</button>
+    <div class="login-err" id="loginErr" hidden></div>
+  </div>
+</div>
+<div class="app" id="app" hidden>
+<div class="hdr"><span class="hdr-t">LBC — Registos prediais</span><span class="hdr-u" id="hdrUser"></span><button class="btn small" onclick="fazerLogout()">Sair</button></div>
+<div class="toast" id="toast"></div>
+<div class="lista" id="lista">
+  <h1>Registos prediais</h1>
+  <div class="filtros">
+    <div><label for="fTexto">Cliente / referência / prédio</label><input type="text" id="fTexto" placeholder="pesquisar…"></div>
+    <div><label for="fDe">Data da escritura de</label><input type="date" id="fDe"></div>
+    <div><label for="fAte">até</label><input type="date" id="fAte"></div>
+    <div><label for="fEstado">Estado</label><select id="fEstado"><option value="">Todos</option><option value="pend">Por submeter</option><option value="sub">Submetidos</option></select></div>
+    <div><button class="btn" id="fLimpar">Limpar</button></div>
+  </div>
+  <div class="resumo" id="resumo"></div>
+  <table class="reg">
+    <thead><tr><th>Escritura</th><th>Cliente</th><th>Entidade</th><th>Prédio(s)</th><th>Atos</th><th class="num">Valor</th><th>Estado</th></tr></thead>
+    <tbody id="linhas"></tbody>
+  </table>
+  <div class="leg"><span><i style="background:#d9a441"></i>Por submeter</span><span><i style="background:#6f9a78"></i>Submetido</span></div>
+</div>
+
+<div class="mr" id="mapa" hidden>
+  <div class="topbar"><button class="btn" id="btnVoltar">‹ Lista de registos</button><div id="mapaTitulo" class="mapa-titulo"></div><span id="mapaEstado" class="pill"></span></div>
+
+  <!-- 1 -->
+  <h2><span><span class="num">1</span>Identificação do Apresentante</span><span class="hint">fixo — copiar tal como está</span></h2>
+  <div class="head ro-lock">
+    <div><span>Nome</span><b>LILIANA BURRICA</b></div>
+    <div><span>e-mail</span>lburrica08733@osae.pt</div>
+    <div><span>Tipo de documento</span>Cédula Profissional</div>
+    <div><span>N.º do documento</span>8733</div>
+    <div><span>Qualidade</span>Solicitador</div>
+    <div><span>NIF</span>519018532</div>
+    <div><span>Residência</span>Rua Domingos Franco de Oliveira nº 16</div>
+    <div><span>Código postal</span>7005-552</div>
+    <div><span>Localidade</span>Évora</div>
+    <div><span>Telemóvel</span>+351960215959</div>
+    <div><span>NIB</span>0035 · 0655 · 00005276730 · 17</div>
+    <div><span>IBAN</span>PT50003506550000527673017</div>
+    <div><span>BIC/SWIFT</span>CGDIPTPL</div>
+    <div><span>e-mail adicional</span>info@lbc-solicitadora.pt</div>
+    <div class="data"><label for="dataDoc">Data do Documento</label><input type="date" id="dataDoc"><span class="hint">= data do ato (aaaa-mm-dd)</span></div>
+    <div class="legit" style="grid-column:1/-1;margin-top:4px"><span class="hint" style="min-width:130px">Escritura</span>
+      <label><input type="radio" name="tipoEsc" value="CGD" checked>CGD (pagamento a cargo da CGD)</label>
+      <label><input type="radio" name="tipoEsc" value="Particular">Particular (pagamento a cargo de LBC)</label>
+    </div>
+    <div class="legit" style="grid-column:1/-1">
+      <label><input type="radio" name="legit" value="sujeito" checked>Sujeito da obrigação de registar</label>
+      <label><input type="radio" name="legit" value="proc">Representante com procuração</label>
+      <label><input type="radio" name="legit" value="semproc">Representante sem procuração</label>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <h2><span><span class="num">2</span>Documentos que servem de base ao registo</span><button class="btn small" id="addDoc">+ Documento</button></h2>
+  <div class="card ro-lock">
+    <div class="row" style="grid-template-columns:220px 1fr">
+      <div><label>Código do DPA (depósito do próprio ato)</label><input type="text" id="codDPA" placeholder="0000-0000-0000-0000" class="copy" title="clicar para copiar"></div>
+      <div><label>Descrição</label><input type="text" value="Documento particular autenticado do ato" readonly></div>
+    </div>
+    <div class="hint">Predial Online → Documento Particular Autenticado → Código do Documento → «Validar Documento».</div>
+  </div>
+  <div id="docs" class="ro-lock"></div>
+
+  <!-- 3 -->
+  <h2><span><span class="num">3</span>Atos a registar</span><button class="btn small" id="addAto">+ Ato</button></h2>
+  <div id="atos" class="ro-lock"></div>
+  <!-- 4 -->
+  <h2><span><span class="num">4</span>Imóveis sobre os quais incide o registo</span><button class="btn small" id="addPredio">+ Prédio</button></h2>
+  <div class="hint" style="margin-bottom:8px">Identificação sempre por «Descrição em Ficha ou Informatizado».</div>
+  <div id="predios" class="ro-lock"></div>
+
+  <!-- 5 -->
+  <h2><span><span class="num">5</span>Sujeitos</span><span class="hint">por ato — o portal preenche o resto pelo NIF</span></h2>
+  <div id="sujeitos" class="ro-lock"></div>
+
+  <!-- 6 -->
+  <h2><span><span class="num">6</span>Isenções e declarações</span></h2>
+  <div class="card ro-lock" id="bloco6">
+    <div class="legit" style="margin:0 0 8px">
+      <label><input type="radio" name="isencao" value="nao" checked>Não enquadrado</label>
+      <label><input type="radio" name="isencao" value="outras">Outras Isenções e Reduções</label>
+    </div>
+    <div id="isencaoBox" hidden>
+      <select id="isencaoTipo">
+        <option value="">-- Escolha --</option>
+        <option>Primeira aquisição e hipoteca para garantia de mútuo da primeira aquisição - Sujeitos com idade igual ou inferior a 35 anos</option>
+        <option>Redução de ½ referente à primeira Aquisição e Hipoteca - Sujeitos com idade igual ou inferior a 35 anos</option>
+        <option value="outra">Outra (escrever)</option>
+      </select>
+      <div id="isencaoOutraBox" hidden style="margin-top:8px">
+        <label for="isencaoOutra">Isenção / redução</label>
+        <input type="text" id="isencaoOutra" placeholder="escreva a isenção tal como consta no portal">
+      </div>
+    </div>
+  <h3 style="margin-top:14px">Somatório dos valores dos atos</h3>
+      <div id="splitAviso" class="split" hidden>Isenção jovem + cancelamentos → fazer DOIS pedidos de registo no Predial Online.
+      <small>Pedido 1: aquisição e hipoteca (com a isenção). Pedido 2: cancelamentos (sem isenção). Os valores abaixo estão separados por pedido.</small></div>
+    <div class="totals">
+      <div><label id="lblTotal">Total dos atos (€)</label><div class="big" id="totalAtos">0,00</div></div>
+      <div><label for="valorPredial" id="lblPredial">Valor do Predial (€)</label><input type="number" step="0.01" min="0" id="valorPredial" placeholder="0,00"></div>
+      <div class="status idle" id="status">Sem valor do Predial</div>
+    </div>
+    <div class="totals" id="totals2" hidden>
+      <div><label>Pedido 2 — total dos cancelamentos (€)</label><div class="big" id="totalCanc">0,00</div></div>
+      <div><label for="valorPredial2">Pedido 2 — valor do Predial (€)</label><input type="number" step="0.01" min="0" id="valorPredial2" placeholder="0,00"></div>
+      <div class="status idle" id="status2">Sem valor do Predial</div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label for="decl">Declarações Complementares</label>
+      <textarea id="decl" maxlength="4000"></textarea>
+      <div class="counter" id="declCount">0/4000</div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <h2><span><span class="num">7</span>Estado do registo</span></h2>
+  <div class="card" id="estadoCard">
+    <label class="toggle" style="font-size:14px;color:var(--ink)"><input type="checkbox" id="submetido"> Registo submetido no Predial Online</label>
+    <div id="submetidoBox" hidden style="margin-top:10px">
+      <div class="row" style="grid-template-columns:180px 1fr">
+        <div><label for="dataSub">Data de submissão</label><input type="date" id="dataSub"></div>
+        <div><label for="obsSub">Observações</label><input type="text" id="obsSub" placeholder="ex.: 2 pedidos"></div>
+      </div>
+      <h3>Pagamento (referência MB emitida pelo Predial)</h3>
+      <div class="row" style="grid-template-columns:120px 200px 140px 1fr;margin:0">
+        <div><label for="mbEnt">Entidade</label><input type="text" id="mbEnt" inputmode="numeric" maxlength="5" class="copy" title="clicar para copiar"></div>
+        <div><label for="mbRef">Referência</label><input type="text" id="mbRef" inputmode="numeric" placeholder="000 000 000" class="copy" title="clicar para copiar"></div>
+        <div><label for="mbVal">Valor pago (€)</label><input type="number" step="0.01" min="0" id="mbVal" placeholder="0,00"></div>
+        <div><label>&nbsp;</label><div class="status idle" id="statusMB">Sem valor</div></div>
+      </div>
+      <div class="hint" style="margin-top:4px">O valor pago deve coincidir com o total do bloco 6 — é este que se confere com o extrato bancário.</div>
+      <div class="row" style="grid-template-columns:1fr auto;align-items:end;margin:12px 0 0">
+        <div><label for="emailDest">Enviar pedido de pagamento para <span id="emailAuto" class="hint">(definido pela escolha CGD / Particular)</span></label>
+          <select id="emailDest">
+            <option value="dpacx@costafreitas.pt">DPA CX &lt;dpacx@costafreitas.pt&gt;</option>
+            <option value="liliana.cardoso@lbc-solicitadora.pt">Liliana Cardoso &lt;liliana.cardoso@lbc-solicitadora.pt&gt;</option>
+          </select></div>
+        <div><button class="btn" id="btnEmail">✉ Pedir pagamento</button></div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:8px">Ao guardar com este toggle ligado, o registo de escrituras é marcado como «Apresentado» (evento <code>mapa:submetido</code>).</div>
+  </div>
+
+  <div class="footer">
+    <button class="btn" id="btnCancel">Cancelar</button>
+    <button class="btn" id="btnPrint">Exportar PDF</button>
+    <button class="btn primary" id="btnSave">Guardar</button>
+  </div>
+</div>
+</div><!-- /app -->
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<script>
+(function(){
+  'use strict';
+  const $ = (s, r=document) => r.querySelector(s);
+  const uid = () => Math.random().toString(36).slice(2,9);
+  const REGIMES = ['Comunhão de adquiridos','Comunhão geral','Separação de bens'];
+  const ESTADOS = ['Solteiro(a)','Casado(a)','Divorciado(a)','Viúvo(a)','Separado(a) judicialmente'];
+  const fmt = n => (Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const isColetiva = nif => /^[579]/.test((nif||'').trim());
+
+  const state = {
+    dataDoc:'', legit:'sujeito', codDPA:'', docs:[], atos:[], predios:[],
+    valorPredial:'', valorPredial2:'', isencao:'nao', isencaoTipo:'', isencaoOutra:'', decl:'',
+    submetido:false, dataSub:'', obsSub:'', mbEnt:'', mbRef:'', mbVal:'', ref:'', tipoEsc:'CGD'
+  };
+
+  /* ---------- factories ---------- */
+  const newDoc = () => ({id:uid(), codigo:'', descricao:''});
+  const newCanc = () => ({id:uid(), ap:'', data:'', facto:'', valor:''});
+  const newSujeito = () => ({id:uid(), tipo:'Passivo', nif:'', estado:'', regime:'', nifConjuge:''});
+  const newAto = () => ({id:uid(), facto:'', data:state.dataDoc, valor:'', cancelamentos:false, cancs:[], sujeitos:[newSujeito(), Object.assign(newSujeito(),{tipo:'Ativo'})]});
+  const newPredio = () => ({id:uid(), concelho:'', freguesia:'', numero:'', fracao:false, letra:''});
+
+  /* ---------- render helpers ---------- */
+  const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const inp = (path, val, ph='', type='text', extra='') => `<input type="${type}" data-path="${path}" value="${esc(val)}" placeholder="${esc(ph)}" ${extra}>`;
+
+  function renderDocs(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+    const box = $('#docs');
+    box.innerHTML = state.docs.map(d => `
+      <div class="card" data-id="${d.id}">
+        <button class="btn x" data-del="doc">×</button>
+        <div class="row" style="grid-template-columns:220px 1fr;margin:0;padding-right:36px">
+          <div><label>Código de depósito</label>${inp('docs.'+d.id+'.codigo', d.codigo, '0000-0000-0000-0000','text','class="copy" title="clicar para copiar"')}</div>
+          <div><label>A que corresponde</label>${inp('docs.'+d.id+'.descricao', d.descricao, 'ex.: distrate hipoteca Banco X, procuração…')}</div>
+        </div>
+      </div>`).join('') || '<div class="empty">Sem documentos adicionais (distrates, procurações…).</div>';
+  }
+
+  function renderAtos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+    const box = $('#atos');
+    box.innerHTML = state.atos.map((a,i) => `
+      <div class="card" data-id="${a.id}">
+        <button class="btn x" data-del="ato">×</button>
+        <div class="row" style="grid-template-columns:1fr 160px 130px;padding-right:36px">
+          <div><label>Facto sujeito a registo</label>${inp('atos.'+a.id+'.facto', a.facto, 'ex.: Aquisição definitiva')}</div>
+          <div><label>Data do ato</label>${inp('atos.'+a.id+'.data', a.data, '', 'date')}</div>
+          <div><label>Valor (€)</label>${inp('atos.'+a.id+'.valor', a.valor, '0,00', 'number', 'step="0.01" min="0"')}</div>
+        </div>
+        <label class="toggle"><input type="checkbox" data-path="atos.${a.id}.cancelamentos" ${a.cancelamentos?'checked':''}> Cancelamentos</label>
+        ${a.cancelamentos ? `
+          <div style="margin-top:8px">
+            <div class="toolbar"><button class="btn small" data-addcanc="${a.id}">+ Cancelamento</button></div>
+            ${a.cancs.map(c => `
+              <div class="card" data-id="${c.id}" data-ato="${a.id}">
+                <button class="btn x" data-del="canc">×</button>
+                <div class="row" style="grid-template-columns:110px 150px 1fr 120px;margin:0;padding-right:36px">
+                  <div><label>AP. n.º</label>${inp('canc.'+a.id+'.'+c.id+'.ap', c.ap, 'ex.: 2534')}</div>
+                  <div><label>Data do facto</label>${inp('canc.'+a.id+'.'+c.id+'.data', c.data, '', 'date')}</div>
+                  <div><label>Facto a cancelar</label>${inp('canc.'+a.id+'.'+c.id+'.facto', c.facto, 'hipoteca, usufruto, ónus…')}</div>
+                  <div><label>Valor (€)</label>${inp('canc.'+a.id+'.'+c.id+'.valor', c.valor, '0,00', 'number', 'step="0.01" min="0"')}</div>
+                </div>
+              </div>`).join('') || '<div class="empty">Sem cancelamentos. Adicione um por cada inscrição a cancelar.</div>'}
+          </div>` : ''}
+      </div>`).join('') || '<div class="empty">Adicione o primeiro ato a registar.</div>';
+    renderTotals();
+    renderSujeitos();
+  }
+
+  const isJovem = () => state.isencao==='outras' && /35 anos/.test(state.isencaoTipo||'');
+  const hasCanc = () => state.atos.some(a => a.cancelamentos && a.cancs.length);
+  function statusOf(el, total, vpRaw){
+    const vp = vpRaw === '' ? null : Number(vpRaw);
+    if(vp === null){ el.className='status idle'; el.textContent='Sem valor do Predial'; return; }
+    const diff = Math.round((total - vp)*100)/100;
+    if(Math.abs(diff) < 0.005){ el.className='status ok'; el.textContent='✓ Valores coincidem'; }
+    else { el.className='status bad'; el.textContent='✗ Diferença: ' + fmt(diff) + ' €'; }
+  }
+  function renderTotals(){
+    let tAtos = 0, tCanc = 0;
+    state.atos.forEach(a => { tAtos += Number(a.valor)||0; if(a.cancelamentos) a.cancs.forEach(c => tCanc += Number(c.valor)||0); });
+    renderMB();
+    const split = isJovem() && hasCanc();
+    $('#splitAviso').hidden = !split;
+    $('#totals2').hidden = !split;
+    if(split){
+      $('#lblTotal').textContent='Pedido 1 — total dos atos (€)';
+      $('#lblPredial').textContent='Pedido 1 — valor do Predial (€)';
+      $('#totalAtos').textContent = fmt(tAtos);
+      statusOf($('#status'), tAtos, state.valorPredial);
+      $('#totalCanc').textContent = fmt(tCanc);
+      statusOf($('#status2'), tCanc, state.valorPredial2);
+    } else {
+      $('#lblTotal').textContent='Total dos atos (€)';
+      $('#lblPredial').textContent='Valor do Predial (€)';
+      $('#totalAtos').textContent = fmt(tAtos + tCanc);
+      statusOf($('#status'), tAtos + tCanc, state.valorPredial);
+    }
+  }
+
+  function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=Number(a.valor)||0; if(a.cancelamentos) a.cancs.forEach(c=>t+=Number(c.valor)||0); }); return t; }
+  function renderMB(){ const el=$('#statusMB'); if(!el) return; statusOf(el, totalGeral(), state.mbVal); el.textContent = el.textContent.replace('Sem valor do Predial','Sem valor'); }
+
+  function renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+    const box = $('#predios');
+    box.innerHTML = state.predios.map(p => `
+      <div class="card" data-id="${p.id}">
+        <button class="btn x" data-del="predio">×</button>
+        <div class="row" style="grid-template-columns:1fr 1fr 120px 130px;padding-right:36px;margin:0">
+          <div><label>Concelho</label>${inp('predios.'+p.id+'.concelho', p.concelho, 'ex.: Évora')}</div>
+          <div><label>Freguesia</label>${inp('predios.'+p.id+'.freguesia', p.freguesia, '')}</div>
+          <div><label>Prédio n.º</label>${inp('predios.'+p.id+'.numero', p.numero, '', 'text', 'class="copy" title="clicar para copiar"')}</div>
+          <div><label>&nbsp;</label><label class="toggle" style="margin-top:8px"><input type="checkbox" data-path="predios.${p.id}.fracao" ${p.fracao?'checked':''}> Fração</label></div>
+        </div>
+        ${p.fracao ? `
+          <div class="row" style="grid-template-columns:120px 1fr;margin:10px 0 0;align-items:end">
+            <div><label>Fração</label>${inp('predios.'+p.id+'.letra', p.letra, 'ex.: A')}</div>
+            <div class="note">Verifique «Selecionar frações» no portal.</div>
+          </div>` : ''}
+      </div>`).join('') || '<div class="empty">Adicione o(s) prédio(s).</div>';
+  }
+
+  function renderSujeitos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+    const box = $('#sujeitos');
+    if(!state.atos.length){ box.innerHTML='<div class="empty">Os sujeitos aparecem depois de adicionar atos.</div>'; return; }
+    box.innerHTML = state.atos.map((a,i) => `
+      <div class="card" data-id="${a.id}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h3 style="margin:0">Ato ${i+1} — ${esc(a.facto) || '<i>sem designação</i>'}</h3>
+          <button class="btn small" data-addsuj="${a.id}">+ Sujeito</button>
+        </div>
+        ${a.sujeitos.map(s => {
+          const col = isColetiva(s.nif);
+          const casado = /^casad/i.test(s.estado);
+          return `
+          <div class="card" data-id="${s.id}" data-ato="${a.id}">
+            <button class="btn x" data-del="suj">×</button>
+            <div class="row" style="grid-template-columns:110px 160px 1fr;margin:0;padding-right:36px;align-items:end">
+              <div><label>Interveniente</label>
+                <select data-path="suj.${a.id}.${s.id}.tipo">
+                  <option ${s.tipo==='Passivo'?'selected':''}>Passivo</option>
+                  <option ${s.tipo==='Ativo'?'selected':''}>Ativo</option>
+                </select></div>
+              <div><label>NIF / NIPC</label>${inp('suj.'+a.id+'.'+s.id+'.nif', s.nif, '', 'text', 'inputmode="numeric" maxlength="9" class="copy" title="clicar para copiar"')}</div>
+              ${col ? `<div class="hint" style="padding-bottom:8px">Pessoa coletiva — sem estado civil.</div>` : `
+              <div><label>Estado civil</label>
+                <select data-path="suj.${a.id}.${s.id}.estado">
+                  <option value="">-- Escolha --</option>
+                  ${ESTADOS.map(e => `<option ${s.estado===e?'selected':''}>${e}</option>`).join('')}
+                </select></div>`}
+            </div>
+            ${(!col && casado) ? `
+            <div class="row" style="grid-template-columns:1fr 160px;margin:10px 0 0">
+              <div><label>Regime de bens</label>
+                <select data-path="suj.${a.id}.${s.id}.regime">
+                  <option value="">-- Escolha --</option>
+                  ${REGIMES.map(r => `<option ${s.regime===r?'selected':''}>${r}</option>`).join('')}
+                </select></div>
+              <div><label>NIF do cônjuge</label>${inp('suj.'+a.id+'.'+s.id+'.nifConjuge', s.nifConjuge, '', 'text', 'inputmode="numeric" maxlength="9" class="copy" title="clicar para copiar"')}</div>
+            </div>` : ''}
+          </div>`;}).join('') || '<div class="empty">Sem sujeitos.</div>'}
+      </div>`).join('');
+  }
+
+  function renderAll(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+    $('#dataDoc').value = state.dataDoc;
+    $('input[name=legit][value="'+state.legit+'"]').checked = true;
+    $('input[name=tipoEsc][value="'+state.tipoEsc+'"]').checked = true; applyTipoEsc();
+    $('#codDPA').value = state.codDPA;
+    $('#valorPredial').value = state.valorPredial; $('#valorPredial2').value = state.valorPredial2;
+    $('input[name=isencao][value="'+state.isencao+'"]').checked = true;
+    $('#isencaoBox').hidden = state.isencao !== 'outras';
+    $('#isencaoTipo').value = state.isencaoTipo;
+    $('#isencaoOutra').value = state.isencaoOutra; $('#isencaoOutraBox').hidden = state.isencaoTipo !== 'outra';
+    $('#decl').value = state.decl; updateCount();
+    $('#submetido').checked = !!state.submetido; $('#submetidoBox').hidden = !state.submetido; $('#estadoCard').style.background = state.submetido ? '#e7efe6' : '';
+    $('#dataSub').value = state.dataSub; $('#obsSub').value = state.obsSub; $('#mbEnt').value = state.mbEnt; $('#mbRef').value = state.mbRef; $('#mbVal').value = state.mbVal; renderMB();
+    renderDocs(); renderAtos(); renderPredios();
+  }
+  function updateCount(){ const n=$('#decl').value.length; const c=$('#declCount'); c.textContent=n+'/4000'; c.classList.toggle('over', n>=4000); }
+
+  /* ---------- lookups ---------- */
+  const findAto = id => state.atos.find(a=>a.id===id);
+  function setPath(path, value){
+    const p = path.split('.');
+    switch(p[0]){
+      case 'docs': { const d=state.docs.find(x=>x.id===p[1]); if(d) d[p[2]]=value; break; }
+      case 'atos': { const a=findAto(p[1]); if(!a) break; a[p[2]]=value; if(p[2]==='cancelamentos'||p[2]==='valor') renderAtos(); if(p[2]==='facto') renderSujeitos(); break; }
+      case 'canc': { const a=findAto(p[1]); const c=a&&a.cancs.find(x=>x.id===p[2]); if(c){ c[p[3]]=value; if(p[3]==='valor') renderTotals(); } break; }
+      case 'predios': { const pr=state.predios.find(x=>x.id===p[1]); if(pr){ pr[p[2]]=value; if(p[2]==='fracao') renderPredios(); } break; }
+      case 'suj': { const a=findAto(p[1]); const s=a&&a.sujeitos.find(x=>x.id===p[2]); if(s){ s[p[3]]=value; if(p[3]==='nif'||p[3]==='estado'){ if(p[3]==='nif'){ const was=s._col; s._col=isColetiva(value); if(was!==s._col) renderSujeitos(); } else renderSujeitos(); } } break; }
+    }
+  }
+
+  /* ---------- events ---------- */
+  const root = $('#mapa');
+  root.addEventListener('input', e => {
+    const t = e.target;
+    if(t.dataset.path){ setPath(t.dataset.path, t.type==='checkbox' ? t.checked : t.value); return; }
+    if(t.id==='dataDoc'){ state.dataDoc=t.value; state.atos.forEach(a=>{ if(!a.data) a.data=t.value; }); }
+    if(t.id==='codDPA') state.codDPA=t.value;
+    if(t.id==='valorPredial'){ state.valorPredial=t.value; renderTotals(); }
+    if(t.id==='valorPredial2'){ state.valorPredial2=t.value; renderTotals(); }
+    if(t.id==='decl'){ state.decl=t.value; updateCount(); }
+    if(t.id==='isencaoOutra') state.isencaoOutra=t.value;
+    if(t.id==='dataSub') state.dataSub=t.value;
+    if(t.id==='mbEnt') state.mbEnt=t.value;
+    if(t.id==='mbRef') state.mbRef=t.value;
+    if(t.id==='mbVal'){ state.mbVal=t.value; renderMB(); }
+    if(t.id==='obsSub') state.obsSub=t.value;
+  });
+  root.addEventListener('change', e => {
+    const t=e.target;
+    if(t.name==='legit') state.legit=t.value;
+    if(t.name==='tipoEsc'){ state.tipoEsc=t.value; applyTipoEsc(); }
+    if(t.id==='submetido'){ state.submetido=t.checked; $('#submetidoBox').hidden=!t.checked; $('#estadoCard').style.background = t.checked ? '#e7efe6' : ''; if(t.checked && !state.dataSub){ state.dataSub=new Date().toISOString().slice(0,10); $('#dataSub').value=state.dataSub; } }
+    if(t.name==='isencao'){ state.isencao=t.value; $('#isencaoBox').hidden = t.value!=='outras'; if(t.value!=='outras'){ state.isencaoTipo=''; state.isencaoOutra=''; $('#isencaoTipo').value=''; $('#isencaoOutra').value=''; $('#isencaoOutraBox').hidden=true; } renderTotals(); }
+    if(t.id==='isencaoTipo'){ state.isencaoTipo=t.value; $('#isencaoOutraBox').hidden = t.value!=='outra'; if(t.value!=='outra'){ state.isencaoOutra=''; $('#isencaoOutra').value=''; } renderTotals(); }
+    if(t.dataset.path && t.tagName==='SELECT') setPath(t.dataset.path, t.value);
+  });
+  root.addEventListener('click', e => {
+    const t=e.target;
+    if(t.id==='addDoc'){ state.docs.push(newDoc()); renderDocs(); focusLast('#docs'); return; }
+    if(t.id==='addAto'){ state.atos.push(newAto()); renderAtos(); focusLast('#atos'); return; }
+    if(t.id==='addPredio'){ state.predios.push(newPredio()); renderPredios(); focusLast('#predios'); return; }
+    if(t.dataset.addcanc){ findAto(t.dataset.addcanc).cancs.push(newCanc()); renderAtos(); return; }
+    if(t.dataset.addsuj){ findAto(t.dataset.addsuj).sujeitos.push(newSujeito()); renderSujeitos(); return; }
+    if(t.dataset.del){
+      const card=t.closest('.card'); const id=card.dataset.id;
+      switch(t.dataset.del){
+        case 'doc': state.docs=state.docs.filter(x=>x.id!==id); renderDocs(); break;
+        case 'ato': if(confirm('Remover este ato e os seus sujeitos?')){ state.atos=state.atos.filter(x=>x.id!==id); renderAtos(); } break;
+        case 'canc': { const a=findAto(card.dataset.ato); a.cancs=a.cancs.filter(x=>x.id!==id); renderAtos(); break; }
+        case 'predio': state.predios=state.predios.filter(x=>x.id!==id); renderPredios(); break;
+        case 'suj': { const a=findAto(card.dataset.ato); a.sujeitos=a.sujeitos.filter(x=>x.id!==id); renderSujeitos(); break; }
+      }
+      return;
+    }
+    if(t.classList.contains('copy') && t.value){
+      navigator.clipboard && navigator.clipboard.writeText(t.value).then(()=>{ t.classList.add('flash'); setTimeout(()=>t.classList.remove('flash'),500); });
+    }
+    if(t.id==='btnEmail'){ pedirPagamento(); return; }
+    if(t.id==='btnPrint') window.print();
+    if(t.id==='btnSave'){ const d=getData(); root.dispatchEvent(new CustomEvent('mapa:save',{detail:d,bubbles:true})); if(d.submetido) root.dispatchEvent(new CustomEvent('mapa:submetido',{detail:{dataSub:d.dataSub, obsSub:d.obsSub, mbEnt:d.mbEnt, mbRef:d.mbRef, mbVal:d.mbVal, total:totalGeral(), estado:'Apresentado'},bubbles:true})); }
+    if(t.id==='btnCancel') root.dispatchEvent(new CustomEvent('mapa:cancel',{bubbles:true}));
+  });
+  function focusLast(sel){ const cards=document.querySelectorAll(sel+' > .card'); const last=cards[cards.length-1]; const f=last&&last.querySelector('input,select'); if(f) f.focus(); }
+
+  /* ---------- e-mail ao financeiro ---------- */
+  const config = { cc:'', assunto:'PAGAMENTO REGISTOS', emails:{ CGD:'dpacx@costafreitas.pt', Particular:'liliana.cardoso@lbc-solicitadora.pt' } };
+  function applyTipoEsc(){ const el=$('#emailDest'); if(el) el.value = config.emails[state.tipoEsc] || el.value; }
+  function pedirPagamento(){
+    const linhas = [state.tipoEsc + ' - Solicito pagamento.'];
+    const url = 'mailto:' + encodeURIComponent($('#emailDest').value)
+      + '?subject=' + encodeURIComponent(config.assunto + (state.ref ? ' — ' + state.ref : ''))
+      + (config.cc ? '&cc=' + encodeURIComponent(config.cc) : '')
+      + '&body=' + encodeURIComponent(linhas.join('\r\n'));
+    window.location.href = url;
+  }
+
+  /* ---------- public API ---------- */
+  function getData(){ const d=JSON.parse(JSON.stringify(state)); d.atos.forEach(a=>a.sujeitos.forEach(s=>delete s._col)); d.doisPedidos = isJovem() && hasCanc(); d.totalAtos=Number($('#totalAtos').textContent.replace(/\./g,'').replace(',','.')); if(d.doisPedidos) d.totalCanc=Number($('#totalCanc').textContent.replace(/\./g,'').replace(',','.')); return d; }
+  function setData(d){
+    Object.assign(state, {docs:[],atos:[],predios:[]}, d||{});
+    state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
+    renderAll();
+  }
+  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD'}); }
+  window.MapaRegisto = {getData, setData, reset, state, config, pedirPagamento};
+
+  /* modo colaboradora */
+  let RO=false;
+  function setModo(m){ RO = (m==='colaboradora'); root.classList.toggle('ro', RO); root.querySelectorAll('.ro-lock input:not([type=checkbox]):not([type=radio]), .ro-lock select, .ro-lock textarea').forEach(el=>{ if(el.id==='valorPredial'||el.id==='valorPredial2') return; el.readOnly=RO; if(el.tagName==='SELECT') el.disabled=RO; }); }
+  const _renderAll = renderAll;
+  root.addEventListener('click', e => { if(RO && e.target.matches('.ro-lock input[type=text]') && e.target.value && navigator.clipboard){ navigator.clipboard.writeText(e.target.value); e.target.classList.add('flash'); setTimeout(()=>e.target.classList.remove('flash'),500); } }, true);
+  window.addEventListener('mapa:rendered', ()=>{ if(RO) setModo('colaboradora'); });
+  window.MapaRegisto.setModo = setModo;
+  /* hooks used by the list */
+  root.addEventListener('click', e => { if(e.target.id==='btnVoltar') root.dispatchEvent(new CustomEvent('mapa:voltar',{bubbles:true})); });
+  reset();
+})();
+
+/* ══════════ LISTA DE REGISTOS ══════════ */
+(function(){
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const fmt = n => (Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const dpt = d => d ? d.split('-').reverse().join('/') : '—';
+  let ITEMS = [];      // [{id, escrituraId, cliente, entidade, dataEscritura, ref, mapa:{…getData shape…}}]
+  let atual = null;
+  const onSave = [];
+  let MODO = 'portal';   // 'portal' (edição total) | 'colaboradora' (só bloco 7)
+
+  const tipoEsc = ent => (ent||'').toUpperCase()==='CGD' ? 'CGD' : 'Particular';
+  const estado = it => it.mapa && it.mapa.submetido ? 'sub' : 'pend';
+  const totalDe = m => { let t=0; (m.atos||[]).forEach(a=>{ t+=Number(a.valor)||0; if(a.cancelamentos) (a.cancs||[]).forEach(c=>t+=Number(c.valor)||0); }); return t; };
+
+  function render(){
+    const q=($('#fTexto').value||'').toLowerCase(), de=$('#fDe').value, ate=$('#fAte').value, fe=$('#fEstado').value;
+    const rows = ITEMS.filter(it => {
+      if(de && it.dataEscritura < de) return false;
+      if(ate && it.dataEscritura > ate) return false;
+      if(fe && estado(it)!==fe) return false;
+      if(q){ const hay=[it.cliente,it.ref,(it.mapa.predios||[]).map(p=>p.numero+' '+p.freguesia+' '+p.concelho).join(' ')].join(' ').toLowerCase(); if(!hay.includes(q)) return false; }
+      return true;
+    }).sort((a,b)=> (estado(a)>estado(b)?1:estado(a)<estado(b)?-1:0) || (a.dataEscritura<b.dataEscritura?1:-1));
+    const nPend = ITEMS.filter(i=>estado(i)==='pend').length;
+    $('#resumo').innerHTML = `<span>Por submeter: <b>${nPend}</b></span><span>Submetidos: <b>${ITEMS.length-nPend}</b></span><span>A mostrar: <b>${rows.length}</b></span>`;
+    $('#linhas').innerHTML = rows.map(it => {
+      const m=it.mapa, st=estado(it);
+      return `<tr class="${st}" data-id="${it.id}">
+        <td><b>${dpt(it.dataEscritura)}</b><br><span class="hint">${it.ref||''}</span></td>
+        <td>${it.cliente||'—'}</td>
+        <td>${it.entidade||'—'}</td>
+        <td>${(m.predios||[]).map(p=>(p.numero||'—')+(p.fracao&&p.letra?'-'+p.letra:'')+' '+(p.freguesia||'')).join('<br>')||'—'}</td>
+        <td>${(m.atos||[]).map(a=>a.facto||'—').join('<br>')||'—'}</td>
+        <td class="num">${fmt(totalDe(m))} €</td>
+        <td>${st==='sub' ? '<span class="pill sub">Submetido'+(m.dataSub?' · '+dpt(m.dataSub):'')+'</span>' : '<span class="pill pend">Por submeter</span>'}</td>
+      </tr>`;}).join('') || '<tr><td colspan="7" class="empty" style="border-left:none;background:transparent">Sem registos para os critérios escolhidos.</td></tr>';
+  }
+
+  function abrir(id){
+    atual = ITEMS.find(i=>i.id===id); if(!atual) return;
+    const m = Object.assign({tipoEsc: tipoEsc(atual.entidade), ref: atual.ref||''}, atual.mapa);
+    window.MapaRegisto.setData(m); window.MapaRegisto.setModo(MODO);
+    $('#mapaTitulo').textContent = (atual.cliente||'') + ' — escritura de ' + dpt(atual.dataEscritura);
+    const st=estado(atual); const pill=$('#mapaEstado'); pill.className='pill '+st; pill.textContent = st==='sub'?'Submetido':'Por submeter';
+    $('#lista').hidden = true; $('#mapa').hidden = false; window.scrollTo(0,0);
+  }
+  function voltar(){ $('#mapa').hidden = true; $('#lista').hidden = false; atual=null; render(); }
+
+  $('#linhas').addEventListener('click', e => { const tr=e.target.closest('tr[data-id]'); if(tr) abrir(tr.dataset.id); });
+  ['#fTexto','#fDe','#fAte','#fEstado'].forEach(s => $(s).addEventListener('input', render));
+  $('#fLimpar').addEventListener('click', () => { ['#fTexto','#fDe','#fAte','#fEstado'].forEach(s=>$(s).value=''); render(); });
+  document.addEventListener('mapa:voltar', voltar);
+  document.addEventListener('mapa:cancel', voltar);
+  document.addEventListener('mapa:save', e => {
+    if(!atual) return;
+    atual.mapa = e.detail;
+    onSave.forEach(fn => fn(atual));          // Portal: gravar em RegistoPedidos / Escritura_Listagem
+    voltar();
+  });
+
+  window.RegistosLista = {
+    setItems(items){ ITEMS = items.map(i => Object.assign({mapa:{}}, i)); render(); },
+    getItems(){ return ITEMS; },
+    onSave(fn){ onSave.push(fn); },
+    setModo(m){ MODO = m; },
+    abrir, voltar
+  };
+
+  /* ══════════ SHAREPOINT (Microsoft Graph) ══════════ */
+  const CLIENT_ID='b8c4dff7-b11e-47c1-ab81-4f0e7a8dfc1b';
+  const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
+  const REDIRECT='https://lililbc.github.io/portal-lbc/indexregistos.html';
+  const SCOPES=['Sites.ReadWrite.All','User.Read'];
+  const GRAPH='https://graph.microsoft.com/v1.0';
+  const TENANT_HOST='lbcsolicitadorapt.sharepoint.com', SITE_PATH='sites/lbcsolicitadora2';
+  const LP='RegistoPedidos', LE='Escritura_Listagem';
+  const P={titulo:'Title',escrituraId:'EscrituraId',cliente:'Cliente',data:'DataRegisto',regime:'Regime',codigos:'CodigosUsar',entidade:'EntidadeMB',referencia:'ReferenciaMB',valor:'ValorPedido',estado:'EstadoPedido',notas:'NotasPedido',atos:'AtosJSON'};
+  const E={nome:'Nome_Cliente',entidade:'Entidade',data:'DataEscritura',titulo:'Title'};
+  /* Contas que abrem em modo colaboradora (blocos 1–6 só de leitura). As restantes abrem em modo completo. */
+  const COLABORADORAS=['isa.guerra@lbc-solicitadora.pt'];
+
+  let msalApp=null, conta=null, token=null, siteId=null, idPed=null;
+  const toast=(m,err)=>{const t=$('#toast');t.textContent=m;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',3500);};
+
+  async function renovar(){ try{const r=await msalApp.acquireTokenSilent({scopes:SCOPES,account:conta});token=r.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});} }
+  async function gGet(url){ await renovar(); const r=await fetch(url,{headers:{Authorization:'Bearer '+token,Accept:'application/json'}}); if(!r.ok)throw new Error('Erro '+r.status+': '+await r.text()); return r.json(); }
+  async function gGetAll(url){ let out=[],u=url,n=0; while(u&&n++<40){const j=await gGet(u);out=out.concat(j.value||[]);u=j['@odata.nextLink'];} return out; }
+  async function gPatch(url,body){ await renovar(); const r=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok)throw new Error('Erro '+r.status+': '+await r.text()); }
+
+  window.tentarLogin=async function(){ if(!msalApp){toast('A carregar… tenta outra vez',true);return;} try{await msalApp.loginRedirect({scopes:SCOPES});}catch(e){const el=$('#loginErr');el.hidden=false;el.textContent='Erro: '+e.message;} };
+  window.fazerLogout=()=>msalApp.logoutRedirect();
+
+  async function carregarTudo(){
+    $('#linhas').innerHTML='<tr><td colspan="7" class="carregando" style="border:none;background:transparent">A carregar registos…</td></tr>';
+    const site=await gGet(`${GRAPH}/sites/${TENANT_HOST}:/${SITE_PATH}`); siteId=site.id;
+    const listas=await gGetAll(`${GRAPH}/sites/${siteId}/lists?$select=id,name,displayName&$top=200`);
+    const acha=n=>listas.find(l=>l.name===n||l.displayName===n)?.id; idPed=acha(LP); const idEsc=acha(LE);
+    if(!idPed||!idEsc)throw new Error('Listas não encontradas');
+    const [peds,escs]=await Promise.all([
+      gGetAll(`${GRAPH}/sites/${siteId}/lists/${idPed}/items?$expand=fields&$top=500`),
+      gGetAll(`${GRAPH}/sites/${siteId}/lists/${idEsc}/items?$expand=fields($select=${[E.titulo,E.nome,E.entidade,E.data].join(',')})&$top=999`)
+    ]);
+    const porId={}; escs.forEach(x=>{porId[String(x.id)]=x.fields||{};});
+    const items=peds.map(x=>{
+      const f=x.fields||{}, e=porId[String(f[P.escrituraId])]||{};
+      let m={}; try{m=JSON.parse(f[P.atos]||'{}');}catch(err){m={};}
+      if(f[P.estado]==='Submetido')m.submetido=true;
+      return {id:x.id, escrituraId:f[P.escrituraId], cliente:f[P.cliente]||e[E.nome]||'', entidade:e[E.entidade]||'', dataEscritura:(e[E.data]||m.dataDoc||'').substring(0,10), ref:(e[E.titulo]?e[E.titulo]+' · ':'')+(f[P.titulo]||''), mapa:m};
+    });
+    window.RegistosLista.setItems(items);
+  }
+
+  window.RegistosLista.onSave(async it=>{
+    const d=it.mapa;
+    const b={[P.regime]:d.isencao==='outras'?'Isento':'Normal',[P.estado]:d.submetido?'Submetido':'Por submeter',
+      [P.codigos]:[d.codDPA,...(d.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),
+      [P.entidade]:d.mbEnt||'',[P.referencia]:d.mbRef||'',[P.valor]:Number(d.mbVal)||totalDe(d),
+      [P.notas]:[d.decl,d.obsSub].filter(Boolean).join('\n'),[P.atos]:JSON.stringify(d),[P.data]:d.dataSub?d.dataSub+'T12:00:00Z':null};
+    try{ await gPatch(`${GRAPH}/sites/${siteId}/lists/${idPed}/items/${it.id}/fields`,b); toast('Guardado'); }
+    catch(e){ toast('Erro ao guardar: '+e.message,true); }
+  });
+
+  async function entrar(){
+    $('#login').hidden=true; $('#app').hidden=false;
+    $('#hdrUser').textContent=conta.username;
+    window.RegistosLista.setModo(COLABORADORAS.includes((conta.username||'').toLowerCase())?'colaboradora':'portal');
+    try{ await carregarTudo(); }catch(e){ toast(e.message,true); $('#linhas').innerHTML='<tr><td colspan="7" class="carregando" style="border:none;background:transparent">'+e.message+'</td></tr>'; }
+  }
+  (async function init(){
+    msalApp=new msal.PublicClientApplication({auth:{clientId:CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT_ID,redirectUri:REDIRECT},cache:{cacheLocation:'sessionStorage'}});
+    await msalApp.initialize();
+    const resp=await msalApp.handleRedirectPromise().catch(()=>null);
+    if(resp){conta=resp.account;token=resp.accessToken;await entrar();return;}
+    const cs=msalApp.getAllAccounts(); if(cs.length){conta=cs[0];await renovar();await entrar();}
+  })();
+})();
+</script>
+</body>
+</html>
