@@ -14631,7 +14631,8 @@ const CSS=`
 .rc-pill.pend{background:#FBE9C9;color:#8A5A00}.rc-pill.ok{background:#E7EFE6;color:#4F7A5A}
 .rc-meta{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-size:11px;color:var(--text-muted)}
 .rc-meta b{color:var(--text-faint);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;margin-right:3px}
-#rc-modal{max-width:960px;width:96%;padding:1rem 1.25rem}
+#rc-ov{z-index:1200}
+#rc-modal{max-width:1100px!important;width:96vw!important;padding:1rem 1.5rem;max-height:calc(100vh - 2rem)}
 #rc-mapa-titulo{font-size:13px;font-weight:600;margin-bottom:.4rem;color:var(--text-muted)}
 `;
 function instalar(){
@@ -14645,8 +14646,13 @@ function instalar(){
       <div class="field-label">Notas gerais do registo</div>
       <textarea class="form-textarea" id="p-regNotas" rows="2" placeholder="—" style="width:100%"></textarea>
     </div>
-    <div class="modal-overlay" id="rc-ov"><div class="modal-box" id="rc-modal"><div id="rc-mapa-titulo"></div><div id="rc-mapa-host"></div></div></div>`;
+`;
   (obs.closest('.field-group')||obs.parentNode).insertAdjacentElement('afterend',bloco);
+  /* O modal vai para o body: dentro do painel lateral (que tem transform) um
+     position:fixed fica preso à largura do painel e o mapa sai apertado. */
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='rc-ov';
+  ov.innerHTML=`<div class="modal-box" id="rc-modal"><div id="rc-mapa-titulo"></div><div id="rc-mapa-host"></div></div>`;
+  document.body.appendChild(ov);
   $('rc-ov').addEventListener('click',e=>{if(e.target===$('rc-ov'))fechar();});
   const tg=$('p-regPedido'); if(tg)tg.addEventListener('change',rotuloToggle);
 
