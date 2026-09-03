@@ -14189,7 +14189,7 @@ function mountMapaRegisto(ROOT){
   /* ---------- factories ---------- */
   const newDoc = () => ({id:uid(), codigo:'', descricao:''});
   const newCanc = () => ({id:uid(), ap:'', data:'', facto:'', valor:''});
-  const newSujeito = () => ({id:uid(), tipo:'Passivo', nif:'', estado:'', regime:'', nifConjuge:''});
+  const newSujeito = () => ({id:uid(), tipo:'Passivo', nif:'', estado:'', regime:'', nifConjuge:'', _col:false});
   const newAto = () => ({id:uid(), facto:'', data:state.dataDoc, valor:'', cancelamentos:false, cancs:[], sujeitos:[newSujeito(), Object.assign(newSujeito(),{tipo:'Ativo'})]});
   const newPredio = () => ({id:uid(), concelho:'', freguesia:'', numero:'', fracao:false, letra:''});
 
@@ -14197,7 +14197,7 @@ function mountMapaRegisto(ROOT){
   const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const inp = (path, val, ph='', type='text', extra='') => `<input type="${type}" data-path="${path}" value="${esc(val)}" placeholder="${esc(ph)}" ${extra}>`;
 
-  function renderDocs(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderDocs(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#mr-docs');
     box.innerHTML = state.docs.map(d => `
       <div class="card" data-id="${d.id}">
@@ -14209,7 +14209,7 @@ function mountMapaRegisto(ROOT){
       </div>`).join('') || '<div class="empty">Sem documentos adicionais (distrates, procurações…).</div>';
   }
 
-  function renderAtos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderAtos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#mr-atos');
     box.innerHTML = state.atos.map((a,i) => `
       <div class="card" data-id="${a.id}">
@@ -14273,7 +14273,7 @@ function mountMapaRegisto(ROOT){
   function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) a.cancs.forEach(c=>t+=num(c.valor)); }); return t; }
   function renderMB(){ const el=$('#mr-statusMB'); if(!el) return; statusOf(el, totalGeral(), state.mbVal); el.textContent = el.textContent.replace('Sem valor do Predial','Sem valor'); }
 
-  function renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#mr-predios');
     box.innerHTML = state.predios.map(p => `
       <div class="card" data-id="${p.id}">
@@ -14292,7 +14292,7 @@ function mountMapaRegisto(ROOT){
       </div>`).join('') || '<div class="empty">Adicione o(s) prédio(s).</div>';
   }
 
-  function renderSujeitos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderSujeitos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#mr-sujeitos');
     if(!state.atos.length){ box.innerHTML='<div class="empty">Os sujeitos aparecem depois de adicionar atos.</div>'; return; }
     box.innerHTML = state.atos.map((a,i) => `
@@ -14334,6 +14334,18 @@ function mountMapaRegisto(ROOT){
       </div>`).join('');
   }
 
+
+  /* Mantém o cursor no campo em que se estava a escrever quando uma secção é redesenhada. */
+  function keepFocus(fn){
+    const a=document.activeElement; const path=a&&a.dataset?a.dataset.path:null; let pos=null;
+    if(path){ try{ pos=a.selectionStart; }catch(e){} }
+    fn();
+    if(path){ const el=(s=>ROOT.querySelector(s))(`[data-path="${path}"]`); if(el&&el!==document.activeElement){ el.focus(); if(pos!=null){ try{ el.setSelectionRange(pos,pos); }catch(e){} } } }
+  }
+  function renderDocs(){ keepFocus(_renderDocs); }
+  function renderAtos(){ keepFocus(_renderAtos); }
+  function renderPredios(){ keepFocus(_renderPredios); }
+  function renderSujeitos(){ keepFocus(_renderSujeitos); }
   function renderAll(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     $('#mr-dataDoc').value = state.dataDoc;
     $('input[name=mr-legit][value="'+state.legit+'"]').checked = true;

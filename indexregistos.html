@@ -102,7 +102,7 @@
   .pill.sub{background:#e7efe6;color:#4f7a5a}
   .lista{max-width:1000px;margin:0 auto;padding:16px 20px 60px}
   .lista h1{font-family:Georgia,serif;font-size:22px;font-weight:600;margin:6px 0 14px;color:var(--ink)}
-  .filtros{display:grid;grid-template-columns:1fr 150px 150px 160px auto;gap:10px;align-items:end;background:var(--panel);padding:12px 14px;border-radius:var(--radius);margin-bottom:14px}
+  .filtros{display:grid;grid-template-columns:1fr 190px 150px 150px auto;gap:10px;align-items:end;background:var(--panel);padding:12px 14px;border-radius:var(--radius);margin-bottom:14px}
   .resumo{display:flex;gap:18px;font-size:13px;color:var(--muted);margin:0 0 10px 2px}
   .resumo b{color:var(--ink)}
   table.reg{width:100%;border-collapse:separate;border-spacing:0 6px}
@@ -139,10 +139,10 @@
   <h1>Registos prediais</h1>
   <div class="filtros">
     <div><label for="fTexto">Cliente / referência / prédio</label><input type="text" id="fTexto" placeholder="pesquisar…"></div>
-    <div><label for="fDe">Data da escritura de</label><input type="date" id="fDe"></div>
+    <div><label for="fDe"><select id="fTipoData" style="width:auto;padding:0 4px;border:none;background:transparent;font:inherit;font-size:11px;font-weight:600;color:var(--muted)"><option value="esc">Data da escritura</option><option value="sub">Data de submissão</option></select> de</label><input type="date" id="fDe"></div>
     <div><label for="fAte">até</label><input type="date" id="fAte"></div>
     <div><label for="fEstado">Estado</label><select id="fEstado"><option value="">Todos</option><option value="pend">Por submeter</option><option value="sub">Submetidos</option></select></div>
-    <div><button class="btn" id="fLimpar">Limpar</button></div>
+    <div style="display:flex;gap:6px"><button class="btn" id="fLimpar">Limpar</button><button class="btn" id="fExcel" title="Exporta as linhas visíveis (cliente, referência MB, valor…)">⭳ Excel</button></div>
   </div>
   <div class="resumo" id="resumo"></div>
   <table class="reg">
@@ -284,6 +284,7 @@
 </div>
 </div><!-- /app -->
 <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
   'use strict';
@@ -304,7 +305,7 @@
   /* ---------- factories ---------- */
   const newDoc = () => ({id:uid(), codigo:'', descricao:''});
   const newCanc = () => ({id:uid(), ap:'', data:'', facto:'', valor:''});
-  const newSujeito = () => ({id:uid(), tipo:'Passivo', nif:'', estado:'', regime:'', nifConjuge:''});
+  const newSujeito = () => ({id:uid(), tipo:'Passivo', nif:'', estado:'', regime:'', nifConjuge:'', _col:false});
   const newAto = () => ({id:uid(), facto:'', data:state.dataDoc, valor:'', cancelamentos:false, cancs:[], sujeitos:[newSujeito(), Object.assign(newSujeito(),{tipo:'Ativo'})]});
   const newPredio = () => ({id:uid(), concelho:'', freguesia:'', numero:'', fracao:false, letra:''});
 
@@ -312,7 +313,7 @@
   const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const inp = (path, val, ph='', type='text', extra='') => `<input type="${type}" data-path="${path}" value="${esc(val)}" placeholder="${esc(ph)}" ${extra}>`;
 
-  function renderDocs(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderDocs(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#docs');
     box.innerHTML = state.docs.map(d => `
       <div class="card" data-id="${d.id}">
@@ -324,7 +325,7 @@
       </div>`).join('') || '<div class="empty">Sem documentos adicionais (distrates, procurações…).</div>';
   }
 
-  function renderAtos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderAtos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#atos');
     box.innerHTML = state.atos.map((a,i) => `
       <div class="card" data-id="${a.id}">
@@ -388,7 +389,7 @@
   function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) a.cancs.forEach(c=>t+=num(c.valor)); }); return t; }
   function renderMB(){ const el=$('#statusMB'); if(!el) return; statusOf(el, totalGeral(), state.mbVal); el.textContent = el.textContent.replace('Sem valor do Predial','Sem valor'); }
 
-  function renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#predios');
     box.innerHTML = state.predios.map(p => `
       <div class="card" data-id="${p.id}">
@@ -407,7 +408,7 @@
       </div>`).join('') || '<div class="empty">Adicione o(s) prédio(s).</div>';
   }
 
-  function renderSujeitos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
+  function _renderSujeitos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     const box = $('#sujeitos');
     if(!state.atos.length){ box.innerHTML='<div class="empty">Os sujeitos aparecem depois de adicionar atos.</div>'; return; }
     box.innerHTML = state.atos.map((a,i) => `
@@ -449,6 +450,18 @@
       </div>`).join('');
   }
 
+
+  /* Mantém o cursor no campo em que se estava a escrever quando uma secção é redesenhada. */
+  function keepFocus(fn){
+    const a=document.activeElement; const path=a&&a.dataset?a.dataset.path:null; let pos=null;
+    if(path){ try{ pos=a.selectionStart; }catch(e){} }
+    fn();
+    if(path){ const el=(s=>document.querySelector(s))(`[data-path="${path}"]`); if(el&&el!==document.activeElement){ el.focus(); if(pos!=null){ try{ el.setSelectionRange(pos,pos); }catch(e){} } } }
+  }
+  function renderDocs(){ keepFocus(_renderDocs); }
+  function renderAtos(){ keepFocus(_renderAtos); }
+  function renderPredios(){ keepFocus(_renderPredios); }
+  function renderSujeitos(){ keepFocus(_renderSujeitos); }
   function renderAll(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
     $('#dataDoc').value = state.dataDoc;
     $('input[name=legit][value="'+state.legit+'"]').checked = true;
@@ -575,7 +588,7 @@
   const fmt = n => (num(n)).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
   const dpt = d => d ? d.split('-').reverse().join('/') : '—';
   let ITEMS = [];      // [{id, escrituraId, cliente, entidade, dataEscritura, ref, mapa:{…getData shape…}}]
-  let atual = null;
+  let atual = null, VISIVEIS = [];
   const onSave = [];
   let MODO = 'portal';   // 'portal' (edição total) | 'colaboradora' (só bloco 7)
 
@@ -584,14 +597,17 @@
   const totalDe = m => { let t=0; (m.atos||[]).forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) (a.cancs||[]).forEach(c=>t+=num(c.valor)); }); return t; };
 
   function render(){
-    const q=($('#fTexto').value||'').toLowerCase(), de=$('#fDe').value, ate=$('#fAte').value, fe=$('#fEstado').value;
+    const q=($('#fTexto').value||'').toLowerCase(), de=$('#fDe').value, ate=$('#fAte').value, fe=$('#fEstado').value, td=$('#fTipoData').value;
+    const dataDe = it => td==='sub' ? (it.mapa.dataSub||'') : it.dataEscritura;
     const rows = ITEMS.filter(it => {
-      if(de && it.dataEscritura < de) return false;
-      if(ate && it.dataEscritura > ate) return false;
+      const dd=dataDe(it);
+      if(de && (!dd || dd < de)) return false;
+      if(ate && (!dd || dd > ate)) return false;
       if(fe && estado(it)!==fe) return false;
       if(q){ const hay=[it.cliente,it.ref,(it.mapa.predios||[]).map(p=>p.numero+' '+p.freguesia+' '+p.concelho).join(' ')].join(' ').toLowerCase(); if(!hay.includes(q)) return false; }
       return true;
     }).sort((a,b)=> (estado(a)>estado(b)?1:estado(a)<estado(b)?-1:0) || (a.dataEscritura<b.dataEscritura?1:-1));
+    VISIVEIS = rows;
     const nPend = ITEMS.filter(i=>estado(i)==='pend').length;
     $('#resumo').innerHTML = `<span>Por submeter: <b>${nPend}</b></span><span>Submetidos: <b>${ITEMS.length-nPend}</b></span><span>A mostrar: <b>${rows.length}</b></span>`;
     $('#linhas').innerHTML = rows.map(it => {
@@ -618,8 +634,24 @@
   function voltar(){ $('#mapa').hidden = true; $('#lista').hidden = false; atual=null; render(); }
 
   $('#linhas').addEventListener('click', e => { const tr=e.target.closest('tr[data-id]'); if(tr) abrir(tr.dataset.id); });
-  ['#fTexto','#fDe','#fAte','#fEstado'].forEach(s => $(s).addEventListener('input', render));
-  $('#fLimpar').addEventListener('click', () => { ['#fTexto','#fDe','#fAte','#fEstado'].forEach(s=>$(s).value=''); render(); });
+  function exportarExcel(){
+    if(typeof XLSX==='undefined'){ alert('Biblioteca Excel ainda não carregou — tenta outra vez.'); return; }
+    const linhas = VISIVEIS.map(it => { const m=it.mapa; return {
+      'Data escritura': dpt(it.dataEscritura), 'Referência': it.ref||'', 'Cliente': it.cliente||'', 'Entidade': it.entidade||'',
+      'Prédio(s)': (m.predios||[]).map(p=>(p.numero||'')+(p.fracao&&p.letra?'-'+p.letra:'')+' '+(p.freguesia||'')).join('; '),
+      'Atos': (m.atos||[]).map(a=>a.facto||'').join('; '),
+      'Total atos (€)': totalDe(m),
+      'Entidade MB': m.mbEnt||'', 'Referência MB': m.mbRef||'', 'Valor pago (€)': num(m.mbVal),
+      'Data submissão': dpt(m.dataSub), 'Estado': estado(it)==='sub'?'Submetido':'Por submeter' }; });
+    const ws = XLSX.utils.json_to_sheet(linhas);
+    ws['!cols'] = [12,22,32,12,28,30,14,12,16,14,14,14].map(w=>({wch:w}));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registos');
+    const hoje = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `registos-MB-${hoje}.xlsx`);
+  }
+  $('#fExcel').addEventListener('click', exportarExcel);
+  ['#fTexto','#fDe','#fAte','#fEstado','#fTipoData'].forEach(s => $(s).addEventListener('input', render));
+  $('#fLimpar').addEventListener('click', () => { ['#fTexto','#fDe','#fAte','#fEstado'].forEach(s=>$(s).value=''); $('#fTipoData').value='esc'; render(); });
   document.addEventListener('mapa:voltar', voltar);
   document.addEventListener('mapa:cancel', voltar);
   document.addEventListener('mapa:save', e => {
