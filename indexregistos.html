@@ -231,12 +231,12 @@
       <small>Pedido 1: aquisição e hipoteca (com a isenção). Pedido 2: cancelamentos (sem isenção). Os valores abaixo estão separados por pedido.</small></div>
     <div class="totals">
       <div><label id="lblTotal">Total dos atos (€)</label><div class="big" id="totalAtos">0,00</div></div>
-      <div><label for="valorPredial" id="lblPredial">Valor do Predial (€)</label><input type="number" step="0.01" min="0" id="valorPredial" placeholder="0,00"></div>
+      <div><label for="valorPredial" id="lblPredial">Valor do Predial (€)</label><input type="text" inputmode="decimal" class="num" id="valorPredial" placeholder="0,00"></div>
       <div class="status idle" id="status">Sem valor do Predial</div>
     </div>
     <div class="totals" id="totals2" hidden>
       <div><label>Pedido 2 — total dos cancelamentos (€)</label><div class="big" id="totalCanc">0,00</div></div>
-      <div><label for="valorPredial2">Pedido 2 — valor do Predial (€)</label><input type="number" step="0.01" min="0" id="valorPredial2" placeholder="0,00"></div>
+      <div><label for="valorPredial2">Pedido 2 — valor do Predial (€)</label><input type="text" inputmode="decimal" class="num" id="valorPredial2" placeholder="0,00"></div>
       <div class="status idle" id="status2">Sem valor do Predial</div>
     </div>
 
@@ -260,7 +260,7 @@
       <div class="row" style="grid-template-columns:120px 200px 140px 1fr;margin:0">
         <div><label for="mbEnt">Entidade</label><input type="text" id="mbEnt" inputmode="numeric" maxlength="5" class="copy" title="clicar para copiar"></div>
         <div><label for="mbRef">Referência</label><input type="text" id="mbRef" inputmode="numeric" placeholder="000 000 000" class="copy" title="clicar para copiar"></div>
-        <div><label for="mbVal">Valor pago (€)</label><input type="number" step="0.01" min="0" id="mbVal" placeholder="0,00"></div>
+        <div><label for="mbVal">Valor pago (€)</label><input type="text" inputmode="decimal" class="num" id="mbVal" placeholder="0,00"></div>
         <div><label>&nbsp;</label><div class="status idle" id="statusMB">Sem valor</div></div>
       </div>
       <div class="hint" style="margin-top:4px">O valor pago deve coincidir com o total do bloco 6 — é este que se confere com o extrato bancário.</div>
@@ -291,7 +291,8 @@
   const uid = () => Math.random().toString(36).slice(2,9);
   const REGIMES = ['Comunhão de adquiridos','Comunhão geral','Separação de bens'];
   const ESTADOS = ['Solteiro(a)','Casado(a)','Divorciado(a)','Viúvo(a)','Separado(a) judicialmente'];
-  const fmt = n => (Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = v => { if(v===''||v==null) return 0; const t=String(v).replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'); const n=parseFloat(t); return isNaN(n)?0:n; };
+  const fmt = n => (num(n)).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
   const isColetiva = nif => /^[579]/.test((nif||'').trim());
 
   const state = {
@@ -331,7 +332,7 @@
         <div class="row" style="grid-template-columns:1fr 160px 130px;padding-right:36px">
           <div><label>Facto sujeito a registo</label>${inp('atos.'+a.id+'.facto', a.facto, 'ex.: Aquisição definitiva')}</div>
           <div><label>Data do ato</label>${inp('atos.'+a.id+'.data', a.data, '', 'date')}</div>
-          <div><label>Valor (€)</label>${inp('atos.'+a.id+'.valor', a.valor, '0,00', 'number', 'step="0.01" min="0"')}</div>
+          <div><label>Valor (€)</label>${inp('atos.'+a.id+'.valor', a.valor, '0,00', 'text', 'inputmode="decimal" class="num"')}</div>
         </div>
         <label class="toggle"><input type="checkbox" data-path="atos.${a.id}.cancelamentos" ${a.cancelamentos?'checked':''}> Cancelamentos</label>
         ${a.cancelamentos ? `
@@ -344,7 +345,7 @@
                   <div><label>AP. n.º</label>${inp('canc.'+a.id+'.'+c.id+'.ap', c.ap, 'ex.: 2534')}</div>
                   <div><label>Data do facto</label>${inp('canc.'+a.id+'.'+c.id+'.data', c.data, '', 'date')}</div>
                   <div><label>Facto a cancelar</label>${inp('canc.'+a.id+'.'+c.id+'.facto', c.facto, 'hipoteca, usufruto, ónus…')}</div>
-                  <div><label>Valor (€)</label>${inp('canc.'+a.id+'.'+c.id+'.valor', c.valor, '0,00', 'number', 'step="0.01" min="0"')}</div>
+                  <div><label>Valor (€)</label>${inp('canc.'+a.id+'.'+c.id+'.valor', c.valor, '0,00', 'text', 'inputmode="decimal" class="num"')}</div>
                 </div>
               </div>`).join('') || '<div class="empty">Sem cancelamentos. Adicione um por cada inscrição a cancelar.</div>'}
           </div>` : ''}
@@ -356,7 +357,7 @@
   const isJovem = () => state.isencao==='outras' && /35 anos/.test(state.isencaoTipo||'');
   const hasCanc = () => state.atos.some(a => a.cancelamentos && a.cancs.length);
   function statusOf(el, total, vpRaw){
-    const vp = vpRaw === '' ? null : Number(vpRaw);
+    const vp = (vpRaw === '' || vpRaw == null) ? null : num(vpRaw);
     if(vp === null){ el.className='status idle'; el.textContent='Sem valor do Predial'; return; }
     const diff = Math.round((total - vp)*100)/100;
     if(Math.abs(diff) < 0.005){ el.className='status ok'; el.textContent='✓ Valores coincidem'; }
@@ -364,7 +365,7 @@
   }
   function renderTotals(){
     let tAtos = 0, tCanc = 0;
-    state.atos.forEach(a => { tAtos += Number(a.valor)||0; if(a.cancelamentos) a.cancs.forEach(c => tCanc += Number(c.valor)||0); });
+    state.atos.forEach(a => { tAtos += num(a.valor); if(a.cancelamentos) a.cancs.forEach(c => tCanc += num(c.valor)); });
     renderMB();
     const split = isJovem() && hasCanc();
     $('#splitAviso').hidden = !split;
@@ -384,7 +385,7 @@
     }
   }
 
-  function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=Number(a.valor)||0; if(a.cancelamentos) a.cancs.forEach(c=>t+=Number(c.valor)||0); }); return t; }
+  function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) a.cancs.forEach(c=>t+=num(c.valor)); }); return t; }
   function renderMB(){ const el=$('#statusMB'); if(!el) return; statusOf(el, totalGeral(), state.mbVal); el.textContent = el.textContent.replace('Sem valor do Predial','Sem valor'); }
 
   function renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
@@ -570,7 +571,8 @@
 (function(){
   'use strict';
   const $ = s => document.querySelector(s);
-  const fmt = n => (Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = v => { if(v===''||v==null) return 0; const t=String(v).replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'); const n=parseFloat(t); return isNaN(n)?0:n; };
+  const fmt = n => (num(n)).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
   const dpt = d => d ? d.split('-').reverse().join('/') : '—';
   let ITEMS = [];      // [{id, escrituraId, cliente, entidade, dataEscritura, ref, mapa:{…getData shape…}}]
   let atual = null;
@@ -579,7 +581,7 @@
 
   const tipoEsc = ent => (ent||'').toUpperCase()==='CGD' ? 'CGD' : 'Particular';
   const estado = it => it.mapa && it.mapa.submetido ? 'sub' : 'pend';
-  const totalDe = m => { let t=0; (m.atos||[]).forEach(a=>{ t+=Number(a.valor)||0; if(a.cancelamentos) (a.cancs||[]).forEach(c=>t+=Number(c.valor)||0); }); return t; };
+  const totalDe = m => { let t=0; (m.atos||[]).forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) (a.cancs||[]).forEach(c=>t+=num(c.valor)); }); return t; };
 
   function render(){
     const q=($('#fTexto').value||'').toLowerCase(), de=$('#fDe').value, ate=$('#fAte').value, fe=$('#fEstado').value;
@@ -683,7 +685,7 @@
     const d=it.mapa;
     const b={[P.regime]:d.isencao==='outras'?'Isento':'Normal',[P.estado]:d.submetido?'Submetido':'Por submeter',
       [P.codigos]:[d.codDPA,...(d.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),
-      [P.entidade]:d.mbEnt||'',[P.referencia]:d.mbRef||'',[P.valor]:Number(d.mbVal)||totalDe(d),
+      [P.entidade]:d.mbEnt||'',[P.referencia]:d.mbRef||'',[P.valor]:num(d.mbVal)||totalDe(d),
       [P.notas]:[d.decl,d.obsSub].filter(Boolean).join('\n'),[P.atos]:JSON.stringify(d),[P.data]:d.dataSub?d.dataSub+'T12:00:00Z':null};
     try{ await gPatch(`${GRAPH}/sites/${siteId}/lists/${idPed}/items/${it.id}/fields`,b); toast('Guardado'); }
     catch(e){ toast('Erro ao guardar: '+e.message,true); }

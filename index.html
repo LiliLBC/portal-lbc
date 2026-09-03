@@ -14118,12 +14118,12 @@ const HTML=`<div class="mr" id="mr-mapa" hidden>
       <small>Pedido 1: aquisição e hipoteca (com a isenção). Pedido 2: cancelamentos (sem isenção). Os valores abaixo estão separados por pedido.</small></div>
     <div class="totals">
       <div><label id="mr-lblTotal">Total dos atos (€)</label><div class="big" id="mr-totalAtos">0,00</div></div>
-      <div><label for="mr-valorPredial" id="mr-lblPredial">Valor do Predial (€)</label><input type="number" step="0.01" min="0" id="mr-valorPredial" placeholder="0,00"></div>
+      <div><label for="mr-valorPredial" id="mr-lblPredial">Valor do Predial (€)</label><input type="text" inputmode="decimal" class="num" id="mr-valorPredial" placeholder="0,00"></div>
       <div class="status idle" id="mr-status">Sem valor do Predial</div>
     </div>
     <div class="totals" id="mr-totals2" hidden>
       <div><label>Pedido 2 — total dos cancelamentos (€)</label><div class="big" id="mr-totalCanc">0,00</div></div>
-      <div><label for="mr-valorPredial2">Pedido 2 — valor do Predial (€)</label><input type="number" step="0.01" min="0" id="mr-valorPredial2" placeholder="0,00"></div>
+      <div><label for="mr-valorPredial2">Pedido 2 — valor do Predial (€)</label><input type="text" inputmode="decimal" class="num" id="mr-valorPredial2" placeholder="0,00"></div>
       <div class="status idle" id="mr-status2">Sem valor do Predial</div>
     </div>
 
@@ -14147,7 +14147,7 @@ const HTML=`<div class="mr" id="mr-mapa" hidden>
       <div class="row" style="grid-template-columns:120px 200px 140px 1fr;margin:0">
         <div><label for="mr-mbEnt">Entidade</label><input type="text" id="mr-mbEnt" inputmode="numeric" maxlength="5" class="copy" title="clicar para copiar"></div>
         <div><label for="mr-mbRef">Referência</label><input type="text" id="mr-mbRef" inputmode="numeric" placeholder="000 000 000" class="copy" title="clicar para copiar"></div>
-        <div><label for="mr-mbVal">Valor pago (€)</label><input type="number" step="0.01" min="0" id="mr-mbVal" placeholder="0,00"></div>
+        <div><label for="mr-mbVal">Valor pago (€)</label><input type="text" inputmode="decimal" class="num" id="mr-mbVal" placeholder="0,00"></div>
         <div><label>&nbsp;</label><div class="status idle" id="mr-statusMB">Sem valor</div></div>
       </div>
       <div class="hint" style="margin-top:4px">O valor pago deve coincidir com o total do bloco 6 — é este que se confere com o extrato bancário.</div>
@@ -14176,7 +14176,8 @@ function mountMapaRegisto(ROOT){
   const uid = () => Math.random().toString(36).slice(2,9);
   const REGIMES = ['Comunhão de adquiridos','Comunhão geral','Separação de bens'];
   const ESTADOS = ['Solteiro(a)','Casado(a)','Divorciado(a)','Viúvo(a)','Separado(a) judicialmente'];
-  const fmt = n => (Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = v => { if(v===''||v==null) return 0; const t=String(v).replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'); const n=parseFloat(t); return isNaN(n)?0:n; };
+  const fmt = n => (num(n)).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
   const isColetiva = nif => /^[579]/.test((nif||'').trim());
 
   const state = {
@@ -14216,7 +14217,7 @@ function mountMapaRegisto(ROOT){
         <div class="row" style="grid-template-columns:1fr 160px 130px;padding-right:36px">
           <div><label>Facto sujeito a registo</label>${inp('atos.'+a.id+'.facto', a.facto, 'ex.: Aquisição definitiva')}</div>
           <div><label>Data do ato</label>${inp('atos.'+a.id+'.data', a.data, '', 'date')}</div>
-          <div><label>Valor (€)</label>${inp('atos.'+a.id+'.valor', a.valor, '0,00', 'number', 'step="0.01" min="0"')}</div>
+          <div><label>Valor (€)</label>${inp('atos.'+a.id+'.valor', a.valor, '0,00', 'text', 'inputmode="decimal" class="num"')}</div>
         </div>
         <label class="toggle"><input type="checkbox" data-path="atos.${a.id}.cancelamentos" ${a.cancelamentos?'checked':''}> Cancelamentos</label>
         ${a.cancelamentos ? `
@@ -14229,7 +14230,7 @@ function mountMapaRegisto(ROOT){
                   <div><label>AP. n.º</label>${inp('canc.'+a.id+'.'+c.id+'.ap', c.ap, 'ex.: 2534')}</div>
                   <div><label>Data do facto</label>${inp('canc.'+a.id+'.'+c.id+'.data', c.data, '', 'date')}</div>
                   <div><label>Facto a cancelar</label>${inp('canc.'+a.id+'.'+c.id+'.facto', c.facto, 'hipoteca, usufruto, ónus…')}</div>
-                  <div><label>Valor (€)</label>${inp('canc.'+a.id+'.'+c.id+'.valor', c.valor, '0,00', 'number', 'step="0.01" min="0"')}</div>
+                  <div><label>Valor (€)</label>${inp('canc.'+a.id+'.'+c.id+'.valor', c.valor, '0,00', 'text', 'inputmode="decimal" class="num"')}</div>
                 </div>
               </div>`).join('') || '<div class="empty">Sem cancelamentos. Adicione um por cada inscrição a cancelar.</div>'}
           </div>` : ''}
@@ -14241,7 +14242,7 @@ function mountMapaRegisto(ROOT){
   const isJovem = () => state.isencao==='outras' && /35 anos/.test(state.isencaoTipo||'');
   const hasCanc = () => state.atos.some(a => a.cancelamentos && a.cancs.length);
   function statusOf(el, total, vpRaw){
-    const vp = vpRaw === '' ? null : Number(vpRaw);
+    const vp = (vpRaw === '' || vpRaw == null) ? null : num(vpRaw);
     if(vp === null){ el.className='status idle'; el.textContent='Sem valor do Predial'; return; }
     const diff = Math.round((total - vp)*100)/100;
     if(Math.abs(diff) < 0.005){ el.className='status ok'; el.textContent='✓ Valores coincidem'; }
@@ -14249,7 +14250,7 @@ function mountMapaRegisto(ROOT){
   }
   function renderTotals(){
     let tAtos = 0, tCanc = 0;
-    state.atos.forEach(a => { tAtos += Number(a.valor)||0; if(a.cancelamentos) a.cancs.forEach(c => tCanc += Number(c.valor)||0); });
+    state.atos.forEach(a => { tAtos += num(a.valor); if(a.cancelamentos) a.cancs.forEach(c => tCanc += num(c.valor)); });
     renderMB();
     const split = isJovem() && hasCanc();
     $('#mr-splitAviso').hidden = !split;
@@ -14269,7 +14270,7 @@ function mountMapaRegisto(ROOT){
     }
   }
 
-  function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=Number(a.valor)||0; if(a.cancelamentos) a.cancs.forEach(c=>t+=Number(c.valor)||0); }); return t; }
+  function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) a.cancs.forEach(c=>t+=num(c.valor)); }); return t; }
   function renderMB(){ const el=$('#mr-statusMB'); if(!el) return; statusOf(el, totalGeral(), state.mbVal); el.textContent = el.textContent.replace('Sem valor do Predial','Sem valor'); }
 
   function renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
@@ -14478,12 +14479,13 @@ let idListaPed=null, PEDS=[], escId=null, mapa=null, pedAberto=null;
 
 const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
-const eur=n=>(Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const num=v=>{if(v===''||v==null)return 0;const t=String(v).replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.');const n=parseFloat(t);return isNaN(n)?0:n;};
+const eur=n=>num(n).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 const d10=v=>v?String(v).substring(0,10):'';
 const dpt=d=>d?d10(d).split('-').reverse().join('/'):'';
 
 function conteudo(p){ try{const o=JSON.parse(p[P.atos]||'{}'); return (o&&o.atos!==undefined&&o.dataDoc!==undefined)?o:(o&&Array.isArray(o.atos)?o:{}); }catch(e){return {};} }
-const totalDe=m=>{let t=0;(m.atos||[]).forEach(a=>{t+=Number(a.valor)||0;if(a.cancelamentos)(a.cancs||[]).forEach(c=>t+=Number(c.valor)||0);});return t;};
+const totalDe=m=>{let t=0;(m.atos||[]).forEach(a=>{t+=num(a.valor);if(a.cancelamentos)(a.cancs||[]).forEach(c=>t+=num(c.valor));});return t;};
 const tipoEscDe=ent=>String(ent||'').trim().toUpperCase()==='CGD'?'CGD':'Particular';
 
 async function resolver(){
@@ -14560,7 +14562,7 @@ async function guardarMapa(d){
     [P.estado]:d.submetido?'Submetido':'Por submeter',
     [P.codigos]:[d.codDPA,...(d.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),
     [P.entidade]:d.mbEnt||'', [P.referencia]:d.mbRef||'',
-    [P.valor]:Number(d.mbVal)||totalDe(d),
+    [P.valor]:num(d.mbVal)||totalDe(d),
     [P.notas]:[d.decl,d.obsSub].filter(Boolean).join('\n'),
     [P.atos]:JSON.stringify(d)
   };
