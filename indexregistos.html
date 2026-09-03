@@ -472,7 +472,7 @@
     const p = path.split('.');
     switch(p[0]){
       case 'docs': { const d=state.docs.find(x=>x.id===p[1]); if(d) d[p[2]]=value; break; }
-      case 'atos': { const a=findAto(p[1]); if(!a) break; a[p[2]]=value; if(p[2]==='cancelamentos'||p[2]==='valor') renderAtos(); if(p[2]==='facto') renderSujeitos(); break; }
+      case 'atos': { const a=findAto(p[1]); if(!a) break; a[p[2]]=value; if(p[2]==='cancelamentos') renderAtos(); else if(p[2]==='valor') renderTotals(); else if(p[2]==='facto') renderSujeitos(); break; }
       case 'canc': { const a=findAto(p[1]); const c=a&&a.cancs.find(x=>x.id===p[2]); if(c){ c[p[3]]=value; if(p[3]==='valor') renderTotals(); } break; }
       case 'predios': { const pr=state.predios.find(x=>x.id===p[1]); if(pr){ pr[p[2]]=value; if(p[2]==='fracao') renderPredios(); } break; }
       case 'suj': { const a=findAto(p[1]); const s=a&&a.sujeitos.find(x=>x.id===p[2]); if(s){ s[p[3]]=value; if(p[3]==='nif'||p[3]==='estado'){ if(p[3]==='nif'){ const was=s._col; s._col=isColetiva(value); if(was!==s._col) renderSujeitos(); } else renderSujeitos(); } } break; }
