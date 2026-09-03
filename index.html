@@ -14183,7 +14183,7 @@ function mountMapaRegisto(ROOT){
   const state = {
     dataDoc:'', legit:'sujeito', codDPA:'', docs:[], atos:[], predios:[],
     valorPredial:'', valorPredial2:'', isencao:'nao', isencaoTipo:'', isencaoOutra:'', decl:'',
-    submetido:false, dataSub:'', obsSub:'', mbEnt:'', mbRef:'', mbVal:'', ref:'', tipoEsc:'CGD'
+    submetido:false, dataSub:'', obsSub:'', mbEnt:'', mbRef:'', mbVal:'', ref:'', tipoEsc:'CGD', processo:'', cliente:''
   };
 
   /* ---------- factories ---------- */
@@ -14433,10 +14433,15 @@ function mountMapaRegisto(ROOT){
   /* ---------- e-mail ao financeiro ---------- */
   const config = { cc:'', assunto:'PAGAMENTO REGISTOS', emails:{ CGD:'dpacx@costafreitas.pt', Particular:'liliana.cardoso@lbc-solicitadora.pt' } };
   function applyTipoEsc(){ const el=$('#mr-emailDest'); if(el) el.value = config.emails[state.tipoEsc] || el.value; }
+  function assunto(){
+    const proc=(state.processo||'').trim(), cli=(state.cliente||'').trim();
+    if(proc||cli) return 'Pagamento Registos Processo # ' + (proc||'—') + ' _ ' + (cli||'');
+    return config.assunto + (state.ref ? ' — ' + state.ref : '');
+  }
   function pedirPagamento(){
     const linhas = [state.tipoEsc + ' - Solicito pagamento.'];
     const url = 'mailto:' + encodeURIComponent($('#mr-emailDest').value)
-      + '?subject=' + encodeURIComponent(config.assunto + (state.ref ? ' — ' + state.ref : ''))
+      + '?subject=' + encodeURIComponent(assunto())
       + (config.cc ? '&cc=' + encodeURIComponent(config.cc) : '')
       + '&body=' + encodeURIComponent(linhas.join('\r\n'));
     window.location.href = url;
@@ -14449,7 +14454,7 @@ function mountMapaRegisto(ROOT){
     state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
     renderAll();
   }
-  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD'}); }
+  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD',processo:'',cliente:''}); }
   window.MapaRegisto = {getData, setData, reset, state, config, pedirPagamento};
 
   /* modo colaboradora */
@@ -14543,7 +14548,7 @@ function render(){
 // ─── Mapa em modal ────────────────────────────────────────────────────────
 function dadosDaFicha(){
   const g=id=>($(id)?.value||'').trim();
-  return {dataDoc:g('p-data'),codDPA:g('p-codDeposito'),tipoEsc:tipoEscDe(g('p-entidade')),ref:($('painel-ref')?.textContent||'').trim(),
+  return {dataDoc:g('p-data'),codDPA:g('p-codDeposito'),tipoEsc:tipoEscDe(g('p-entidade')),ref:($('painel-ref')?.textContent||'').trim(),processo:g('p-numProcesso'),cliente:g('p-nome'),
     predios:(g('p-predio')||g('p-freguesia'))?[{id:'p'+Date.now(),concelho:g('p-concelho'),freguesia:g('p-freguesia'),numero:g('p-predio'),fracao:false,letra:''}]:[]};
 }
 function montar(){
@@ -14559,7 +14564,7 @@ function abrirMapa(id){
   const p=PEDS.find(x=>String(x.id)===String(id));if(!p)return;
   montar();pedAberto=p;
   const base=dadosDaFicha(); const m=conteudo(p);
-  const dados=Object.assign({},base,m); if(!(m.predios&&m.predios.length))dados.predios=base.predios; if(!m.tipoEsc)dados.tipoEsc=base.tipoEsc;
+  const dados=Object.assign({},base,m,{processo:base.processo,cliente:base.cliente}); if(!(m.predios&&m.predios.length))dados.predios=base.predios; if(!m.tipoEsc)dados.tipoEsc=base.tipoEsc;
   mapa.setData(dados); mapa.setModo('portal');
   $('rc-mapa-titulo').textContent=(p[P.titulo]||'Registo')+' — '+($('p-nome')?.value||'');
   $('rc-ov').classList.add('show');

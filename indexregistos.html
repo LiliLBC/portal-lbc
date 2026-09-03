@@ -299,7 +299,7 @@
   const state = {
     dataDoc:'', legit:'sujeito', codDPA:'', docs:[], atos:[], predios:[],
     valorPredial:'', valorPredial2:'', isencao:'nao', isencaoTipo:'', isencaoOutra:'', decl:'',
-    submetido:false, dataSub:'', obsSub:'', mbEnt:'', mbRef:'', mbVal:'', ref:'', tipoEsc:'CGD'
+    submetido:false, dataSub:'', obsSub:'', mbEnt:'', mbRef:'', mbVal:'', ref:'', tipoEsc:'CGD', processo:'', cliente:''
   };
 
   /* ---------- factories ---------- */
@@ -549,10 +549,15 @@
   /* ---------- e-mail ao financeiro ---------- */
   const config = { cc:'', assunto:'PAGAMENTO REGISTOS', emails:{ CGD:'dpacx@costafreitas.pt', Particular:'liliana.cardoso@lbc-solicitadora.pt' } };
   function applyTipoEsc(){ const el=$('#emailDest'); if(el) el.value = config.emails[state.tipoEsc] || el.value; }
+  function assunto(){
+    const proc=(state.processo||'').trim(), cli=(state.cliente||'').trim();
+    if(proc||cli) return 'Pagamento Registos Processo # ' + (proc||'—') + ' _ ' + (cli||'');
+    return config.assunto + (state.ref ? ' — ' + state.ref : '');
+  }
   function pedirPagamento(){
     const linhas = [state.tipoEsc + ' - Solicito pagamento.'];
     const url = 'mailto:' + encodeURIComponent($('#emailDest').value)
-      + '?subject=' + encodeURIComponent(config.assunto + (state.ref ? ' — ' + state.ref : ''))
+      + '?subject=' + encodeURIComponent(assunto())
       + (config.cc ? '&cc=' + encodeURIComponent(config.cc) : '')
       + '&body=' + encodeURIComponent(linhas.join('\r\n'));
     window.location.href = url;
@@ -565,7 +570,7 @@
     state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
     renderAll();
   }
-  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD'}); }
+  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD',processo:'',cliente:''}); }
   window.MapaRegisto = {getData, setData, reset, state, config, pedirPagamento};
 
   /* modo colaboradora */
@@ -625,7 +630,7 @@
 
   function abrir(id){
     atual = ITEMS.find(i=>i.id===id); if(!atual) return;
-    const m = Object.assign({tipoEsc: tipoEsc(atual.entidade), ref: atual.ref||''}, atual.mapa);
+    const m = Object.assign({tipoEsc: tipoEsc(atual.entidade), ref: atual.ref||''}, atual.mapa, {processo: atual.processo||'', cliente: atual.cliente||''});
     window.MapaRegisto.setData(m); window.MapaRegisto.setModo(MODO);
     $('#mapaTitulo').textContent = (atual.cliente||'') + ' — escritura de ' + dpt(atual.dataEscritura);
     const st=estado(atual); const pill=$('#mapaEstado'); pill.className='pill '+st; pill.textContent = st==='sub'?'Submetido':'Por submeter';
@@ -678,7 +683,7 @@
   const TENANT_HOST='lbcsolicitadorapt.sharepoint.com', SITE_PATH='sites/lbcsolicitadora2';
   const LP='RegistoPedidos', LE='Escritura_Listagem';
   const P={titulo:'Title',escrituraId:'EscrituraId',cliente:'Cliente',data:'DataRegisto',regime:'Regime',codigos:'CodigosUsar',entidade:'EntidadeMB',referencia:'ReferenciaMB',valor:'ValorPedido',estado:'EstadoPedido',notas:'NotasPedido',atos:'AtosJSON'};
-  const E={nome:'Nome_Cliente',entidade:'Entidade',data:'DataEscritura',titulo:'Title'};
+  const E={nome:'Nome_Cliente',entidade:'Entidade',data:'DataEscritura',titulo:'Title',processo:'N_x00fa_mero_Processo'};
   /* Contas que abrem em modo colaboradora (blocos 1–6 só de leitura). As restantes abrem em modo completo. */
   const COLABORADORAS=['isa.guerra@lbc-solicitadora.pt'];
 
@@ -701,14 +706,14 @@
     if(!idPed||!idEsc)throw new Error('Listas não encontradas');
     const [peds,escs]=await Promise.all([
       gGetAll(`${GRAPH}/sites/${siteId}/lists/${idPed}/items?$expand=fields&$top=500`),
-      gGetAll(`${GRAPH}/sites/${siteId}/lists/${idEsc}/items?$expand=fields($select=${[E.titulo,E.nome,E.entidade,E.data].join(',')})&$top=999`)
+      gGetAll(`${GRAPH}/sites/${siteId}/lists/${idEsc}/items?$expand=fields($select=${[E.titulo,E.nome,E.entidade,E.data,E.processo].join(',')})&$top=999`)
     ]);
     const porId={}; escs.forEach(x=>{porId[String(x.id)]=x.fields||{};});
     const items=peds.map(x=>{
       const f=x.fields||{}, e=porId[String(f[P.escrituraId])]||{};
       let m={}; try{m=JSON.parse(f[P.atos]||'{}');}catch(err){m={};}
       if(f[P.estado]==='Submetido')m.submetido=true;
-      return {id:x.id, escrituraId:f[P.escrituraId], cliente:f[P.cliente]||e[E.nome]||'', entidade:e[E.entidade]||'', dataEscritura:(e[E.data]||m.dataDoc||'').substring(0,10), ref:(e[E.titulo]?e[E.titulo]+' · ':'')+(f[P.titulo]||''), mapa:m};
+      return {id:x.id, escrituraId:f[P.escrituraId], cliente:f[P.cliente]||e[E.nome]||'', entidade:e[E.entidade]||'', dataEscritura:(e[E.data]||m.dataDoc||'').substring(0,10), ref:(e[E.titulo]?e[E.titulo]+' · ':'')+(f[P.titulo]||''), processo:e[E.processo]||'', mapa:m};
     }).filter(it=>(it.mapa.codDPA||'').trim());   /* só entra na lista depois de ter código de depósito */
     window.RegistosLista.setItems(items);
   }
