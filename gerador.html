@@ -1045,7 +1045,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
             <option value="arquivo">Apresentada com assinatura reconhecida — arquivo</option>
             <option value="exibida">Apresentada sem reconhecimento — apenas exibida</option>
             <option value="sem">Não foi apresentada</option>
+            <option value="naoorg">Condomínio não organizado (até 4 frações)</option>
           </select></div>
+        <div class="form-group cond-naoorg" style="display:none"><label class="form-label">N.º de frações do prédio <span>*</span></label>
+          <input type="number" min="2" class="form-input" id="f-cond-fracoes" oninput="onCondominio();atualizar()" placeholder="Ex: 4"></div>
+        <div class="form-group form-full cond-aviso4" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
+          Com mais de quatro condóminos é obrigatória a elaboração de regulamento do condomínio (artigo 1429.º-A do Código Civil). Confirma se a declaração se sustenta neste prédio.</div>
         <div class="form-group cond-dados" style="display:none"><label class="form-label">Emitida em</label>
           <input type="date" class="form-input" id="f-cond-data" onchange="atualizar()"></div>
         <div class="form-group cond-dados" style="display:none"><label class="form-label">Administrador do condomínio</label>
@@ -4644,7 +4649,6 @@ function compor(){
       : `a ESTAMO - Participações Imobiliárias S.A., e a Câmara Municipal de ${camara} nada disseram sobre o direito que legalmente lhes assiste na preferência de compra sobre o imóvel;`;
     contrato.push({id:'c-casapronta',T:'',X:`Foi requerido para efeitos dos direitos de preferência nos termos do n.º 3 do artigo 37 da Lei 83/2019, de 3 de setembro, (Lei de Bases da Habitação), conjugado com o art.º 7 da Lei 89/2021, de 03 de novembro, com o número ${v('f-cp-numero')||'…'}, disponibilizado em ${cpData} através do sítio www.casapronta.pt, onde o Instituto da Habitação e da Reabilitação Urbana (IHRU), o Património Cultural I.P., ${fecho}`});
   }
-  if(cond.contrato)contrato.push({id:'c-condominio',T:'',X:cond.contrato});
   /* ── IMT JOVEM · declaração dos compradores ──
      Os cinco requisitos do regime. Fundidos os dois da titularidade, que a lei
      trata numa só previsão. A idade é «igual ou inferior», nos termos da lei. */
@@ -4694,6 +4698,8 @@ function compor(){
     parsLic.push(`Os primeiros outorgantes declararam, sob sua inteira responsabilidade, que não são proprietários, comproprietários ou titulares de qualquer direito real de gozo sobre quaisquer prédios rústicos confinantes com o prédio ora alienado, pelo que a presente transmissão tem por objeto prédio autónomo e juridicamente individualizado, não operando qualquer fracionamento ou parcelamento de terreno apto para cultura em contravenção do disposto nos artigos 1376.º e 1377.º do Código Civil, nem constituindo destaque de parcela de conjunto predial contíguo pertencente aos alienantes.`);
   }
   if(parsLic.length)contrato.push({id:'c-licenciamento',T:clausula('Licenciamento'),X:parsLic.join('\n')});
+  /* Logo a seguir ao certificado energético, que é o que fecha o licenciamento. */
+  if(cond.contrato)contrato.push({id:'c-condominio',T:'',X:cond.contrato});
   contrato.push({id:'c-encargos',T:clausula('Encargos'),X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
   if(v('f-destino'))contrato.push({id:'c-destino',T:clausula('Destino do Imóvel'),X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
   contrato.push({id:'c-mediacao',T:clausula('Mediação Imobiliária'),X:chk('t-mediacao')
@@ -6421,6 +6427,11 @@ function onCondominio(){
   const c=v('f-cond-caso');
   document.querySelectorAll('.cond-dados').forEach(e=>e.style.display=(c==='arquivo'||c==='exibida')?'flex':'none');
   document.querySelectorAll('.cond-aviso').forEach(e=>e.style.display=c==='exibida'?'block':'none');
+  document.querySelectorAll('.cond-naoorg').forEach(e=>e.style.display=c==='naoorg'?'flex':'none');
+  /* Num prédio grande a declaração de condomínio não organizado é bem mais
+     difícil de sustentar — avisa, mas não impede. */
+  const nf=parseInt(v('f-cond-fracoes')||'0');
+  document.querySelectorAll('.cond-aviso4').forEach(e=>e.style.display=(c==='naoorg'&&nf>4)?'block':'none');
 }
 function textosCondominio(){
   if(v('f-im-tipo')!=='fracao')return{contrato:'',termo:''};
@@ -6436,6 +6447,21 @@ function textosCondominio(){
   if(c==='exibida')
     return{contrato:verificou,
       termo:`FOI EXIBIDA declaração de condomínio, emitida em ${d}${admin}, a qual não se mostra com assinatura reconhecida e, por esse motivo, não reúne os requisitos para ficar arquivada como documento instrutório. ${advert}`};
+  /* ── CONDOMÍNIO NÃO ORGANIZADO ──
+     Não há renúncia à declaração do artigo 1424.º-A, logo o comprador não
+     assume dívidas anteriores e não há nada de que o advertir: o termo fica
+     em branco. Declara-se apenas o estado de facto, com o número de frações,
+     que é o que dá contexto à afirmação. */
+  if(c==='naoorg'){
+    const nf=parseInt(v('f-cond-fracoes')||'0');
+    /* Um prédio destes tem poucas frações; a tabela chega e evita depender
+       do conversor de valores, que é para montantes. */
+    const CARD=['','uma','duas','três','quatro','cinco','seis','sete','oito','nove','dez',
+      'onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove','vinte'];
+    const ext=nf?`${CARD[nf]||nf} (${nf})`:'…';
+    return{contrato:`A parte vendedora declara que o prédio é composto por ${ext} frações autónomas, que o condomínio não se encontra organizado, não tendo sido eleito administrador nem fixadas quotizações, e que não existem dívidas ou encargos relativos à fração ora transmitida.`,
+      termo:''};
+  }
   return{contrato:'',termo:advert};
 }
 function onCE(){
