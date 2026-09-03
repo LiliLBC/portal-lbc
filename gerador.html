@@ -2121,7 +2121,7 @@ function textoVendedor(v){
     const fecho=reps.length>1
       ?'os quais outorgam conjuntamente na qualidade de procuradores'
       :(reps[0]&&reps[0].genero==='F'?'a qual outorga na qualidade de procuradora':'o qual outorga na qualidade de procurador');
-    return`${lista}, ${fecho} em nome e representação da CAIXA GERAL DE DEPÓSITOS S.A., com sede na Av. João XXI, n.º 63, em Lisboa, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva 500.960.046, capital social de ${capitalCGD()}`;
+    return`${lista}, ${fecho} em nome e representação da CAIXA GERAL DE DEPÓSITOS S.A., com sede na Avenida Dom João II, n.º 1, em Lisboa, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva 500.960.046, capital social de ${capitalCGD()}`;
   }
 
   const fem=v.genero==='F';
@@ -2164,10 +2164,12 @@ function textoVendedor(v){
   return`${eu}, ${v.ec||'…'} com ${v['conj-nome']||'…'}, número de identificação fiscal ${v['conj-nif']||'…'}, sob o regime de ${regime}, residente em ${v.morada||'…'}`;
 }
 /* ── IDENTIFICAÇÃO CURTA · CORPO DO CONTRATO ──
-   Só nome e NIF. A naturalidade saiu: é elemento do termo de autenticação,
-   não do contrato — e sem o campo preenchido saía «natural de …» no meio da
-   identificação das partes. Regra fixada pela Liliana. */
-function idCurta(nome,nif){
+   Só nome, naturalidade e NIF. */
+function idCurta(nome,natural,nif){
+  /* A naturalidade saiu do CORPO DO CONTRATO — no termo mantém-se, porque é lá
+     que a identificação tem de ser completa. O parâmetro fica na assinatura
+     para não obrigar a mexer em todas as chamadas. */
+  void natural;
   return`${nome||'…'}, número de identificação fiscal ${nif||'…'}`;
 }
 function textoVendedorCurto(v){
@@ -2177,30 +2179,21 @@ function textoVendedorCurto(v){
      Sem regime de bens: no contrato não interessa. */
   const repCurto=o=>{
     const rs=(o.reps&&o.reps.length)?o.reps:[{}];
-    const p=rs.map(r=>`${idCurta(r.nome,r.nif)}${r.ec?`, ${r.ec}`:''}`);
+    const p=rs.map(r=>`${r.nome||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
     return p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
   };
   if(v.tipo==='cgd')
-    return`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${repCurto(v)}`;
+    return`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida Dom João II, n.º 1, em Lisboa, neste ato representada por ${repCurto(v)}`;
   if(v.tipo==='municipio')
     return`MUNICÍPIO DE ${(v['mun-nome']||'…').toUpperCase()}, pessoa coletiva n.º ${v['mun-nipc']||'…'}, com sede em ${v['mun-sede']||'…'}, neste ato representado por ${repCurto(v)}`;
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
-  /* ── PESSOAS SINGULARES · CONTRATO ──
-     Nome, NIF e estado civil. Sendo casado, o cônjuge aparece SEMPRE — mesmo
-     quando só outorga para consentir, e mesmo quando não outorga de todo —,
-     identificado por nome e NIF, na forma «casado com». Antes só aparecia
-     quando era ele próprio parte, e desaparecia do contrato nos restantes
-     casos. Sem regime de bens: esse fica no termo.
-     A concordância («casado»/«casada») segue o outorgante, não o cônjuge,
-     porque v.ec já vem flexionado pelo género escolhido no formulário. */
-  const eu=idCurta(v.nome,v.nif);
-  const conjuge=()=>idCurta(v['conj-nome'],v['conj-nif']);
-  const base=!ehCasado(v.ec)
-    ? `${eu}, ${v.ec||'…'}`
-    : ((v['conj-out']||'ambos')==='ambos'
-        ? `${eu} e ${conjuge()}, casados entre si`
-        : `${eu}, ${v.ec||'…'} com ${conjuge()}`);
+  const eu=idCurta(v.nome,v.natural,v.nif);
+  /* Só entram no contrato os que transmitem. Quem apenas consente não é parte:
+     o consentimento é declaração autónoma, feita no termo. */
+  const base=(!ehCasado(v.ec)||(v['conj-out']||'ambos')!=='ambos')
+    ? eu
+    : `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -2211,7 +2204,7 @@ function textoVendedorCurto(v){
   const varios=ehCasado(v.ec)&&(v['conj-out']||'ambos')==='ambos'&&v['conj-nome'];
   const fem=varios?false:(v.genero==='F'||/a$/.test(((v.ec||'').split(/[\s,]/)[0]||'')));
   const flex=varios?'representados':(fem?'representada':'representado');
-  return`${base}, neste ato ${flex} por ${idCurta(v['proc-nome'],v['proc-nif'])}`;
+  return`${base}, neste ato ${flex} por ${idCurta(v['proc-nome'],v['proc-natural'],v['proc-nif'])}`;
 }
 /* Géneros de todos os que outorgam — inclui cônjuges que outorgam.
    Empresa e CGD são femininas («a firma», «a Caixa»); Município é masculino. */
@@ -2359,13 +2352,7 @@ function addFalecido(dados={}){
     <div class="cond-block falecido-${idx}-is" style="margin-top:.5rem">
       <div class="cond-block-title">Participação de Imposto do Selo (óbito) — art. 26.º CIS</div>
       <div class="falecido-${idx}-is-dispensa" style="display:none;font-size:11.5px;background:var(--surface2);border-radius:6px;padding:.5rem .6rem;color:var(--text-faint)">
-        Óbito há mais de 8 anos — não há obrigação de verificar a participação. Os campos ficam desligados e a linha não sai no termo.
-        <div class="form-group form-full" style="margin-top:.5rem"><label class="form-label">Verificar a participação mesmo assim?</label>
-          <select class="form-select" id="falecido-${idx}-is-forcar" onchange="onSeloVisivel(${idx});atualizar()">
-            <option value=""${sel(dados.isForcar,'')}>Não — seguir a dispensa</option>
-            <option value="sim"${sel(dados.isForcar,'sim')}>Sim — a participação foi exibida</option>
-          </select>
-          <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Reabre os campos e faz sair a linha no termo.</div></div></div>
+        Óbito há mais de 8 anos — não há obrigação de verificar a participação. Os campos ficam desligados e a linha não sai no termo.</div>
       <div class="falecido-${idx}-is-campos">
         <div class="form-grid form-grid-3">
           <div class="form-group"><label class="form-label">N.º da participação</label>
@@ -2420,10 +2407,7 @@ function removerFalecido(idx){document.getElementById(`falecido-${idx}`)?.remove
 function onSeloVisivel(idx){
   const d=document.getElementById(`falecido-${idx}-data-obito`)?.value||'';
   const exig=seloExigivel(d);
-  /* A dispensa continua à vista mesmo quando forçada: é ela que dá acesso ao
-     interruptor, e é preciso poder voltar atrás. */
-  const forcado=(document.getElementById(`falecido-${idx}-is-forcar`)?.value||'')==='sim';
-  document.querySelectorAll(`.falecido-${idx}-is-campos`).forEach(e=>e.style.display=(exig||forcado)?'block':'none');
+  document.querySelectorAll(`.falecido-${idx}-is-campos`).forEach(e=>e.style.display=exig?'block':'none');
   document.querySelectorAll(`.falecido-${idx}-is-dispensa`).forEach(e=>e.style.display=exig?'none':'block');
 }
 function onHabTipoChange(idx){
@@ -2440,7 +2424,7 @@ function lerFalecidos(){
     b.querySelectorAll(`[id^="falecido-${idx}-herdeiro-"][id$="-nome"]`).forEach(el=>{if(el.value.trim())herdeiros.push({nome:el.value.trim()});});
     return{nome:g('nome'),dataObito:g('data-obito'),freguesia:g('freguesia'),habTipo:g('hab-tipo'),habData:g('hab-data'),
       habCodigo:g('hab-codigo'),habCopia:g('hab-copia'),habNumero:g('hab-numero'),habNotario:g('hab-notario'),
-      isNumero:g('is-numero'),isData:g('is-data'),isSF:g('is-sf'),isForcar:g('is-forcar'),
+      isNumero:g('is-numero'),isData:g('is-data'),isSF:g('is-sf'),
       isConsta:g('is-consta'),habConferida:g('hab-conferida'),
       herdeiros};
   });
@@ -2490,7 +2474,7 @@ function textosTratoSuc(){
     if(f.habTipo==='simplificado')return`— a legitimidade ${quem} pelo Procedimento Simplificado de Habilitação de Herdeiros n.º ${f.habNumero||'…'}, lavrado em ${d}, na Conservatória de ${n};`;
     return`— a legitimidade ${quem} pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, que arquivo;`;
   });
-  const selo=fs.filter(f=>(seloExigivel(f.dataObito)||f.isForcar==='sim')&&(f.isNumero||f.isData||f.isSF)).map(f=>
+  const selo=fs.filter(f=>seloExigivel(f.dataObito)&&(f.isNumero||f.isData||f.isSF)).map(f=>
     `— nos termos e para os efeitos do disposto no artigo 63.º-A do Código do Imposto do Selo, o cumprimento das obrigações declarativas relativas ao Imposto do Selo devido pela transmissão gratuita por óbito de ${(f.nome||'…').toUpperCase()}, mediante a exibição da participação a que se refere o artigo 26.º do mesmo Código, registada sob o n.º ${f.isNumero||'…'}, apresentada no Serviço de Finanças de ${f.isSF||'…'} em ${dPT(f.isData)}, da qual consta a relação dos bens objeto do presente contrato;`);
   const narr=fs.map(f=>
     `${(f.nome||'…').toUpperCase()} faleceu em ${dPT(f.dataObito)}, na freguesia de ${f.freguesia||'…'}, sem deixar testamento ou disposição de última vontade, sucedendo-lhe como herdeiros ${listaEVirgula(f.herdeiros.map(x=>(x.nome||'').toUpperCase()).filter(Boolean))}.`);
@@ -2929,7 +2913,7 @@ function comporMH(variante){
   const quemMut=v('f-mut-quem')||'liliana';
   const solMut=SOLICITADORAS[quemMut];
   /* Mesma forma da compra e venda: «€… (extenso)», e não «… Euros». */
-  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., com sede na Avenida João XXI, n.º 63, em Lisboa, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva 500960046, com o capital social de ${capitalCGD()}`;
+  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., com sede na Avenida Dom João II, n.º 1, em Lisboa, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva 500960046, com o capital social de ${capitalCGD()}`;
   const outraIC=v('f-mutuante')!=='cgd';
   /* Duas vias, ambas vistas nos atos reais: a solicitadora com procuração
      substabelecida, ou um procurador da CAIXA com poderes para o ato. */
@@ -2951,7 +2935,7 @@ function comporMH(variante){
         :`${v('f-mut-repr')||'…'}, em nome e em representação da ${baseCGD}.`));
   const txtSegundaCurto=outraIC
     ?`${v('f-mutuante-txt')||'…'}, adiante designada por MUTUANTE.`
-    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida João XXI, n.º 63, em Lisboa, neste ato representada por ${representanteCAIXA().curto||'…'}, adiante designada por CAIXA e/ou MUTUANTE.`;
+    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida Dom João II, n.º 1, em Lisboa, neste ato representada por ${representanteCAIXA().curto||'…'}, adiante designada por CAIXA e/ou MUTUANTE.`;
 
   /* ── PRIMEIROS · mutuários (mesmo componente dos outorgantes da compra e venda) ── */
   const consent=linhaConsentimento(mut);
@@ -3294,7 +3278,7 @@ function comporLeasing(){
 
   /* ── Partes ── */
   const r=representanteCAIXA();
-  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`;
+  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida Dom João II, n.º 1, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`;
   /* Na entrada a CAIXA é a SEGUNDA, compradora; nas saídas é a PRIMEIRA,
      locadora e vendedora. O texto dela é o mesmo; muda a designação. */
   const ordCGD=entrada?'Segunda':'Primeira';
@@ -3307,8 +3291,8 @@ function comporLeasing(){
      o estado civil — é assim que a Liliana o escreve. */
   const solMutL=SOLICITADORAS[v('f-mut-quem')];
   const curtoCGD=v('f-mut-quem')==='cgd'
-    ? [ (v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-ec'),v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',v('f-mut-p-nif')?`NIF ${v('f-mut-p-nif')}`:'' ].filter(Boolean).join(', ')
-    : (solMutL?[solMutL.nome,solMutL.estadoCivil,solMutL.naturalidade?`natural de ${solMutL.naturalidade}`:'',solMutL.nif?`NIF ${solMutL.nif}`:''].filter(Boolean).join(', '):(r.curto||'…'));
+    ? [ (v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-ec'),v('f-mut-p-nif')?`NIF ${v('f-mut-p-nif')}`:'' ].filter(Boolean).join(', ')
+    : (solMutL?[solMutL.nome,solMutL.estadoCivil,solMutL.nif?`NIF ${solMutL.nif}`:''].filter(Boolean).join(', '):(r.curto||'…'));
   const txtCGDContrato=`CAIXA GERAL DE DEPÓSITOS, S.A., NIPC 500960046, devidamente representada neste ato por ${curtoCGD}, adiante designada por ${ordCGD} Contratante, CAIXA ou Locadora.`;
   const ordLoc=entrada?'Primeir':'Segund';
   const desigLoc=`, adiante designad${loc.length>1?'os':'o'} por ${ordLoc}${loc.length>1?'os':(entrada?'a':'a')} Contratante${loc.length>1?'s':''}.`;
@@ -3324,7 +3308,7 @@ function comporLeasing(){
        passar despercebido. */
     const rs=(o.reps&&o.reps.length)?o.reps
       :(o['proc-nome']?[{nome:o['proc-nome'],natural:o['proc-natural'],ec:o['proc-ec'],nif:o['proc-nif']}]:[{}]);
-    const p=rs.map(r=>[(r.nome||'…').toUpperCase(),`natural de ${r.natural||'…'}`,r.ec||'',`NIF ${r.nif||'…'}`].filter(Boolean).join(', '));
+    const p=rs.map(r=>[(r.nome||'…').toUpperCase(),r.ec||'',`NIF ${r.nif||'…'}`].filter(Boolean).join(', '));
     const g=p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
     return`${(o.denom||'…')}, NIPC ${o.nipc||'…'}, neste ato representada por ${g}`;
   };
@@ -4454,7 +4438,7 @@ function compor(){
   const txtMutuante=(()=>{
     if(!ehCVMH)return'';
     const base=v('f-mutuante')==='cgd'
-      ?`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida João XXI, n.º 63, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`
+      ?`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida Dom João II, n.º 1, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`
       :(v('f-mutuante-txt')||'…');
     if(v('f-mut-repr'))return`${v('f-mut-repr')}, em nome e em representação da ${base}.`;
     const r=representanteCAIXA();
@@ -6289,12 +6273,12 @@ function representanteCAIXA(){
       v('f-mut-p-nif')?`número de identificação fiscal ${v('f-mut-p-nif')}`:'',
       v('f-mut-p-dom')?`com domicílio profissional na ${v('f-mut-p-dom')}`:''
     ].filter(Boolean).join(', ');
-    return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-nif')),
+    return{id,curto:idCurta((v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-natural'),v('f-mut-p-nif')),
       qualidade:`na qualidade de procurador${fem?'a':''} com poderes para o ato`,nome:v('f-mut-p-nome'),
       ...partesProcuracao(codProcDe(CGD_CFG)||CGD_PROCURACAO)};
   }
   if(sol)return{id:sol.textoProcuradora,
-    curto:idCurta(sol.nome,sol.nif),
+    curto:idCurta(sol.nome,sol.naturalidade,sol.nif),
     qualidade:'na qualidade de procuradora substabelecida',nome:sol.nome,
     ...partesProcuracao(codProcDe(sol))};
   return{id:v('f-mut-repr')||'…',curto:v('f-mut-repr')||'…',qualidade:'',nome:'',cod:'',data:''};
