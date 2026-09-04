@@ -14717,5 +14717,92 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
 })();
 </script>
 
+<!-- ════════════════════════════════════════════════════════════════════════
+     PAINEL LATERAL — PEGA PARA ALARGAR. Colar antes de </body>.
+     Aditivo: acrescenta a pega a todos os painéis laterais, sem alterar
+     nenhum deles. A largura escolhida fica guardada para as próximas vezes.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+const CHAVE='lbc-painel-largura';
+const MIN=420;
+const folga=()=>Math.max(MIN, window.innerWidth-80);   // deixa ver a lista atrás
+const guardada=()=>{
+  const v=parseInt(localStorage.getItem(CHAVE)||'',10);
+  return (!isNaN(v)&&v>=MIN)?v:520;
+};
+
+const CSS=`
+.side-panel{transition:transform .25s ease}
+.pn-pega{position:absolute;left:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:5;
+  background:transparent;transition:background .12s}
+.pn-pega:hover,.pn-pega.ativa{background:var(--accent-light)}
+.pn-pega::after{content:'';position:absolute;left:3px;top:50%;transform:translateY(-50%);
+  width:2px;height:34px;border-radius:2px;background:var(--border)}
+.pn-pega:hover::after,.pn-pega.ativa::after{background:var(--accent)}
+/* Enquanto se arrasta, nada de seleção nem de animação a atrapalhar. */
+body.pn-arrastar{user-select:none;cursor:col-resize}
+body.pn-arrastar .side-panel{transition:none}
+`;
+
+function aplicar(px){
+  const w=Math.min(Math.max(px,MIN),folga());
+  document.querySelectorAll('.side-panel').forEach(p=>{p.style.width=w+'px';});
+  return w;
+}
+
+function equipar(painel){
+  if(painel.querySelector('.pn-pega'))return;
+  if(getComputedStyle(painel).position==='static')painel.style.position='fixed';
+  const pega=document.createElement('div');
+  pega.className='pn-pega';
+  pega.title='Arrastar para alargar · duplo clique repõe';
+  painel.appendChild(pega);
+
+  let ativo=false;
+  const mover=e=>{
+    if(!ativo)return;
+    const x=(e.touches?e.touches[0].clientX:e.clientX);
+    aplicar(window.innerWidth-x);
+    e.preventDefault();
+  };
+  const largar=()=>{
+    if(!ativo)return;
+    ativo=false;
+    pega.classList.remove('ativa');
+    document.body.classList.remove('pn-arrastar');
+    localStorage.setItem(CHAVE,String(parseInt(painel.style.width)||520));
+  };
+  const pegar=e=>{
+    ativo=true;
+    pega.classList.add('ativa');
+    document.body.classList.add('pn-arrastar');
+    e.preventDefault();
+  };
+  pega.addEventListener('mousedown',pegar);
+  pega.addEventListener('touchstart',pegar,{passive:false});
+  document.addEventListener('mousemove',mover);
+  document.addEventListener('touchmove',mover,{passive:false});
+  document.addEventListener('mouseup',largar);
+  document.addEventListener('touchend',largar);
+  /* Duplo clique volta ao tamanho de origem. */
+  pega.addEventListener('dblclick',()=>{aplicar(520);localStorage.setItem(CHAVE,'520');});
+}
+
+function instalar(){
+  const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+  const varrer=()=>{document.querySelectorAll('.side-panel').forEach(equipar);aplicar(guardada());};
+  varrer();
+  /* Painéis criados depois — o Portal cria alguns em tempo de execução. */
+  new MutationObserver(varrer).observe(document.body,{childList:true,subtree:true});
+  /* Ao encolher a janela, o painel não pode ficar maior do que ela. */
+  window.addEventListener('resize',()=>aplicar(guardada()));
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
 </body>
 </html>
