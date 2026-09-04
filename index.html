@@ -13958,705 +13958,557 @@ else document.addEventListener('DOMContentLoaded',instalar);
 </script>
 
 <!-- ════════════════════════════════════════════════════════════════════════
-     REGISTO CONSERVATÓRIA v2 — Mapa de Registo Predial na ficha da escritura.
-     Substitui o bloco de 2026-09-01. Lista: RegistoPedidos (um item por mapa;
-     o conteúdo do mapa vai inteiro em AtosJSON). Colunas da Escritura_Listagem
-     usadas: RegPedido · RegNotasGerais. RegistoDocumentos deixa de ser usada.
+     REGISTO CONSERVATÓRIA — colar antes de </body>.
+     Aditivo. Não altera o bloco do registo de escrituras, que fica como está.
+     Listas: RegistoPedidos · RegistoDocumentos
+     Colunas novas em Escritura_Listagem: RegPedido · RegNotasGerais
 ════════════════════════════════════════════════════════════════════════ -->
-<script>
-/* ═══ MAPA DE REGISTO PREDIAL — núcleo partilhado (Portal LBC + portal-registos) ═══
-   Uso: const mapa = MapaRegistoCore.mount(container);
-        mapa.setData({...}); mapa.setModo('portal'|'colaboradora'); mapa.getData();
-   Eventos (no container, bubbling): mapa:save (detail=getData()), mapa:cancel, mapa:voltar, mapa:submetido */
-(function(){
-const CSS=`.mr-scope{
-    --ink:#3a2f31; --muted:#8a7a7d; --line:#e4d6d8; --panel:#f8f2f1; --panel2:#efe3e2;
-    --green:#b76e79; --green-soft:#f3e2e5; --red:#a63d3d; --red-soft:#f7e3e3; --amber:#8a5a00; --amber-soft:#fbf1dc;
-    --bg:#fffdfc; --radius:8px;
-  }
-.mr-scope *{box-sizing:border-box}
-.mr-scope [hidden]{display:none!important}
-.mr-scope{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;color:var(--ink);background:var(--bg);line-height:1.4}
-.mr-scope .mr{max-width:900px;margin:0 auto;padding:4px 0 24px}
-.mr-scope h2{font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:600;margin:32px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--green);display:flex;justify-content:space-between;align-items:center}
-.mr-scope h2 .num{color:var(--green);margin-right:8px}
-.mr-scope h3{font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
-.mr-scope .hint{font-size:12px;color:var(--muted)}
-.mr-scope label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:3px;letter-spacing:.02em}
-.mr-scope input[type=text],.mr-scope input[type=date],.mr-scope input[type=number],.mr-scope select,.mr-scope textarea{
-    width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;font:inherit;color:var(--ink)
-  }
-.mr-scope input:focus,.mr-scope select:focus,.mr-scope textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
-.mr-scope input[readonly]{background:var(--panel2);color:var(--muted)}
-.mr-scope textarea{resize:vertical;min-height:120px}
-.mr-scope .row{display:grid;gap:10px;margin-bottom:10px}
-.mr-scope .card{background:var(--panel);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;position:relative}
-.mr-scope .card .card{background:#fff;border:1px solid var(--line)}
-.mr-scope .btn{font:inherit;font-size:13px;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
-.mr-scope .btn:hover{border-color:var(--green);color:var(--green)}
-.mr-scope .btn.primary{background:var(--green);color:#fff;border-color:var(--green);font-weight:600;padding:10px 18px}
-.mr-scope .btn.primary:hover{background:#a05c67;color:#fff}
-.mr-scope .btn.x{padding:2px 9px;line-height:1.2;position:absolute;top:8px;right:8px}
-.mr-scope .btn.small{padding:4px 10px;font-size:12px}
-.mr-scope .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}
-.mr-scope .toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
-.mr-scope .toggle input{width:auto;margin:0}
-.mr-scope .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
-.mr-scope .badge.ativo{background:var(--green-soft);color:var(--green)}
-.mr-scope .badge.passivo{background:var(--panel2);color:var(--ink)}
-.mr-scope .note{background:var(--amber-soft);color:var(--amber);padding:6px 10px;border-radius:6px;font-size:12px;margin-top:6px}
-.mr-scope .empty{color:var(--muted);font-size:13px;padding:10px 0}
-.mr-scope .head{background:var(--panel);border-radius:var(--radius);padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;font-size:13px}
-.mr-scope .head div span{color:var(--muted);display:inline-block;min-width:130px}
-.mr-scope .head .data{grid-column:1/-1;margin-top:8px;display:flex;align-items:center;gap:10px}
-.mr-scope .head .data label{margin:0}
-.mr-scope .head .data input{width:180px}
-.mr-scope .legit{margin-top:8px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap}
-.mr-scope .legit label{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--ink);font-weight:500}
-.mr-scope .legit input{width:auto;margin:0}
-.mr-scope .totals{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;background:var(--panel);border-radius:var(--radius);padding:12px 14px;margin-top:8px}
-.mr-scope .totals .big{font-size:20px;font-weight:700}
-.mr-scope .status{padding:8px 12px;border-radius:6px;font-weight:700;font-size:13px;min-width:170px;text-align:center}
-.mr-scope .status.ok{background:#e7efe6;color:#4f7a5a}
-.mr-scope .status.bad{background:var(--red-soft);color:var(--red)}
-.mr-scope .status.idle{background:var(--panel2);color:var(--muted)}
-.mr-scope .split{background:var(--red-soft);color:var(--red);border-left:4px solid var(--red);padding:10px 14px;border-radius:6px;font-size:13px;margin:8px 0 10px;font-weight:600}
-.mr-scope .split small{display:block;font-weight:400;margin-top:4px;color:var(--ink)}
-.mr-scope .totals.dois{grid-template-columns:1fr 1fr auto}
-.mr-scope .counter{text-align:right;font-size:12px;color:var(--muted)}
-.mr-scope .counter.over{color:var(--red);font-weight:700}
-.mr-scope .footer{position:sticky;bottom:0;z-index:2;background:#fff;border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;margin-top:30px}
-.mr-scope .footer .btn.primary{flex:1}
-.mr-scope .footer .btn{flex:0 0 auto}
-.mr-scope .copy{cursor:pointer}
-.mr-scope .copy:hover{background:var(--green-soft)}
-.mr-scope .flash{outline:2px solid var(--green)!important}
-@media (max-width:640px){.mr-scope .head{grid-template-columns:1fr}
-.mr-scope .totals{grid-template-columns:1fr}}
-
-@media print{.mr-scope .footer,.mr-scope .btn,.mr-scope .toolbar{display:none!important}}
-.mr-scope #mr-mapa.ro .ro-lock input:not([type=checkbox]),.mr-scope #mr-mapa.ro .ro-lock select,.mr-scope #mr-mapa.ro .ro-lock textarea{background:var(--panel2);color:var(--ink);pointer-events:auto}
-.mr-scope #mr-mapa.ro .ro-lock .btn.x,.mr-scope #mr-mapa.ro .ro-lock .btn.small,.mr-scope #mr-mapa.ro .ro-lock .toggle input,.mr-scope #mr-mapa.ro h2 .btn{display:none!important}
-.mr-scope #mr-mapa.ro .ro-lock .toggle,.mr-scope #mr-mapa.ro .ro-lock .legit label,.mr-scope #mr-mapa.ro .ro-lock input[type=radio]{pointer-events:none}
-.mr-scope #mr-mapa.ro .ro-lock input[type=text]{cursor:pointer}`;
-const HTML=`<div class="mr" id="mr-mapa" hidden>
-  <div class="topbar"><button class="btn" id="mr-btnVoltar">‹ Lista de registos</button><div id="mr-mapaTitulo" class="mapa-titulo"></div><span id="mr-mapaEstado" class="pill"></span></div>
-
-  <!-- 1 -->
-  <h2><span><span class="num">1</span>Identificação do Apresentante</span><span class="hint">fixo — copiar tal como está</span></h2>
-  <div class="head ro-lock">
-    <div><span>Nome</span><b>LILIANA BURRICA</b></div>
-    <div><span>e-mail</span>lburrica08733@osae.pt</div>
-    <div><span>Tipo de documento</span>Cédula Profissional</div>
-    <div><span>N.º do documento</span>8733</div>
-    <div><span>Qualidade</span>Solicitador</div>
-    <div><span>NIF</span>519018532</div>
-    <div><span>Residência</span>Rua Domingos Franco de Oliveira nº 16</div>
-    <div><span>Código postal</span>7005-552</div>
-    <div><span>Localidade</span>Évora</div>
-    <div><span>Telemóvel</span>+351960215959</div>
-    <div><span>NIB</span>0035 · 0655 · 00005276730 · 17</div>
-    <div><span>IBAN</span>PT50003506550000527673017</div>
-    <div><span>BIC/SWIFT</span>CGDIPTPL</div>
-    <div><span>e-mail adicional</span>info@lbc-solicitadora.pt</div>
-    <div class="data"><label for="mr-dataDoc">Data do Documento</label><input type="date" id="mr-dataDoc"><span class="hint">= data do ato (aaaa-mm-dd)</span></div>
-    <div class="legit" style="grid-column:1/-1;margin-top:4px"><span class="hint" style="min-width:130px">Escritura</span>
-      <label><input type="radio" name="mr-tipoEsc" value="CGD" checked>CGD (pagamento a cargo da CGD)</label>
-      <label><input type="radio" name="mr-tipoEsc" value="Particular">Particular (pagamento a cargo de LBC)</label>
-    </div>
-    <div class="legit" style="grid-column:1/-1">
-      <label><input type="radio" name="mr-legit" value="sujeito" checked>Sujeito da obrigação de registar</label>
-      <label><input type="radio" name="mr-legit" value="proc">Representante com procuração</label>
-      <label><input type="radio" name="mr-legit" value="semproc">Representante sem procuração</label>
-    </div>
-  </div>
-
-  <!-- 2 -->
-  <h2><span><span class="num">2</span>Documentos que servem de base ao registo</span><button class="btn small" id="mr-addDoc">+ Documento</button></h2>
-  <div class="card ro-lock">
-    <div class="row" style="grid-template-columns:220px 1fr">
-      <div><label>Código do DPA (depósito do próprio ato)</label><input type="text" id="mr-codDPA" placeholder="0000-0000-0000-0000" class="copy" title="clicar para copiar"></div>
-      <div><label>Descrição</label><input type="text" value="Documento particular autenticado do ato" readonly></div>
-    </div>
-    <div class="hint">Predial Online → Documento Particular Autenticado → Código do Documento → «Validar Documento».</div>
-  </div>
-  <div id="mr-docs" class="ro-lock"></div>
-
-  <!-- 3 -->
-  <h2><span><span class="num">3</span>Atos a registar</span><button class="btn small" id="mr-addAto">+ Ato</button></h2>
-  <div id="mr-atos" class="ro-lock"></div>
-  <!-- 4 -->
-  <h2><span><span class="num">4</span>Imóveis sobre os quais incide o registo</span><button class="btn small" id="mr-addPredio">+ Prédio</button></h2>
-  <div class="hint" style="margin-bottom:8px">Identificação sempre por «Descrição em Ficha ou Informatizado».</div>
-  <div id="mr-predios" class="ro-lock"></div>
-
-  <!-- 5 -->
-  <h2><span><span class="num">5</span>Sujeitos</span><span class="hint">por ato — o portal preenche o resto pelo NIF</span></h2>
-  <div id="mr-sujeitos" class="ro-lock"></div>
-
-  <!-- 6 -->
-  <h2><span><span class="num">6</span>Isenções e declarações</span></h2>
-  <div class="card ro-lock" id="mr-bloco6">
-    <div class="legit" style="margin:0 0 8px">
-      <label><input type="radio" name="mr-isencao" value="nao" checked>Não enquadrado</label>
-      <label><input type="radio" name="mr-isencao" value="outras">Outras Isenções e Reduções</label>
-    </div>
-    <div id="mr-isencaoBox" hidden>
-      <select id="mr-isencaoTipo">
-        <option value="">-- Escolha --</option>
-        <option>Primeira aquisição e hipoteca para garantia de mútuo da primeira aquisição - Sujeitos com idade igual ou inferior a 35 anos</option>
-        <option>Redução de ½ referente à primeira Aquisição e Hipoteca - Sujeitos com idade igual ou inferior a 35 anos</option>
-        <option value="outra">Outra (escrever)</option>
-      </select>
-      <div id="mr-isencaoOutraBox" hidden style="margin-top:8px">
-        <label for="mr-isencaoOutra">Isenção / redução</label>
-        <input type="text" id="mr-isencaoOutra" placeholder="escreva a isenção tal como consta no portal">
-      </div>
-    </div>
-  <h3 style="margin-top:14px">Somatório dos valores dos atos</h3>
-      <div id="mr-splitAviso" class="split" hidden>Isenção jovem + cancelamentos → fazer DOIS pedidos de registo no Predial Online.
-      <small>Pedido 1: aquisição e hipoteca (com a isenção). Pedido 2: cancelamentos (sem isenção). Os valores abaixo estão separados por pedido.</small></div>
-    <div class="totals">
-      <div><label id="mr-lblTotal">Total dos atos (€)</label><div class="big" id="mr-totalAtos">0,00</div></div>
-      <div><label for="mr-valorPredial" id="mr-lblPredial">Valor do Predial (€)</label><input type="text" inputmode="decimal" class="num" id="mr-valorPredial" placeholder="0,00"></div>
-      <div class="status idle" id="mr-status">Sem valor do Predial</div>
-    </div>
-    <div class="totals" id="mr-totals2" hidden>
-      <div><label>Pedido 2 — total dos cancelamentos (€)</label><div class="big" id="mr-totalCanc">0,00</div></div>
-      <div><label for="mr-valorPredial2">Pedido 2 — valor do Predial (€)</label><input type="text" inputmode="decimal" class="num" id="mr-valorPredial2" placeholder="0,00"></div>
-      <div class="status idle" id="mr-status2">Sem valor do Predial</div>
-    </div>
-
-    <div style="margin-top:12px">
-      <label for="mr-decl">Declarações Complementares</label>
-      <textarea id="mr-decl" maxlength="4000"></textarea>
-      <div class="counter" id="mr-declCount">0/4000</div>
-    </div>
-  </div>
-
-  <!-- 7 -->
-  <h2><span><span class="num">7</span>Estado do registo</span></h2>
-  <div class="card" id="mr-estadoCard">
-    <label class="toggle" style="font-size:14px;color:var(--ink)"><input type="checkbox" id="mr-submetido"> Registo submetido no Predial Online</label>
-    <div id="mr-submetidoBox" hidden style="margin-top:10px">
-      <div class="row" style="grid-template-columns:180px 1fr">
-        <div><label for="mr-dataSub">Data de submissão</label><input type="date" id="mr-dataSub"></div>
-        <div><label for="mr-obsSub">Observações</label><input type="text" id="mr-obsSub" placeholder="ex.: 2 pedidos"></div>
-      </div>
-      <h3>Pagamento (referência MB emitida pelo Predial)</h3>
-      <div class="row" style="grid-template-columns:120px 200px 140px 1fr;margin:0">
-        <div><label for="mr-mbEnt">Entidade</label><input type="text" id="mr-mbEnt" inputmode="numeric" maxlength="5" class="copy" title="clicar para copiar"></div>
-        <div><label for="mr-mbRef">Referência</label><input type="text" id="mr-mbRef" inputmode="numeric" placeholder="000 000 000" class="copy" title="clicar para copiar"></div>
-        <div><label for="mr-mbVal">Valor pago (€)</label><input type="text" inputmode="decimal" class="num" id="mr-mbVal" placeholder="0,00"></div>
-        <div><label>&nbsp;</label><div class="status idle" id="mr-statusMB">Sem valor</div></div>
-      </div>
-      <div class="hint" style="margin-top:4px">O valor pago deve coincidir com o total do bloco 6 — é este que se confere com o extrato bancário.</div>
-      <div class="row" style="grid-template-columns:1fr auto;align-items:end;margin:12px 0 0">
-        <div><label for="mr-emailDest">Enviar pedido de pagamento para <span id="mr-emailAuto" class="hint">(definido pela escolha CGD / Particular)</span></label>
-          <select id="mr-emailDest">
-            <option value="dpacx@costafreitas.pt">DPA CX &lt;dpacx@costafreitas.pt&gt;</option>
-            <option value="liliana.cardoso@lbc-solicitadora.pt">Liliana Cardoso &lt;liliana.cardoso@lbc-solicitadora.pt&gt;</option>
-          </select></div>
-        <div><button class="btn" id="mr-btnEmail">✉ Pedir pagamento</button></div>
-      </div>
-    </div>
-    <div class="hint" style="margin-top:8px">Ao guardar com este toggle ligado, o registo de escrituras é marcado como «Apresentado» (evento <code>mapa:submetido</code>).</div>
-  </div>
-
-  <div class="footer">
-    <button class="btn" id="mr-btnCancel">Cancelar</button>
-    <button class="btn" id="mr-btnPrint">Exportar PDF</button>
-    <button class="btn primary" id="mr-btnSave">Guardar</button>
-  </div>
-</div>`;
-
-function mountMapaRegisto(ROOT){
-  'use strict';
-  const $ = (s, r=ROOT) => r.querySelector(s);
-  const uid = () => Math.random().toString(36).slice(2,9);
-  const REGIMES = ['Comunhão de adquiridos','Comunhão geral','Separação de bens'];
-  const ESTADOS = ['Solteiro(a)','Casado(a)','Divorciado(a)','Viúvo(a)','Separado(a) judicialmente'];
-  const num = v => { if(v===''||v==null) return 0; const t=String(v).replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'); const n=parseFloat(t); return isNaN(n)?0:n; };
-  const fmt = n => (num(n)).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const isColetiva = nif => /^[579]/.test((nif||'').trim());
-
-  const state = {
-    dataDoc:'', legit:'sujeito', codDPA:'', docs:[], atos:[], predios:[],
-    valorPredial:'', valorPredial2:'', isencao:'nao', isencaoTipo:'', isencaoOutra:'', decl:'',
-    submetido:false, dataSub:'', obsSub:'', mbEnt:'', mbRef:'', mbVal:'', ref:'', tipoEsc:'CGD', processo:'', cliente:''
-  };
-
-  /* ---------- factories ---------- */
-  const newDoc = () => ({id:uid(), codigo:'', descricao:''});
-  const newCanc = () => ({id:uid(), ap:'', data:'', facto:'', valor:''});
-  const newSujeito = () => ({id:uid(), tipo:'Passivo', nif:'', estado:'', regime:'', nifConjuge:'', _col:false});
-  const newAto = () => ({id:uid(), facto:'', data:state.dataDoc, valor:'', cancelamentos:false, cancs:[], sujeitos:[newSujeito(), Object.assign(newSujeito(),{tipo:'Ativo'})]});
-  const newPredio = () => ({id:uid(), concelho:'', freguesia:'', numero:'', fracao:false, letra:''});
-
-  /* ---------- render helpers ---------- */
-  const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const inp = (path, val, ph='', type='text', extra='') => `<input type="${type}" data-path="${path}" value="${esc(val)}" placeholder="${esc(ph)}" ${extra}>`;
-
-  function _renderDocs(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
-    const box = $('#mr-docs');
-    box.innerHTML = state.docs.map(d => `
-      <div class="card" data-id="${d.id}">
-        <button class="btn x" data-del="doc">×</button>
-        <div class="row" style="grid-template-columns:220px 1fr;margin:0;padding-right:36px">
-          <div><label>Código de depósito</label>${inp('docs.'+d.id+'.codigo', d.codigo, '0000-0000-0000-0000','text','class="copy" title="clicar para copiar"')}</div>
-          <div><label>A que corresponde</label>${inp('docs.'+d.id+'.descricao', d.descricao, 'ex.: distrate hipoteca Banco X, procuração…')}</div>
-        </div>
-      </div>`).join('') || '<div class="empty">Sem documentos adicionais (distrates, procurações…).</div>';
-  }
-
-  function _renderAtos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
-    const box = $('#mr-atos');
-    box.innerHTML = state.atos.map((a,i) => `
-      <div class="card" data-id="${a.id}">
-        <button class="btn x" data-del="ato">×</button>
-        <div class="row" style="grid-template-columns:1fr 160px 130px;padding-right:36px">
-          <div><label>Facto sujeito a registo</label>${inp('atos.'+a.id+'.facto', a.facto, 'ex.: Aquisição definitiva')}</div>
-          <div><label>Data do ato</label>${inp('atos.'+a.id+'.data', a.data, '', 'date')}</div>
-          <div><label>Valor (€)</label>${inp('atos.'+a.id+'.valor', a.valor, '0,00', 'text', 'inputmode="decimal" class="num"')}</div>
-        </div>
-        <label class="toggle"><input type="checkbox" data-path="atos.${a.id}.cancelamentos" ${a.cancelamentos?'checked':''}> Cancelamentos</label>
-        ${a.cancelamentos ? `
-          <div style="margin-top:8px">
-            <div class="toolbar"><button class="btn small" data-addcanc="${a.id}">+ Cancelamento</button></div>
-            ${a.cancs.map(c => `
-              <div class="card" data-id="${c.id}" data-ato="${a.id}">
-                <button class="btn x" data-del="canc">×</button>
-                <div class="row" style="grid-template-columns:110px 150px 1fr 120px;margin:0;padding-right:36px">
-                  <div><label>AP. n.º</label>${inp('canc.'+a.id+'.'+c.id+'.ap', c.ap, 'ex.: 2534')}</div>
-                  <div><label>Data do facto</label>${inp('canc.'+a.id+'.'+c.id+'.data', c.data, '', 'date')}</div>
-                  <div><label>Facto a cancelar</label>${inp('canc.'+a.id+'.'+c.id+'.facto', c.facto, 'hipoteca, usufruto, ónus…')}</div>
-                  <div><label>Valor (€)</label>${inp('canc.'+a.id+'.'+c.id+'.valor', c.valor, '0,00', 'text', 'inputmode="decimal" class="num"')}</div>
-                </div>
-              </div>`).join('') || '<div class="empty">Sem cancelamentos. Adicione um por cada inscrição a cancelar.</div>'}
-          </div>` : ''}
-      </div>`).join('') || '<div class="empty">Adicione o primeiro ato a registar.</div>';
-    renderTotals();
-    renderSujeitos();
-  }
-
-  const isJovem = () => state.isencao==='outras' && /35 anos/.test(state.isencaoTipo||'');
-  const hasCanc = () => state.atos.some(a => a.cancelamentos && a.cancs.length);
-  function statusOf(el, total, vpRaw){
-    const vp = (vpRaw === '' || vpRaw == null) ? null : num(vpRaw);
-    if(vp === null){ el.className='status idle'; el.textContent='Sem valor do Predial'; return; }
-    const diff = Math.round((total - vp)*100)/100;
-    if(Math.abs(diff) < 0.005){ el.className='status ok'; el.textContent='✓ Valores coincidem'; }
-    else { el.className='status bad'; el.textContent='✗ Diferença: ' + fmt(diff) + ' €'; }
-  }
-  function renderTotals(){
-    let tAtos = 0, tCanc = 0;
-    state.atos.forEach(a => { tAtos += num(a.valor); if(a.cancelamentos) a.cancs.forEach(c => tCanc += num(c.valor)); });
-    renderMB();
-    const split = isJovem() && hasCanc();
-    $('#mr-splitAviso').hidden = !split;
-    $('#mr-totals2').hidden = !split;
-    if(split){
-      $('#mr-lblTotal').textContent='Pedido 1 — total dos atos (€)';
-      $('#mr-lblPredial').textContent='Pedido 1 — valor do Predial (€)';
-      $('#mr-totalAtos').textContent = fmt(tAtos);
-      statusOf($('#mr-status'), tAtos, state.valorPredial);
-      $('#mr-totalCanc').textContent = fmt(tCanc);
-      statusOf($('#mr-status2'), tCanc, state.valorPredial2);
-    } else {
-      $('#mr-lblTotal').textContent='Total dos atos (€)';
-      $('#mr-lblPredial').textContent='Valor do Predial (€)';
-      $('#mr-totalAtos').textContent = fmt(tAtos + tCanc);
-      statusOf($('#mr-status'), tAtos + tCanc, state.valorPredial);
-    }
-  }
-
-  function totalGeral(){ let t=0; state.atos.forEach(a=>{ t+=num(a.valor); if(a.cancelamentos) a.cancs.forEach(c=>t+=num(c.valor)); }); return t; }
-  function renderMB(){ const el=$('#mr-statusMB'); if(!el) return; statusOf(el, totalGeral(), state.mbVal); el.textContent = el.textContent.replace('Sem valor do Predial','Sem valor'); }
-
-  function _renderPredios(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
-    const box = $('#mr-predios');
-    box.innerHTML = state.predios.map(p => `
-      <div class="card" data-id="${p.id}">
-        <button class="btn x" data-del="predio">×</button>
-        <div class="row" style="grid-template-columns:1fr 1fr 120px 130px;padding-right:36px;margin:0">
-          <div><label>Concelho</label>${inp('predios.'+p.id+'.concelho', p.concelho, 'ex.: Évora')}</div>
-          <div><label>Freguesia</label>${inp('predios.'+p.id+'.freguesia', p.freguesia, '')}</div>
-          <div><label>Prédio n.º</label>${inp('predios.'+p.id+'.numero', p.numero, '', 'text', 'class="copy" title="clicar para copiar"')}</div>
-          <div><label>&nbsp;</label><label class="toggle" style="margin-top:8px"><input type="checkbox" data-path="predios.${p.id}.fracao" ${p.fracao?'checked':''}> Fração</label></div>
-        </div>
-        ${p.fracao ? `
-          <div class="row" style="grid-template-columns:120px 1fr;margin:10px 0 0;align-items:end">
-            <div><label>Fração</label>${inp('predios.'+p.id+'.letra', p.letra, 'ex.: A')}</div>
-            <div class="note">Verifique «Selecionar frações» no portal.</div>
-          </div>` : ''}
-      </div>`).join('') || '<div class="empty">Adicione o(s) prédio(s).</div>';
-  }
-
-  function _renderSujeitos(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
-    const box = $('#mr-sujeitos');
-    if(!state.atos.length){ box.innerHTML='<div class="empty">Os sujeitos aparecem depois de adicionar atos.</div>'; return; }
-    box.innerHTML = state.atos.map((a,i) => `
-      <div class="card" data-id="${a.id}">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <h3 style="margin:0">Ato ${i+1} — ${esc(a.facto) || '<i>sem designação</i>'}</h3>
-          <button class="btn small" data-addsuj="${a.id}">+ Sujeito</button>
-        </div>
-        ${a.sujeitos.map(s => {
-          const col = isColetiva(s.nif);
-          const casado = /^casad/i.test(s.estado);
-          return `
-          <div class="card" data-id="${s.id}" data-ato="${a.id}">
-            <button class="btn x" data-del="suj">×</button>
-            <div class="row" style="grid-template-columns:110px 160px 1fr;margin:0;padding-right:36px;align-items:end">
-              <div><label>Interveniente</label>
-                <select data-path="suj.${a.id}.${s.id}.tipo">
-                  <option ${s.tipo==='Passivo'?'selected':''}>Passivo</option>
-                  <option ${s.tipo==='Ativo'?'selected':''}>Ativo</option>
-                </select></div>
-              <div><label>NIF / NIPC</label>${inp('suj.'+a.id+'.'+s.id+'.nif', s.nif, '', 'text', 'inputmode="numeric" maxlength="9" class="copy" title="clicar para copiar"')}</div>
-              ${col ? `<div class="hint" style="padding-bottom:8px">Pessoa coletiva — sem estado civil.</div>` : `
-              <div><label>Estado civil</label>
-                <select data-path="suj.${a.id}.${s.id}.estado">
-                  <option value="">-- Escolha --</option>
-                  ${ESTADOS.map(e => `<option ${s.estado===e?'selected':''}>${e}</option>`).join('')}
-                </select></div>`}
-            </div>
-            ${(!col && casado) ? `
-            <div class="row" style="grid-template-columns:1fr 160px;margin:10px 0 0">
-              <div><label>Regime de bens</label>
-                <select data-path="suj.${a.id}.${s.id}.regime">
-                  <option value="">-- Escolha --</option>
-                  ${REGIMES.map(r => `<option ${s.regime===r?'selected':''}>${r}</option>`).join('')}
-                </select></div>
-              <div><label>NIF do cônjuge</label>${inp('suj.'+a.id+'.'+s.id+'.nifConjuge', s.nifConjuge, '', 'text', 'inputmode="numeric" maxlength="9" class="copy" title="clicar para copiar"')}</div>
-            </div>` : ''}
-          </div>`;}).join('') || '<div class="empty">Sem sujeitos.</div>'}
-      </div>`).join('');
-  }
-
-
-  /* Mantém o cursor no campo em que se estava a escrever quando uma secção é redesenhada. */
-  function keepFocus(fn){
-    const a=document.activeElement; const path=a&&a.dataset?a.dataset.path:null; let pos=null;
-    if(path){ try{ pos=a.selectionStart; }catch(e){} }
-    fn();
-    if(path){ const el=(s=>ROOT.querySelector(s))(`[data-path="${path}"]`); if(el&&el!==document.activeElement){ el.focus(); if(pos!=null){ try{ el.setSelectionRange(pos,pos); }catch(e){} } } }
-  }
-  function renderDocs(){ keepFocus(_renderDocs); }
-  function renderAtos(){ keepFocus(_renderAtos); }
-  function renderPredios(){ keepFocus(_renderPredios); }
-  function renderSujeitos(){ keepFocus(_renderSujeitos); }
-  function renderAll(){ setTimeout(()=>window.dispatchEvent(new Event('mapa:rendered')),0);
-    $('#mr-dataDoc').value = state.dataDoc;
-    $('input[name=mr-legit][value="'+state.legit+'"]').checked = true;
-    $('input[name=mr-tipoEsc][value="'+state.tipoEsc+'"]').checked = true; applyTipoEsc();
-    $('#mr-codDPA').value = state.codDPA;
-    $('#mr-valorPredial').value = state.valorPredial; $('#mr-valorPredial2').value = state.valorPredial2;
-    $('input[name=mr-isencao][value="'+state.isencao+'"]').checked = true;
-    $('#mr-isencaoBox').hidden = state.isencao !== 'outras';
-    $('#mr-isencaoTipo').value = state.isencaoTipo;
-    $('#mr-isencaoOutra').value = state.isencaoOutra; $('#mr-isencaoOutraBox').hidden = state.isencaoTipo !== 'outra';
-    $('#mr-decl').value = state.decl; updateCount();
-    $('#mr-submetido').checked = !!state.submetido; $('#mr-submetidoBox').hidden = !state.submetido; $('#mr-estadoCard').style.background = state.submetido ? '#e7efe6' : '';
-    $('#mr-dataSub').value = state.dataSub; $('#mr-obsSub').value = state.obsSub; $('#mr-mbEnt').value = state.mbEnt; $('#mr-mbRef').value = state.mbRef; $('#mr-mbVal').value = state.mbVal; renderMB();
-    renderDocs(); renderAtos(); renderPredios();
-  }
-  function updateCount(){ const n=$('#mr-decl').value.length; const c=$('#mr-declCount'); c.textContent=n+'/4000'; c.classList.toggle('over', n>=4000); }
-
-  /* ---------- lookups ---------- */
-  const findAto = id => state.atos.find(a=>a.id===id);
-  function setPath(path, value){
-    const p = path.split('.');
-    switch(p[0]){
-      case 'docs': { const d=state.docs.find(x=>x.id===p[1]); if(d) d[p[2]]=value; break; }
-      case 'atos': { const a=findAto(p[1]); if(!a) break; a[p[2]]=value; if(p[2]==='cancelamentos') renderAtos(); else if(p[2]==='valor') renderTotals(); else if(p[2]==='facto') renderSujeitos(); break; }
-      case 'canc': { const a=findAto(p[1]); const c=a&&a.cancs.find(x=>x.id===p[2]); if(c){ c[p[3]]=value; if(p[3]==='valor') renderTotals(); } break; }
-      case 'predios': { const pr=state.predios.find(x=>x.id===p[1]); if(pr){ pr[p[2]]=value; if(p[2]==='fracao') renderPredios(); } break; }
-      case 'suj': { const a=findAto(p[1]); const s=a&&a.sujeitos.find(x=>x.id===p[2]); if(s){ s[p[3]]=value; if(p[3]==='nif'||p[3]==='estado'){ if(p[3]==='nif'){ const was=s._col; s._col=isColetiva(value); if(was!==s._col) renderSujeitos(); } else renderSujeitos(); } } break; }
-    }
-  }
-
-  /* ---------- events ---------- */
-  const root = ROOT;
-  root.addEventListener('input', e => {
-    const t = e.target;
-    if(t.dataset.path){ setPath(t.dataset.path, t.type==='checkbox' ? t.checked : t.value); return; }
-    if(t.id==='mr-dataDoc'){ state.dataDoc=t.value; state.atos.forEach(a=>{ if(!a.data) a.data=t.value; }); }
-    if(t.id==='mr-codDPA') state.codDPA=t.value;
-    if(t.id==='mr-valorPredial'){ state.valorPredial=t.value; renderTotals(); }
-    if(t.id==='mr-valorPredial2'){ state.valorPredial2=t.value; renderTotals(); }
-    if(t.id==='mr-decl'){ state.decl=t.value; updateCount(); }
-    if(t.id==='mr-isencaoOutra') state.isencaoOutra=t.value;
-    if(t.id==='mr-dataSub') state.dataSub=t.value;
-    if(t.id==='mr-mbEnt') state.mbEnt=t.value;
-    if(t.id==='mr-mbRef') state.mbRef=t.value;
-    if(t.id==='mr-mbVal'){ state.mbVal=t.value; renderMB(); }
-    if(t.id==='mr-obsSub') state.obsSub=t.value;
-  });
-  root.addEventListener('change', e => {
-    const t=e.target;
-    if(t.name==='mr-legit') state.legit=t.value;
-    if(t.name==='mr-tipoEsc'){ state.tipoEsc=t.value; applyTipoEsc(); }
-    if(t.id==='mr-submetido'){ state.submetido=t.checked; $('#mr-submetidoBox').hidden=!t.checked; $('#mr-estadoCard').style.background = t.checked ? '#e7efe6' : ''; if(t.checked && !state.dataSub){ state.dataSub=new Date().toISOString().slice(0,10); $('#mr-dataSub').value=state.dataSub; } }
-    if(t.name==='mr-isencao'){ state.isencao=t.value; $('#mr-isencaoBox').hidden = t.value!=='outras'; if(t.value!=='outras'){ state.isencaoTipo=''; state.isencaoOutra=''; $('#mr-isencaoTipo').value=''; $('#mr-isencaoOutra').value=''; $('#mr-isencaoOutraBox').hidden=true; } renderTotals(); }
-    if(t.id==='mr-isencaoTipo'){ state.isencaoTipo=t.value; $('#mr-isencaoOutraBox').hidden = t.value!=='outra'; if(t.value!=='outra'){ state.isencaoOutra=''; $('#mr-isencaoOutra').value=''; } renderTotals(); }
-    if(t.dataset.path && t.tagName==='SELECT') setPath(t.dataset.path, t.value);
-  });
-  root.addEventListener('click', e => {
-    const t=e.target;
-    if(t.id==='mr-addDoc'){ state.docs.push(newDoc()); renderDocs(); focusLast('#mr-docs'); return; }
-    if(t.id==='mr-addAto'){ state.atos.push(newAto()); renderAtos(); focusLast('#mr-atos'); return; }
-    if(t.id==='mr-addPredio'){ state.predios.push(newPredio()); renderPredios(); focusLast('#mr-predios'); return; }
-    if(t.dataset.addcanc){ findAto(t.dataset.addcanc).cancs.push(newCanc()); renderAtos(); return; }
-    if(t.dataset.addsuj){ findAto(t.dataset.addsuj).sujeitos.push(newSujeito()); renderSujeitos(); return; }
-    if(t.dataset.del){
-      const card=t.closest('.card'); const id=card.dataset.id;
-      switch(t.dataset.del){
-        case 'doc': state.docs=state.docs.filter(x=>x.id!==id); renderDocs(); break;
-        case 'ato': if(confirm('Remover este ato e os seus sujeitos?')){ state.atos=state.atos.filter(x=>x.id!==id); renderAtos(); } break;
-        case 'canc': { const a=findAto(card.dataset.ato); a.cancs=a.cancs.filter(x=>x.id!==id); renderAtos(); break; }
-        case 'predio': state.predios=state.predios.filter(x=>x.id!==id); renderPredios(); break;
-        case 'suj': { const a=findAto(card.dataset.ato); a.sujeitos=a.sujeitos.filter(x=>x.id!==id); renderSujeitos(); break; }
-      }
-      return;
-    }
-    if(t.classList.contains('copy') && t.value){
-      navigator.clipboard && navigator.clipboard.writeText(t.value).then(()=>{ t.classList.add('flash'); setTimeout(()=>t.classList.remove('flash'),500); });
-    }
-    if(t.id==='mr-btnEmail'){ pedirPagamento(); return; }
-    if(t.id==='mr-btnPrint') window.print();
-    if(t.id==='mr-btnSave'){ const d=getData(); root.dispatchEvent(new CustomEvent('mapa:save',{detail:d,bubbles:true})); if(d.submetido) root.dispatchEvent(new CustomEvent('mapa:submetido',{detail:{dataSub:d.dataSub, obsSub:d.obsSub, mbEnt:d.mbEnt, mbRef:d.mbRef, mbVal:d.mbVal, total:totalGeral(), estado:'Apresentado'},bubbles:true})); }
-    if(t.id==='mr-btnCancel') root.dispatchEvent(new CustomEvent('mapa:cancel',{bubbles:true}));
-  });
-  function focusLast(sel){ const cards=ROOT.querySelectorAll(sel+' > .card'); const last=cards[cards.length-1]; const f=last&&last.querySelector('input,select'); if(f) f.focus(); }
-
-  /* ---------- e-mail ao financeiro ---------- */
-  const config = { cc:'', assunto:'PAGAMENTO REGISTOS', emails:{ CGD:'dpacx@costafreitas.pt', Particular:'liliana.cardoso@lbc-solicitadora.pt' } };
-  function applyTipoEsc(){ const el=$('#mr-emailDest'); if(el) el.value = config.emails[state.tipoEsc] || el.value; }
-  function assunto(){
-    const proc=(state.processo||'').trim(), cli=(state.cliente||'').trim();
-    if(proc||cli) return 'Pagamento Registos Processo # ' + (proc||'—') + ' _ ' + (cli||'');
-    return config.assunto + (state.ref ? ' — ' + state.ref : '');
-  }
-  function pedirPagamento(){
-    const linhas = [state.tipoEsc + ' - Solicito pagamento.'];
-    const url = 'mailto:' + encodeURIComponent($('#mr-emailDest').value)
-      + '?subject=' + encodeURIComponent(assunto())
-      + (config.cc ? '&cc=' + encodeURIComponent(config.cc) : '')
-      + '&body=' + encodeURIComponent(linhas.join('\r\n'));
-    window.location.href = url;
-  }
-
-  /* ---------- public API ---------- */
-  function getData(){ const d=JSON.parse(JSON.stringify(state)); d.atos.forEach(a=>a.sujeitos.forEach(s=>delete s._col)); d.doisPedidos = isJovem() && hasCanc(); d.totalAtos=Number($('#mr-totalAtos').textContent.replace(/\./g,'').replace(',','.')); if(d.doisPedidos) d.totalCanc=Number($('#mr-totalCanc').textContent.replace(/\./g,'').replace(',','.')); return d; }
-  function setData(d){
-    Object.assign(state, {docs:[],atos:[],predios:[]}, d||{});
-    state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
-    renderAll();
-  }
-  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD',processo:'',cliente:''}); }
-  window.MapaRegisto = {getData, setData, reset, state, config, pedirPagamento};
-
-  /* modo colaboradora */
-  let RO=false;
-  function setModo(m){ RO = (m==='colaboradora'); root.classList.toggle('ro', RO); root.querySelectorAll('.ro-lock input:not([type=checkbox]):not([type=radio]), .ro-lock select, .ro-lock textarea').forEach(el=>{ if(el.id==='mr-valorPredial'||el.id==='mr-valorPredial2') return; el.readOnly=RO; if(el.tagName==='SELECT') el.disabled=RO; }); }
-  const _renderAll = renderAll;
-  root.addEventListener('click', e => { if(RO && e.target.matches('.ro-lock input[type=text]') && e.target.value && navigator.clipboard){ navigator.clipboard.writeText(e.target.value); e.target.classList.add('flash'); setTimeout(()=>e.target.classList.remove('flash'),500); } }, true);
-  window.addEventListener('mapa:rendered', ()=>{ if(RO) setModo('colaboradora'); });
-  window.MapaRegisto.setModo = setModo;
-  /* hooks used by the list */
-  root.addEventListener('click', e => { if(e.target.id==='mr-btnVoltar') root.dispatchEvent(new CustomEvent('mapa:voltar',{bubbles:true})); });
-  reset();
-  return window.MapaRegisto;
-}
-
-
-window.MapaRegistoCore={
-  mount(container){
-    if(!document.getElementById('mr-css')){const st=document.createElement('style');st.id='mr-css';st.textContent=CSS;document.head.appendChild(st);}
-    container.classList.add('mr-scope');
-    container.innerHTML=HTML;
-    const root=container.querySelector('#mr-mapa'); root.hidden=false;
-    return mountMapaRegisto(root);
-  }
-};
-})();
-
-</script>
 <script>
 (function(){
 'use strict';
 
-const LP='RegistoPedidos';
+const LD='RegistoDocumentos', LP='RegistoPedidos';
+const D={titulo:'Title',escrituraId:'EscrituraId',origem:'Origem',codigo:'CodigoAcesso',obs:'ObsDocumento'};
 const P={titulo:'Title',escrituraId:'EscrituraId',cliente:'Cliente',data:'DataRegisto',regime:'Regime',
   codigos:'CodigosUsar',entidade:'EntidadeMB',referencia:'ReferenciaMB',valor:'ValorPedido',
   dataPag:'DataPagamento',estado:'EstadoPedido',ap:'APObtida',notas:'NotasPedido',atos:'AtosJSON'};
 
-let idListaPed=null, PEDS=[], escId=null, mapa=null, pedAberto=null;
+const ORIGENS=['Depósito eletrónico','Notário','Câmara Municipal','Registo Predial','Autoridade Tributária','Outra'];
+/* O que o depósito contém. Escreve-se à mão; isto são só atalhos. */
+const SUGESTOES=['Aquisição','Hipoteca','Aquisição + hipoteca','Cancelamento de hipoteca',
+  'Locação financeira','Cancelamento de locação financeira','Propriedade horizontal','Ónus','Outro'];
+const REGIMES=['Normal — a pagar','Isento — regime jovem','Isento — outro'];
+const ESTADOS=['Por submeter','Submetido','Pendente / dúvidas','Concluído'];
+const QUALIDADES=['Ativo','Passivo'];
+const TIPOS_SUJ=['Singular','Coletivo'];
+const ESTADOS_CIVIS=['solteiro(a), maior','casado(a)','divorciado(a)','viúvo(a)','separado(a) de pessoas e bens','união de facto'];
+const REGIMES_BENS=['comunhão de adquiridos','comunhão geral de bens','separação de bens','regime estrangeiro'];
+const ATOS=['Aquisição','Hipoteca','Cancelamento de hipoteca','Propriedade horizontal',
+  'Ónus de não fracionamento','Ónus de inalienabilidade','Servidão','Usufruto','Direito de superfície',
+  'Conversão de provisório','Averbamento','Cancelamento de ónus','Outro'];
+
+let idListaDoc=null, idListaPed=null;
+let DOCS=[], PEDS=[], escId=null;
 
 const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
-const num=v=>{if(v===''||v==null)return 0;const t=String(v).replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.');const n=parseFloat(t);return isNaN(n)?0:n;};
-const eur=n=>num(n).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const eur=n=>(Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const num=s=>{if(s==null)return 0;let t=String(s).replace(/[€\s]/g,'');if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');const n=parseFloat(t);return isNaN(n)?0:n;};
 const d10=v=>v?String(v).substring(0,10):'';
-const dpt=d=>d?d10(d).split('-').reverse().join('/'):'';
-
-function conteudo(p){ try{const o=JSON.parse(p[P.atos]||'{}'); return (o&&o.atos!==undefined&&o.dataDoc!==undefined)?o:(o&&Array.isArray(o.atos)?o:{}); }catch(e){return {};} }
-const totalDe=m=>{let t=0;(m.atos||[]).forEach(a=>{t+=num(a.valor);if(a.cancelamentos)(a.cancs||[]).forEach(c=>t+=num(c.valor));});return t;};
-const tipoEscDe=ent=>String(ent||'').trim().toUpperCase()==='CGD'?'CGD':'Particular';
 
 async function resolver(){
-  if(idListaPed)return;
+  if(idListaDoc&&idListaPed)return;
   const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
-  idListaPed=(r.value||[]).find(l=>l.name===LP||l.displayName===LP)?.id||null;
-  if(!idListaPed)throw new Error('Lista '+LP+' não encontrada');
+  const acha=n=>(r.value||[]).find(l=>l.name===n||l.displayName===n)?.id||null;
+  idListaDoc=acha(LD); idListaPed=acha(LP);
+  if(!idListaDoc||!idListaPed)throw new Error('Listas '+LD+' / '+LP+' não encontradas');
 }
+
 async function carregar(id){
-  escId=id;PEDS=[];
+  escId=id;DOCS=[];PEDS=[];
   if(!id)return render();
   await resolver();
-  const p=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items?$expand=fields&$top=500`);
-  PEDS=(p.value||[]).filter(x=>String((x.fields||{})[P.escrituraId]||'')===String(id)).map(x=>({id:x.id,...x.fields}))
+  const [d,p]=await Promise.all([
+    graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaDoc}/items?$expand=fields&$top=500`),
+    graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items?$expand=fields&$top=500`)
+  ]);
+  const meu=x=>String((x.fields||{})[D.escrituraId]||'')===String(id);
+  DOCS=(d.value||[]).filter(meu).map(x=>({id:x.id,...x.fields}));
+  PEDS=(p.value||[]).filter(meu).map(x=>({id:x.id,...x.fields}))
        .sort((a,b)=>(a[P.titulo]||'').localeCompare(b[P.titulo]||''));
   render();
 }
 
-// ─── Cartões na ficha ─────────────────────────────────────────────────────
-function render(){
-  const el=$('rc-corpo');if(!el)return;
-  if(!escId){el.innerHTML=`<div class="notice notice-info" style="font-size:11.5px;display:block">Guarda primeiro a escritura. Os registos ficam disponíveis assim que ela existir.</div>`;return;}
-  const cx=PEDS.map((p,i)=>{
-    const m=conteudo(p), sub=(p[P.estado]||'')==='Submetido', semCod=!(m.codDPA||'').trim();
-    const atos=(m.atos||[]).map(a=>esc(a.facto||'—')).join(' · ')||'<i>sem atos</i>';
-    const pred=(m.predios||[]).map(x=>esc((x.numero||'—')+(x.fracao&&x.letra?'-'+x.letra:'')+' '+(x.freguesia||''))).join(' | ');
-    const pill=sub?'<span class="rc-pill ok">Submetido'+(p[P.data]?' · '+dpt(p[P.data]):'')+'</span>':semCod?'<span class="rc-pill off" title="Só aparece à colaboradora depois de ter o código de depósito">Sem código de depósito</span>':'<span class="rc-pill pend">Por submeter · na lista da colaboradora</span>';
-    return `<div class="rc-cx${sub?' rc-sub':semCod?' rc-off':''}" data-ped="${p.id}">
-      <div class="rc-h">
-        <span>${esc(p[P.titulo]||('Registo '+(i+1)))} ${pill}</span>
-        <span style="display:flex;gap:.35rem">
-          <button class="btn btn-success btn-sm" onclick="rcAbrirMapa('${p.id}')" style="font-size:10.5px">Abrir mapa</button>
-          <button class="btn btn-sm" onclick="rcApagarPed('${p.id}')" style="font-size:10.5px;color:var(--red);border-color:var(--red)">Eliminar</button>
-        </span>
-      </div>
-      <div class="rc-meta"><span><b>Atos</b> ${atos}</span>${pred?`<span><b>Prédio</b> ${pred}</span>`:''}<span><b>Total</b> ${eur(totalDe(m))}</span>${p[P.referencia]?`<span><b>MB</b> ${esc(p[P.entidade]||'')} ${esc(p[P.referencia])} · ${eur(p[P.valor])}</span>`:''}${m.doisPedidos?'<span style="color:var(--red)"><b>2 pedidos</b> isenção jovem + cancelamentos</span>':''}</div>
-    </div>`;}).join('');
-  el.innerHTML=(cx||'<div style="font-size:11.5px;color:var(--text-faint);margin-bottom:.5rem">Ainda sem registos.</div>')
-    +`<div style="display:flex;gap:.4rem"><button class="btn btn-sm" onclick="rcNovoRegisto()" style="flex:1;justify-content:center">+ Registo</button>
-       ${PEDS.some(p=>!(conteudo(p).codDPA||'').trim())?`<button class="btn btn-sm" onclick="rcSincronizar()" style="flex:1;justify-content:center" title="Copia o código de depósito da ficha para os registos que ainda não o têm">⟳ Sincronizar código de depósito</button>`:''}</div>`;
+// ─── Interface ───────────────────────────────────────────────────────────
+/* ── UM CARTÃO POR REGISTO ──
+   A mesma escritura pode dar origem a vários registos — tipicamente um a
+   pagar e outro isento. Cada um leva os seus próprios códigos de depósito,
+   o seu pagamento, os seus atos e as suas notas, porque nada disso é comum.
+   Tudo o que é variável em número vive no AtosJSON do próprio registo:
+     { "codigos":[{desc,cod,obs}], "atos":[{tipo,valor,detalhe,sujeitos}] }
+   As colunas verdadeiras guardam o que é preciso filtrar — entidade,
+   referência, valor e data — para a conferência contra o extrato. */
+function conteudo(p){
+  let o={};
+  try{o=JSON.parse(p[P.atos]||'{}');}catch(e){o={};}
+  if(Array.isArray(o))o={codigos:[],atos:o};           // formato antigo
+  return {codigos:o.codigos||[],atos:o.atos||[]};
 }
 
-// ─── Mapa em modal ────────────────────────────────────────────────────────
-function dadosDaFicha(){
-  const g=id=>($(id)?.value||'').trim();
-  return {dataDoc:g('p-data'),codDPA:g('p-codDeposito'),tipoEsc:tipoEscDe(g('p-entidade')),ref:($('painel-ref')?.textContent||'').trim(),processo:g('p-numProcesso'),cliente:g('p-nome'),
-    predios:(g('p-predio')||g('p-freguesia'))?[{id:'p'+Date.now(),concelho:g('p-concelho'),freguesia:g('p-freguesia'),numero:g('p-predio'),fracao:false,letra:''}]:[]};
+function render(){
+  const el=$('rc-corpo');if(!el)return;
+  if(!escId){
+    el.innerHTML=`<div class="notice notice-info" style="font-size:11.5px;display:block">
+      Guarda primeiro a escritura. Os registos ficam disponíveis assim que ela existir.</div>`;
+    return;
+  }
+  const cartoes=PEDS.map((p,i)=>cartao(p,i)).join('');
+  el.innerHTML=`
+    <datalist id="rc-sug">${SUGESTOES.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+    ${cartoes||'<div style="font-size:11.5px;color:var(--text-faint);margin-bottom:.5rem">Ainda sem registos.</div>'}
+    <button class="btn btn-sm" onclick="rcNovoRegisto()" style="width:100%;justify-content:center">+ Registo</button>`;
 }
-function montar(){
-  if(mapa)return;
-  mapa=MapaRegistoCore.mount($('rc-mapa-host'));
-  const host=$('rc-mapa-host');
-  host.addEventListener('mapa:save',e=>guardarMapa(e.detail));
-  host.addEventListener('mapa:cancel',fechar);
-  host.addEventListener('mapa:voltar',fechar);
-  host.querySelector('#mr-btnVoltar').textContent='‹ Fechar';
+
+function cartao(p,i){
+  const c=conteudo(p);
+  const isento=/^Isento/i.test(p[P.regime]||'');
+  const id=p.id;
+  const cods=(c.codigos.length?c.codigos:[{}]).map((d,k)=>`
+    <tr data-k="${k}">
+      <td><input class="form-input rc-in" list="rc-sug" value="${esc(d.desc||'')}" placeholder="Ex: Aquisição + hipoteca"></td>
+      <td><input class="form-input rc-in mono" value="${esc(d.cod||'')}" placeholder="Ex: 1881-6075-8127-6666"></td>
+      <td><input class="form-input rc-in" value="${esc(d.obs||'')}" placeholder="Observações"></td>
+      <td style="text-align:right"><button class="btn btn-sm" onclick="rcTiraCod('${id}',${k})" style="padding:2px 8px;font-size:11px">&times;</button></td>
+    </tr>`).join('');
+  const atos=c.atos.length?c.atos.map((a,k)=>`
+    <tr>
+      <td class="mono">${k+1}</td>
+      <td>${esc(a.tipo||'')}</td>
+      <td style="color:var(--text-muted);font-size:11px">${resumoPred(a)}${resumoCanc(a)}${esc(a.detalhe||'')}${resumoSuj(a)}</td>
+      <td style="text-align:right"><button class="btn btn-sm" onclick="rcAto('${id}',${k})" style="padding:2px 7px;font-size:10px">Editar</button></td>
+    </tr>`).join(''):'<tr><td colspan="4" style="color:var(--text-faint)">Sem atos.</td></tr>';
+
+  return `<div class="rc-cx${isento?' rc-isen':''}" data-ped="${id}">
+    <div class="rc-h">
+      <span>Registo ${i+1}</span>
+      <span style="display:flex;gap:.35rem;align-items:center">
+        <select class="form-select rc-in" data-f="regime" onchange="rcRegimeCartao('${id}')" style="width:auto;font-size:11px">${opts(REGIMES,p[P.regime])}</select>
+        <select class="form-select rc-in" data-f="estado" style="width:auto;font-size:11px">${opts(ESTADOS,p[P.estado])}</select>
+        <button class="btn btn-sm" onclick="rcAto('${id}')" style="font-size:10.5px">+ Ato</button>
+        <button class="btn btn-success btn-sm" onclick="rcGuardarRegisto('${id}')" style="font-size:10.5px">Guardar</button>
+        <button class="btn btn-sm" onclick="rcApagarPed('${id}')" style="font-size:10.5px;color:var(--red);border-color:var(--red)">Eliminar</button>
+      </span>
+    </div>
+
+    <div class="rc-sub">Códigos de depósito</div>
+    <table class="rc-t rc-cods"><thead><tr>
+      <th style="width:34%">Depósito de</th><th style="width:30%">Código</th><th>Observações</th><th style="width:44px"></th>
+    </tr></thead><tbody>${cods}</tbody></table>
+    <button class="btn btn-sm" onclick="rcJuntaCod('${id}')" style="font-size:10.5px;margin:.25rem 0 .5rem">+ Linha</button>
+
+    <div class="rc-sub">Pagamento</div>
+    <div class="rc-pag" ${isento?'style="display:none"':''}>
+      <label>Entidade<input class="form-input rc-in" data-f="entidade" value="${esc(p[P.entidade]||'')}"></label>
+      <label>Referência<input class="form-input rc-in" data-f="referencia" value="${esc(p[P.referencia]||'')}"></label>
+      <label>Valor (€)<input class="form-input rc-in" data-f="valor" inputmode="decimal" value="${p[P.valor]?String(p[P.valor]).replace('.',','):''}"></label>
+      <label>Data pagamento<input class="form-input rc-in" data-f="datapag" type="date" value="${d10(p[P.dataPag])}"></label>
+    </div>
+    <div class="rc-isento-txt" ${isento?'':'style="display:none"'}>Isento — sem referência de pagamento.</div>
+
+    <div class="rc-sub">Atos a registar</div>
+    <table class="rc-t"><thead><tr><th style="width:34px">#</th><th style="width:34%">Ato</th><th>Detalhe</th><th style="width:60px"></th></tr></thead>
+      <tbody>${atos}
+      </tbody></table>
+
+    <div class="rc-pag" style="margin-top:.5rem">
+      <label>Data do registo<input class="form-input rc-in" data-f="data" type="date" value="${d10(p[P.data])}"></label>
+      <label>AP obtida<input class="form-input rc-in" data-f="ap" value="${esc(p[P.ap]||'')}"></label>
+      <label style="grid-column:span 2">Notas<input class="form-input rc-in" data-f="notas" value="${esc(p[P.notas]||'')}"></label>
+    </div>
+  </div>`;
 }
-function abrirMapa(id){
+
+// ─── Leitura do cartão ───────────────────────────────────────────────────
+/* O que se cancela, à vista na tabela. */
+function resumoCanc(a){
+  const l=Array.isArray(a.cancs)?a.cancs:[];
+  if(!l.length)return'';
+  return `<div style="font-size:10.5px;color:var(--red)">cancela ${l.map(x=>
+    `${esc(x.ap||'AP. …')}${x.data?' de '+esc(x.data.split('-').reverse().join('/')):''}${x.facto?' · '+esc(x.facto):''}`
+  ).join(' | ')}</div>`;
+}
+/* Prédios em linha, para se ver sobre o que incide o facto. */
+function resumoPred(a){
+  const l=Array.isArray(a.predios)?a.predios:[];
+  if(!l.length)return'';
+  const t=l.map(x=>`${esc(x.crp||'…')} n.º ${esc(x.num||'…')}${x.freg?' · '+esc(x.freg):''}`).join(' | ');
+  return `<div style="font-size:10.5px;color:var(--text)">${t}</div>`;
+}
+/* Resumo dos sujeitos, para se ver o essencial sem abrir o ato. */
+function resumoSuj(a){
+  const l=Array.isArray(a.sujeitos)?a.sujeitos:[];
+  if(!l.length)return'';
+  const p=q=>l.filter(x=>x.qual===q).map(x=>esc(x.nome||'…')).join(', ');
+  const at=p('Ativo'), pa=p('Passivo');
+  return `<div style="margin-top:2px;font-size:10.5px">
+    ${at?`<span style="color:var(--green)">a favor de</span> ${at}`:''}
+    ${pa?` <span style="color:var(--red)">contra</span> ${pa}`:''}</div>`;
+}
+function cartaoEl(id){return document.querySelector(`.rc-cx[data-ped="${id}"]`);}
+function campo(id,nome){const c=cartaoEl(id);return c?c.querySelector(`[data-f="${nome}"]`):null;}
+function lerCods(id){
+  const c=cartaoEl(id);if(!c)return[];
+  return [...c.querySelectorAll('.rc-cods tbody tr')].map(tr=>{
+    const i=tr.querySelectorAll('input');
+    return {desc:i[0].value.trim(),cod:i[1].value.trim(),obs:i[2].value.trim()};
+  }).filter(x=>x.desc||x.cod);
+}
+/* Num registo isento não há referência de pagamento nenhuma. */
+function regimeCartao(id){
+  const c=cartaoEl(id);if(!c)return;
+  const is=/^Isento/i.test(campo(id,'regime')?.value||'');
+  const pag=c.querySelector('.rc-pag'); if(pag)pag.style.display=is?'none':'grid';
+  const txt=c.querySelector('.rc-isento-txt'); if(txt)txt.style.display=is?'block':'none';
+}
+function juntaCod(id){
+  const c=cartaoEl(id);if(!c)return;
+  const tb=c.querySelector('.rc-cods tbody');
+  const k=tb.children.length;
+  const tr=document.createElement('tr');tr.setAttribute('data-k',String(k));
+  tr.innerHTML=`<td><input class="form-input rc-in" list="rc-sug" placeholder="Ex: Aquisição + hipoteca"></td>
+    <td><input class="form-input rc-in mono" placeholder="Ex: 1881-6075-8127-6666"></td>
+    <td><input class="form-input rc-in" placeholder="Observações"></td>
+    <td style="text-align:right"><button class="btn btn-sm" onclick="rcTiraCod('${id}',${k})" style="padding:2px 8px;font-size:11px">&times;</button></td>`;
+  tb.appendChild(tr);
+}
+function tiraCod(id,k){
+  const c=cartaoEl(id);if(!c)return;
+  const tr=c.querySelector(`.rc-cods tbody tr[data-k="${k}"]`);
+  if(tr)tr.remove();
+}
+
+// ─── Gravação de um registo inteiro ──────────────────────────────────────
+async function guardarRegisto(id){
   const p=PEDS.find(x=>String(x.id)===String(id));if(!p)return;
-  montar();pedAberto=p;
-  const base=dadosDaFicha(); const m=conteudo(p);
-  const dados=Object.assign({},base,m,{processo:base.processo,cliente:base.cliente}); if(!(m.predios&&m.predios.length))dados.predios=base.predios; if(!m.tipoEsc)dados.tipoEsc=base.tipoEsc;
-  mapa.setData(dados); mapa.setModo('portal');
-  $('rc-mapa-titulo').textContent=(p[P.titulo]||'Registo')+' — '+($('p-nome')?.value||'');
-  $('rc-ov').classList.add('show');
-}
-function fechar(){$('rc-ov').classList.remove('show');pedAberto=null;}
-async function guardarMapa(d){
-  if(!pedAberto)return;
+  const is=/^Isento/i.test(campo(id,'regime')?.value||'');
+  const cods=lerCods(id);
+  const c=conteudo(p);
   const b={
     [P.escrituraId]:parseInt(escId)||0,
-    [P.cliente]:($('p-nome')?.value||'').trim(),
-    [P.regime]:d.isencao==='outras'?'Isento':'Normal',
-    [P.estado]:d.submetido?'Submetido':'Por submeter',
-    [P.codigos]:[d.codDPA,...(d.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),
-    [P.entidade]:d.mbEnt||'', [P.referencia]:d.mbRef||'',
-    [P.valor]:num(d.mbVal)||totalDe(d),
-    [P.notas]:[d.decl,d.obsSub].filter(Boolean).join('\n'),
-    [P.atos]:JSON.stringify(d)
+    [P.cliente]:(document.getElementById('p-nome')?.value||'').trim(),
+    [P.regime]:campo(id,'regime')?.value||'',
+    [P.estado]:campo(id,'estado')?.value||'',
+    [P.ap]:campo(id,'ap')?.value.trim()||'',
+    [P.notas]:campo(id,'notas')?.value.trim()||'',
+    [P.codigos]:cods.map(x=>x.cod).filter(Boolean).join(' · '),
+    [P.atos]:JSON.stringify({codigos:cods,atos:c.atos}),
+    [P.entidade]:is?'':(campo(id,'entidade')?.value.trim()||''),
+    [P.referencia]:is?'':(campo(id,'referencia')?.value.trim()||''),
+    [P.valor]:is?0:num(campo(id,'valor')?.value)
   };
-  b[P.data]=d.dataSub?d.dataSub+'T12:00:00Z':null;
-  await gravar(pedAberto.id,b,'Mapa guardado');
+  const dr=campo(id,'data')?.value; b[P.data]=dr?dr+'T12:00:00Z':null;
+  const dp=campo(id,'datapag')?.value; b[P.dataPag]=(!is&&dp)?dp+'T12:00:00Z':null;
+  await gravar(idListaPed,id,b,'Registo guardado');
 }
+
 async function novoRegisto(){
   if(!escId){showToast('Guarda primeiro a escritura','error');return;}
   await resolver();
-  const base=dadosDaFicha();
-  const b={[P.titulo]:`Registo ${PEDS.length+1}`,[P.escrituraId]:parseInt(escId)||0,[P.cliente]:($('p-nome')?.value||'').trim(),
-    [P.regime]:'Normal',[P.estado]:'Por submeter',[P.codigos]:base.codDPA||'',[P.atos]:JSON.stringify(base)};
-  await gravar(null,b,'Registo criado');
+  const b={[P.titulo]:`Registo ${PEDS.length+1}`,[P.escrituraId]:parseInt(escId)||0,
+    [P.cliente]:(document.getElementById('p-nome')?.value||'').trim(),
+    [P.regime]:REGIMES[0],[P.estado]:ESTADOS[0],[P.atos]:JSON.stringify({codigos:[],atos:[]})};
+  await gravar(idListaPed,null,b,'Registo criado');
 }
-/* O código de depósito chega depois da escritura. Quando é escrito na ficha
-   e a ficha é guardada, copia-se para os registos que ainda não o têm — e é
-   isso que os faz aparecer na lista da colaboradora. */
-async function sincronizar(avisar){
-  const cod=($('p-codDeposito')?.value||'').trim();
-  if(!cod){if(avisar)showToast('A ficha ainda não tem código de depósito','error');return 0;}
-  const alvo=PEDS.filter(p=>!(conteudo(p).codDPA||'').trim());
-  if(!alvo.length){if(avisar)showToast('Todos os registos já têm o código','');return 0;}
-  await renovarToken();
-  for(const p of alvo){
-    const m=conteudo(p); m.codDPA=cod;
-    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items/${p.id}/fields`,
-      {[P.atos]:JSON.stringify(m),[P.codigos]:[cod,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')});
-  }
-  showToast(alvo.length+(alvo.length===1?' registo enviado':' registos enviados')+' para a lista da colaboradora','success');
-  await carregar(escId); return alvo.length;
-}
-window.rcSincronizar=()=>sincronizar(true).catch(e=>showToast('Erro: '+e.message,'error'));
 
-async function gravar(id,body,msg){
+// ─── Modais ──────────────────────────────────────────────────────────────
+function ov(){return $('rc-ov');}
+function abrir(html){$('rc-modal').innerHTML=html;ov().classList.add('show');}
+function fechar(){ov().classList.remove('show');}
+const opts=(lista,sel)=>lista.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
+
+// ── Documento
+// ── Pedido
+/* Num pedido isento não há referência de pagamento nenhuma. */
+function regime(){
+  const is=/^Isento/i.test($('rp-regime').value||'');
+  ['rp-w-ent','rp-w-ref','rp-w-val','rp-w-dp'].forEach(id=>{const e=$(id);if(e)e.style.display=is?'none':'flex';});
+}
+// ── Ato (guardado em AtosJSON dentro do pedido)
+function modalAto(pedId,k){
+  const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
+  const c=conteudo(p);
+  const a=(k!==undefined&&k!==null)?(c.atos[k]||{}):{};
+  atoTipo=a.tipo||'';
+  atoCancs=Array.isArray(a.cancs)?a.cancs.map(x=>({...x})):[];
+  atoPredios=Array.isArray(a.predios)?a.predios.map(x=>({...x})):[];
+  if(!atoPredios.length)atoPredios=[{}];
+  atoSujeitos=Array.isArray(a.sujeitos)?a.sujeitos.map(x=>({...x})):[];
+  if(!atoSujeitos.length)atoSujeitos=[{qual:'Ativo',tipo:'Singular'},{qual:'Passivo',tipo:'Singular'}];
+  abrir(`<div class="modal-box-title">${k!==undefined&&k!==null?'Editar ato':'Novo ato'} — ${esc(p[P.titulo]||'')}</div>
+    <div class="field-grid">
+      <div class="field-group field-full"><div class="field-label">Ato *</div>
+        <select class="form-select" id="ra-tipo" onchange="rcTipoAto()" style="width:100%">${opts(ATOS,a.tipo)}</select></div>
+      <div class="field-group field-full"><div class="field-label">Detalhe</div>
+        <textarea class="form-input" id="ra-detalhe" rows="2" placeholder="AP. a cancelar, prédio onerado, servidão — o que for próprio deste ato" style="width:100%;resize:vertical">${esc(a.detalhe||'')}</textarea></div>
+    </div>
+    <div id="ra-canc-wrap">
+      <div class="rc-sub" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Apresentações a cancelar</span>
+        <button class="btn btn-sm" onclick="rcJuntaCanc()" style="font-size:10.5px">+ AP.</button>
+      </div>
+      <div id="ra-cancs"></div>
+    </div>
+    <div class="rc-sub" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Prédios</span>
+      <span style="display:flex;gap:.35rem;align-items:center">
+        <button class="btn btn-sm" onclick="rcPredioDaFicha()" style="font-size:10.5px" title="Trazer o prédio da escritura">Da ficha</button>
+        <button class="btn btn-sm" onclick="rcJuntaPredio()" style="font-size:10.5px">+ Prédio</button>
+      </span>
+    </div>
+    <div id="ra-predios"></div>
+    <div class="rc-sub" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Sujeitos</span>
+      <button class="btn btn-sm" onclick="rcJuntaSuj()" style="font-size:10.5px">+ Sujeito</button>
+    </div>
+    <div id="ra-sujeitos"></div>
+    <div class="modal-actions">
+      ${k!==undefined&&k!==null?`<button class="btn" onclick="rcApagarAto('${pedId}',${k})" style="color:var(--red);border-color:var(--red)">Eliminar</button>`:''}
+      <button class="btn" onclick="rcFechar()" style="flex:1">Cancelar</button>
+      <button class="btn btn-success" onclick="rcGuardarAto('${pedId}',${k===undefined||k===null?'null':k})" style="flex:2">Guardar</button>
+    </div>`);
+  desenharCancs();
+  desenharPredios();
+  desenharSujeitos();
+}
+
+/* ── APRESENTAÇÕES A CANCELAR ──
+   Num cancelamento não basta dizer que se cancela: tem de se identificar o
+   que se cancela. A AP. é a apresentação a cancelar, a data é aquela em que
+   o ónus foi constituído no registo, e o facto é o que ali está inscrito —
+   hipoteca, penhora, ónus de não fracionamento. */
+const FACTOS_CANC=['Hipoteca voluntária','Hipoteca legal','Penhora','Arresto','Usufruto',
+  'Ónus de não fracionamento','Ónus de inalienabilidade','Servidão','Locação financeira','Outro'];
+let atoCancs=[], atoTipo='';
+/* Não depende só de ler o menu: ao abrir o ato o menu ainda pode não estar
+   pronto, e o bloco tem de aparecer à mesma se o ato guardado for de
+   cancelamento. */
+function ehCancelamento(){return /cancelamento/i.test($('ra-tipo')?.value||atoTipo||'');}
+function desenharCancs(){
+  const w=$('ra-canc-wrap'), el=$('ra-cancs');
+  if(!w||!el)return;
+  w.style.display=ehCancelamento()?'block':'none';
+  if(!ehCancelamento())return;
+  if(!atoCancs.length)atoCancs=[{}];
+  el.innerHTML=atoCancs.map((x,i)=>`
+    <div class="rc-canc" data-i="${i}">
+      <label>AP. a cancelar<input class="form-input rc-in mono" data-c="ap" value="${esc(x.ap||'')}" placeholder="Ex: AP. 3421"></label>
+      <label>Data da AP.<input class="form-input rc-in" data-c="data" type="date" value="${esc(x.data||'')}"></label>
+      <label>Facto cancelado<input class="form-input rc-in" data-c="facto" list="rc-facts" value="${esc(x.facto||'')}" placeholder="Ex: Hipoteca voluntária — CGD"></label>
+      <button class="btn btn-sm" onclick="rcTiraCanc(${i})" style="padding:2px 8px;font-size:11px;align-self:end;margin-bottom:1px">&times;</button>
+    </div>`).join('')
+    +`<datalist id="rc-facts">${FACTOS_CANC.map(f=>`<option value="${esc(f)}">`).join('')}</datalist>`;
+}
+function lerCancs(){
+  const el=$('ra-cancs');if(!el||!ehCancelamento())return[];
+  return [...el.querySelectorAll('.rc-canc')].map(b=>{
+    const o={};b.querySelectorAll('[data-c]').forEach(c=>{o[c.getAttribute('data-c')]=(c.value||'').trim();});
+    return o;
+  }).filter(x=>x.ap||x.facto);
+}
+function juntaCanc(){atoCancs=lerCancs();atoCancs.push({});desenharCancs();}
+function tiraCanc(i){atoCancs=lerCancs();atoCancs.splice(i,1);if(!atoCancs.length)atoCancs=[{}];desenharCancs();}
+/* Mudando o tipo do ato, o bloco aparece ou desaparece. */
+function tipoAto(){atoCancs=lerCancs();atoTipo=$('ra-tipo')?.value||'';desenharCancs();}
+
+/* ── PRÉDIOS DO FACTO ──
+   Um facto pode incidir sobre mais do que um prédio — uma hipoteca que onera
+   dois, um cancelamento com duas apresentações. Só interessa a descrição
+   predial: conservatória, número, freguesia e concelho. A matriz é da AT e
+   não entra no pedido de registo. */
+let atoPredios=[];
+function desenharPredios(){
+  const el=$('ra-predios');if(!el)return;
+  el.innerHTML=atoPredios.map((x,i)=>`
+    <div class="rc-pred" data-i="${i}">
+      <label>Conservatória<input class="form-input rc-in" data-p="crp" value="${esc(x.crp||'')}" placeholder="Ex: Évora"></label>
+      <label>N.º da descrição<input class="form-input rc-in mono" data-p="num" value="${esc(x.num||'')}" placeholder="Ex: 928"></label>
+      <label>Freguesia<input class="form-input rc-in" data-p="freg" value="${esc(x.freg||'')}" placeholder="Ex: Bacelo"></label>
+      <label>Concelho<input class="form-input rc-in" data-p="conc" value="${esc(x.conc||'')}" placeholder="Ex: Évora"></label>
+      <button class="btn btn-sm" onclick="rcTiraPredio(${i})" style="padding:2px 8px;font-size:11px;align-self:end;margin-bottom:1px">&times;</button>
+    </div>`).join('')||'<div style="font-size:11.5px;color:var(--text-faint)">Sem prédios.</div>';
+}
+function lerPredios(){
+  const el=$('ra-predios');if(!el)return[];
+  return [...el.querySelectorAll('.rc-pred')].map(b=>{
+    const o={};b.querySelectorAll('[data-p]').forEach(c=>{o[c.getAttribute('data-p')]=(c.value||'').trim();});
+    return o;
+  }).filter(x=>x.crp||x.num||x.freg);
+}
+function juntaPredio(){atoPredios=lerPredios();atoPredios.push({});desenharPredios();}
+function tiraPredio(i){atoPredios=lerPredios();atoPredios.splice(i,1);if(!atoPredios.length)atoPredios=[{}];desenharPredios();}
+/* Atalho: o prédio já está preenchido na ficha da escritura. */
+function predioDaFicha(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const p={crp:g('p-apConserv'),num:g('p-predio'),freg:g('p-freguesia'),conc:g('p-concelho')};
+  if(!p.crp&&!p.num&&!p.freg&&!p.conc){showToast('A ficha não tem prédio preenchido','error');return;}
+  atoPredios=lerPredios().filter(x=>x.crp||x.num||x.freg);
+  atoPredios.push(p);desenharPredios();
+}
+
+/* ── SUJEITOS DO FACTO ──
+   Todo o facto tem ativo e passivo. Sendo singular, o estado civil manda: só
+   quem é casado tem regime de bens e cônjuge, e é aí que o NIF do cônjuge
+   passa a fazer falta. Sendo coletivo, nada disso se aplica. */
+let atoSujeitos=[];
+function desenharSujeitos(){
+  const el=$('ra-sujeitos');if(!el)return;
+  el.innerHTML=atoSujeitos.map((x,i)=>{
+    const col=(x.tipo||'Singular')==='Coletivo';
+    const cas=!col&&/^casad/i.test(x.ec||'');
+    return `<div class="rc-suj" data-i="${i}">
+      <div class="rc-suj-h">
+        <select class="form-select rc-in" data-s="qual" onchange="rcSujMuda(${i})" style="width:auto;font-size:11px">${opts(QUALIDADES,x.qual)}</select>
+        <select class="form-select rc-in" data-s="tipo" onchange="rcSujMuda(${i})" style="width:auto;font-size:11px">${opts(TIPOS_SUJ,x.tipo)}</select>
+        <span style="flex:1"></span>
+        <button class="btn btn-sm" onclick="rcTiraSuj(${i})" style="padding:1px 8px;font-size:11px">&times;</button>
+      </div>
+      <div class="rc-suj-g">
+        <label style="grid-column:span 2">${col?'Denominação':'Nome'}<input class="form-input rc-in" data-s="nome" value="${esc(x.nome||'')}"></label>
+        <label>${col?'NIPC':'NIF'}<input class="form-input rc-in mono" data-s="nif" value="${esc(x.nif||'')}"></label>
+        <label>Quota<input class="form-input rc-in mono" data-s="quota" value="${esc(x.quota||'')}" placeholder="1/1"></label>
+        ${col?'':`
+        <label>Estado civil<select class="form-select rc-in" data-s="ec" onchange="rcSujMuda(${i})">
+          <option value="">—</option>${opts(ESTADOS_CIVIS,x.ec)}</select></label>
+        ${cas?`
+        <label>Regime de bens<select class="form-select rc-in" data-s="regime">
+          <option value="">—</option>${opts(REGIMES_BENS,x.regime)}</select></label>
+        <label>Cônjuge<input class="form-input rc-in" data-s="conj" value="${esc(x.conj||'')}"></label>
+        <label>NIF do cônjuge<input class="form-input rc-in mono" data-s="conjNif" value="${esc(x.conjNif||'')}"></label>`:''}`}
+      </div>
+    </div>`;
+  }).join('')||'<div style="font-size:11.5px;color:var(--text-faint)">Sem sujeitos.</div>';
+}
+function lerSujeitos(){
+  const el=$('ra-sujeitos');if(!el)return[];
+  return [...el.querySelectorAll('.rc-suj')].map(b=>{
+    const o={};
+    b.querySelectorAll('[data-s]').forEach(c=>{o[c.getAttribute('data-s')]=(c.value||'').trim();});
+    return o;
+  }).filter(x=>x.nome||x.nif);
+}
+/* Guarda o que está escrito antes de voltar a desenhar, senão perde-se. */
+function sujMuda(i){
+  const lidos=[...$('ra-sujeitos').querySelectorAll('.rc-suj')].map(b=>{
+    const o={};b.querySelectorAll('[data-s]').forEach(c=>{o[c.getAttribute('data-s')]=(c.value||'').trim();});return o;});
+  atoSujeitos=lidos;
+  if(atoSujeitos[i]&&atoSujeitos[i].tipo==='Coletivo'){
+    delete atoSujeitos[i].ec;delete atoSujeitos[i].regime;
+    delete atoSujeitos[i].conj;delete atoSujeitos[i].conjNif;
+  }
+  desenharSujeitos();
+}
+function juntaSuj(){
+  atoSujeitos=lerSujeitos();
+  atoSujeitos.push({qual:'Passivo',tipo:'Singular'});
+  desenharSujeitos();
+}
+function tiraSuj(i){
+  atoSujeitos=lerSujeitos();
+  atoSujeitos.splice(i,1);
+  desenharSujeitos();
+}
+async function guardarAto(pedId,k){
+  const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
+  const a={tipo:$('ra-tipo').value,
+    detalhe:$('ra-detalhe').value.trim(),cancs:lerCancs(),predios:lerPredios(),sujeitos:lerSujeitos()};
+  const c=conteudo(p);
+  const lista=c.atos.slice();
+  if(k===null||k===undefined)lista.push(a);else lista[k]=a;
+  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify({codigos:c.codigos,atos:lista})},'Ato guardado');
+}
+async function apagarAto(pedId,k){
+  const p=PEDS.find(x=>String(x.id)===String(pedId));if(!p)return;
+  if(!confirm('Eliminar este ato?'))return;
+  const c=conteudo(p);
+  const lista=c.atos.slice();lista.splice(k,1);
+  await gravar(idListaPed,p.id,{[P.atos]:JSON.stringify({codigos:c.codigos,atos:lista})},'Ato eliminado');
+}
+
+// ─── Persistência ────────────────────────────────────────────────────────
+async function gravar(lista,id,body,msg){
   try{
     await renovarToken();
-    if(id)await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items/${id}/fields`,body);
-    else   await graphPost (`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items`,{fields:body});
+    if(id)await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${lista}/items/${id}/fields`,body);
+    else   await graphPost (`${GRAPH_BASE}/sites/${siteIdDados}/lists/${lista}/items`,{fields:body});
     showToast(msg,'success');fechar();await carregar(escId);
   }catch(e){showToast('Erro ao guardar: '+e.message,'error');}
 }
-async function apagar(id){
+async function apagar(lista,id,msg){
   if(!confirm('Eliminar este registo?'))return;
   try{
     await renovarToken();
-    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
+    const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${lista}/items/${id}`,
+      {method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
     if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
-    showToast('Registo eliminado','');await carregar(escId);
+    showToast(msg,'');fechar();await carregar(escId);
   }catch(e){showToast('Erro ao eliminar: '+e.message,'error');}
 }
-window.rcNovoRegisto=novoRegisto; window.rcAbrirMapa=abrirMapa; window.rcApagarPed=apagar; window.rcFechar=fechar;
 
+// ─── API ─────────────────────────────────────────────────────────────────
+window.rcNovoRegisto=novoRegisto;
+window.rcGuardarRegisto=id=>guardarRegisto(id);
+window.rcJuntaCod=id=>juntaCod(id);
+window.rcTiraCod=(id,k)=>tiraCod(id,k);
+window.rcRegimeCartao=id=>regimeCartao(id);
+window.rcJuntaCanc=juntaCanc;
+window.rcTiraCanc=i=>tiraCanc(i);
+window.rcTipoAto=tipoAto;
+window.rcJuntaPredio=juntaPredio;
+window.rcTiraPredio=i=>tiraPredio(i);
+window.rcPredioDaFicha=predioDaFicha;
+window.rcJuntaSuj=juntaSuj;
+window.rcTiraSuj=i=>tiraSuj(i);
+window.rcSujMuda=i=>sujMuda(i);
+window.rcAto=(p,k)=>modalAto(p,k);
+window.rcGuardarAto=(p,k)=>guardarAto(p,k);
+window.rcApagarPed=id=>apagar(idListaPed,id,'Pedido eliminado');
+window.rcApagarAto=(p,k)=>apagarAto(p,k);
+window.rcFechar=fechar;
+
+/* O rótulo ao lado do toggle diz em que pé está, para não haver dúvida. */
 function rotuloToggle(){
-  const t=$('p-regPedido'), r=$('p-regPedido-txt'); if(!t||!r)return;
+  const t=$('p-regPedido'), r=$('p-regPedido-txt');
+  if(!t||!r)return;
   r.textContent=t.checked?'Submetido a registo':'Por submeter';
-  r.style.color=t.checked?'var(--green)':'var(--text-muted)'; r.style.fontWeight=t.checked?'600':'400';
+  r.style.color=t.checked?'var(--green)':'var(--text-muted)';
+  r.style.fontWeight=t.checked?'600':'400';
 }
 
-// ─── Instalação ───────────────────────────────────────────────────────────
+// ─── Instalação ──────────────────────────────────────────────────────────
 const CSS=`
-.rc-sec{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem}
-.rc-cx{border:1px solid var(--border);border-left:4px solid #D9A441;border-radius:8px;padding:.55rem .7rem;margin-bottom:.5rem;background:var(--surface)}
-.rc-cx.rc-sub{border-left-color:#6F9A78;background:#F4F8F4}
-.rc-cx.rc-off{border-left-color:#C9C4C5}
-.rc-pill.off{background:#EEE9EA;color:#7A6E70}
-.rc-h{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.3rem;font-size:11.5px;font-weight:600;color:var(--text)}
-.rc-pill{display:inline-block;margin-left:.4rem;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700}
-.rc-pill.pend{background:#FBE9C9;color:#8A5A00}.rc-pill.ok{background:#E7EFE6;color:#4F7A5A}
-.rc-meta{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-size:11px;color:var(--text-muted)}
-.rc-meta b{color:var(--text-faint);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;margin-right:3px}
-#rc-ov{z-index:1200}
-#rc-modal{max-width:1100px!important;width:96vw!important;padding:1rem 1.5rem;max-height:calc(100vh - 2rem)}
-#rc-mapa-titulo{font-size:13px;font-weight:600;margin-bottom:.4rem;color:var(--text-muted)}
+.rc-sec{font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;
+  padding:.6rem 0 .4rem;border-top:1px solid var(--border);margin-top:.5rem}
+.rc-cx{border:1px solid var(--border);border-radius:8px;padding:.6rem .7rem;margin-bottom:.6rem;background:var(--surface)}
+.rc-isen{background:#F4F9F4;border-color:#C4DCC4}
+.rc-h{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.4rem;
+  font-size:11.5px;font-weight:600;color:var(--text-muted)}
+.rc-t{width:100%;border-collapse:collapse;font-size:11.5px}
+.rc-t th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);
+  font-weight:600;padding:3px 5px;border-bottom:1px solid var(--border)}
+.rc-t td{padding:4px 5px;border-bottom:1px solid var(--border);vertical-align:top}
+.rc-tot td{font-weight:600;background:var(--surface2);border-bottom:none}
+.rc-meta{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-size:11px;color:var(--text-muted);margin-bottom:.45rem}
+.rc-meta b{color:var(--text-faint);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em}
+.rc-in{width:100%;padding:4px 7px;font-size:11.5px}
+.mono{font-family:'DM Mono',monospace}
+.rc-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);
+  font-weight:600;margin:.55rem 0 .25rem}
+.rc-pag{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
+.rc-pag label{display:flex;flex-direction:column;gap:2px;font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-canc{display:grid;grid-template-columns:1fr 1fr 2fr 40px;gap:.35rem;margin-bottom:.35rem;
+  border:1px solid #E3C4C4;border-radius:6px;padding:.4rem .5rem;background:#FBF1F0}
+.rc-canc label{display:flex;flex-direction:column;gap:2px;font-size:9px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-pred{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 40px;gap:.35rem;margin-bottom:.35rem;
+  border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;background:var(--surface2)}
+.rc-pred label{display:flex;flex-direction:column;gap:2px;font-size:9px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-suj{border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;margin-bottom:.4rem;background:var(--surface2)}
+.rc-suj-h{display:flex;align-items:center;gap:.35rem;margin-bottom:.35rem}
+.rc-suj-g{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem}
+.rc-suj-g label{display:flex;flex-direction:column;gap:2px;font-size:9px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--text-faint);font-weight:600}
+.rc-isento-txt{font-size:11.5px;color:var(--green);font-weight:600}
+.rc-notas{font-size:11px;color:var(--text-muted);background:var(--surface2);border-radius:5px;padding:5px 7px;margin-top:.4rem}
 `;
 function instalar(){
-  const obs=$('p-observacoes'); if(!obs||$('rc-corpo'))return;
+  const anexos=[...document.querySelectorAll('#painel-registo .field-label, #painel-registo div')]
+    .find(e=>/Anexos \(Suprimentos\)/.test(e.textContent||'')&&e.children.length===0);
+  const obs=document.getElementById('p-observacoes');
+  if(!obs||$('rc-corpo'))return;
   const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+
   const bloco=document.createElement('div');
   bloco.innerHTML=`
     <div class="rc-sec">Registo Conservatória</div>
@@ -14665,24 +14517,178 @@ function instalar(){
       <div class="field-label">Notas gerais do registo</div>
       <textarea class="form-textarea" id="p-regNotas" rows="2" placeholder="—" style="width:100%"></textarea>
     </div>
-`;
-  (obs.closest('.field-group')||obs.parentNode).insertAdjacentElement('afterend',bloco);
-  /* O modal vai para o body: dentro do painel lateral (que tem transform) um
-     position:fixed fica preso à largura do painel e o mapa sai apertado. */
-  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='rc-ov';
-  ov.innerHTML=`<div class="modal-box" id="rc-modal"><div id="rc-mapa-titulo"></div><div id="rc-mapa-host"></div></div>`;
-  document.body.appendChild(ov);
+    <div class="modal-overlay" id="rc-ov"><div class="modal-box" id="rc-modal" style="max-width:720px"></div></div>`;
+  const alvo=obs.closest('.field-group')||obs.parentNode;
+  alvo.insertAdjacentElement('afterend',bloco);
   $('rc-ov').addEventListener('click',e=>{if(e.target===$('rc-ov'))fechar();});
-  const tg=$('p-regPedido'); if(tg)tg.addEventListener('change',rotuloToggle);
+  const tg=$('p-regPedido');
+  if(tg)tg.addEventListener('change',rotuloToggle);
 
+  /* Ao abrir a ficha, carregar o que já está gravado. */
   if(typeof window.abrirPainelRegisto==='function'){
     const _a=window.abrirPainelRegisto;
     window.abrirPainelRegisto=function(itemId){
       const r=_a.apply(this,arguments);
       const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===itemId)||{};
-      const t=$('p-regPedido'); if(t){t.checked=(i['RegPedido']===true||i['RegPedido']==='true');rotuloToggle();}
+      const t=$('p-regPedido');
+      if(t){t.checked=(i['RegPedido']===true||i['RegPedido']==='true');rotuloToggle();}
       const n=$('p-regNotas'); if(n)n.value=i['RegNotasGerais']||'';
       carregar(itemId).catch(e=>{const c=$('rc-corpo');if(c)c.innerHTML=`<div class="notice notice-warning" style="font-size:11.5px">${esc(e.message)}</div>`;});
+      return r;
+    };
+  }
+  /* Numa escritura nova o painel abre por outro caminho. Sem isto, o bloco
+     ficava em branco e parecia não existir. */
+  if(typeof window.abrirPainelNovo==='function'){
+    const _n=window.abrirPainelNovo;
+    window.abrirPainelNovo=function(){
+      const r=_n.apply(this,arguments);
+      const t=$('p-regPedido'); if(t){t.checked=false;rotuloToggle();}
+      const n=$('p-regNotas'); if(n)n.value='';
+      escId=null;DOCS=[];PEDS=[];render();
+      return r;
+    };
+  }
+
+  /* Guardar o toggle e as notas junto com o resto da ficha. */
+  if(typeof window.guardarPainel==='function'){
+    const _g=window.guardarPainel;
+    window.guardarPainel=async function(){
+      const r=await _g.apply(this,arguments);
+      try{
+        /* Numa escritura nova, o Id só existe depois de gravada — é aqui que
+           o bloco passa a saber a que escritura pertence. */
+        if(typeof painelItemId!=='undefined'&&painelItemId)escId=painelItemId;
+        if(!escId){
+          const ref=(document.getElementById('painel-ref')?.textContent||'').trim();
+          const nome=(document.getElementById('p-nome')?.value||'').trim();
+          const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+          const achado=lista.find(x=>((x['Title']||'')===ref)||((x['Nome_Cliente']||'')===nome&&nome));
+          if(achado)escId=achado.id;
+        }
+        if(escId){
+          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${escId}/fields`,
+            {RegPedido:!!$('p-regPedido')?.checked, RegNotasGerais:$('p-regNotas')?.value||''});
+        }
+        if(escId)await carregar(escId);
+      }catch(e){console.warn('Registo Conservatória:',e.message);}
+      return r;
+    };
+  }
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+<!-- ════════════════════════════════════════════════════════════════════════
+     NÚMERO DE ORDEM PARA ARQUIVO — colar antes de </body>.
+     Aditivo. Coluna nova em Escritura_Listagem: Num_Ordem (uma linha de texto).
+     O número é atribuído pelo sistema, nunca escrito à mão, e nunca se altera.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+const COL='Num_Ordem';
+const LARG=4;                       // 0001, 0002, … 9999
+const fmt=n=>String(n).padStart(LARG,'0');
+const $=id=>document.getElementById(id);
+const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s);
+
+/* Lê o número já atribuído, ignorando o que não seja numérico. */
+function numDe(i){
+  const v=(i&&i[COL]!=null)?String(i[COL]).trim():'';
+  const n=parseInt(v,10);
+  return (v&&!isNaN(n))?n:0;
+}
+function maiorNumero(){
+  const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+  return lista.reduce((m,i)=>Math.max(m,numDe(i)),0);
+}
+/* A data da escritura é o critério; no mesmo dia, o Id desempata só para o
+   resultado ser estável entre execuções. */
+function ordenar(lista){
+  return lista.slice().sort((a,b)=>{
+    const da=String(a[F.data]||'').substring(0,10), db=String(b[F.data]||'').substring(0,10);
+    if(da!==db)return (da||'9999').localeCompare(db||'9999');
+    return (parseInt(a.id)||0)-(parseInt(b.id)||0);
+  });
+}
+
+async function gravarNumero(id,numero){
+  await renovarToken();
+  await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${id}/fields`,{[COL]:numero});
+  const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===id);
+  if(i)i[COL]=numero;
+}
+
+/* ── ATRIBUIÇÃO ÀS QUE JÁ EXISTEM ──
+   Corre uma vez. Só toca nas que não têm número — uma escritura que já o
+   tenha nunca é alterada, porque o número de arquivo não se muda. */
+async function atribuirEmFalta(){
+  const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+  if(!lista.length){showToast('Carrega primeiro a listagem','error');return;}
+  const semNumero=ordenar(lista.filter(i=>!numDe(i)));
+  const jaTem=lista.length-semNumero.length;
+  if(!semNumero.length){showToast('Todas as escrituras já têm número','');return;}
+  if(!confirm(
+      `Vão ser atribuídos números de arquivo a ${semNumero.length} escrituras, `+
+      `por ordem da data da escritura.\n\n`+
+      (jaTem?`${jaTem} já têm número e não são tocadas.\n\n`:'')+
+      `O número não se altera depois de atribuído. Continuar?`))return;
+
+  const cx=$('numord-estado');
+  let n=maiorNumero(), ok=0, erros=0;
+  for(const item of semNumero){
+    n++;
+    try{await gravarNumero(item.id,fmt(n));ok++;}
+    catch(e){erros++;n--;console.error('Num_Ordem',item.id,e);}
+    if(cx)cx.textContent=`${ok} de ${semNumero.length}${erros?` · ${erros} com erro`:''}`;
+  }
+  showToast(`${ok} números atribuídos${erros?`, ${erros} com erro`:''}`,erros?'error':'success');
+  if(typeof renderRegistos==='function')renderRegistos();
+}
+
+/* ── ESCRITURA NOVA ──
+   Ao gravar uma escritura sem número, recebe o seguinte da sequência. */
+async function atribuirANova(){
+  try{
+    const id=(typeof painelItemId!=='undefined')?painelItemId:null;
+    if(!id)return;
+    const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+    const i=lista.find(x=>x.id===id);
+    if(i&&numDe(i))return;                       // já tem, não se mexe
+    await gravarNumero(id,fmt(maiorNumero()+1));
+  }catch(e){console.warn('Num_Ordem:',e.message);}
+}
+
+function instalar(){
+  /* Botão junto aos restantes da listagem. */
+  const btn=document.querySelector('[onclick*="exportarMapaRegistos"]');
+  const barra=btn?btn.parentNode:null;
+  if(barra&&!$('btn-numord')){
+    const b=document.createElement('button');
+    b.className='btn btn-sm';b.id='btn-numord';
+    b.setAttribute('onclick','numOrdAtribuir()');
+    b.title='Atribui números de arquivo às escrituras que ainda não têm';
+    b.innerHTML='# Números de arquivo <span id="numord-estado" style="color:var(--text-faint);margin-left:4px"></span>';
+    btn.insertAdjacentElement('afterend',b);
+  }
+  /* Mostrar o número na ficha, só de leitura. */
+  const est=$('p-estado');
+  if(est&&!$('p-numOrdem')){
+    const g=document.createElement('div');
+    g.className='field-group';
+    g.innerHTML=`<div class="field-label">N.º de arquivo</div>
+      <input class="form-input" id="p-numOrdem" readonly placeholder="—"
+        style="font-family:'DM Mono',monospace;background:var(--surface2)">`;
+    (est.closest('.field-group')||est.parentNode).insertAdjacentElement('beforebegin',g);
+  }
+  if(typeof window.abrirPainelRegisto==='function'){
+    const _a=window.abrirPainelRegisto;
+    window.abrirPainelRegisto=function(itemId){
+      const r=_a.apply(this,arguments);
+      const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===itemId)||{};
+      const c=$('p-numOrdem'); if(c)c.value=i[COL]||'';
       return r;
     };
   }
@@ -14690,9 +14696,7 @@ function instalar(){
     const _n=window.abrirPainelNovo;
     window.abrirPainelNovo=function(){
       const r=_n.apply(this,arguments);
-      const t=$('p-regPedido'); if(t){t.checked=false;rotuloToggle();}
-      const n=$('p-regNotas'); if(n)n.value='';
-      escId=null;PEDS=[];render();
+      const c=$('p-numOrdem'); if(c)c.value='— atribuído ao guardar —';
       return r;
     };
   }
@@ -14700,23 +14704,15 @@ function instalar(){
     const _g=window.guardarPainel;
     window.guardarPainel=async function(){
       const r=await _g.apply(this,arguments);
-      try{
-        if(typeof painelItemId!=='undefined'&&painelItemId)escId=painelItemId;
-        if(!escId){
-          const ref=($('painel-ref')?.textContent||'').trim(), nome=($('p-nome')?.value||'').trim();
-          const achado=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>((x['Title']||'')===ref)||((x['Nome_Cliente']||'')===nome&&nome));
-          if(achado)escId=achado.id;
-        }
-        if(escId){
-          await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${escId}/fields`,{RegPedido:!!$('p-regPedido')?.checked,RegNotasGerais:$('p-regNotas')?.value||''});
-          await carregar(escId);
-          await sincronizar(false);
-        }
-      }catch(e){console.warn('Registo Conservatória:',e.message);}
+      await atribuirANova();
+      const id=(typeof painelItemId!=='undefined')?painelItemId:null;
+      const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===id);
+      const c=$('p-numOrdem'); if(c&&i)c.value=i[COL]||'';
       return r;
     };
   }
 }
+window.numOrdAtribuir=atribuirEmFalta;
 if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
 })();
 </script>
