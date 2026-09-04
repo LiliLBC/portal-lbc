@@ -14600,6 +14600,10 @@ function numDe(i){
   const n=parseInt(v,10);
   return (v&&!isNaN(n))?n:0;
 }
+/* Continua a servir a atribuição automática às escrituras novas: o número
+   seguinte é sempre o maior já emitido mais um, nunca a contagem de
+   registos — assim, apagando-se uma escritura, o número dela não é
+   reaproveitado por outra. */
 function maiorNumero(){
   const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
   return lista.reduce((m,i)=>Math.max(m,numDe(i)),0);
@@ -14621,38 +14625,6 @@ async function gravarNumero(id,numero){
   if(i)i[COL]=numero;
 }
 
-/* ── ATRIBUIÇÃO ÀS QUE JÁ EXISTEM ──
-   Corre uma vez. Só toca nas que não têm número — uma escritura que já o
-   tenha nunca é alterada, porque o número de arquivo não se muda. */
-async function atribuirEmFalta(){
-  const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
-  if(!lista.length){showToast('Carrega primeiro a listagem','error');return;}
-  /* Sem o campo carregado, não há como saber quem já tem número — e numerar
-     às cegas duplicaria tudo. Melhor parar. */
-  if(!(COL in lista[0])){
-    showToast('O campo Num_Ordem ainda não foi lido. Carrega em ↺ e tenta de novo.','error');
-    return;
-  }
-  const semNumero=ordenar(lista.filter(i=>!numDe(i)));
-  const jaTem=lista.length-semNumero.length;
-  if(!semNumero.length){showToast('Todas as escrituras já têm número','');return;}
-  if(!confirm(
-      `Vão ser atribuídos números de arquivo a ${semNumero.length} escrituras, `+
-      `por ordem da data da escritura.\n\n`+
-      (jaTem?`${jaTem} já têm número e não são tocadas.\n\n`:'')+
-      `O número não se altera depois de atribuído. Continuar?`))return;
-
-  const cx=$('numord-estado');
-  let n=maiorNumero(), ok=0, erros=0;
-  for(const item of semNumero){
-    n++;
-    try{await gravarNumero(item.id,fmt(n));ok++;}
-    catch(e){erros++;n--;console.error('Num_Ordem',item.id,e);}
-    if(cx)cx.textContent=`${ok} de ${semNumero.length}${erros?` · ${erros} com erro`:''}`;
-  }
-  showToast(`${ok} números atribuídos${erros?`, ${erros} com erro`:''}`,erros?'error':'success');
-  if(typeof renderRegistos==='function')renderRegistos();
-}
 
 /* ── ESCRITURA NOVA ──
    Ao gravar uma escritura sem número, recebe o seguinte da sequência. */
@@ -14695,55 +14667,9 @@ function garantirCampo(){
   };
 }
 
-/* ── LIMPAR A COLUNA ──
-   Operação de recurso, para usar uma única vez: apaga o conteúdo do Num_Ordem
-   em todos os registos, sem apagar a coluna nem os registos. Serve para
-   refazer a numeração do zero depois de ter sido atribuída mal. */
-async function limparTudo(){
-  const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
-  if(!lista.length){showToast('Carrega primeiro a listagem','error');return;}
-  const comNumero=lista.filter(i=>String(i[COL]||'').trim());
-  if(!comNumero.length){showToast('Já está tudo vazio','');return;}
-  if(!confirm(
-      `ATENÇÃO\n\nVai apagar o número de arquivo de ${comNumero.length} escrituras.\n\n`+
-      `A coluna e os registos ficam intactos — apaga-se só o número.\n`+
-      `Depois disto tens de carregar em «Números de arquivo» para renumerar.\n\nContinuar?`))return;
-  if(!confirm('Confirmas mesmo? Esta ação não se desfaz.'))return;
-  const cx=$('numord-estado');
-  let ok=0,erros=0;
-  for(const item of comNumero){
-    try{
-      await renovarToken();
-      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${item.id}/fields`,{[COL]:''});
-      item[COL]='';ok++;
-    }catch(e){erros++;console.error('limpar',item.id,e);}
-    if(cx)cx.textContent=`a limpar ${ok} de ${comNumero.length}`;
-  }
-  if(cx)cx.textContent='';
-  showToast(`${ok} números apagados${erros?`, ${erros} com erro`:''}`,erros?'error':'success');
-  if(typeof renderRegistos==='function')renderRegistos();
-}
 
 function instalar(){
   garantirCampo();
-  /* Botão junto aos restantes da listagem. */
-  const btn=document.querySelector('[onclick*="exportarMapaRegistos"]');
-  const barra=btn?btn.parentNode:null;
-  if(barra&&!$('btn-numord')){
-    const b=document.createElement('button');
-    b.className='btn btn-sm';b.id='btn-numord';
-    b.setAttribute('onclick','numOrdAtribuir()');
-    b.title='Atribui números de arquivo às escrituras que ainda não têm';
-    b.innerHTML='# Números de arquivo <span id="numord-estado" style="color:var(--text-faint);margin-left:4px"></span>';
-    btn.insertAdjacentElement('afterend',b);
-    const l=document.createElement('button');
-    l.className='btn btn-sm';l.id='btn-numord-limpar';
-    l.setAttribute('onclick','numOrdLimpar()');
-    l.title='Apaga os números de arquivo de todas as escrituras, para renumerar de raiz';
-    l.style.color='var(--red)';l.style.borderColor='var(--red)';
-    l.textContent='Limpar n.os';
-    b.insertAdjacentElement('afterend',l);
-  }
   /* Mostrar o número na ficha, só de leitura. */
   const est=$('p-estado');
   if(est&&!$('p-numOrdem')){
@@ -14783,8 +14709,6 @@ function instalar(){
     };
   }
 }
-window.numOrdAtribuir=atribuirEmFalta;
-window.numOrdLimpar=limparTudo;
 if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
 })();
 </script>
