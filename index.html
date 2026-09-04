@@ -14627,6 +14627,12 @@ async function gravarNumero(id,numero){
 async function atribuirEmFalta(){
   const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
   if(!lista.length){showToast('Carrega primeiro a listagem','error');return;}
+  /* Sem o campo carregado, não há como saber quem já tem número — e numerar
+     às cegas duplicaria tudo. Melhor parar. */
+  if(!(COL in lista[0])){
+    showToast('O campo Num_Ordem ainda não foi lido. Carrega em ↺ e tenta de novo.','error');
+    return;
+  }
   const semNumero=ordenar(lista.filter(i=>!numDe(i)));
   const jaTem=lista.length-semNumero.length;
   if(!semNumero.length){showToast('Todas as escrituras já têm número','');return;}
@@ -14656,12 +14662,70 @@ async function atribuirANova(){
     if(!id)return;
     const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
     const i=lista.find(x=>x.id===id);
-    if(i&&numDe(i))return;                       // já tem, não se mexe
+    if(!i||!(COL in i))return;                   // campo por ler: não arrisca
+    if(numDe(i))return;                          // já tem, não se mexe
     await gravarNumero(id,fmt(maiorNumero()+1));
   }catch(e){console.warn('Num_Ordem:',e.message);}
 }
 
+/* ── O CAMPO TEM DE VIR DO SHAREPOINT ──
+   A listagem pede um conjunto fixo de campos. Não estando o Num_Ordem nesse
+   conjunto, ele nunca chega ao Portal, que julga que ninguém tem número e
+   volta a numerar tudo. Acrescenta-se ao pedido e recarrega-se uma vez. */
+function garantirCampo(){
+  if(typeof window.carregarRegistos!=='function')return;
+  const _c=window.carregarRegistos;
+  window.carregarRegistos=async function(){
+    const r=await _c.apply(this,arguments);
+    const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+    /* Se o campo não veio, vai buscá-lo à parte e junta-o ao que já está. */
+    if(lista.length&&!(COL in lista[0])){
+      try{
+        await renovarToken();
+        const d=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${COL})&$top=500`);
+        const mapa={};(d.value||[]).forEach(x=>{mapa[x.id]=(x.fields||{})[COL]||'';});
+        lista.forEach(i=>{i[COL]=mapa[i.id]||'';});
+        const c=$('p-numOrdem');
+        if(c&&typeof painelItemId!=='undefined'&&painelItemId){
+          const i=lista.find(x=>x.id===painelItemId); if(i)c.value=i[COL]||'';
+        }
+      }catch(e){console.warn('Num_Ordem:',e.message);}
+    }
+    return r;
+  };
+}
+
+/* ── LIMPAR A COLUNA ──
+   Operação de recurso, para usar uma única vez: apaga o conteúdo do Num_Ordem
+   em todos os registos, sem apagar a coluna nem os registos. Serve para
+   refazer a numeração do zero depois de ter sido atribuída mal. */
+async function limparTudo(){
+  const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
+  if(!lista.length){showToast('Carrega primeiro a listagem','error');return;}
+  const comNumero=lista.filter(i=>String(i[COL]||'').trim());
+  if(!comNumero.length){showToast('Já está tudo vazio','');return;}
+  if(!confirm(
+      `ATENÇÃO\n\nVai apagar o número de arquivo de ${comNumero.length} escrituras.\n\n`+
+      `A coluna e os registos ficam intactos — apaga-se só o número.\n`+
+      `Depois disto tens de carregar em «Números de arquivo» para renumerar.\n\nContinuar?`))return;
+  if(!confirm('Confirmas mesmo? Esta ação não se desfaz.'))return;
+  const cx=$('numord-estado');
+  let ok=0,erros=0;
+  for(const item of comNumero){
+    try{
+      await renovarToken();
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${item.id}/fields`,{[COL]:''});
+      item[COL]='';ok++;
+    }catch(e){erros++;console.error('limpar',item.id,e);}
+    if(cx)cx.textContent=`a limpar ${ok} de ${comNumero.length}`;
+  }
+  if(cx)cx.textContent='';
+  showToast(`${ok} números apagados${erros?`, ${erros} com erro`:''}`,erros?'error':'success');
+  if(typeof renderRegistos==='function')renderRegistos();
+}
+
 function instalar(){
+  garantirCampo();
   /* Botão junto aos restantes da listagem. */
   const btn=document.querySelector('[onclick*="exportarMapaRegistos"]');
   const barra=btn?btn.parentNode:null;
@@ -14672,6 +14736,13 @@ function instalar(){
     b.title='Atribui números de arquivo às escrituras que ainda não têm';
     b.innerHTML='# Números de arquivo <span id="numord-estado" style="color:var(--text-faint);margin-left:4px"></span>';
     btn.insertAdjacentElement('afterend',b);
+    const l=document.createElement('button');
+    l.className='btn btn-sm';l.id='btn-numord-limpar';
+    l.setAttribute('onclick','numOrdLimpar()');
+    l.title='Apaga os números de arquivo de todas as escrituras, para renumerar de raiz';
+    l.style.color='var(--red)';l.style.borderColor='var(--red)';
+    l.textContent='Limpar n.os';
+    b.insertAdjacentElement('afterend',l);
   }
   /* Mostrar o número na ficha, só de leitura. */
   const est=$('p-estado');
@@ -14713,6 +14784,7 @@ function instalar(){
   }
 }
 window.numOrdAtribuir=atribuirEmFalta;
+window.numOrdLimpar=limparTudo;
 if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
 })();
 </script>
