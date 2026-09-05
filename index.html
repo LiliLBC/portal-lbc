@@ -14940,6 +14940,77 @@ function instalar(){
 if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
 })();
 </script>
+<!-- ════════════════════════════════════════════════════════════════════════
+     SINCRONIZAÇÃO AO APAGAR — colar antes de </body>.
+     Apagando-se uma escritura, apagam-se com ela os mapas de registo que lhe
+     pertencem. Sem isto ficavam órfãos na RegistoPedidos e continuavam a
+     aparecer para registar — que é como a mesma escritura acaba registada
+     duas vezes.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+const LISTA='RegistoPedidos';
+const CAMPO='EscrituraId';
+let idLista=null;
+
+async function resolver(){
+  if(idLista)return idLista;
+  const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
+  idLista=(r.value||[]).find(l=>l.name===LISTA||l.displayName===LISTA)?.id||null;
+  if(!idLista)throw new Error('Lista '+LISTA+' não encontrada');
+  return idLista;
+}
+
+/* Devolve os mapas de registo pertencentes a uma escritura. */
+async function mapasDe(escrituraId){
+  await resolver();
+  const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idLista}/items?$expand=fields($select=${CAMPO},Title)&$top=999`);
+  return (r.value||[]).filter(x=>String((x.fields||{})[CAMPO]||'')===String(escrituraId));
+}
+
+async function apagarItem(id){
+  const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idLista}/items/${id}`,
+    {method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});
+  if(!r.ok&&r.status!==204)throw new Error('Erro '+r.status);
+}
+
+function instalar(){
+  if(typeof window.apagarRegisto!=='function')return;
+  const _a=window.apagarRegisto;
+  window.apagarRegisto=async function(itemId,nome){
+    /* Avisa antes, para se saber o que vai desaparecer com a escritura. */
+    let mapas=[];
+    try{
+      await renovarToken();
+      mapas=await mapasDe(itemId);
+    }catch(e){
+      if(!confirm('Não foi possível verificar os registos ligados a esta escritura.\n\n'+
+                  'Apagando agora, podem ficar registos órfãos que continuam a aparecer para registar.\n\nContinuar?'))return;
+    }
+    if(mapas.length&&!confirm(
+        `A escritura de "${nome}" tem ${mapas.length} ${mapas.length===1?'mapa de registo':'mapas de registo'} associad${mapas.length===1?'o':'os'}.\n\n`+
+        `${mapas.length===1?'Ele será apagado':'Eles serão apagados'} com a escritura, para não ficar${mapas.length===1?'':'em'} a aparecer para registar.\n\nContinuar?`))return;
+
+    const r=await _a.apply(this,arguments);
+
+    /* Só depois de a escritura ter mesmo desaparecido é que se limpam os
+       mapas — assim, falhando a primeira eliminação, nada se perde. */
+    const aindaLa=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).some(i=>i.id===itemId);
+    if(aindaLa)return r;
+    let ok=0,erros=0;
+    for(const m of mapas){
+      try{await apagarItem(m.id);ok++;}catch(e){erros++;console.error('mapa órfão',m.id,e);}
+    }
+    if(ok)showToast(`${ok} ${ok===1?'mapa de registo apagado':'mapas de registo apagados'}`,'');
+    if(erros)showToast(`${erros} ${erros===1?'mapa não foi apagado':'mapas não foram apagados'} — verifica a lista ${LISTA}`,'error');
+    return r;
+  };
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
 
 </body>
 </html>
