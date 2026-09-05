@@ -556,11 +556,15 @@
   }
   function pedirPagamento(){
     const linhas = [state.tipoEsc + ' - Solicito pagamento.'];
-    const url = 'mailto:' + encodeURIComponent($('#emailDest').value)
-      + '?subject=' + encodeURIComponent(assunto())
+    /* Deeplink do Outlook na web em vez de mailto: assim a mensagem abre na
+       conta com que se está autenticado, e não no programa de correio
+       predefinido da máquina, que podia ser uma conta pessoal. */
+    const url = 'https://outlook.cloud.microsoft/mail/deeplink/compose'
+      + '?to=' + encodeURIComponent($('#emailDest').value)
+      + '&subject=' + encodeURIComponent(assunto())
       + (config.cc ? '&cc=' + encodeURIComponent(config.cc) : '')
       + '&body=' + encodeURIComponent(linhas.join('\r\n'));
-    window.location.href = url;
+    window.open(url, '_blank');
   }
 
   /* ---------- public API ---------- */

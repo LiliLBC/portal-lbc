@@ -14440,11 +14440,15 @@ function mountMapaRegisto(ROOT){
   }
   function pedirPagamento(){
     const linhas = [state.tipoEsc + ' - Solicito pagamento.'];
-    const url = 'mailto:' + encodeURIComponent($('#mr-emailDest').value)
-      + '?subject=' + encodeURIComponent(assunto())
+    /* Deeplink do Outlook na web em vez de mailto: assim a mensagem abre na
+       conta com que se está autenticado, e não no programa de correio
+       predefinido da máquina, que podia ser uma conta pessoal. */
+    const url = 'https://outlook.cloud.microsoft/mail/deeplink/compose'
+      + '?to=' + encodeURIComponent($('#mr-emailDest').value)
+      + '&subject=' + encodeURIComponent(assunto())
       + (config.cc ? '&cc=' + encodeURIComponent(config.cc) : '')
       + '&body=' + encodeURIComponent(linhas.join('\r\n'));
-    window.location.href = url;
+    window.open(url, '_blank');
   }
 
   /* ---------- public API ---------- */
@@ -15005,6 +15009,112 @@ function instalar(){
     }
     if(ok)showToast(`${ok} ${ok===1?'mapa de registo apagado':'mapas de registo apagados'}`,'');
     if(erros)showToast(`${erros} ${erros===1?'mapa não foi apagado':'mapas não foram apagados'} — verifica a lista ${LISTA}`,'error');
+    return r;
+  };
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SINCRONIZAR O PRÉDIO COM OS MAPAS — colar antes de </body>.
+     Os prédios do mapa de registo são escritos à mão e ficam independentes da
+     ficha. Corrigindo-se a freguesia ou o concelho na escritura, o mapa fica
+     com o valor antigo e o registo sairia errado. Aqui deteta-se e corrige-se.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+const LISTA='RegistoPedidos';
+const C={escrituraId:'EscrituraId',titulo:'Title',atos:'AtosJSON'};
+let idLista=null;
+
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/\s+/g,' ').trim();
+const val=id=>(document.getElementById(id)?.value||'').trim();
+
+async function resolver(){
+  if(idLista)return idLista;
+  const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
+  idLista=(r.value||[]).find(l=>l.name===LISTA||l.displayName===LISTA)?.id||null;
+  if(!idLista)throw new Error('Lista '+LISTA+' não encontrada');
+  return idLista;
+}
+async function mapasDaEscritura(escId){
+  await resolver();
+  const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idLista}/items?$expand=fields&$top=999`);
+  return (r.value||[]).filter(x=>String((x.fields||{})[C.escrituraId]||'')===String(escId))
+    .map(x=>({id:x.id,f:x.fields||{}}));
+}
+function lerEstado(f){
+  try{const o=JSON.parse(f[C.atos]||'{}');return (o&&typeof o==='object')?o:{};}catch(e){return{};}
+}
+
+/* ── QUAL O PRÉDIO A CORRIGIR ──
+   O mesmo mapa pode ter vários prédios, e nem todos vêm desta escritura.
+   Corrige-se o que tiver o mesmo número — é seguramente o mesmo prédio — e,
+   havendo um só no mapa, esse. Os restantes não se tocam. */
+function alvos(predios,ficha){
+  if(!Array.isArray(predios)||!predios.length)return[];
+  const porNumero=predios.filter(p=>ficha.numero&&norm(p.numero)===norm(ficha.numero));
+  if(porNumero.length)return porNumero;
+  return predios.length===1?predios:[];
+}
+function difere(p,ficha){
+  return (ficha.freguesia&&norm(p.freguesia)!==norm(ficha.freguesia))
+      || (ficha.concelho &&norm(p.concelho) !==norm(ficha.concelho));
+}
+
+async function verificar(escId){
+  const ficha={numero:val('p-predio'),freguesia:val('p-freguesia'),concelho:val('p-concelho')};
+  if(!ficha.freguesia&&!ficha.concelho)return;
+  let mapas=[];
+  try{await renovarToken();mapas=await mapasDaEscritura(escId);}catch(e){return;}
+  if(!mapas.length)return;
+
+  const porCorrigir=[];
+  for(const m of mapas){
+    const st=lerEstado(m.f);
+    const lista=alvos(st.predios,ficha).filter(p=>difere(p,ficha));
+    if(lista.length)porCorrigir.push({m,st,lista});
+  }
+  if(!porCorrigir.length)return;
+
+  const detalhe=porCorrigir.flatMap(({m,lista})=>lista.map(p=>
+    `  ${m.f[C.titulo]||'Registo'} · prédio ${p.numero||'…'}\n`+
+    `     ${p.freguesia||'—'} / ${p.concelho||'—'}  →  ${ficha.freguesia||'—'} / ${ficha.concelho||'—'}`
+  )).join('\n');
+  if(!confirm(
+      `O prédio no mapa de registo não coincide com o da escritura:\n\n${detalhe}\n\n`+
+      `Atualizar o mapa com os dados da escritura?\n`+
+      `(Se não atualizares, o registo será pedido com os dados antigos.)`))return;
+
+  let ok=0,erros=0;
+  for(const {m,st,lista} of porCorrigir){
+    lista.forEach(p=>{
+      if(ficha.freguesia)p.freguesia=ficha.freguesia;
+      if(ficha.concelho) p.concelho =ficha.concelho;
+    });
+    try{
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idLista}/items/${m.id}/fields`,
+        {[C.atos]:JSON.stringify(st)});
+      ok++;
+    }catch(e){erros++;console.error('sincronizar mapa',m.id,e);}
+  }
+  showToast(`${ok} ${ok===1?'mapa atualizado':'mapas atualizados'}${erros?`, ${erros} com erro`:''}`,
+    erros?'error':'success');
+}
+
+function instalar(){
+  if(typeof window.guardarPainel!=='function')return;
+  const _g=window.guardarPainel;
+  window.guardarPainel=async function(){
+    const r=await _g.apply(this,arguments);
+    try{
+      const id=(typeof painelItemId!=='undefined')?painelItemId:null;
+      if(id)await verificar(id);
+    }catch(e){console.warn('Sincronizar prédio:',e.message);}
     return r;
   };
 }
