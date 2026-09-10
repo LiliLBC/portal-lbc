@@ -566,7 +566,8 @@ tbody tr:hover td{background:#FAFAF8}
                 <input class="reg-search-input" id="reg-f-conserv" placeholder="Conservatória..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
                 <input class="reg-search-input" id="reg-f-apregisto" placeholder="AP. Registo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
                 <input class="reg-search-input" id="reg-f-numpedido" placeholder="Nº Pedido..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
-                <input class="reg-search-input" id="reg-f-numprocesso" placeholder="Nº Processo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;grid-column:1/-1">
+                <input class="reg-search-input" id="reg-f-numprocesso" placeholder="Nº Processo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px">
+                <input class="reg-search-input" id="reg-f-numarquivo" placeholder="N.º de arquivo..." oninput="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;font-family:'DM Mono',monospace">
                 <select class="reg-search-input" id="reg-f-estado" onchange="pesquisarRegistos()" style="padding:5px 8px;font-size:11px;cursor:pointer;grid-column:1/-1">
                   <option value="">Estado...</option>
                   <option>Em curso</option>
@@ -586,7 +587,7 @@ tbody tr:hover td{background:#FAFAF8}
               <button class="filter-chip" onclick="filtrarRegistos('Suprimento',this)">Suprimentos</button>
               <button class="filter-chip" style="color:var(--green);border-color:var(--green)" onclick="filtrarRegistosPagamento('Pago',this)">Pago</button>
               <button class="filter-chip" style="color:var(--red);border-color:var(--red)" onclick="filtrarRegistosPagamento('Não pago',this)">Não pago</button>
-              <button class="btn-limpar-filtros" data-limpar-filtros="reg-search,reg-f-predio,reg-f-conserv,reg-f-apregisto,reg-f-numpedido,reg-f-numprocesso,reg-f-estado|#screen-registo .filter-row .filter-chip" onclick="limparFiltrosRegistos()">✕ Limpar filtros</button>
+              <button class="btn-limpar-filtros" data-limpar-filtros="reg-search,reg-f-predio,reg-f-conserv,reg-f-apregisto,reg-f-numpedido,reg-f-numprocesso,reg-f-numarquivo,reg-f-estado|#screen-registo .filter-row .filter-chip" onclick="limparFiltrosRegistos()">✕ Limpar filtros</button>
               <button class="filter-chip" style="color:var(--accent);border-color:var(--accent);font-weight:600" onclick="abrirConferenciaCGD()">⚖ Conferir listagem CGD</button>
             </div>
             <div id="reg-loading" class="loading-overlay" style="flex:1"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
@@ -3403,6 +3404,18 @@ async function carregarRegistos(){
   }catch(e){document.getElementById('reg-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
+/* ── PESQUISA PELO N.º DE ARQUIVO ──
+   O número está guardado com zeros à esquerda — 0007 —, mas ninguém os
+   escreve. Aceita-se «7», «07» e «0007», e também parte do número. */
+function casaArquivo(guardado,procurado){
+  const g=String(guardado||'').trim();
+  if(!g)return false;
+  const q=procurado.trim();
+  if(!q)return true;
+  if(g.includes(q))return true;
+  const gn=parseInt(g,10), qn=parseInt(q,10);
+  return (!isNaN(gn)&&!isNaN(qn)&&/^\d+$/.test(q)&&gn===qn);
+}
 function pesquisarRegistos(){
   const qNome=(document.getElementById('reg-search').value||'').toLowerCase().trim();
   const qPredio=(document.getElementById('reg-f-predio')?.value||'').toLowerCase().trim();
@@ -3410,6 +3423,7 @@ function pesquisarRegistos(){
   const qAp=(document.getElementById('reg-f-apregisto')?.value||'').toLowerCase().trim();
   const qNumPedido=(document.getElementById('reg-f-numpedido')?.value||'').toLowerCase().trim();
   const qNumProcesso=(document.getElementById('reg-f-numprocesso')?.value||'').toLowerCase().trim();
+  const qNumArquivo=(document.getElementById('reg-f-numarquivo')?.value||'').trim();
   const qEstado=(document.getElementById('reg-f-estado')?.value||'');
   // Aplicar chip activo (estado ou pagamento)
   let base=todosRegistosReg;
@@ -3422,11 +3436,12 @@ function pesquisarRegistos(){
     (!qAp||(i[F.apRegisto]||'').toLowerCase().includes(qAp))&&
     (!qNumPedido||(i[F.numPedido]||'').toLowerCase().includes(qNumPedido))&&
     (!qNumProcesso||(i[F.numProcesso]||'').toLowerCase().includes(qNumProcesso))&&
+    (!qNumArquivo||casaArquivo(i['Num_Ordem'],qNumArquivo))&&
     (!qEstado||i[F.estado]===qEstado)
   );
   registosFiltradosAtual=resultado;
   const c=document.getElementById('reg-result-count');
-  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qNumProcesso||qEstado||filtroPagamentoAtual;
+  const temFiltro=qNome||qPredio||qConserv||qAp||qNumPedido||qNumProcesso||qNumArquivo||qEstado||filtroPagamentoAtual;
   if(c){c.textContent=temFiltro?`${resultado.length} resultado(s)`:'';c.style.display=temFiltro?'block':'none';}
   renderRegistos(resultado,qNome);
 }
@@ -3454,7 +3469,7 @@ function filtrarRegistosPagamento(pago,el){
 }
 
 function limparFiltrosRegistos(){
-  ['reg-search','reg-f-predio','reg-f-conserv','reg-f-apregisto','reg-f-numpedido','reg-f-numprocesso','reg-f-estado'].forEach(id=>{
+  ['reg-search','reg-f-predio','reg-f-conserv','reg-f-apregisto','reg-f-numpedido','reg-f-numprocesso','reg-f-numarquivo','reg-f-estado'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
     if(el.tagName==='SELECT')el.selectedIndex=0;
