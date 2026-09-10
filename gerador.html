@@ -5902,8 +5902,8 @@ async function gerarWord(){
     if(!dr.ok)throw new Error('sem acesso ao SharePoint ('+dr.status+')');
     const drives=await dr.json();
     const docsDrive=drives.value.find(d=>/document|documento/i.test(d.name))||drives.value[0];
-    const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA.docx:/content`);
-    if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA.docx — carrega o template-casca para essa pasta');
+    const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA_v2.docx:/content`);
+    if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA_v2.docx — carrega o template-casca para essa pasta');
     const buf=await fr.arrayBuffer();
     const DocxClass=window.Docxtemplater||window.docxtemplater;
     /* Um ficheiro por contrato: com o conexo ligado saem dois Words, cada um
