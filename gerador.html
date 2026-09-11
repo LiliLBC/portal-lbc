@@ -689,14 +689,6 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Quando o cliente quer que sejas tu a liquidar o IMT e o Selo. Sai como documento à parte.</div>
       </div>
-      <!-- Folha anexa da Lei 83/2017, assinada pela parte compradora. -->
-      <div class="form-group form-full" id="g-decl-fundos" style="margin-top:.3rem">
-        <div class="toggle-row" style="margin:0">
-          <span class="toggle-label" style="font-size:12px">Emitir declaração de origem dos fundos</span>
-          <label class="toggle-switch"><input type="checkbox" id="t-decl-fundos" checked onchange="atualizar()"><span class="toggle-slider"></span></label>
-        </div>
-        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Folha anexa da Lei n.º 83/2017, para a parte compradora preencher e assinar. Sai como documento à parte.</div>
-      </div>
       <div class="form-group form-full" id="g-proc-quem" style="display:none"><label class="form-label">Quem constitui procuradora</label>
         <select class="form-select" id="f-proc-quem" onchange="atualizar()"></select>
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Normalmente quem tem imposto a liquidar.</div></div>
@@ -1145,6 +1137,14 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <label class="toggle-switch"><input type="checkbox" id="t-mh" onchange="onBlocoMH();atualizar()"><span class="toggle-slider"></span></label>
     </div>
     <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Desligado, gera uma compra e venda simples e o contrato fecha no bloco 9.</div>
+
+    <!-- Folha anexa da Lei 83/2017, assinada pela parte compradora.
+         Vive aqui porque o bloco 10 é dos que aparecem na compra e venda. -->
+    <div class="toggle-row" style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border)">
+      <span class="toggle-label">Emitir declaração de origem dos fundos</span>
+      <label class="toggle-switch"><input type="checkbox" id="t-decl-fundos" checked onchange="atualizar()"><span class="toggle-slider"></span></label>
+    </div>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Folha anexa da Lei n.º 83/2017, para a parte compradora preencher e assinar. Sai em ficheiro próprio, a par do contrato.</div>
 
     <div id="g-mh" style="display:none">
     <div class="cond-block" style="margin-top:.7rem" id="blk-mutuante">
@@ -3091,7 +3091,7 @@ function comporMH(variante){
   const infos=[clSelo,
     ];   /* o depósito passou para o fecho, junto da leitura */
   termo.push({id:P+'t-informei',T:'',X:`Informei:\n${infos.join('\n')}`});
-  termo.push({id:P+'t-rgpd',T:'',X:`Com consentimento dos outorgantes, procedi à recolha dos elementos de identificação e à reprodução dos documentos que serviram de base ao presente ato, nos termos da Lei n.º 83/2017, de 18 de agosto, ficando os mesmos arquivados pelo período legal de sete anos.`});
+  termo.push({id:P+'t-rgpd',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
   if(arq)termo.push({id:P+'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:P+'t-leitura',T:'',X:fechoTermo(true)});
@@ -3887,7 +3887,7 @@ function comporDCC(){
   termo.push({id:'t-informei',T:'',X:
     `INFORMEI\n— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`});
   termo.push({id:'t-rgpd',T:'',X:
-    `Com consentimento dos outorgantes, procedi à recolha dos elementos de identificação e à reprodução dos documentos que serviram de base ao presente ato, nos termos da Lei n.º 83/2017, de 18 de agosto, ficando os mesmos arquivados pelo período legal de sete anos.`});
+    `Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   termo.push({id:'t-leitura',T:'',X:
     `O presente Documento Particular Autenticado, foi lido em voz alta e explicado aos signatários, na presença simultânea de todos os outorgantes, os quais declararam encontrar-se plenamente esclarecidos quanto ao respetivo conteúdo.`});
 
@@ -4017,13 +4017,6 @@ function comporDCC(){
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
   /* A licença de utilização e o certificado energético saíram deste ato: numa
      partilha ou divisão não são exigidos, e os campos deixaram de existir. */
-  /* ── PROTEÇÃO DE DADOS E CONSERVAÇÃO ──
-     Uma frase só, a juntar as duas coisas: o consentimento para o tratamento
-     dos dados indispensáveis ao contrato, e a informação de que os documentos
-     de identificação ficam arquivados sete anos por imposição da Lei do
-     branqueamento. O consentimento cobre o primeiro; o segundo é obrigação
-     legal, e por isso informa-se, não se pede autorização. */
-  contrato.push({id:'c-dados',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
@@ -4170,7 +4163,7 @@ function comporDoacao(){
   inf.push(`— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`);
   termo.push({id:'t-informei',T:'',X:`INFORMEI\n${inf.join('\n')}`});
   termo.push({id:'t-rgpd',T:'',X:
-    `Com consentimento dos outorgantes, procedi à recolha dos elementos de identificação e à reprodução dos documentos que serviram de base ao presente ato, nos termos da Lei n.º 83/2017, de 18 de agosto, ficando os mesmos arquivados pelo período legal de sete anos.`});
+    `Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   termo.push({id:'t-leitura',T:'',X:fechoTermo(false)});
 
   /* ══════════════ CONTRATO ══════════════ */
@@ -4238,13 +4231,6 @@ function comporDoacao(){
   if(chk('t-ce'))parsLic.push(`O Imóvel dispõe do Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios n.º ${v('f-ce-num')||'…'}${v('f-ce-val')?`, válido até ${dPT(v('f-ce-val'))}`:''}, nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`);
   if(parsLic.length)contrato.push({id:'c-licenciamento',T:cl('Licenciamento'),X:parsLic.join('\n')});
 
-  /* ── PROTEÇÃO DE DADOS E CONSERVAÇÃO ──
-     Uma frase só, a juntar as duas coisas: o consentimento para o tratamento
-     dos dados indispensáveis ao contrato, e a informação de que os documentos
-     de identificação ficam arquivados sete anos por imposição da Lei do
-     branqueamento. O consentimento cobre o primeiro; o segundo é obrigação
-     legal, e por isso informa-se, não se pede autorização. */
-  contrato.push({id:'c-dados',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
@@ -4613,7 +4599,7 @@ function compor(){
      a norma pune quem omite ou declara falsamente, portanto é justamente na
      declaração de que não houve intervenção que ela tem sentido. */
   termo.push({id:'t-advert-mediacao',T:'',X:`Adverti as partes, que nos termos do art.º 40.º, n.º 3, da Lei 15/2013 (Regime Jurídico da Atividade de Mediação Imobiliária, de 8 de fevereiro), as partes que omitam ou prestem falsas declarações sobre a intervenção de mediação imobiliária incorrem na pena prevista para o crime de desobediência (art.º 348.º do Código Penal).`});
-  termo.push({id:'t-rgpd',T:'',X:`Com o consentimento dos outorgantes, foram recolhidos e reproduzidos os documentos de identificação nos termos da Lei n.º 83/2017, de 18 de agosto, arquivados pelo prazo legal de 7 anos.`});
+  termo.push({id:'t-rgpd',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
   
   if(ehCVMH&&seloMutuo().valor)
@@ -4751,13 +4737,6 @@ function compor(){
   }
   lerOnus().map(o=>textoRenuncia(o,'TERCEIRA')).filter(Boolean)
     .forEach((t,i)=>contrato.push({id:`c-renuncia-${i}`,T:'',X:t}));
-  /* ── PROTEÇÃO DE DADOS E CONSERVAÇÃO ──
-     Uma frase só, a juntar as duas coisas: o consentimento para o tratamento
-     dos dados indispensáveis ao contrato, e a informação de que os documentos
-     de identificação ficam arquivados sete anos por imposição da Lei do
-     branqueamento. O consentimento cobre o primeiro; o segundo é obrigação
-     legal, e por isso informa-se, não se pede autorização. */
-  contrato.push({id:'c-dados',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   contrato.push({id:'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
 
