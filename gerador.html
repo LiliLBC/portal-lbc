@@ -4009,6 +4009,13 @@ function comporDCC(){
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
   /* A licença de utilização e o certificado energético saíram deste ato: numa
      partilha ou divisão não são exigidos, e os campos deixaram de existir. */
+  /* ── PROTEÇÃO DE DADOS E CONSERVAÇÃO ──
+     Uma frase só, a juntar as duas coisas: o consentimento para o tratamento
+     dos dados indispensáveis ao contrato, e a informação de que os documentos
+     de identificação ficam arquivados sete anos por imposição da Lei do
+     branqueamento. O consentimento cobre o primeiro; o segundo é obrigação
+     legal, e por isso informa-se, não se pede autorização. */
+  contrato.push({id:'c-dados',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
@@ -4223,6 +4230,13 @@ function comporDoacao(){
   if(chk('t-ce'))parsLic.push(`O Imóvel dispõe do Certificado emitido no âmbito do Sistema de Certificação Energética dos Edifícios n.º ${v('f-ce-num')||'…'}${v('f-ce-val')?`, válido até ${dPT(v('f-ce-val'))}`:''}, nos termos do Decreto-Lei n.º 101-D/2020, de 7 de dezembro.`);
   if(parsLic.length)contrato.push({id:'c-licenciamento',T:cl('Licenciamento'),X:parsLic.join('\n')});
 
+  /* ── PROTEÇÃO DE DADOS E CONSERVAÇÃO ──
+     Uma frase só, a juntar as duas coisas: o consentimento para o tratamento
+     dos dados indispensáveis ao contrato, e a informação de que os documentos
+     de identificação ficam arquivados sete anos por imposição da Lei do
+     branqueamento. O consentimento cobre o primeiro; o segundo é obrigação
+     legal, e por isso informa-se, não se pede autorização. */
+  contrato.push({id:'c-dados',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   contrato.push({id:'c-aceitacao',T:'',X:'As partes declaram que aceitam o presente contrato nos termos em que foi exarado.'});
   contrato.push({id:'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
@@ -4729,6 +4743,13 @@ function compor(){
   }
   lerOnus().map(o=>textoRenuncia(o,'TERCEIRA')).filter(Boolean)
     .forEach((t,i)=>contrato.push({id:`c-renuncia-${i}`,T:'',X:t}));
+  /* ── PROTEÇÃO DE DADOS E CONSERVAÇÃO ──
+     Uma frase só, a juntar as duas coisas: o consentimento para o tratamento
+     dos dados indispensáveis ao contrato, e a informação de que os documentos
+     de identificação ficam arquivados sete anos por imposição da Lei do
+     branqueamento. O consentimento cobre o primeiro; o segundo é obrigação
+     legal, e por isso informa-se, não se pede autorização. */
+  contrato.push({id:'c-dados',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   contrato.push({id:'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
 
@@ -5902,8 +5923,8 @@ async function gerarWord(){
     if(!dr.ok)throw new Error('sem acesso ao SharePoint ('+dr.status+')');
     const drives=await dr.json();
     const docsDrive=drives.value.find(d=>/document|documento/i.test(d.name))||drives.value[0];
-    const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA_v2.docx:/content`);
-    if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA_v2.docx — carrega o template-casca para essa pasta');
+    const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CASCA.docx:/content`);
+    if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CASCA.docx — carrega o template-casca para essa pasta');
     const buf=await fr.arrayBuffer();
     const DocxClass=window.Docxtemplater||window.docxtemplater;
     /* Um ficheiro por contrato: com o conexo ligado saem dois Words, cada um
