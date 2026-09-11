@@ -689,6 +689,14 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Quando o cliente quer que sejas tu a liquidar o IMT e o Selo. Sai como documento à parte.</div>
       </div>
+      <!-- Folha anexa da Lei 83/2017, assinada pela parte compradora. -->
+      <div class="form-group form-full" id="g-decl-fundos" style="margin-top:.3rem">
+        <div class="toggle-row" style="margin:0">
+          <span class="toggle-label" style="font-size:12px">Emitir declaração de origem dos fundos</span>
+          <label class="toggle-switch"><input type="checkbox" id="t-decl-fundos" checked onchange="atualizar()"><span class="toggle-slider"></span></label>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Folha anexa da Lei n.º 83/2017, para a parte compradora preencher e assinar. Sai como documento à parte.</div>
+      </div>
       <div class="form-group form-full" id="g-proc-quem" style="display:none"><label class="form-label">Quem constitui procuradora</label>
         <select class="form-select" id="f-proc-quem" onchange="atualizar()"></select>
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Normalmente quem tem imposto a liquidar.</div></div>
@@ -5908,6 +5916,51 @@ async function garantirBibliotecas(){
     throw new Error(`não consegui carregar ${faltam}. Tentei o cdnjs, o jsDelivr e o unpkg — é provável que a rede esteja a bloquear estes endereços.`);
   }
 }
+
+/* ═══════════ DECLARAÇÃO DE ORIGEM DOS FUNDOS ═══════════
+   Folha anexa a toda a compra e venda, assinada apenas pela parte compradora,
+   que é quem entrega os capitais. Sai em ficheiro próprio, com cabeçalho e
+   logótipo, a partir de Templates/TEMPL_DECL_FUNDOS.docx.
+   A origem dos fundos e os meios de pagamento ficam em branco, para serem
+   preenchidos pelos declarantes — é essa a razão de ser da folha. */
+function ehCompraVenda(){
+  const t=atoEscolhido();
+  return t==='cv'||t==='leasing';
+}
+function dadosDeclaracaoFundos(){
+  const comps=lerCompradores();
+  if(!comps.length)return null;
+  /* Identificação completa, como no termo: é uma declaração autónoma e tem de
+     se bastar a si própria. Sendo sociedade, sai a denominação e quem outorga
+     em sua representação. */
+  const Bloco_Compradores=comps.map(textoVendedor).join(';\n')+'.';
+  const Assinantes=comps.flatMap(o=>{
+    if(o.tipo!=='singular'){
+      const rs=(o.reps&&o.reps.length)?o.reps:[];
+      const quem=rs.map(r=>r.nome).filter(Boolean).join(' e ');
+      return [{Nome:`${o.denom||'…'}${quem?` — representada por ${quem}`:''}`}];
+    }
+    const l=[{Nome:(o.nome||'…')}];
+    /* O cônjuge que outorga também assina; o que apenas consente, não. */
+    if(ehCasado(o.ec)&&(o['conj-out']||'ambos')==='ambos'&&o['conj-nome'])
+      l.push({Nome:o['conj-nome']});
+    return l;
+  });
+  return{
+    Tipo_Ato:(tipoDeduzido().nome||'Compra e venda'),
+    Identificacao_Imovel:(()=>{
+      /* Descrição curta, que é o que basta para identificar o ato. */
+      const d=v('f-im-desc')||'', st=v('f-im-sito')||'', crp=v('f-im-crp')||'', num=v('f-im-num')||'';
+      const p=[d,st?`sito em ${st}`:'',(crp||num)?`descrito na Conservatória do Registo Predial de ${crp||'…'} sob o número ${num||'…'}`:''];
+      return p.filter(Boolean).join(', ')||'…';
+    })(),
+    Preco:(v('f-preco')?`${v('f-preco')} (${valorExtenso(v('f-preco')).toUpperCase()})`:'…'),
+    Bloco_Compradores,
+    Local_Data_Decl:`${v('f-local-ato')||'Évora'}, ${dataExtenso(v('f-data-ato'))}.`,
+    Assinantes
+  };
+}
+
 async function gerarWord(){
   try{
     const p=pendentesValidacao();
@@ -5968,6 +6021,27 @@ async function gerarWord(){
         await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(nomeFich)}:/content`,{method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:blob});
       }
       gerados.push(nomeFich);
+    }
+    /* ── FOLHA ANEXA · só nas compras e vendas ── */
+    if(chk('t-decl-fundos')&&ehCompraVenda()){
+      const dados=dadosDeclaracaoFundos();
+      if(!dados)showToast('Sem compradores identificados — a declaração de fundos não foi gerada','error');
+      else{
+        const fd=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_DECL_FUNDOS.docx:/content`);
+        if(!fd.ok)showToast('não encontrei Templates/TEMPL_DECL_FUNDOS.docx','error');
+        else{
+          const zipD=new (window.PizZip)(await fd.arrayBuffer());
+          const docD=new DocxClass(zipD,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
+          docD.render(dados);
+          const blobD=docD.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+          const nomeD=`DECL_FUNDOS_${sufNome}`.replace(/_+$/,'')+'.docx';
+          const ad=document.createElement('a');ad.href=URL.createObjectURL(blobD);ad.download=nomeD;ad.click();
+          if(pastaSeleccionada){
+            await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(nomeD)}:/content`,{method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:blobD});
+          }
+          gerados.push(nomeD);
+        }
+      }
     }
     showToast(`${gerados.join(' e ')} ${gerados.length>1?'gerados':'gerado'}`,'success');
   }catch(e){showToast('Erro ao gerar Word: '+e.message,'error');}
