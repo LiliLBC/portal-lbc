@@ -1120,28 +1120,6 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
-      <!-- MODAL ÁREA FINANCEIRA -->
-      <div class="modal-overlay" id="modal-financeiro">
-        <div class="modal-box" style="max-width:380px">
-          <div class="modal-box-title" style="display:flex;align-items:center;gap:.5rem">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4.5a3 3 0 016 0V7"/></svg>
-            Área financeira
-          </div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem">Esta área está protegida. Introduz a palavra-passe para aceder ao Dashboard financeiro, Relatórios e Contabilidade.</div>
-          <div class="form-group form-full" style="margin-bottom:.5rem">
-            <label class="form-label">Palavra-passe</label>
-            <input class="form-input" id="fin-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')validarPasswordFinanceiro()" autocomplete="off">
-          </div>
-          <div id="fin-erro" style="font-size:11px;color:var(--red);margin-bottom:.5rem;display:none">Palavra-passe incorrecta</div>
-          <div class="modal-actions" style="margin-top:.75rem">
-            <button class="btn" onclick="fecharModalFinanceiro()" style="flex:1">Cancelar</button>
-            <button class="btn btn-primary" onclick="validarPasswordFinanceiro()" style="flex:2">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/></svg>
-              Desbloquear
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- MODAL CONCILIAÇÃO BANCÁRIA -->
       <div class="modal-overlay" id="modal-conciliacao">
@@ -2636,8 +2614,10 @@ async function mostrarApp(){
   const nome=contaAtual.name||contaAtual.username;
   document.getElementById('user-name').textContent=nome.split(' ')[0];
   document.getElementById('user-avatar').textContent=nome.charAt(0).toUpperCase();
-  // Se a área financeira ainda está desbloqueada nesta sessão, mostrar os itens
+  /* Tendo acesso, os itens aparecem logo; não tendo, nem o botão de
+     desbloquear se mostra, para não convidar a tentar. */
   if(financeiroDesbloqueado())mostrarMenuFinanceiro();
+  else{const b=document.getElementById('nav-fin-desbloquear');if(b)b.style.display='none';}
   setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
 }
 
@@ -2827,39 +2807,26 @@ function fecharSidebar(){
 }
 
 // ─── ÁREA FINANCEIRA — proteção ──────────────────────────────────────────────
-// NOTA: Esta protecção é apenas visual. Para mudar a palavra-passe, edita a
-// linha abaixo. Procura "PASSWORD_FINANCEIRO" no ficheiro.
-const PASSWORD_FINANCEIRO='Lbc1982@';
+/* ── ÁREA FINANCEIRA ──
+   Deixou de haver palavra-passe: uma palavra escrita no código é legível por
+   quem abrir a página, portanto não protegia nada. Passa a depender de quem
+   está autenticado — e a conta é verificada pela Microsoft, não por nós.
+   Para dar acesso a mais alguém, acrescenta o endereço a esta lista. */
+const CONTAS_FINANCEIRO=['liliana.cardoso@lbc-solicitadora.pt'];
 
+function contaAutenticada(){
+  return String((contaAtual&&(contaAtual.username||contaAtual.name))||'').toLowerCase().trim();
+}
 function financeiroDesbloqueado(){
-  return sessionStorage.getItem('lbc_fin_unlocked')==='1';
+  return CONTAS_FINANCEIRO.map(c=>c.toLowerCase()).includes(contaAutenticada());
 }
 
 function abrirModalFinanceiro(){
   if(financeiroDesbloqueado()){mostrarMenuFinanceiro();return;}
-  document.getElementById('fin-pass').value='';
-  document.getElementById('fin-erro').style.display='none';
-  document.getElementById('modal-financeiro').classList.add('show');
-  setTimeout(()=>document.getElementById('fin-pass').focus(),50);
+  showToast('A área financeira está reservada à conta titular.','error');
 }
 
-function fecharModalFinanceiro(){
-  document.getElementById('modal-financeiro').classList.remove('show');
-}
 
-function validarPasswordFinanceiro(){
-  const tentativa=document.getElementById('fin-pass').value;
-  if(tentativa===PASSWORD_FINANCEIRO){
-    sessionStorage.setItem('lbc_fin_unlocked','1');
-    fecharModalFinanceiro();
-    mostrarMenuFinanceiro();
-    showToast('Área financeira desbloqueada','success');
-  } else {
-    document.getElementById('fin-erro').style.display='block';
-    document.getElementById('fin-pass').value='';
-    document.getElementById('fin-pass').focus();
-  }
-}
 
 function mostrarMenuFinanceiro(){
   document.getElementById('nav-fin-desbloquear').style.display='none';
