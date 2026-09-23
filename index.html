@@ -2549,7 +2549,7 @@ tbody tr:hover td{background:#FAFAF8}
 const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
 const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
 const REDIRECT='https://lililbc.github.io/portal-lbc/';
-const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read','Mail.Send'];
+const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read','Mail.Send','Mail.ReadWrite','Mail.ReadWrite.Shared'];
 const GRAPH_BASE='https://graph.microsoft.com/v1.0';
 /* Anexos das tarefas. Não se usam os anexos nativos da lista porque o Microsoft
    Graph não os sabe criar nem ler — só diz se existem. Guardam-se numa
@@ -15132,6 +15132,287 @@ function instalar(){
     }catch(e){console.warn('Sincronizar prédio:',e.message);}
     return r;
   };
+}
+if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
+})();
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     POR RESPONDER — colar antes de </body>.
+     Lê as caixas de correio e mostra as conversas em que a última mensagem é
+     de fora. Não guarda nada: a lista constrói-se do próprio correio de cada
+     vez que se abre. As marcas são categorias do Outlook, visíveis dos dois
+     lados e removíveis lá.
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+/* Caixas a ler. A pessoal é a de quem está autenticado; as partilhadas são
+   fixas. Cada pessoa vê a sua mais estas — ninguém precisa de delegar nada. */
+const PARTILHADAS=[
+  {id:'geral@lbc-solicitadora.pt', rot:'geral'},
+  {id:'info@lbc-solicitadora.pt',  rot:'info'}
+];
+const CAT_TRATADO   ='LBC — Tratado';
+const CAT_PARTILHADO='LBC — Partilhado';
+const CAT_MEU       ='LBC — Meu';
+const ESPERA_MIN=60;          // entra na lista ao fim de uma hora
+const DIAS_AZUL=1, DIAS_VERM=3;
+
+let MSGS=[], aCarregar=false, ultimoErro='';
+let meuEmail='', filtro='todas';
+
+const $=id=>document.getElementById(id);
+const esc=s=>(typeof escHtml==='function')?escHtml(s==null?'':s):String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── LEITURA ──
+   Pedem-se as mensagens recebidas de cada caixa, já ordenadas, e as enviadas,
+   para saber a que conversas já respondemos. Uma caixa inacessível não pára
+   as outras. */
+async function graphTentar(url){
+  try{
+    await renovarToken();
+    const r=await fetch(url,{headers:{Authorization:'Bearer '+graphToken}});
+    if(!r.ok)return{erro:`${r.status}`};
+    return await r.json();
+  }catch(e){return{erro:e.message};}
+}
+const SEL='id,conversationId,internetMessageId,subject,from,receivedDateTime,isRead,categories,webLink';
+
+async function lerCaixa(caixa,rot,propria){
+  const base=propria?`${GRAPH_BASE}/me` : `${GRAPH_BASE}/users/${encodeURIComponent(caixa)}`;
+  const rec=await graphTentar(`${base}/mailFolders/inbox/messages?$select=${SEL}&$top=120&$orderby=receivedDateTime desc`);
+  if(rec.erro){ultimoErro=`${rot}: ${rec.erro}`;return{recebidas:[],respondidas:new Set()};}
+  const env=await graphTentar(`${base}/mailFolders/sentitems/messages?$select=conversationId,sentDateTime&$top=200&$orderby=sentDateTime desc`);
+  const respondidas=new Map();
+  (env.value||[]).forEach(m=>{
+    const a=respondidas.get(m.conversationId);
+    if(!a||m.sentDateTime>a)respondidas.set(m.conversationId,m.sentDateTime);
+  });
+  return{recebidas:(rec.value||[]).map(m=>({...m,_caixa:rot})),respondidas};
+}
+
+/* ── JUNTAR AS CAIXAS ──
+   A mesma mensagem pode entrar em várias caixas. O internetMessageId é o
+   mesmo em todas — é por ele que se junta, e não pelo assunto e hora, que
+   podem coincidir entre mensagens diferentes. */
+function juntar(lotes){
+  const porId=new Map();
+  const respondidas=new Map();
+  lotes.forEach(l=>{
+    l.respondidas.forEach((d,conv)=>{
+      const a=respondidas.get(conv);
+      if(!a||d>a)respondidas.set(conv,d);
+    });
+    l.recebidas.forEach(m=>{
+      const chave=m.internetMessageId||`${m.conversationId}|${m.receivedDateTime}`;
+      const j=porId.get(chave);
+      if(j){ if(!j._caixas.includes(m._caixa))j._caixas.push(m._caixa); }
+      else porId.set(chave,{...m,_caixas:[m._caixa]});
+    });
+  });
+  return{lista:[...porId.values()],respondidas};
+}
+
+function porResponder(){
+  const agora=Date.now();
+  const{lista,respondidas}=juntar(LOTES);
+  return lista.filter(m=>{
+    const cats=m.categories||[];
+    if(cats.includes(CAT_TRATADO))return false;
+    /* Só entra ao fim de uma hora: antes disso ainda está a ser tratada. */
+    const recebida=new Date(m.receivedDateTime).getTime();
+    if(agora-recebida < ESPERA_MIN*60*1000)return false;
+    /* Respondemos depois de ela chegar? Então está tratada. */
+    const resp=respondidas.get(m.conversationId);
+    if(resp && new Date(resp).getTime()>recebida)return false;
+    /* Remetentes automáticos não esperam resposta. */
+    const de=(m.from?.emailAddress?.address||'').toLowerCase();
+    if(/^(noreply|no-reply|nao-responder|naoresponder|mailer-daemon|postmaster)/.test(de))return false;
+    if(de.endsWith('@lbc-solicitadora.pt'))return false;   // trocas internas
+    return true;
+  }).sort((a,b)=>new Date(a.receivedDateTime)-new Date(b.receivedDateTime));  // mais antigas em cima
+}
+let LOTES=[];
+
+// ─── Apresentação ─────────────────────────────────────────────────────────
+function diasDe(m){
+  const d=(Date.now()-new Date(m.receivedDateTime).getTime())/86400000;
+  return d;
+}
+function tom(m){
+  const d=diasDe(m);
+  if(d> DIAS_VERM)return{cls:'pr-verm',rot:'mais de 3 dias'};
+  if(d>=DIAS_AZUL)return{cls:'pr-azul',rot:'1 a 3 dias'};
+  return{cls:'pr-verde',rot:'hoje'};
+}
+function hMuito(m){
+  const min=(Date.now()-new Date(m.receivedDateTime).getTime())/60000;
+  if(min<60)return `${Math.round(min)} min`;
+  if(min<1440)return `${Math.round(min/60)} h`;
+  const d=Math.floor(min/1440);
+  return `${d} dia${d===1?'':'s'}`;
+}
+/* A caixa pessoal é de quem a recebe; as partilhadas são do escritório.
+   O botão Partilhar e o É meu trocam isso, conversa a conversa. */
+function ehMinha(m){
+  const c=m.categories||[];
+  if(c.includes(CAT_MEU))return true;
+  if(c.includes(CAT_PARTILHADO))return false;
+  return m._caixas.includes('minha');
+}
+
+function render(){
+  const el=$('pr-corpo');if(!el)return;
+  if(aCarregar){el.innerHTML='<div style="display:flex;justify-content:center;padding:2rem"><div class="spinner"></div></div>';return;}
+  const todas=porResponder();
+  const minhas=todas.filter(ehMinha), escritorio=todas.filter(m=>!ehMinha(m));
+  const mostra=filtro==='minhas'?minhas:filtro==='escritorio'?escritorio:todas;
+
+  const conta=(n,c)=>`<span class="pr-pill ${c}">${n}</span>`;
+  const vermelhas=todas.filter(m=>diasDe(m)>DIAS_VERM).length;
+
+  el.innerHTML=`
+    <div class="pr-barra">
+      <div class="pr-abas">
+        <button class="pr-aba${filtro==='todas'?' on':''}" onclick="prFiltro('todas')">Todas ${conta(todas.length,'')}</button>
+        <button class="pr-aba${filtro==='minhas'?' on':''}" onclick="prFiltro('minhas')">Minhas ${conta(minhas.length,'')}</button>
+        <button class="pr-aba${filtro==='escritorio'?' on':''}" onclick="prFiltro('escritorio')">Do escritório ${conta(escritorio.length,'')}</button>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        ${vermelhas?`<span style="font-size:11.5px;color:var(--red);font-weight:600">${vermelhas} há mais de 3 dias</span>`:''}
+        <button class="btn btn-sm" onclick="prCarregar(true)">⟳ Atualizar</button>
+      </div>
+    </div>
+    ${ultimoErro?`<div class="notice notice-warning" style="font-size:11.5px;display:block;margin-bottom:.6rem">Uma das caixas não pôde ser lida (${esc(ultimoErro)}). As restantes estão atualizadas.</div>`:''}
+    ${mostra.length?mostra.map(linha).join(''):'<div style="text-align:center;color:var(--text-faint);padding:2.5rem;font-size:12.5px">Nada por responder. </div>'}`;
+}
+
+function linha(m){
+  const t=tom(m);
+  const de=m.from?.emailAddress;
+  const nome=esc(de?.name||de?.address||'—');
+  return `<div class="pr-linha ${t.cls}">
+    <div class="pr-quando" title="${esc(m.receivedDateTime)}">
+      <b>${hMuito(m)}</b><span>${t.rot}</span>
+    </div>
+    <div class="pr-meio">
+      <div class="pr-assunto">${esc(m.subject||'(sem assunto)')}</div>
+      <div class="pr-de">${nome}${de?.address?` · <span style="color:var(--text-faint)">${esc(de.address)}</span>`:''}</div>
+    </div>
+    <div class="pr-caixas">${m._caixas.map(c=>`<span class="pr-cx">${esc(c)}</span>`).join('')}</div>
+    <div class="pr-acoes">
+      <a class="btn btn-sm" href="${esc(m.webLink||'#')}" target="_blank" title="Abrir no Outlook">Abrir</a>
+      <button class="btn btn-sm" onclick="prMarcar('${m.id}','${esc(m._caixas[0])}','tratado')" title="Não precisa de resposta">Resolvido</button>
+      ${ehMinha(m)
+        ?`<button class="btn btn-sm" onclick="prMarcar('${m.id}','${esc(m._caixas[0])}','partilhar')" title="Passa a aparecer às colegas">Partilhar</button>`
+        :`<button class="btn btn-sm" onclick="prMarcar('${m.id}','${esc(m._caixas[0])}','meu')" title="Fica só para mim">É meu</button>`}
+    </div>
+  </div>`;
+}
+
+// ─── Marcas ───────────────────────────────────────────────────────────────
+/* As marcas são categorias do Outlook. Ficam na mensagem, veem-se de ambos os
+   lados e podem ser retiradas no próprio Outlook. */
+async function marcar(id,caixa,acao){
+  const m=MSGS.find(x=>x.id===id);
+  const base=(caixa==='minha')?`${GRAPH_BASE}/me`
+    :`${GRAPH_BASE}/users/${encodeURIComponent((PARTILHADAS.find(p=>p.rot===caixa)||{}).id||caixa)}`;
+  const cats=new Set((m?.categories)||[]);
+  if(acao==='tratado')cats.add(CAT_TRATADO);
+  if(acao==='partilhar'){cats.add(CAT_PARTILHADO);cats.delete(CAT_MEU);}
+  if(acao==='meu'){cats.add(CAT_MEU);cats.delete(CAT_PARTILHADO);}
+  try{
+    await renovarToken();
+    const r=await fetch(`${base}/messages/${id}`,{
+      method:'PATCH',
+      headers:{Authorization:'Bearer '+graphToken,'Content-Type':'application/json'},
+      body:JSON.stringify({categories:[...cats]})
+    });
+    if(!r.ok)throw new Error('Erro '+r.status);
+    if(m)m.categories=[...cats];
+    /* A lista é recalculada a partir dos lotes originais, por isso a marca tem
+       de ser aplicada lá também — senão a linha só desaparecia ao recarregar. */
+    LOTES.forEach(l=>l.recebidas.forEach(x=>{
+      if(x.id===id||(m&&x.internetMessageId&&x.internetMessageId===m.internetMessageId))
+        x.categories=[...cats];
+    }));
+    render();
+  }catch(e){showToast('Não foi possível marcar: '+e.message,'error');}
+}
+
+// ─── Carregar ─────────────────────────────────────────────────────────────
+async function carregar(forcar){
+  if(aCarregar)return;
+  aCarregar=true;ultimoErro='';render();
+  try{
+    const eu=await graphTentar(`${GRAPH_BASE}/me?$select=mail,userPrincipalName`);
+    meuEmail=(eu.mail||eu.userPrincipalName||'').toLowerCase();
+    const lotes=[await lerCaixa(null,'minha',true)];
+    for(const p of PARTILHADAS){
+      if(p.id.toLowerCase()===meuEmail)continue;     // não ler duas vezes a mesma
+      lotes.push(await lerCaixa(p.id,p.rot,false));
+    }
+    LOTES=lotes;
+    MSGS=juntar(lotes).lista;
+  }catch(e){ultimoErro=e.message;}
+  finally{aCarregar=false;render();}
+}
+
+window.prFiltro=f=>{filtro=f;render();};
+window.prCarregar=carregar;
+window.prMarcar=marcar;
+
+// ─── Instalação ───────────────────────────────────────────────────────────
+const CSS=`
+#screen-porresponder{padding:0}
+.pr-wrap{max-width:1100px;margin:0 auto}
+.pr-barra{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem}
+.pr-abas{display:flex;gap:.3rem}
+.pr-aba{border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:5px 13px;
+  font-size:12px;font-family:inherit;color:var(--text-muted);cursor:pointer}
+.pr-aba.on{border-color:var(--accent);color:var(--accent-dark);background:var(--accent-light)}
+.pr-pill{display:inline-block;margin-left:5px;font-size:10.5px;font-weight:600;opacity:.75}
+.pr-linha{display:grid;grid-template-columns:86px 1fr auto auto;gap:.7rem;align-items:center;
+  background:var(--surface);border:1px solid var(--border);border-left-width:4px;border-radius:9px;
+  padding:.55rem .75rem;margin-bottom:.4rem}
+.pr-verde{border-left-color:#7FA47F}
+.pr-azul {border-left-color:#7C93B5}
+.pr-verm {border-left-color:#B5564A;background:#FDF7F6}
+.pr-quando{display:flex;flex-direction:column;line-height:1.15}
+.pr-quando b{font-size:13px}
+.pr-quando span{font-size:9.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.pr-verm .pr-quando b{color:var(--red)}
+.pr-assunto{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-de{font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-caixas{display:flex;gap:3px}
+.pr-cx{font-size:9.5px;border:1px solid var(--border);border-radius:7px;padding:1px 6px;color:var(--text-faint)}
+.pr-acoes{display:flex;gap:.3rem}
+.pr-acoes .btn{padding:3px 9px;font-size:10.5px}
+@media(max-width:820px){.pr-linha{grid-template-columns:70px 1fr}.pr-caixas,.pr-acoes{grid-column:1/-1}}
+`;
+function instalar(){
+  if($('screen-porresponder'))return;
+  const base=document.querySelector('.screen');if(!base)return;
+  const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+  const scr=document.createElement('div');scr.className='screen';scr.id='screen-porresponder';
+  scr.innerHTML='<div class="pr-wrap"><div id="pr-corpo"></div></div>';
+  base.parentNode.appendChild(scr);
+
+  const cal=document.querySelector('.nav-item[onclick*="calendario"]');
+  const item=document.createElement('div');
+  item.className='nav-item';item.id='nav-porresponder';
+  item.setAttribute('onclick',"nav('porresponder',this)");
+  item.innerHTML='<span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.2"/><path d="M1.9 4.2l6.1 4.3 6.1-4.3"/></svg></span>Por responder';
+  if(cal&&cal.parentNode)cal.insertAdjacentElement('afterend',item);
+  else document.querySelector('.nav-item')?.parentNode?.appendChild(item);
+
+  if(typeof pageTitles!=='undefined')pageTitles.porresponder='Por responder';
+  if(typeof window.nav==='function'){
+    const _n=window.nav;
+    window.nav=function(id,el){const r=_n.apply(this,arguments);if(id==='porresponder')carregar();return r;};
+  }
 }
 if(document.readyState!=='loading')instalar();else document.addEventListener('DOMContentLoaded',instalar);
 })();
