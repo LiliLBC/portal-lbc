@@ -15087,6 +15087,17 @@ const PARTILHADAS=[
 const CAT_TRATADO   ='LBC — Tratado';
 const CAT_PARTILHADO='LBC — Partilhado';
 const CAT_MEU       ='LBC — Meu';
+/* Remetentes cujos emails nunca esperam resposta. Aceita o endereço completo
+   ou só o domínio, para apanhar também os que venham a aparecer. */
+const IGNORAR=[
+  'rnpc.predialonline@irn.mj.pt'
+];
+/* Assuntos que passam sempre, mesmo vindo de remetente ignorado.
+   Compara-se em minúsculas e por conteúdo, para não falhar por acentos
+   ou por acrescentos ao assunto. */
+const EXCECOES=[
+  'registo elaborado e certidão online disponível para consulta'
+];
 const ESPERA_MIN=60;          // entra na lista ao fim de uma hora
 const DIAS_AZUL=1, DIAS_VERM=3;
 
@@ -15160,6 +15171,14 @@ function porResponder(){
     /* Remetentes automáticos não esperam resposta. */
     const de=(m.from?.emailAddress?.address||'').toLowerCase();
     if(/^(noreply|no-reply|nao-responder|naoresponder|mailer-daemon|postmaster)/.test(de))return false;
+    /* Comprovativos do Predial Online — dezenas por dia, nenhum de resposta.
+       Para deixar de ignorar um remetente, tira-o desta lista. */
+    if(IGNORAR.some(x=>de===x||de.endsWith('@'+x))){
+      /* Salvo se o assunto for um dos que interessam mesmo, apesar de virem
+         de um remetente que normalmente se ignora. */
+      const ass=(m.subject||'').toLowerCase();
+      if(!EXCECOES.some(e=>ass.includes(e)))return false;
+    }
     if(de.endsWith('@lbc-solicitadora.pt'))return false;   // trocas internas
     return true;
   }).sort((a,b)=>new Date(a.receivedDateTime)-new Date(b.receivedDateTime));  // mais antigas em cima
