@@ -4639,9 +4639,35 @@ function compor(){
   const ORD_CL=['','Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava','Nona','Décima','Décima Primeira','Décima Segunda','Décima Terceira','Décima Quarta'];
   let nCl=0;
   const clausula=assunto=>`${ORD_CL[++nCl]||nCl+'.ª'} (${assunto})`;
+  /* ── FRASE DA VENDA ──
+     Havendo trato sucessivo, a venda deixa de começar pela transmissão: afirma-se
+     primeiro a qualidade em que a parte vendedora dispõe — herdeira, em comum e
+     sem determinação de parte ou direito — e só depois se vende. Sem trato
+     sucessivo, mantém-se a redação de sempre. */
+  const fraseVenda=(()=>{
+    const base=`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, `;
+    const fs=lerFalecidos();
+    if(!fs.length)return base;
+    const escV=v('f-desig-vend')||'PRIMEIRO';
+    const fV=escV==='PRIMEIRA'||escV==='PRIMEIRAS';
+    const pV=escV==='PRIMEIROS'||escV==='PRIMEIRAS';
+    /* Redação da Liliana: aqui diz «outorgantes», embora o resto do contrato
+       use «Contratantes». Fica como ela escreveu. */
+    const desigV=pV?(fV?'as Primeiras outorgantes':'os Primeiros outorgantes')
+                   :(fV?'a Primeira outorgante':'o Primeiro outorgante');
+    const sao=pV?'são':'é';
+    const qual=pV?(fV?'proprietárias e legítimas possuidoras':'proprietários e legítimos possuidores')
+                 :(fV?'proprietária e legítima possuidora':'proprietário e legítimo possuidor');
+    const vendem=pV?'vendem':'vende';
+    const nomes=fs.map(f=>(f.nome||'…').toUpperCase());
+    const heranca=nomes.length>1
+      ? `nas heranças abertas por óbito de ${listaEVirgula(nomes)}`
+      : `na herança aberta por óbito de ${nomes[0]}`;
+    return `Que ${desigV}, ${sao} ${qual}, em comum e sem determinação de parte ou direito ${heranca}, que ${vendem} ${prepSeg} ${desigSeg}, ${aceitaSeg}, `;
+  })();
   contrato.push({id:'c-cl1',T:clausula('Objeto'),
     X:(ts.narrativa?`${ts.narrativa}\n`:'')
-      +`${nPessoas>1?'Os Primeiros Contratantes vendem':'O Primeiro Contratante vende'} ${prepSeg} ${desigSeg}, ${aceitaSeg}, ${txtImovel}`
+      +fraseVenda+txtImovel
       +`\n${txtOnus}`});
   /* ── CLÁUSULA GENÉRICA · Direitos de preferência (Casa Pronta) ──
      Tronco comum: Lei 83/2019, art. 37.º/3 + Lei 89/2021, art. 7.º — anúncio via casapronta.pt
