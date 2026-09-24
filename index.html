@@ -15098,6 +15098,11 @@ const IGNORAR=[
 const EXCECOES=[
   'registo elaborado e certidão online disponível para consulta'
 ];
+/* ── PONTO DE PARTIDA ──
+   Só entra na lista o correio recebido a partir desta data, inclusive. Sem
+   isto, a lista nasceria com meses de atraso acumulado que já não interessa
+   tratar. Para recuar ou avançar o ponto de partida, muda a data. */
+const DESDE='2026-09-23';
 const ESPERA_MIN=60;          // entra na lista ao fim de uma hora
 const DIAS_AZUL=1, DIAS_VERM=3;
 
@@ -15162,8 +15167,10 @@ function porResponder(){
   return lista.filter(m=>{
     const cats=m.categories||[];
     if(cats.includes(CAT_TRATADO))return false;
-    /* Só entra ao fim de uma hora: antes disso ainda está a ser tratada. */
     const recebida=new Date(m.receivedDateTime).getTime();
+    /* Anterior ao ponto de partida: não interessa. */
+    if(recebida < new Date(DESDE+'T00:00:00').getTime())return false;
+    /* Só entra ao fim de uma hora: antes disso ainda está a ser tratada. */
     if(agora-recebida < ESPERA_MIN*60*1000)return false;
     /* Respondemos depois de ela chegar? Então está tratada. */
     const resp=respondidas.get(m.conversationId);
