@@ -387,9 +387,6 @@ tbody tr:hover td{background:#FAFAF8}
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3a2 2 0 00-2-2H1v11h5a2 2 0 012 2zM8 3a2 2 0 012-2h5v11h-5a2 2 0 00-2 2zM8 3v11"/></svg></span>Material de apoio
     </div>
     <div class="nav-section" id="nav-section-financeiro">Financeiro</div>
-    <div class="nav-item" id="nav-fin-desbloquear" onclick="abrirModalFinanceiro()">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4.5a3 3 0 016 0V7"/></svg></span>🔒 Área financeira
-    </div>
     <div class="nav-item" id="nav-fin-financeiro" onclick="nav('financeiro',this)" style="display:none">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 11V5l7-4 7 4v6l-7 4-7-4z"/></svg></span>Dashboard financeiro
     </div>
@@ -398,9 +395,6 @@ tbody tr:hover td{background:#FAFAF8}
     </div>
     <div class="nav-item" id="nav-fin-contabilidade" onclick="nav('contabilidade',this)" style="display:none">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h14v10H1z"/><path d="M1 7h14M5 3v10M1 10h14"/></svg></span>Contabilidade
-    </div>
-    <div class="nav-item" id="nav-fin-bloquear" onclick="bloquearFinanceiro()" style="display:none;color:var(--text-faint)">
-      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V4a3 3 0 016 0v3"/></svg></span>Bloquear área
     </div>
     <div class="sidebar-footer">
       <div class="user-info">
@@ -2617,7 +2611,6 @@ async function mostrarApp(){
   /* Tendo acesso, os itens aparecem logo; não tendo, nem o botão de
      desbloquear se mostra, para não convidar a tentar. */
   if(financeiroDesbloqueado())mostrarMenuFinanceiro();
-  else{const b=document.getElementById('nav-fin-desbloquear');if(b)b.style.display='none';}
   setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
 }
 
@@ -2821,36 +2814,15 @@ function financeiroDesbloqueado(){
   return CONTAS_FINANCEIRO.map(c=>c.toLowerCase()).includes(contaAutenticada());
 }
 
-function abrirModalFinanceiro(){
-  if(financeiroDesbloqueado()){mostrarMenuFinanceiro();return;}
-  showToast('A área financeira está reservada à conta titular.','error');
-}
 
 
 
 function mostrarMenuFinanceiro(){
-  document.getElementById('nav-fin-desbloquear').style.display='none';
   document.getElementById('nav-fin-financeiro').style.display='flex';
   document.getElementById('nav-fin-relatorios').style.display='flex';
   document.getElementById('nav-fin-contabilidade').style.display='flex';
-  document.getElementById('nav-fin-bloquear').style.display='flex';
 }
 
-function bloquearFinanceiro(){
-  if(!confirm('Bloquear a área financeira? Vais ter de introduzir a palavra-passe novamente para aceder.'))return;
-  sessionStorage.removeItem('lbc_fin_unlocked');
-  document.getElementById('nav-fin-desbloquear').style.display='flex';
-  document.getElementById('nav-fin-financeiro').style.display='none';
-  document.getElementById('nav-fin-relatorios').style.display='none';
-  document.getElementById('nav-fin-contabilidade').style.display='none';
-  document.getElementById('nav-fin-bloquear').style.display='none';
-  // Se estiver numa página financeira, voltar ao Calendário
-  const screenAtivo=document.querySelector('.screen.active');
-  if(screenAtivo&&['screen-financeiro','screen-relatorios','screen-contabilidade'].includes(screenAtivo.id)){
-    nav('calendario',document.querySelector(".nav-item[onclick*=\"calendario\"]"));
-  }
-  showToast('Área financeira bloqueada','');
-}
 
 function nav(id,el){
   if(el&&el.classList&&el.classList.contains('em-construcao'))return;
@@ -13067,15 +13039,6 @@ function instalar(){
   if(typeof window.mostrarMenuFinanceiro==='function'){
     const _m=window.mostrarMenuFinanceiro;
     window.mostrarMenuFinanceiro=function(){const r=_m.apply(this,arguments);const it=$('nav-fin-pessoal');if(it)it.style.display='flex';return r;};
-  }
-  if(typeof window.bloquearFinanceiro==='function'){
-    const _b=window.bloquearFinanceiro;
-    window.bloquearFinanceiro=function(){
-      const act=document.querySelector('.screen.active');
-      const it=$('nav-fin-pessoal');if(it)it.style.display='none';
-      if(act&&act.id==='screen-pessoal')document.querySelector('.nav-item[onclick*="calendario"]')?.click();
-      return _b.apply(this,arguments);
-    };
   }
   try{if(typeof financeiroDesbloqueado==='function'&&financeiroDesbloqueado()){const it=$('nav-fin-pessoal');if(it)it.style.display='flex';}}catch(e){}
   const ov=$('pes-ov');if(ov)ov.addEventListener('click',e=>{if(e.target===ov)fecharModal();});
