@@ -1409,6 +1409,10 @@ function gerarTextoImovel(){
   const numDesc=v('num-descricao');
   const freg=v('freguesia-conservatoria');
   const desc=v('descricao-predio');
+  /* A morada estava a ser recolhida mas nunca entrava no clausulado —
+     só no quadro-resumo e no nome do ficheiro. */
+  const sito=v('localizacao-predio').trim();
+  const SITO=sito?`sito em ${sito}, `:'';
 
   // Matrizes — só as que correspondem ao tipo de prédio, e só linhas com artigo preenchido
   const incUrb=(tipo==='fracao'||tipo==='urbano'||tipo==='misto');
@@ -1432,13 +1436,13 @@ function gerarTextoImovel(){
   let txt='';
   if(tipo==='fracao'){
     const letra=v('fracao-letra');const apph=v('ap-ph');
-    txt=`da fração autónoma designada pela letra "${letra}", do prédio em regime de propriedade horizontal constituído pela ${apph}, ${desc?'composta por '+desc+', ':''}descrita na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`da fração autónoma designada pela letra "${letra}", do prédio em regime de propriedade horizontal constituído pela ${apph}, ${desc?'composta por '+desc+', ':''}${SITO}descrita na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }else if(tipo==='rustico'){
-    txt=`do prédio rústico, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`do prédio rústico, ${desc?desc+', ':''}${SITO}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }else if(tipo==='misto'){
-    txt=`do prédio misto, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`do prédio misto, ${desc?desc+', ':''}${SITO}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }else{
-    txt=`do prédio urbano, ${desc?desc+', ':''}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
+    txt=`do prédio urbano, ${desc?desc+', ':''}${SITO}descrito na Conservatória do Registo Predial de ${conserv}, sob o número ${numDesc}, freguesia de ${freg}`;
   }
 
   const _matr=[];
