@@ -1153,6 +1153,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group form-full"><label class="form-label">Mutuante</label>
           <select class="form-select" id="f-mutuante" onchange="onMutuante();atualizar()">
             <option value="cgd">Caixa Geral de Depósitos, S.A.</option>
+            <option value="ccam_ac">Caixa de Crédito Agrícola Mútuo do Alentejo Central, CRL</option>
             <option value="outro">Outra instituição</option>
           </select></div>
         <div class="form-group form-full mut-outro" style="display:none"><label class="form-label">Identificação da instituição</label>
@@ -1368,6 +1369,56 @@ function regimeNovoRJUE(){
   const d=v('f-data-ato');
   return d?d>=RJUE_NOVO_DESDE:true;
 }
+/* ── REGISTO DE BANCOS ──
+   A CGD estava escrita à mão em dezenas de sítios. Passa a viver aqui, ao lado
+   dos outros mutuantes, para que acrescentar um banco seja acrescentar uma
+   entrada — e não procurar o nome pelo ficheiro todo.
+     curto  → como aparece nas cláusulas: «a CAIXA», «a CAIXA AGRÍCOLA»
+     bdp    → número de registo no Banco de Portugal (Lei n.º 78/2021)
+     rcbe   → excluída do RCBE pela alínea b) do artigo 4.º do respetivo regime */
+const BANCOS={
+  cgd:{
+    rotulo:'Caixa Geral de Depósitos, S.A.',
+    denom:'CAIXA GERAL DE DEPÓSITOS S.A.',
+    curto:'a CAIXA',
+    sede:'Avenida Dom João II, n.º 1, em Lisboa',
+    nipc:'500960046',
+    capital:'6.000.000.000,00',
+    prep:'na',            /* «com sede NA Avenida…» */
+    bdp:'35',
+    rcbe:true,
+    fiancaPropria:false,
+    /* Dados que não mudam de ato para ato. Ficam aqui para não serem escritos
+       à mão de cada vez; num ato pontual corrige-se no campo. */
+    crcCod:'',            /* vem do CONFIG_LBC.json */
+    crcVal:'',
+    procCod:''            /* a procuração da CGD vem do CONFIG_LBC.json */
+  },
+  ccam_ac:{
+    rotulo:'Caixa de Crédito Agrícola Mútuo do Alentejo Central, CRL',
+    denom:'CAIXA DE CRÉDITO AGRÍCOLA MÚTUO DO ALENTEJO CENTRAL, CRL',
+    curto:'a CAIXA AGRÍCOLA',
+    sede:'Parque Industrial e Tecnológico de Évora, Rua Circular Norte, Lote 75, em Évora',
+    nipc:'508574889',
+    capital:'5.000.000,00',
+    prep:'no',            /* «com sede NO Parque Industrial…» */
+    bdp:'6440',
+    rcbe:false,
+    fiancaPropria:true,   /* redação da fiança e menções ao Anexo I */
+    anexoI:true,
+    crcCod:'3346-6216-1010',
+    crcVal:'2027-05-27',
+    procCod:'PR-82574-78071-23851'
+  }
+};
+const bancoAtual=()=>BANCOS[v('f-mutuante')]||BANCOS.cgd;
+/* Identificação curta do mutuante, a partir do registo. */
+function bancoCurto(repr,designacao){
+  const b=bancoAtual();
+  const prep=b.prep||'em';
+  return `${b.denom}, pessoa coletiva n.º ${b.nipc}, com sede ${prep} ${b.sede}, neste ato representada por ${repr||'…'}${designacao?`, adiante designada por ${designacao}`:''}.`;
+}
+
 const CGD_CAPITAL='6.000.000.000,00';
 const capitalCGD=()=>`€${CGD_CAPITAL.replace(/\./g,' ')} (${valorExtenso(CGD_CAPITAL).toLowerCase()})`;
 /* A certidão comercial da CAIXA segue o mesmo padrão da procuração: constante
@@ -2134,7 +2185,13 @@ function textoVendedor(v){
     const fecho=reps.length>1
       ?'os quais outorgam conjuntamente na qualidade de procuradores'
       :(reps[0]&&reps[0].genero==='F'?'a qual outorga na qualidade de procuradora':'o qual outorga na qualidade de procurador');
-    return`${lista}, ${fecho} em nome e representação da CAIXA GERAL DE DEPÓSITOS S.A., com sede na Avenida Dom João II, n.º 1, em Lisboa, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva 500.960.046, capital social de ${capitalCGD()}`;
+    {
+      const b=bancoAtual();
+      const prep=b.prep||'em';
+      const nipcPt=b.nipc.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+      const cap=`€${String(b.capital).replace(/\./g,' ')} (${valorExtenso(b.capital).toLowerCase()})`;
+      return`${lista}, ${fecho} em nome e representação da ${b.denom}, com sede ${prep} ${b.sede}, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva ${nipcPt}, capital social de ${cap}`;
+    }
   }
 
   const fem=v.genero==='F';
@@ -2196,7 +2253,7 @@ function textoVendedorCurto(v){
     return p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
   };
   if(v.tipo==='cgd')
-    return`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida Dom João II, n.º 1, em Lisboa, neste ato representada por ${repCurto(v)}`;
+    return bancoCurto(repCurto(v),'').replace(/\.$/,'');
   if(v.tipo==='municipio')
     return`MUNICÍPIO DE ${(v['mun-nome']||'…').toUpperCase()}, pessoa coletiva n.º ${v['mun-nipc']||'…'}, com sede em ${v['mun-sede']||'…'}, neste ato representado por ${repCurto(v)}`;
   if(v.tipo==='empresa')
@@ -2902,6 +2959,12 @@ function linhaRequerimento(pref,dados){
    O que estiver marcado com ⚠ é proposta por validar.                        */
 function comporMH(variante){
   const P=variante==='uno'?'u':'';            /* prefixo dos ids dos blocos */
+  /* Designação curta do mutuante — «a CAIXA» na CGD, «a CAIXA AGRÍCOLA» na
+     CCAM. Vem do registo de bancos para o contrato não ficar preso a um. */
+  const BK=bancoAtual();
+  const CX=BK.curto;                         /* «a CAIXA» */
+  const CXn=BK.curto.replace(/^a /,'');      /* «CAIXA» — para «da», «à» */
+  const daCX=`d${BK.curto}`;                 /* «da CAIXA» */
   const toic=variante==='toic';
   /* Os dados financeiros do conexo vivem no 10.6; sozinho, o UNO usa o 10.2. */
   const F=(variante==='uno'&&temConexo())?'f-uno':'f-mh';
@@ -2926,8 +2989,11 @@ function comporMH(variante){
   const quemMut=v('f-mut-quem')||'liliana';
   const solMut=SOLICITADORAS[quemMut];
   /* Mesma forma da compra e venda: «€… (extenso)», e não «… Euros». */
-  const baseCGD=`CAIXA GERAL DE DEPÓSITOS, S.A., com sede na Avenida Dom João II, n.º 1, em Lisboa, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva 500960046, com o capital social de ${capitalCGD()}`;
-  const outraIC=v('f-mutuante')!=='cgd';
+  /* Identificação longa do mutuante, montada a partir do registo de bancos. */
+  const _b=bancoAtual();
+  const _capB=c=>`€${String(c).replace(/\./g,' ')} (${valorExtenso(c).toLowerCase()})`;
+  const baseCGD=`${_b.denom}, com sede ${_b.prep||'em'} ${_b.sede}, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva ${_b.nipc}, com o capital social de ${_capB(_b.capital)}`;
+  const outraIC=!BANCOS[v('f-mutuante')];
   /* Duas vias, ambas vistas nos atos reais: a solicitadora com procuração
      substabelecida, ou um procurador da CAIXA com poderes para o ato. */
   const pf=v('f-mut-p-genero')!=='M';
@@ -2948,7 +3014,7 @@ function comporMH(variante){
         :`${v('f-mut-repr')||'…'}, em nome e em representação da ${baseCGD}.`));
   const txtSegundaCurto=outraIC
     ?`${v('f-mutuante-txt')||'…'}, adiante designada por MUTUANTE.`
-    :`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, com sede na Avenida Dom João II, n.º 1, em Lisboa, neste ato representada por ${representanteCAIXA().curto||'…'}, adiante designada por CAIXA e/ou MUTUANTE.`;
+    :bancoCurto(representanteCAIXA().curto,`${bancoAtual().curto.replace(/^a /,'').toUpperCase()} e/ou MUTUANTE`);
 
   /* ── PRIMEIROS · mutuários (mesmo componente dos outorgantes da compra e venda) ── */
   const consent=linhaConsentimento(mut);
@@ -2995,7 +3061,7 @@ function comporMH(variante){
     :'';
   const fo=v('f-oic-forma');
   const clLiquidaForma=(toic&&fo==='apb')
-    ?`Na presente data, ao abrigo do protocolo APB, a CAIXA entrega a quantia de ${par('f-oic-apb-valor')} mediante transferência bancária da conta ${v('f-oic-apb-origem')||'…'}, titulada pel${muP?'os PRIMEIROS':(femM?'a PRIMEIRA':'o PRIMEIRO')} junto da CAIXA, a creditar via target na conta ${v('f-oic-apb-destino')||'…'}, cujo titular é o banco ${bancoOIC||'…'}.`
+    ?`Na presente data, ao abrigo do protocolo APB, ${CX} entrega a quantia de ${par('f-oic-apb-valor')} mediante transferência bancária da conta ${v('f-oic-apb-origem')||'…'}, titulada pel${muP?'os PRIMEIROS':(femM?'a PRIMEIRA':'o PRIMEIRO')} junto ${daCX}, a creditar via target na conta ${v('f-oic-apb-destino')||'…'}, cujo titular é o banco ${bancoOIC||'…'}.`
     :(toic&&fo==='cheque')
     ?`O capital em dívida no empréstimo em liquidação é pago na data de hoje, no valor de ${par('f-oic-chq-valor')}, em moeda euro, mediante cheque bancário emitido em ${dPT(v('f-oic-chq-data'))}, sacado sobre o banco ${v('f-oic-chq-banco')||'…'} com o número ${v('f-oic-chq-num')||'…'}.`
     :'';
@@ -3060,20 +3126,30 @@ function comporMH(variante){
   const assentos=mut.map(linhaAssento).filter(Boolean);
   const predios=[linhaPredio('f-im',null)].filter(Boolean);
   const requerimentos=[linhaRequerimento('f-im',null)].filter(Boolean);
-  const crcCod=v('f-mut-crc-cod')||CGD_CRC;
-  const crcVal=v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL);
+  const crcCod=v('f-mut-crc-cod')||bancoAtual().crcCod||CGD_CRC;
+  const crcVal=v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(bancoAtual().crcVal||CGD_CRC_VAL);
   const linhas=[];
-  linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;`);
+  linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde ${_b.curto} se encontra registada sob o n.º ${_b.bdp};`);
   /* O substabelecimento só se consulta quando existe: a solicitadora outorga
      por procuração substabelecida, o procurador da CAIXA por procuração direta. */
   const rep2=representanteCAIXA();
   const pc2=partesProcuracao(v('f-mut-proc-cod')||rep2.cod);
   const codProc=(pc2.cod||'…')+((pc2.data||rep2.data)?`, de ${pc2.data||rep2.data}`:'');
-  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação da CAIXA pela procuração${procCGD?'':', conjugada com a consulta do substabelecimento,'} depositada${procCGD?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
+  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação ${daCX} pela procuração${procCGD?'':', conjugada com a consulta do substabelecimento,'} depositada${procCGD?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
   /* A alínea b) do artigo 4.º vem do template; o nome da lei vem da redação da
      compra e venda, porque aqui o Regime Jurídico não foi citado antes e o
      «referido» do template ficaria no ar. */
-  if(!outraIC)linhas.push(`— Os poderes de representação da CAIXA GERAL DE DEPÓSITOS, S.A. através da Certidão de Registo Comercial com o número de acesso ${crcCod}, disponível em www.eportugal.gov.pt, válida até ${crcVal}, verificando-se ainda a exclusão da Caixa Geral de Depósitos, S.A. do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º da Lei n.º 89/2017, de 21 de agosto;`);
+  /* ── RCBE ──
+     A CGD está excluída do RCBE pela alínea b) do artigo 4.º; a CCAM não, e
+     nela o RCBE é efetivamente consultado. São declarações opostas, e escrever
+     a errada seria atestar o que não se verificou. */
+  if(!outraIC){
+    const _bk=bancoAtual();
+    const rcbeTxt=_bk.rcbe
+      ? `, verificando-se ainda a exclusão da ${_bk.denom} do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do referido Regime Jurídico`
+      : `, bem como o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt, nos termos da Lei n.º 89/2017, de 21 de agosto`;
+    linhas.push(`— Os poderes de representação da ${_bk.denom} através da Certidão de Registo Comercial com o número de acesso ${crcCod}, disponível em www.eportugal.gov.pt, válida até ${crcVal}${rcbeTxt};`);
+  }
   /* Mutuário ou garante que seja sociedade: certidão comercial e RCBE, com a
      mesma redação da compra e venda. Faltava por inteiro neste tronco.
      A variável da redação só previa PARTE VENDEDORA e PARTE COMPRADORA; para
@@ -3107,7 +3183,11 @@ function comporMH(variante){
 
   /* ── MÚTUO ── */
   contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
-    `Pelo presente contrato, a CAIXA concede ${muP?'aos PRIMEIROS':(femM?'à PRIMEIRA':'ao PRIMEIRO')} um empréstimo no montante de ${par(`${F}-montante`)}, pelo prazo de ${prazo}, a contar da presente data, de que ${muP?'estes se confessam devedores':(femM?'esta se confessa devedora':'este se confessa devedor')}, o que a CAIXA aceita, nos termos deste Contrato, bem como pelas cláusulas constantes do Documento Complementar e Anexo I, que ficam anexos e dele fazem parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
+    `Pelo presente contrato, a CAIXA concede ${muP?'aos PRIMEIROS':(femM?'à PRIMEIRA':'ao PRIMEIRO')} um empréstimo no montante de ${par(`${F}-montante`)}, pelo prazo de ${prazo}, a contar da presente data, de que ${muP?'estes se confessam devedores':(femM?'esta se confessa devedora':'este se confessa devedor')}, o que ${CX} aceita, nos termos deste Contrato, bem como pelas cláusulas constantes do Documento Complementar e Anexo I, que ficam anexos e dele fazem parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
+  /* A CCAM junta ao mútuo o clausulado do Anexo I, que é do banco e não se
+     gera aqui — apenas se remete para ele. */
+  if(BK.anexoI)contrato.push({id:P+'c-anexo-mutuo',T:'',X:
+    `${CX} aceita, nos termos deste Contrato, bem como pelas cláusulas constantes do Anexo I, que ficam anexas e dele fazem parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
   if(clLiquidaOIC)contrato.push({id:P+'c-liquida-oic',T:'',X:clLiquidaOIC});
   if(clLiquidaForma)contrato.push({id:P+'c-liquida-forma',T:'',X:clLiquidaForma});
 
@@ -3120,6 +3200,23 @@ function comporMH(variante){
     const constitui=fiP?'constituem-se':'constitui-se';
     const pp=fiP?'principais pagadores':'principal pagador';
     const O_min=fiP?'Os':'O',Fiador=fiP?'Fiadores':'Fiador',assume=fiP?'assumem':'assume',do_Fiador=fiP?'dos Fiadores':'do Fiador';
+    /* ── FIANÇA ──
+       A CCAM usa redação própria, num parágrafo único, com a autorização de
+       débito em conta a seguir. A da CGD fica como estava. */
+    if(BK.fiancaPropria){
+      const T_OUT=fiP?'Os TERCEIROS OUTORGANTES declaram':'O TERCEIRO OUTORGANTE declara';
+      const prestam=fiP?'prestam':'presta';
+      const assumem=fiP?'assumem e garantem':'assume e garante';
+      const enquanto=fiP?'enquanto fiadores e principais pagadores':'enquanto fiador e principal pagador';
+      const tem=fiP?'têm':'tem';
+      const renunciam=fiP?'renunciam':'renuncia';
+      const FIAD=fiP?'FIADORES':'FIADOR';
+      const titulares=fiP?'titulares ou contitulares':'titular ou contitular';
+      contrato.push({id:P+'c-fianca',T:'FIANÇA',X:[
+        `${T_OUT} que pelo presente, ${prestam} FIANÇA a favor ${daCX}, perante a qual ${assumem}, solidariamente, ${enquanto}, o bom e integral cumprimento de todas as obrigações ${muP?'dos PRIMEIROS':(femM?'da MUTUÁRIA':'do MUTUÁRIO')} decorrentes deste acto e do empréstimo aqui contratado, de cujos termos e condições ${tem} cabal conhecimento, por qualquer prazo, prorrogação ou renovação, dando o seu acordo a quaisquer alterações das respectivas condições, incluindo da taxa de juro aplicável e de prazos, que ${CX} e ${muP?'os PRIMEIROS':(femM?'a MUTUÁRIA':'o MUTUÁRIO')} façam ou ajustem, subsistindo a fiança até completa extinção das obrigações garantidas, além do que, ${renunciam} ao benefício da excussão prévia e a qualquer outro ou prazo facultado por lei, bem como a fazer ou invocar qualquer excepção ou oposição.`,
+        `Para efectivar os pagamentos, ${CX} fica autorizada pelos ${FIAD} a movimentar e debitar qualquer conta bancária de depósito à ordem ou a prazo, ainda que não vencido, e de qualquer natureza e tipo, de que nela, sejam ou venham a ser ${titulares}, podendo proceder à compensação com quaisquer saldos credores, independentemente dos pressupostos legais da compensação.`
+      ].join('\n')});
+    } else
     contrato.push({id:P+'c-fianca',T:'FIANÇA',X:[
       `Para garantia do bom e integral cumprimento de todas as obrigações pecuniárias assumidas ${pelaPRIM} no presente contrato, designadamente o reembolso do capital mutuado, o pagamento dos juros remuneratórios e moratórios, comissões, despesas, encargos fiscais, custas judiciais e quaisquer outras quantias devidas ao Banco mutuante, ${O_FIADOR} ${constitui} solidariamente ${pp} ${daPRIM};`,
       `${O_min} ${Fiador} ${assume}, expressa, solidária e irrevogavelmente, a responsabilidade pelo cumprimento de todas as obrigações ${daPRIM} emergentes do presente contrato, com expressa renúncia ao benefício da excussão prévia previsto no artigo 638.º do Código Civil.`,
@@ -3140,6 +3237,9 @@ function comporMH(variante){
     +`d) das comissões, despesas e demais encargos contratuais emergentes do contrato de empréstimo, que em conjunto se fixam no montante de ${par(`${F}-despesas`)}.`});
   contrato.push({id:P+'c-hip-maximo',T:'',X:
     `Fica estabelecido que o montante máximo garantido por hipoteca se fixa em ${par(`${F}-hipoteca`)} para todos os efeitos legais e de registo.`});
+  /* Fecho próprio da CCAM, a remeter tudo para o Anexo I. */
+  if(BK.anexoI)contrato.push({id:P+'c-anexo-fecho',T:'',X:
+    `O mútuo, a hipoteca${fiadores.length?' e a fiança':''} aqui exarados, bem como as responsabilidades ${muP?'dos PRIMEIROS':(femM?'da MUTUÁRIA':'do MUTUÁRIO')} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
     `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
   contrato.push({id:P+'c-hip-registo',T:'',X:
@@ -3149,7 +3249,7 @@ function comporMH(variante){
   contrato.push({id:P+'c-hip-vigencia',T:'',X:
     `A hipoteca ora constituída vigorará por tempo indeterminado, subsistindo enquanto perdurar qualquer das responsabilidades por ela garantidas, abrangendo o Imóvel, bem como todas as construções, edificações, melhoramentos, benfeitorias e acessões, presentes ou futuras, que já existam ou que nele venham a ser incorporadas.\n`
     +`A CAIXA poderá, a todo o tempo, requerer e promover os respetivos averbamentos junto da Conservatória do Registo Predial competente, considerando-se, para efeitos de exequibilidade, que os recibos comprovativos desses atos constituem parte integrante do presente contrato.\n`
-    +`A hipoteca ora constituída garante igualmente, sempre dentro do limite do montante máximo assegurado, os demais acessórios do crédito, incluindo, designadamente, os prémios de seguros, licenças, contribuições, taxas e demais impostos, bem como as despesas relativas a registos de hipoteca e quaisquer outros encargos que a CAIXA venha a suportar nos termos previstos no presente contrato e Documento Complementar, considerando-se, para efeitos de exequibilidade, que os respetivos recibos e documentos comprovativos constituem parte integrante do presente contrato.\n`
+    +`A hipoteca ora constituída garante igualmente, sempre dentro do limite do montante máximo assegurado, os demais acessórios do crédito, incluindo, designadamente, os prémios de seguros, licenças, contribuições, taxas e demais impostos, bem como as despesas relativas a registos de hipoteca e quaisquer outros encargos que ${CX} venha a suportar nos termos previstos no presente contrato e Documento Complementar, considerando-se, para efeitos de exequibilidade, que os respetivos recibos e documentos comprovativos constituem parte integrante do presente contrato.\n`
     +`A CAIXA poderá, sempre que entenda necessário, proceder à inspeção e avaliação do Imóvel para efeitos do disposto no artigo 701.º do Código Civil, ou de qualquer outra norma legal aplicável.`});
   contrato.push({id:P+'c-hip-execucao',T:'',X:
     `A presente hipoteca é suscetível de execução logo que o crédito por ela garantido se torne vencido e exigível nos termos da lei, do presente contrato e do respetivo Documento Complementar e Anexo I.`});
@@ -4441,7 +4541,7 @@ function compor(){
     if(!ehCVMH)return'';
     if(v('f-mutuante')!=='cgd')return`${v('f-mutuante-txt')||'…'}, adiante designada por Terceira Contratante.`;
     const r=representanteCAIXA();
-    return`CAIXA GERAL DE DEPÓSITOS, S.A., pessoa coletiva n.º 500960046, neste ato representada por ${r.curto||'…'}, adiante designada por Terceira Contratante ou CAIXA.`;
+    return`${bancoAtual().denom}, pessoa coletiva n.º ${bancoAtual().nipc}, neste ato representada por ${r.curto||'…'}, adiante designada por Terceira Contratante ou ${bancoAtual().curto.replace(/^a /,'').toUpperCase()}.`;
   })();
   /* ── TERCEIRA · no TERMO ──
      Quem comparece é a pessoa, não a sociedade: a procuradora outorga em nome e
@@ -4451,7 +4551,7 @@ function compor(){
   const txtMutuante=(()=>{
     if(!ehCVMH)return'';
     const base=v('f-mutuante')==='cgd'
-      ?`CAIXA GERAL DE DEPÓSITOS, S.A., sociedade anónima, com sede em Lisboa, na Avenida Dom João II, n.º 1, matriculada na Conservatória do Registo Comercial de Lisboa com o número único de matrícula e de identificação de pessoa coletiva 500960046, com o capital social de ${CGD_CAPITAL} Euros`
+      ?`${bancoAtual().denom}, sociedade anónima, com sede ${bancoAtual().prep||'em'} ${bancoAtual().sede}, matriculada na Conservatória do Registo Comercial com o número único de matrícula e de identificação de pessoa coletiva ${bancoAtual().nipc}, com o capital social de ${bancoAtual().capital} Euros`
       :(v('f-mutuante-txt')||'…');
     if(v('f-mut-repr'))return`${v('f-mut-repr')}, em nome e em representação da ${base}.`;
     const r=representanteCAIXA();
@@ -4496,7 +4596,7 @@ function compor(){
      os seus poderes não eram verificados em lado nenhum. Mesma redação do
      tronco do mútuo. */
   const linhaCertidaoCGD=(ehCVMH&&v('f-mutuante')==='cgd')
-    ? `— Os poderes de representação da CAIXA GERAL DE DEPÓSITOS, S.A. através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}, verificando-se ainda a exclusão da Caixa Geral de Depósitos, S.A. do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º da Lei n.º 89/2017, de 21 de agosto;`
+    ? `— Os poderes de representação da ${bancoAtual().denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}${bancoAtual().rcbe?', verificando-se ainda a exclusão da '+bancoAtual().denom+' do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do referido Regime Jurídico':''};`
     : '';
   /* A linha do município já cobre a identidade dos outorgantes, pelo que
      substitui a abertura genérica — mas só essa. As procurações, os assentos,
@@ -4535,7 +4635,8 @@ function compor(){
 
   /* 4 · documentos do ato */
   g4.push(...predios,...requerimentos);
-  if(ehCVMH)g4.push('— Para efeitos da Lei n.º 78/2021, de 24 de novembro, verifiquei que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º 35;');
+  if(ehCVMH){const _bk=bancoAtual();
+    g4.push(`— Para efeitos da Lei n.º 78/2021, de 24 de novembro, verifiquei que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde ${_bk.curto} se encontra registada sob o n.º ${_bk.bdp};`);}
   g4.push(...onusTermo);
   if(tu.termo)g4.push(tu.termo);
   /* Não sendo exibido o título, o termo leva só a advertência — a declaração da
@@ -6474,6 +6575,27 @@ function onMutQuem(){
 }
 function onMutuante(){
   document.querySelectorAll('.mut-outro').forEach(e=>e.style.display=v('f-mutuante')==='outro'?'flex':'none');
+  /* ── DADOS PERMANENTES DO BANCO ──
+     Ao trocar de banco, os campos que não mudam de ato para ato passam a ter
+     os valores desse banco. Só se escreve por cima de um campo vazio ou que
+     tenha o valor do banco anterior — o que a Liliana tiver corrigido à mão
+     para este ato fica intacto. */
+  const b=BANCOS[v('f-mutuante')];
+  /* Valores que se sabe serem de um banco — os do registo, e os da CGD que
+     vêm da configuração. É por eles que se distingue o que foi escrito à mão. */
+  const conhecidos=new Set();
+  Object.values(BANCOS).forEach(x=>{[x.crcCod,x.crcVal,x.procCod].forEach(z=>{if(z)conhecidos.add(z);});});
+  [CGD_CRC,CGD_CRC_VAL].forEach(z=>{if(z)conhecidos.add(z);});
+  const porDefeito=(id,valor)=>{
+    const el=document.getElementById(id); if(!el)return;
+    const atual=(el.value||'').trim();
+    if(!atual||conhecidos.has(atual))el.value=valor||'';
+  };
+  if(b){
+    porDefeito('f-mut-crc-cod', b.crcCod||CGD_CRC);
+    porDefeito('f-mut-crc-val', b.crcVal||CGD_CRC_VAL);
+    porDefeito('f-mut-proc-cod', b.procCod);
+  }
 }
 function onQuartos(){
   const on=chk('t-quartos');
