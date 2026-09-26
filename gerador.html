@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-09-26.4</span>
+    <span class="page-sub">piloto · v2026-09-26.6</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1226,12 +1226,20 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group"><label class="form-label">Sobretaxa de mora (%)</label>
           <input class="form-input" id="f-mh-mora" oninput="atualizar()" placeholder="Ex: 3"></div>
         <div class="form-group"><label class="form-label">Despesas (€)</label>
-          <input class="form-input" id="f-mh-despesas" oninput="atualizar()" placeholder="Ex: 1500"></div>
+          <input class="form-input" id="f-mh-despesas" oninput="this.dataset.tocado=this.value.trim()?'1':'';this.dataset.auto='';atualizar()" placeholder="Ex: 1500"></div>
         <div class="form-group form-full"><label class="form-label">Montante máximo assegurado pela hipoteca (€) <span>*</span></label>
-          <input class="form-input" id="f-mh-hipoteca" oninput="atualizar()" placeholder="Ex: 250000"></div>
+          <input class="form-input" id="f-mh-hipoteca" oninput="this.dataset.tocado=this.value.trim()?'1':'';this.dataset.auto='';atualizar()" placeholder="Ex: 250000">
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-hip-mh"></div></div>
         <div class="form-group form-full"><label class="form-label">Imposto do Selo — verba 17.1.3 (&euro;)</label>
           <input class="form-input" id="f-mh-calculo-is" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-is-mh"></div></div>
+        <div class="form-group form-full" id="blk-ccam-fin" style="display:none">
+          <label class="form-label">Finalidade do financiamento — CCAM <span>*</span></label>
+          <textarea class="form-input" id="f-ccam-finalidade" rows="2" oninput="atualizar()" placeholder="Ex: o apoio à atividade desenvolvida pela MUTUÁRIA, nomeadamente a realização de obras no imóvel objeto da presente hipoteca"></textarea>
+          <div style="font-size:10.5px;color:var(--text-faint);margin:2px 0 6px">Entra no preâmbulo: «…e se destina a financiar <i>[finalidade]</i>; não lhe podendo ser dado outro uso ou destino;…»</div>
+          <label class="form-label">Forma de desembolso (opcional)</label>
+          <input class="form-input" id="f-ccam-desembolso" oninput="atualizar()" placeholder="Ex: a disponibilizar por tranches, mediante apresentação de autos de medição">
+        </div>
         <div class="form-group form-full" style="font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
           As cláusulas do mútuo e da garantia hipotecária são geradas a partir destes campos, com os valores por extenso.</div>
       </div>
@@ -1273,9 +1281,10 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group"><label class="form-label">Sobretaxa de mora (%)</label>
           <input class="form-input" id="f-uno-mora" oninput="atualizar()" placeholder="Ex: 3"></div>
         <div class="form-group"><label class="form-label">Despesas (€)</label>
-          <input class="form-input" id="f-uno-despesas" oninput="atualizar()" placeholder="Ex: 750"></div>
+          <input class="form-input" id="f-uno-despesas" oninput="this.dataset.tocado=this.value.trim()?'1':'';this.dataset.auto='';atualizar()" placeholder="Ex: 750"></div>
         <div class="form-group"><label class="form-label">Montante máximo da hipoteca (€) <span>*</span></label>
-          <input class="form-input" id="f-uno-hipoteca" oninput="atualizar()" placeholder="Ex: 35000"></div>
+          <input class="form-input" id="f-uno-hipoteca" oninput="this.dataset.tocado=this.value.trim()?'1':'';this.dataset.auto='';atualizar()" placeholder="Ex: 35000">
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-hip-uno"></div></div>
         <div class="form-group form-full"><label class="form-label">Imposto do Selo — verba 17.1.3 (€)</label>
           <input class="form-input" id="f-uno-calculo-is" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-is-uno"></div></div>
@@ -1477,15 +1486,21 @@ function extInt(n){
   n=Math.floor(Math.abs(n));
   if(n===0)return'zero';
   const grupos=[[1000000000,'mil milhões','mil milhões'],[1000000,'milhão','milhões'],[1000,'mil','mil']];
-  let s='',resto=n;
+  /* O «e» liga ao último grupo quando este é menor que cem ou centena
+     redonda — também entre milhões e milhares: «um milhão e quarenta e cinco
+     mil». Antes só se punha antes das centenas e saía «um milhão quarenta e
+     cinco mil». */
+  const partes=[];let resto=n;
   for(const[v,sg,pl]of grupos){
     const q=Math.floor(resto/v);
-    if(q){
-      s+=(s?' ':'')+((v===1000&&q===1)?'':ext999(q)+' ')+(q===1?sg:pl);
-      resto%=v;
-    }
+    if(q){partes.push({q,t:((v===1000&&q===1)?'':ext999(q)+' ')+(q===1?sg:pl)});resto%=v;}
   }
-  if(resto){const lig=(resto<100||resto%100===0)?' e ':' ';s+=(s?lig:'')+ext999(resto);}
+  if(resto)partes.push({q:resto,t:ext999(resto)});
+  let s='';
+  partes.forEach((p,i)=>{
+    const ult=i===partes.length-1;
+    s+=(i===0?'':(ult&&(p.q<100||p.q%100===0)?' e ':' '))+p.t;
+  });
   return s.replace(/\s+/g,' ').trim();
 }
 /* ── LER UM VALOR ──
@@ -1510,7 +1525,8 @@ function parseValor(v){
 function fmtValor(n){return n.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:true}).replace(/^(\d)(\d{3},)/,'$1 $2');}
 function valorExtenso(v){
   const n=parseValor(v);const e=Math.floor(n);const c=Math.round((n-e)*100);
-  let s=extInt(e)+(e===1?' euro':' euros');
+  /* «cinco milhões de euros»: com milhões redondos entra o «de». */
+  let s=extInt(e)+(e===1?' euro':(e>=1000000&&e%1000000===0?' de euros':' euros'));
   if(c)s+=' e '+extInt(c)+(c===1?' cêntimo':' cêntimos');
   return s.charAt(0).toUpperCase()+s.slice(1);
 }
@@ -2958,6 +2974,9 @@ function linhaRequerimento(pref,dados){
                               banco hipotecante, isenção de selo, fiança, terceiros
    O que estiver marcado com ⚠ é proposta por validar.                        */
 function comporMH(variante){
+  /* A CCAM tem documento próprio (comporMH_CCAM). O TOIC da CCAM, que ainda
+     não existe em modelo, continua por aqui. */
+  if(v('f-mutuante')==='ccam_ac'&&variante!=='toic')return comporMH_CCAM(variante);
   const P=variante==='uno'?'u':'';            /* prefixo dos ids dos blocos */
   /* Designação curta do mutuante — «a CAIXA» na CGD, «a CAIXA AGRÍCOLA» na
      CCAM. Vem do registo de bancos para o contrato não ficar preso a um. */
@@ -3273,6 +3292,333 @@ function comporMH(variante){
   return{variante,cod:(variante==='toic'?'MH_TOIC':'MH_UNO')+(fiadores.length?'_F':''),
          rot:tipoNome,termo,contrato,anexo:[]};
 }
+/* ═══════════ MÚTUO COM HIPOTECA · CCAM ═══════════
+   Documento próprio da Caixa de Crédito Agrícola, escrito a partir do contrato
+   corrigido pela Liliana (MH UNO NUTRIMAGRI, LDA, 28/09/2026). Partilha os
+   campos do formulário com a CGD, mas o texto é montado só aqui: o comporMH da
+   CGD não é tocado — só desvia para cá à entrada, quando o banco é a CCAM.
+   Diferenças para a CGD: não há Documento Complementar (só Anexo I); a
+   finalidade e o desembolso vão no preâmbulo; a fiança vem depois da hipoteca;
+   sem cláusula de aceitação; o termo dispensa só a leitura do Anexo I.       */
+function comporMH_CCAM(variante){
+  const P=variante==='uno'?'u':'';
+  const F=(variante==='uno'&&temConexo())?'f-uno':'f-mh';
+  const BK=BANCOS.ccam_ac;
+  const CX=BK.curto;                                   /* «a CAIXA AGRÍCOLA» */
+  const daCX=`d${CX}`;                                 /* «da CAIXA AGRÍCOLA» */
+  const sol=SOLICITADORAS[v('f-solicitadora')];
+  const mut=lerVendedores();
+  const quartos=lerQuartos();
+  const fiadores=fiadoresMH();
+  const garantes=garantesMH();
+  const nrm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+
+  /* ── valores ── */
+  const par=x=>v(x)?`${fmtValor(parseValor(v(x)))} EUROS (${valorExtenso(v(x)).toLowerCase()})`:'…';
+  const semEuro=t=>t.replace(/ euros? e /,' vírgula ').replace(/ cêntimos?$/,'').replace(/ (de )?euros?$/,'');
+  const pct=x=>v(x)?`${v(x)}% (${semEuro(valorExtenso(v(x)).toLowerCase())} por cento)`:'…';
+  const prazo=v(`${F}-prazo`)?`${v(`${F}-prazo`)} MESES (${semEuro(valorExtenso(v(`${F}-prazo`)).toLowerCase())} meses)`:'… meses';
+
+  /* ── designações das partes ──
+     No termo, o título conta as pessoas que comparecem (dois gerentes →
+     PRIMEIROS); no contrato conta a parte (a sociedade → PRIMEIRA). */
+  /* Conta quem comparece: numa sociedade, os representantes. */
+  const nPessoas=mut.reduce((n,o)=>n+(o.tipo==='empresa'||o.tipo==='municipio'?Math.max(1,(o.reps||[]).length):contarPessoas([o])),0);
+  const genM=generosOutorgantes(mut);
+  const femM=genM.length>0&&genM.every(g=>g==='F');
+  const nPartes=mut.reduce((n,o)=>n+(o.tipo!=='singular'?1:(ehCasado(o.ec)&&(o['conj-out']||'ambos')==='ambos'&&o['conj-nome']?2:1)),0);
+  const muP=nPartes>1;
+  const soc=mut.length===1&&mut[0].tipo==='empresa';
+  const PRIM=muP?'os PRIMEIROS':(femM?'a PRIMEIRA':'o PRIMEIRO');
+  const aPRIM=muP?'aos PRIMEIROS':(femM?'à PRIMEIRA':'ao PRIMEIRO');
+  const daMUT=muP?'dos MUTUÁRIOS':(femM?'da MUTUÁRIA':'do MUTUÁRIO');
+  const aMUT=muP?'os MUTUÁRIOS':(femM?'a MUTUÁRIA':'o MUTUÁRIO');
+
+  /* ── identificação curta, à maneira da CCAM: nome e NIF, sem sede nem
+     naturalidade ── */
+  const nomeNif=(nome,nif)=>`${(nome||'…').toUpperCase()}, número de identificação fiscal ${nif||'…'}`;
+  const juntarE=a=>a.length<2?(a[0]||''):a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+  const curto=o=>{
+    if(o.tipo==='empresa'||o.tipo==='municipio'){
+      const reps=(o.reps&&o.reps.length)?o.reps:[{}];
+      const den=o.tipo==='municipio'?`MUNICÍPIO DE ${(o['mun-nome']||'…').toUpperCase()}`:(o.denom||'…');
+      const nipc=o.tipo==='municipio'?o['mun-nipc']:o.nipc;
+      return`${den}, pessoa coletiva n.º ${nipc||'…'}, neste ato representad${o.tipo==='municipio'?'o':'a'} por ${juntarE(reps.map(r=>nomeNif(r.nome,r.nif)))}`;
+    }
+    const eu=nomeNif(o.nome,o.nif);
+    return(ehCasado(o.ec)&&(o['conj-out']||'ambos')==='ambos'&&o['conj-nome'])
+      ?`${eu} e ${nomeNif(o['conj-nome'],o['conj-nif'])}`:eu;
+  };
+
+  /* ── SEGUNDO · a CAIXA AGRÍCOLA ── */
+  const quemMut=v('f-mut-quem')||'liliana';
+  const solMut=SOLICITADORAS[quemMut];
+  const procBanco=quemMut==='cgd';                     /* procurador do próprio banco */
+  const pf=procBanco?v('f-mut-p-genero')!=='M':true;
+  const capB=`€${String(BK.capital).replace(/\./g,' ')} (${valorExtenso(BK.capital).toLowerCase()})`;
+  const idBanco=`${BK.denom}, com sede ${BK.prep||'em'} ${BK.sede}, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva ${BK.nipc}, com o capital social de ${capB}`;
+  /* «com domicílio profissional na …»: se o campo já começar por «na», não se
+     repete (saía «na na sede»). */
+  const dom=(v('f-mut-p-dom')||'').replace(/^(na|no|em)\s+/i,'');
+  const txtProc=[(v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-ec'),
+    v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',
+    v('f-mut-p-cc')?`portador${pf?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${v('f-mut-p-cc')}${v('f-mut-p-ccval')?`, válido até ${dPT(v('f-mut-p-ccval'))}`:''}`:'',
+    v('f-mut-p-nif')?`número de identificação fiscal ${v('f-mut-p-nif')}`:'',
+    dom?`com domicílio profissional na ${dom}`:''
+  ].filter(Boolean).join(', ');
+  const txtSegundo=procBanco
+    ?`${txtProc}, ${pf?'a qual':'o qual'} outorga na qualidade de procurador${pf?'a':''} com poderes para o ato, em nome e em representação da ${idBanco}.`
+    :(solMut
+      ?`${solMut.textoProcuradora}, a qual outorga na qualidade de procuradora substabelecida, em nome e em representação da ${idBanco}.`
+      :`${v('f-mut-repr')||'…'}, em nome e em representação da ${idBanco}.`);
+  const reprBanco=procBanco?nomeNif(v('f-mut-p-nome'),v('f-mut-p-nif'))
+    :(solMut?nomeNif(solMut.nome,solMut.nif):(v('f-mut-repr')||'…'));
+  const txtSegundoCurto=`${BK.denom}, pessoa coletiva n.º ${BK.nipc}, neste ato representada por ${reprBanco}, adiante designada por CAIXA AGRÍCOLA e/ou MUTUANTE.`;
+
+  /* ── PRIMEIROS · no termo ──
+     Sendo a mutuária uma sociedade cujos gerentes são também fiadores ou
+     garantes, os gerentes identificam-se por inteiro uma vez só, no bloco dos
+     TERCEIROS; aqui fica o nome e a remissão («melhor abaixo identificados»).
+     É a redação da Liliana no contrato NUTRIMAGRI. */
+  const nomesQ=new Set(quartos.map(q=>nrm(q.nome)).filter(Boolean));
+  const pluralQual=q=>String(q||'').split(/\s+/).map(w=>/^(e|de|da|do|das|dos)$/i.test(w)?w
+    :/[aeiouáéíóú]$/i.test(w)?w+'s':/[rz]$/i.test(w)?w+'es':w).join(' ');
+  const textoPrimeiro=o=>{
+    const reps=(o.reps&&o.reps.length)?o.reps:[];
+    if(o.tipo!=='empresa'||!reps.length||!reps.every(r=>nomesQ.has(nrm(r.nome))))return textoVendedor(o);
+    const pl=reps.length>1;
+    const quals=[...new Set(reps.map(r=>(r.qual||'…').trim()))];
+    const qual=quals.length===1?(pl?pluralQual(quals[0]):quals[0]):juntarE(quals);
+    const qq=reps.map(r=>quartos.find(q=>nrm(q.nome)===nrm(r.nome)));
+    const soGar=qq.every(q=>q&&q.qualidade==='garante');
+    const papel=soGar?(pl?'Garantes Hipotecários':'Garante Hipotecário'):(pl?'Fiadores':'Fiador');
+    const fem=reps.every(r=>r.genero==='F');
+    const cap=o.capital?`, com o capital social de ${fmtValor(parseValor(o.capital))} Euros`:'';
+    return`${juntarE(reps.map(r=>(r.nome||'…').toUpperCase()))}, com domicílio profissional na sede da sua representada, na qualidade de ${qual} e melhor abaixo identificad${fem?'a':'o'}${pl?'s':''} na qualidade de ${papel}, que outorga${pl?'m':''} em representação da ${o.denom||'…'}, pessoa coletiva n.º ${o.nipc||'…'}, com sede em ${o.sede||'…'}${cap}`;
+  };
+  const consent=linhaConsentimento(mut);
+  const txtPrimeiro=mut.map(textoPrimeiro).join(';\n')+'.'+(consent?`\n${consent}`:'');
+  const txtPrimeiroCurto=mut.map(curto).join(', ')
+    +`, adiante designad${muP?'os':(femM?'a':'o')} por PRIMEIR${muP?'OS':(femM?'A':'O')} CONTRATANTE${muP?'S':''} e/ou MUTUÁRI${muP?'OS':(femM?'A':'O')}.`;
+
+  /* ── TERCEIROS ── */
+  const tercPl=quartos.length>1;
+  const genQ=generosOutorgantes(quartos);
+  const femQ=genQ.length>0&&genQ.every(g=>g==='F');
+  const desigTerc=(()=>{
+    if(!quartos.length)return'';
+    const TC=tercPl?(femQ?'TERCEIRAS CONTRATANTES':'TERCEIROS CONTRATANTES'):(femQ?'TERCEIRA CONTRATANTE':'TERCEIRO CONTRATANTE');
+    const FI=fiadores.length>1?(femQ?'FIADORAS':'FIADORES'):(femQ?'FIADORA':'FIADOR');
+    const GA=garantes.length>1?'GARANTES HIPOTECÁRIOS':'GARANTE HIPOTECÁRIO';
+    if(fiadores.length&&!garantes.length)return`${TC} ou ${FI}`;
+    if(garantes.length&&!fiadores.length)return`${TC} ou ${GA}`;
+    return`${TC}, ${GA} e ${FI}`;
+  })();
+  const txtTerceiros=quartos.length?quartos.map(textoOutorgante).join(';\n')+'.':'';
+  const txtTerceirosCurto=quartos.length
+    ?quartos.map(curto).join(', ')+`, adiante designad${tercPl?(femQ?'as':'os'):(femQ?'a':'o')} por ${desigTerc}.`
+    :'';
+
+  /* ── nome do contrato ── */
+  const nomeTermo=`MÚTUO COM HIPOTECA com ANEXO I${fiadores.length?' e FIANÇA':''}`;
+  const titulo=`MÚTUO COM HIPOTECA${fiadores.length?' COM FIANÇA':''}`;
+
+  /* ── ónus ── */
+  const onusLista=lerOnus();
+  const mantidos=onusLista.filter(o=>o.canc==='nao');
+  const clOnus=[...mantidos.map(o=>textoOnusContrato(o,true)),v('f-onus-txt')].filter(Boolean);
+
+  /* ── Imposto do Selo · verba 17.1.3, 6/1000 ── */
+  const montante=parseValor(v(`${F}-montante`));
+  const isVal=v(`${F}-calculo-is`)||(montante?fmtValor(montante*6/1000)+' €':'…');
+
+  /* ── imóvel ── */
+  const isFr=v('f-im-tipo')==='fracao';
+  const DIREITOS={plena:'',superficie:'o direito de superfície sobre ',usufruto:'o usufruto sobre ',raiz:'a nua-propriedade (raiz) sobre ',dhp:'o direito real de habitação periódica sobre '};
+  const dto=DIREITOS[v('f-im-direito')]||'';
+  const desigIm=v('f-im-tipo')==='misto'?'o prédio misto':v('f-im-tipo')==='rustico'?'o prédio rústico':'o prédio urbano';
+  const corpoIm=isFr
+    ?`${dto}a fração autónoma designada pela letra «${v('f-im-letra')||'…'}», do prédio em regime de propriedade horizontal constituída pela ${v('f-im-apph')||'…'}, composta por ${v('f-im-descricao')||'…'}`
+    :`${dto}${desigIm} composto por ${v('f-im-descricao')||'…'}`;
+  const genT=generosOutorgantes(garantes);
+  const femT=genT.length>0&&genT.every(g=>g==='F');
+  const sujeitoHip=garantes.length
+    ?(garantes.length>1?'Os TERCEIROS CONTRATANTES constituem':(femT?'A TERCEIRA CONTRATANTE constitui':'O TERCEIRO CONTRATANTE constitui'))
+    :(muP?'Os PRIMEIROS constituem':(femM?'A PRIMEIRA constitui':'O PRIMEIRO constitui'));
+  const sujeitoReg=garantes.length
+    ?(garantes.length>1?'dos TERCEIROS CONTRATANTES':(femT?'da TERCEIRA CONTRATANTE':'do TERCEIRO CONTRATANTE'))
+    :(muP?'dos PRIMEIROS CONTRATANTES':(femM?'da PRIMEIRA CONTRATANTE':'do PRIMEIRO CONTRATANTE'));
+  const mats=isFr?[]:lerMatrizes();
+  const txtMatriz=isFr
+    ?`O prédio encontra-se inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'} da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial tributário de ${v('f-im-vpt')||'…'} EUROS${v('f-im-vpt-ano')?`, determinado no ano de ${v('f-im-vpt-ano')}`:''}.`
+    :`O prédio encontra-se inscrito ${mats.length?(mats.length>1?mats.slice(0,-1).map(m=>textoMatrizG(m,false)).join(', ')+' e '+textoMatrizG(mats[mats.length-1],false):textoMatrizG(mats[0],false)):'na respetiva matriz predial …'}.`;
+
+  /* ══════════════ TERMO ══════════════ */
+  const termo=[];
+  const foraEscritorio=v('f-local-tipo')==='outro';
+  const entTxt=sol
+    ?`${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, número de identificação fiscal ${sol.nif}`
+      +(foraEscritorio?`, com domicílio profissional na ${sol.domicilio}`:'')
+    :'…';
+  const localTxt=foraEscritorio?`na ${v('f-local-morada')||'…'}`
+    :(sol?`no meu escritório sito na ${sol.domicilio}`:'no meu escritório sito na …');
+  termo.push({id:P+'t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram os seguintes outorgantes:`});
+  termo.push({id:P+'t-primeiro',T:nPessoas>1?'PRIMEIROS':(femM?'PRIMEIRA':'PRIMEIRO'),X:txtPrimeiro,
+    negrito:mut.flatMap(o=>{const r=[];
+      if(o.tipo==='empresa'){(o.reps||[]).forEach(x=>{if(x.nome)r.push(x.nome.toUpperCase());});if(o.denom)r.push(o.denom);return r;}
+      if(o.nome)r.push(o.nome);
+      if(ehCasado(o.ec)&&o['conj-nome']&&(o['conj-out']||'ambos')!=='nao')r.push(o['conj-nome']);return r;})});
+  termo.push({id:P+'t-segunda',T:pf?'SEGUNDA':'SEGUNDO',X:txtSegundo,
+    negrito:[procBanco?(v('f-mut-p-nome')||'').toUpperCase():(solMut?solMut.nome:''),BK.denom].filter(Boolean)});
+  if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?'TERCEIROS':'TERCEIRO',X:txtTerceiros,
+    negrito:quartos.map(q=>q.nome).filter(Boolean)});
+  termo.push({id:P+'t-apresentaram',T:'',X:`Os signatários apresentaram o documento de contrato de ${nomeTermo}, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
+  {const dG=declaracaoGarante(quartos,garantes,'terceir',true);
+   if(dG)termo.push({id:P+'t-garante-decl',T:'',X:dG});}
+
+  /* ── VERIFIQUEI ── */
+  const procuracoes=[...mut,...quartos].map(segmentoProcuracao).filter(Boolean);
+  const rep2=representanteCAIXA();
+  const pc2=partesProcuracao(v('f-mut-proc-cod')||(procBanco?BK.procCod:rep2.cod));
+  const codProc=(pc2.cod||'…')+((pc2.data||(!procBanco&&rep2.data))?`, de ${pc2.data||rep2.data}`:'');
+  const crcCod=v('f-mut-crc-cod')||BK.crcCod;
+  const crcVal=dPT(v('f-mut-crc-val')||BK.crcVal);
+  const linhas=[];
+  linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde ${CX} se encontra registada sob o n.º ${BK.bdp};`);
+  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes ${procBanco&&!pf?'do':'da'} outorgante em representação ${daCX} pela procuração${procBanco?'':', conjugada com a consulta do substabelecimento,'} depositada${procBanco?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
+  linhas.push(`— Os poderes de representação da ${BK.denom} através da Certidão de Registo Comercial com o número de acesso ${crcCod}, disponível em www.eportugal.gov.pt, válida até ${crcVal}, bem como o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt, nos termos da Lei n.º 89/2017, de 21 de agosto;`);
+  mut.map(o=>linhaEmpresa(o,'PARTE MUTUÁRIA')).filter(Boolean).forEach(l=>linhas.push('— '+l));
+  quartos.map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
+  mut.map(linhaAssento).filter(Boolean).forEach(l=>linhas.push(l));
+  [linhaPredio('f-im',null)].filter(Boolean).forEach(l=>linhas.push(l));
+  [linhaRequerimento('f-im',null)].filter(Boolean).forEach(l=>linhas.push(l));
+  termo.push({id:P+'t-verifiquei',T:'',X:`Verifiquei:\n${linhas.join('\n')}`});
+
+  /* ── INFORMEI ── */
+  termo.push({id:P+'t-informei',T:'',X:`Informei:\n— O contrato que aqui se autentica está sujeito a Imposto de Selo da verba 17.1.3, da TGIS, por força do artigo 7.º do Código do Imposto de Selo, no valor de ${isVal};`});
+  termo.push({id:P+'t-rgpd',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
+  const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
+  if(arq)termo.push({id:P+'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
+  /* Fecho da CCAM: «que será efetuado» e dispensa só do Anexo I. */
+  termo.push({id:P+'t-leitura',T:'',X:
+    `A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, que será efetuado em seguida nesta mesma data, em www.predialonline.mj.pt.\n`
+    +`As partes dispensaram a leitura do Anexo I por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-o, ainda assim, como parte integrante do presente contrato.`});
+
+  /* ══════════════ CONTRATO ══════════════ */
+  const contrato=[];
+  contrato.push({id:P+'c-cab',T:titulo,X:''});
+  contrato.push({id:P+'c-entre',T:'ENTRE',X:txtPrimeiroCurto,negrito:mut.map(o=>o.tipo==='empresa'?o.denom:o.nome).filter(Boolean)});
+  contrato.push({id:P+'c-e',T:'E',X:txtSegundoCurto,negrito:[BK.denom]});
+  if(quartos.length)contrato.push({id:P+'c-terceiros',T:'E',X:txtTerceirosCurto,
+    negrito:quartos.map(q=>q.nome).filter(Boolean)});
+
+  /* Preâmbulo · finalidade e desembolso vêm do bloco próprio da CCAM. */
+  const fin=(v('f-ccam-finalidade')||'…').replace(/[.;]\s*$/,'');
+  const des=(v('f-ccam-desembolso')||'').replace(/[.;,]\s*$/,'');
+  contrato.push({id:P+'c-preambulo',T:'',X:
+    `É celebrado o presente contrato de ${nomeTermo}, que se rege pelas seguintes disposições e se destina a financiar ${fin}; não lhe podendo ser dado outro uso ou destino;${des?` ${des},`:''} e nos demais termos e condições reguladas e estabelecidas no Anexo I, que dele fica a fazer parte integrante para todos os efeitos legais.`});
+
+  /* ── MÚTUO ── */
+  contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
+    `Pelo presente contrato, ${CX} concede ${aPRIM} um empréstimo no montante de ${par(`${F}-montante`)}, pelo prazo de ${prazo}, a contar da presente data, de que ${muP?'estes se confessam devedores':(femM?'esta se confessa devedora':'este se confessa devedor')}, o que ${CX} aceita, nos termos deste Contrato, bem como pelas cláusulas constantes do Anexo I, que fica anexo e dele faz parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
+
+  /* ── HIPOTECA ── */
+  contrato.push({id:P+'c-hip-garantia',T:'HIPOTECA',X:
+    `Para garantia:\n`
+    +`a) do capital mutuado de ${par(`${F}-montante`)};\n`
+    +`b) dos juros remuneratórios, fixados em até ${pct(`${F}-juros`)} ao ano;\n`
+    +`c) dos juros moratórios, correspondentes aos juros remuneratórios acrescidos de uma sobretaxa até ${pct(`${F}-mora`)} ao ano, nos termos e dentro do limite máximo previsto no artigo 8.º do Decreto-Lei n.º 58/2013, de 8 de maio;\n`
+    +`d) das comissões, despesas e demais encargos contratuais emergentes do contrato de empréstimo, que em conjunto se fixam no montante de ${par(`${F}-despesas`)}.`});
+  contrato.push({id:P+'c-hip-maximo',T:'',X:
+    `Fica estabelecido que o montante máximo garantido por hipoteca se fixa em ${par(`${F}-hipoteca`)} para todos os efeitos legais e de registo.`});
+  contrato.push({id:P+'c-anexo-hip',T:'',X:
+    `O mútuo e a hipoteca aqui exarados, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
+  contrato.push({id:P+'c-hip-constituicao',T:'',X:
+    `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
+  contrato.push({id:P+'c-hip-registo',T:'',X:`O imóvel ora hipotecado encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}.`});
+  if(clOnus.length)contrato.push({id:P+'c-hip-onus',T:'',X:clOnus.join('\n')});
+  contrato.push({id:P+'c-hip-matriz',T:'',X:txtMatriz});
+  /* Exceção aos ónus só quando há ónus que se mantêm. */
+  const excecao=mantidos.length
+    ?`, excetuando ${mantidos.length>1?'os ónus acima mencionados':(/hipoteca/i.test(mantidos[0].desc||'')?'a hipoteca acima mencionada':'o ónus acima mencionado')}`:'';
+  contrato.push({id:P+'c-hip-amplitude',T:'',X:
+    `A presente hipoteca é constituída com a máxima amplitude legal e permanecerá válida e eficaz até integral cumprimento de toda e qualquer obrigação e/ou responsabilidade ${daMUT} para com a MUTUANTE emergente do presente empréstimo e incide sobre o imóvel acima identificado, livre de quaisquer ónus, encargos ou limitações${excecao}, e abrange a totalidade do mesmo, incluindo todas as respetivas partes componentes, com todas as construções, beneficiações e acessões, presentes e futuras, bem como as indemnizações devidas por sinistro, expropriação e quaisquer outras, que a MUTUANTE poderá receber de quem entender.`});
+  contrato.push({id:P+'c-hip-execucao',T:'',X:
+    `A presente hipoteca é suscetível de execução logo que o crédito por ela garantido se torne vencido e exigível nos termos da lei, do presente contrato e do respetivo Anexo I.`});
+
+  /* ── FIANÇA · depois da hipoteca, como no contrato da CCAM ── */
+  if(fiadores.length){
+    const fiP=fiadores.length>1;
+    const genF=generosOutorgantes(fiadores);
+    const femF=genF.length>0&&genF.every(g=>g==='F');
+    const todos=fiadores.length===quartos.length;
+    const suj=todos
+      ?(fiP?(femF?'As terceiras outorgantes':'Os terceiros outorgantes'):(femF?'A terceira outorgante':'O terceiro outorgante'))
+      :(fiP?(femF?'As FIADORAS':'Os FIADORES'):(femF?'A FIADORA':'O FIADOR'));
+    const FIAD=fiP?(femF?'FIADORAS':'FIADORES'):(femF?'FIADORA':'FIADOR');
+    const pelosF=fiP?(femF?'pelas':'pelos'):(femF?'pela':'pelo');
+    contrato.push({id:P+'c-fianca',T:'FIANÇA',X:[
+      `${suj}, na invocada qualidade, ${fiP?'prestam':'presta'} FIANÇA a favor ${daCX}, que esta aceita, perante a qual ${fiP?'assumem e garantem':'assume e garante'}, solidariamente, como ${FIAD} e ${fiP?(femF?'principais pagadoras':'principais pagadores'):(femF?'principal pagadora':'principal pagador')}, o bom e integral cumprimento de todas as obrigações ${daMUT} decorrentes deste contrato, de cujos termos e condições ${fiP?'têm':'tem'} cabal conhecimento, por qualquer prazo, prorrogação ou renovação, dando o seu acordo a quaisquer alterações das respetivas condições, incluindo da taxa de juro aplicável e de prazos, que ${CX} e ${aMUT} façam ou ajustem, subsistindo a fiança até completa extinção das obrigações garantidas, além do que ${fiP?'renunciam':'renuncia'} ao benefício da excussão prévia e a qualquer outro benefício ou prazo facultado por lei, bem como a fazer ou invocar qualquer exceção ou oposição.`,
+      `Para efetivar os pagamentos, ${CX} fica autorizada ${pelosF} ${FIAD} a movimentar e debitar qualquer conta bancária de depósito à ordem ou a prazo, ainda que não vencido, e de qualquer natureza e tipo, de que nela ${fiP?'sejam ou venham a ser titulares ou contitulares':'seja ou venha a ser titular ou contitular'}, podendo proceder à compensação com quaisquer saldos credores, independentemente dos pressupostos legais da compensação.`,
+      `O mútuo, a hipoteca e a fiança aqui exarados, bem como as responsabilidades ${soc?'da sociedade MUTUÁRIA':daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`
+    ].join('\n')});
+  }
+  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'',X:
+    `${garantes.length>1?'Os Terceiros Garantes declaram':'O Terceiro Garante declara'} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${garantes.length>1?'os aceitam':'os aceita'}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`});
+
+  /* O período de reflexão do DL 74-A/2017 é regime do consumidor: com uma
+     mutuária sociedade não se aplica, e o contrato da CCAM não o tem. */
+  const soPessoas=mut.every(o=>o.tipo==='singular');
+  if(chk('t-reflexao')&&soPessoas)contrato.push({id:P+'c-reflexao',T:'',X:
+    `${muP?'OS PRIMEIROS CONTRATANTES':(femM?'A PRIMEIRA CONTRATANTE':'O PRIMEIRO CONTRATANTE')}, nos termos e para os efeitos do disposto no Decreto-Lei n.º 74-A/2017, de 23 de junho, ${muP?'reconhecem':'reconhece'} ter decorrido integralmente o período de reflexão legal de sete dias.`});
+  onusLista.map(o=>textoRenuncia(o,'SEGUNDA')).filter(Boolean)
+    .forEach((t,i)=>contrato.push({id:`${P}c-renuncia-${i}`,T:'',X:t}));
+  contrato.push({id:P+'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
+
+  return{variante,cod:'MH_UNO'+(fiadores.length?'_F':''),rot:titulo,termo,contrato,anexo:[]};
+}
+
+/* ═══════════ CALCULADORA DO MONTANTE MÁXIMO DA HIPOTECA · CCAM ═══════════
+   A CCAM não envia o montante máximo. Calcula-se pela regra do art. 693.º,
+   n.º 2, do Código Civil — a hipoteca só garante juros de três anos:
+     capital + capital × (juro + sobretaxa) × 3 + despesas
+   As despesas, se ficarem em branco, são 10% do capital (é o que a CCAM usa).
+   Os valores calculados só se escrevem em campos vazios ou já calculados; o
+   que for escrito à mão fica, e aparece aviso se não bater com o cálculo.
+   Só corre com a CCAM: na CGD os campos ficam como sempre estiveram.        */
+const ANOS_JUROS_HIP=3, DESPESAS_CCAM=0.10;
+function calcHipotecaCCAM(){
+  const ccam=v('f-mutuante')==='ccam_ac';
+  const bloco=document.getElementById('blk-ccam-fin');
+  if(bloco)bloco.style.display=ccam&&(ehMH()||(atoEscolhido()==='cv'&&chk('t-mh')))?'block':'none';
+  ['f-mh','f-uno'].forEach(F=>{
+    const eH=document.getElementById(`${F}-hipoteca`),eD=document.getElementById(`${F}-despesas`);
+    const nota=document.getElementById(`nota-hip-${F.slice(2)}`);
+    if(!eH||!eD)return;
+    if(!ccam){
+      /* Saindo da CCAM, limpa-se o que foi calculado (não o que foi escrito). */
+      [eH,eD].forEach(e=>{if(e.dataset.auto==='1'){e.value='';e.dataset.auto='';}});
+      if(nota)nota.innerHTML='';
+      return;
+    }
+    const cap=parseValor(v(`${F}-montante`)),j=parseValor(v(`${F}-juros`)),m=parseValor(v(`${F}-mora`));
+    if(!cap){if(nota)nota.innerHTML='';return;}
+    if(!eD.dataset.tocado){eD.value=fmtValor(Math.round(cap*DESPESAS_CCAM*100)/100);eD.dataset.auto='1';}
+    const desp=parseValor(eD.value);
+    if(!v(`${F}-juros`)){if(nota)nota.innerHTML='<span style="color:#9A6A1A">Calculadora: falta a taxa de juro.</span>';return;}
+    const juros=Math.round(cap*(j+m)/100*ANOS_JUROS_HIP*100)/100;
+    const max=Math.round((cap+juros+desp)*100)/100;
+    if(!eH.dataset.tocado){eH.value=fmtValor(max);eH.dataset.auto='1';}
+    const escrito=parseValor(eH.value);
+    const difere=eH.dataset.tocado&&Math.abs(escrito-max)>=0.01;
+    if(nota)nota.innerHTML=
+      `Cálculo: ${fmtValor(cap)} + ${fmtValor(cap)} × (${String(j).replace('.',',')}% + ${String(m).replace('.',',')}%) × ${ANOS_JUROS_HIP} anos = ${fmtValor(juros)} de juros + ${fmtValor(desp)} de despesas = <b>${fmtValor(max)} €</b>`
+      +(difere?`<br><span style="color:#B03A2E">⚠ O valor escrito (${fmtValor(escrito)} €) difere do cálculo em ${fmtValor(Math.abs(escrito-max))} €. Apague o campo para voltar ao valor calculado.</span>`:'');
+  });
+}
+{const _atualizar=atualizar;
+ atualizar=function(){try{calcHipotecaCCAM();}catch(e){console.warn('Calculadora CCAM:',e);}return _atualizar.apply(this,arguments);};}
+
 /* ── FECHO DO TERMO · leitura, esclarecimento e depósito ──
    ⚠ PROPOSTA POR VALIDAR. Um parágrafo só, feito da fusão dos dois que a
    Liliana tinha: o do depósito eletrónico e o da leitura em voz alta. Diziam
@@ -5912,6 +6258,40 @@ function htmlParaTexto(html){
   t.innerHTML=sanitizarHTML(html).replace(/<br\s*\/?>/gi,'\n').replace(/<\/div>\s*<div[^>]*>/gi,'\n');
   return t.innerText.replace(/\u00a0/g,' ');
 }
+/* ── SIGNATÁRIOS ──
+   Todos os intervenientes assinam no fim do termo e no fim do contrato.
+   Assina quem comparece: a pessoa singular (ou o seu procurador), o cônjuge
+   que outorga ou consente, os representantes das sociedades e do município, o
+   representante do banco e os terceiros. Quem aparece em duas qualidades —
+   o gerente que também é fiador — assina uma vez só.
+   O reconhecimento de assinaturas não leva: não é contrato nosso. */
+function signatarios(){
+  const ato=atoEscolhido();
+  if(ato==='recon')return[];
+  const visivel=id=>{const e=document.getElementById(id);return!!e&&e.style.display!=='none'&&e.offsetParent!==null;};
+  const nomes=[];
+  const deOutorgante=o=>{
+    if(o.tipo==='singular'){
+      nomes.push(o['repr-tipo']==='procurador'&&o['proc-nome']?o['proc-nome']:o.nome);
+      if(ehCasado(o.ec)&&o['conj-nome']&&(o['conj-out']||'ambos')!=='nao')nomes.push(o['conj-nome']);
+    }else(o.reps||[]).forEach(r=>nomes.push(r.nome));
+  };
+  lerVendedores().forEach(deOutorgante);
+  const bancoMutuante=ato==='mh'||(ato==='cv'&&chk('t-mh'));
+  if(ato!=='mh'&&visivel('card-b4'))lerCompradores().forEach(deOutorgante);
+  if(bancoMutuante){
+    const quem=v('f-mut-quem')||'liliana';
+    if(quem==='cgd')nomes.push(v('f-mut-p-nome'));
+    else if(SOLICITADORAS[quem])nomes.push(SOLICITADORAS[quem].nome);
+    else if(v('f-mut-repr'))nomes.push(v('f-mut-repr').split(',')[0]);
+  }
+  lerQuartos().forEach(deOutorgante);
+  const vistos=new Set();
+  return nomes.map(n=>String(n||'').trim()).filter(Boolean).filter(n=>{
+    const k=n.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ');
+    if(vistos.has(k))return false;vistos.add(k);return true;
+  }).map(n=>({Assin:n.toUpperCase()}));
+}
 function blocosFinais(i){
   const R=compor();
   const docs=R.docs&&R.docs.length?R.docs:[{termo:R.termo,contrato:R.contrato,anexo:R.anexo||[]}];
@@ -5960,7 +6340,8 @@ function blocosFinais(i){
     }));
     return[...partes,...cadeiaDados(b.id)];
   });
-  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temTermo:termo.length>0,temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||'')};
+  return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temTermo:termo.length>0,temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||''),
+    ...(()=>{const a=signatarios();return{AssinTermo:a,AssinContrato:a,temAssin:a.length>0};})()};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
@@ -7071,6 +7452,7 @@ function calcularAlertas(){
     if(!v('f-mh-montante'))push('mh-mont','bloqueio','Mútuo com Hipoteca','Falta o montante do mútuo.');
     if(!v('f-mh-prazo'))push('mh-prazo','bloqueio','Mútuo com Hipoteca','Falta o prazo do mútuo.');
     if(!v('f-mh-hipoteca'))push('mh-hip','bloqueio','Mútuo com Hipoteca','Falta o montante máximo assegurado pela hipoteca.');
+    if(ehMH()&&v('f-mutuante')==='ccam_ac'&&!v('f-ccam-finalidade'))push('ccam-fin','bloqueio','Mútuo com Hipoteca','Falta a finalidade do financiamento (CCAM).');
     /* No tronco 4 a representação vem do texto da procuradora; só falta mesmo
        quando o mutuante não é uma das solicitadoras nem tem texto próprio. */
     if(!v('f-mut-repr')&&!(ehMH()&&SOLICITADORAS[v('f-mut-quem')||'liliana']))
