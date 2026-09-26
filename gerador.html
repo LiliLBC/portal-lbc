@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-09-26.1</span>
+    <span class="page-sub">piloto · v2026-09-26.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1164,7 +1164,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
             <option value="andreia">Andreia Pessegueiro Cabanas — procuração própria</option>
             <option value="cgd">Procuradores da CAIXA — dois, um da Classe A</option>
           </select></div>
-        <div class="form-group form-full mut-cgd" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
+        <div class="form-group form-full mut-cgd mut-cgd-regras" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
           O mútuo é o n.º 1 e a aceitação da hipoteca o n.º 6 — nenhum consta da regra 2.ª, pelo que se aplica a <strong>regra 5.ª</strong>: num documento particular autenticado <strong>basta um procurador</strong>. A exigência de dois, com um da Classe A, é da regra 2.ª e vale para a compra e venda (n.º 12) quando a CAIXA seja parte.</div>
         <div class="form-grid form-grid-2 form-full mut-cgd" style="display:none;gap:.55rem">
           <div class="form-group form-full" style="font-size:11px;color:var(--text-muted);font-weight:600">Procurador(a) da CAIXA — identificação para o termo</div>
@@ -1188,7 +1188,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
         <div class="form-group"><label class="form-label">Código da procuração</label>
           <div style="display:flex;gap:.35rem;align-items:stretch">
-            <input class="form-input" id="f-mut-proc-cod" oninput="atualizar()" style="flex:1;min-width:0">
+            <input class="form-input" id="f-mut-proc-cod" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()" style="flex:1;min-width:0">
             <button type="button" class="btn btn-sm" title="Abrir as Procurações Online"
               onclick="window.open('https://www.procuracoesonline.pt/ProcuracoesOnline/','_blank','noopener')"
               style="flex-shrink:0;padding:0 .6rem">🔍</button>
@@ -1205,7 +1205,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group"><label class="form-label">Certidão válida até</label>
           <input type="date" class="form-input" id="f-mut-crc-val" onchange="atualizar()"></div>
         <div class="form-group mut-cgd" style="display:none" form-full"><label class="form-label">Poderes invocados</label>
-          <input class="form-input" id="f-mut-proc-poderes" oninput="atualizar()"></div>
+          <input class="form-input" id="f-mut-proc-poderes" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()"></div>
         <div class="form-group form-full"><label class="form-label">Representação — texto</label>
           <textarea class="form-input" id="f-mut-repr" rows="2" oninput="atualizar()"></textarea></div>
       </div>
@@ -1408,7 +1408,7 @@ const BANCOS={
     anexoI:true,
     crcCod:'3346-6216-1010',
     crcVal:'2027-05-27',
-    procCod:'PR-82574-78071-23851'
+    procCod:'PR-13518-08823-20577'
   }
 };
 const bancoAtual=()=>BANCOS[v('f-mutuante')]||BANCOS.cgd;
@@ -3135,7 +3135,7 @@ function comporMH(variante){
   const rep2=representanteCAIXA();
   const pc2=partesProcuracao(v('f-mut-proc-cod')||rep2.cod);
   const codProc=(pc2.cod||'…')+((pc2.data||rep2.data)?`, de ${pc2.data||rep2.data}`:'');
-  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes da outorgante em representação ${daCX} pela procuração${procCGD?'':', conjugada com a consulta do substabelecimento,'} depositada${procCGD?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
+  linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes ${procCGD&&!pf?'do':'da'} outorgante em representação ${daCX} pela procuração${procCGD?'':', conjugada com a consulta do substabelecimento,'} depositada${procCGD?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
   /* A alínea b) do artigo 4.º vem do template; o nome da lei vem da redação da
      compra e venda, porque aqui o Regime Jurídico não foi citado antes e o
      «referido» do template ficaria no ar. */
@@ -5977,9 +5977,11 @@ function pendentesValidacao(){
   return{nNotas,nMarcas:comMarca.size};
 }
 /* ── BIBLIOTECAS DE GERAÇÃO ──
-   O PizZip e o docxtemplater vêm de um CDN. Se o cdnjs não responder — rede da
-   firma, bloqueio, ficheiro em falta —, tenta-se o jsDelivr e o unpkg antes de
-   desistir. O docxtemplater ora se apresenta como «docxtemplater» ora como
+   O PizZip e o docxtemplater estão alojados no próprio site, na pasta lib/ ao
+   lado deste ficheiro: não dependem de repositórios públicos, que a rede do
+   escritório trava (cdnjs) ou que o Windows Defender assinala por reputação
+   (unpkg — deteção Trojan:Win32/MalUri.A!cl). O jsDelivr fica só como
+   reserva, se a pasta lib/ faltar. O docxtemplater ora se apresenta como «docxtemplater» ora como
    «Docxtemplater», conforme a compilação: aceitam-se os dois nomes, que era
    coisa que o teste antigo não fazia e dava erro com a biblioteca já carregada. */
 const zipCarregado=()=>window.PizZip;
@@ -6004,22 +6006,19 @@ async function tentarUrls(urls,pronto){
 async function garantirBibliotecas(){
   if(zipCarregado()&&docxCarregado())return;
   showToast('A carregar as bibliotecas de geração…','');
-  /* Primeiro o unpkg, nas versões que o mh.html usa: são as que comprovadamente
-     passam na rede do escritório. O cdnjs fica em último — era o que estava cá
-     sozinho e é o que esta rede trava. */
+  /* Primeiro a cópia local (lib/), nas mesmas versões que o mh.html usa;
+     o jsDelivr só se a cópia local não existir. */
   const okZip=await tentarUrls([
-    'https://unpkg.com/pizzip@3.1.4/dist/pizzip.js',
-    'https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js'
+    'lib/pizzip.js',
+    'https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.js'
   ],zipCarregado);
   const okDocx=await tentarUrls([
-    'https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js',
-    'https://cdn.jsdelivr.net/npm/docxtemplater@3.44.0/build/docxtemplater.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.42.0/docxtemplater.js'
+    'lib/docxtemplater.js',
+    'https://cdn.jsdelivr.net/npm/docxtemplater@3.44.0/build/docxtemplater.js'
   ],docxCarregado);
   if(!okZip||!okDocx){
     const faltam=[!okZip?'PizZip':'',!okDocx?'docxtemplater':''].filter(Boolean).join(' e ');
-    throw new Error(`não consegui carregar ${faltam}. Tentei o cdnjs, o jsDelivr e o unpkg — é provável que a rede esteja a bloquear estes endereços.`);
+    throw new Error(`não consegui carregar ${faltam}. Tentei a pasta lib/ do site e o jsDelivr — confirme que lib/pizzip.js e lib/docxtemplater.js estão publicados no GitHub.`);
   }
 }
 
@@ -6545,7 +6544,15 @@ const PODERES_MUTUANTE='ponto segundo alínea 1) e 6) e ponto terceiro regra 5.�
 function procMutuante(q){
   /* O campo mostra o código como está no ficheiro, com a data e a hora entre
      parênteses — é isso que identifica a procuração de cada uma. */
-  if(q==='cgd')return{cod:codProcDe(CGD_CFG)||CGD_PROCURACAO,pod:PODERES_MUTUANTE};
+  /* «cgd» no seletor quer dizer «procuradores do próprio banco». O código e os
+     poderes são os do banco escolhido: a CGD vem da configuração; os outros, do
+     registo de bancos. Os poderes da CGD citam as regras da procuração dela e
+     não servem a outro banco — aí ficam em branco, para preencher. */
+  if(q==='cgd'){
+    const b=bancoAtual();
+    if(b===BANCOS.cgd)return{cod:codProcDe(CGD_CFG)||CGD_PROCURACAO,pod:PODERES_MUTUANTE};
+    return{cod:b.procCod||'',pod:''};
+  }
   const s=SOLICITADORAS[q];
   return{cod:s?codProcDe(s):'',pod:PODERES_MUTUANTE};
 }
@@ -6564,6 +6571,11 @@ function onMutQuem(){
      a solicitadora outorga por procuração substabelecida, e aí é o código que
      identifica os poderes, não a enumeração das alíneas. */
   document.querySelectorAll('.mut-cgd').forEach(e=>e.style.display=q==='cgd'?'block':'none');
+  /* A nota da regra 5.ª e a classe A são da procuração da CGD. */
+  const ehCGD=bancoAtual()===BANCOS.cgd;
+  document.querySelectorAll('.mut-cgd-regras').forEach(e=>e.style.display=q==='cgd'&&ehCGD?'block':'none');
+  const opt=document.querySelector('#f-mut-quem option[value="cgd"]');
+  if(opt)opt.textContent=ehCGD?'Procuradores da CAIXA — dois, um da Classe A':`Procuradores da ${bancoAtual().curto.replace(/^a /,'')}`;
   const p=procMutuante(q);
   const c=document.getElementById('f-mut-proc-cod');
   const d=document.getElementById('f-mut-proc-poderes');
@@ -6594,8 +6606,9 @@ function onMutuante(){
   if(b){
     porDefeito('f-mut-crc-cod', b.crcCod||CGD_CRC);
     porDefeito('f-mut-crc-val', b.crcVal||CGD_CRC_VAL);
-    porDefeito('f-mut-proc-cod', b.procCod);
   }
+  /* A procuração depende do banco e de quem o representa: trata-a o onMutQuem. */
+  onMutQuem();
 }
 function onQuartos(){
   const on=chk('t-quartos');
@@ -7065,7 +7078,7 @@ function calcularAlertas(){
     if(!v('f-mut-proc-cod'))push('mh-proccod','bloqueio','Mútuo com Hipoteca','Terceiro outorgante sem código de procuração.');
     /* Regra 1.ª: a procuração exclui atos de valor superior a cinco milhões. */
     const valAto=Math.max(parseValor(v('f-preco')),parseValor(v('f-mh-montante')));
-    if(v('f-mut-quem')==='cgd'&&valAto>5000000)
+    if(v('f-mut-quem')==='cgd'&&bancoAtual()===BANCOS.cgd&&valAto>5000000)
       push('mh-limite','bloqueio','Mútuo com Hipoteca',`Valor do ato (${fmtValor(valAto)} €) excede os cinco milhões de euros — a regra 1.ª exclui estes atos da procuração da CAIXA.`);
     if(v('f-mut-proc-val')&&v('f-data-ato')&&v('f-mut-proc-val')<v('f-data-ato'))
       push('mh-proccad','bloqueio','Mútuo com Hipoteca',`Procuração do terceiro outorgante caducada à data do ato (válida até ${dPT(v('f-mut-proc-val'))}).`);
