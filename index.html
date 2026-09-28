@@ -820,7 +820,12 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group">
               <div class="field-label">Val. Procurador €</div>
-              <input class="form-input" id="p-valorProc" placeholder="0,00" oninput="calcMargemLiq()">
+              <input class="form-input" id="p-valorProc" placeholder="0,00" oninput="calcMargemLiq();avisoProcPago()">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Procurador a pagar</div>
+              <select class="form-select" id="p-procPago" onchange="avisoProcPago()"><option value="">—</option></select>
+              <div id="p-procPago-nota" style="font-size:10px;margin-top:3px;color:var(--text-faint)"></div>
             </div>
             <div class="field-group">
               <div class="field-label">Val. Serviço €</div>
@@ -3291,7 +3296,13 @@ async function resolverColunaFinalidade(){
     const m=cols.find(x=>(x.displayName||'').toLowerCase()==='finalidade_1'||(x.name||'').toLowerCase()==='finalidade_1')
           ||cols.find(x=>(x.displayName||'').toLowerCase().startsWith('finalidade')||(x.name||'').toLowerCase().startsWith('finalidade'));
     F.finalidade=(m&&m.name)?m.name:null;
-  }catch(e){F.finalidade=null;}
+    /* Coluna opcional «Procurador_Pago»: quem recebe o Val. Procurador. Aceita
+       variantes do nome («Procurador a pagar», «ProcPago»…). */
+    const nn=t=>String(t||'').replace(/_x([0-9a-fA-F]{4})_/g,(_,h)=>String.fromCharCode(parseInt(h,16)))
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const pp=cols.find(x=>['procuradorpago','procuradorapagar','procpago','procuradorpagar'].some(k=>nn(x.name)===k||nn(x.displayName)===k));
+    F.procPago=(pp&&pp.name)?pp.name:null;
+  }catch(e){F.finalidade=null;F.procPago=null;}
   _finalidadeResolvida=true;
 }
 
@@ -3321,6 +3332,7 @@ async function carregarRegistos(){
     await resolverColunaFinalidade();
     const baseFields=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.foiSuprimento,F.dataFoiSup,F.ligacaoPasta,F.pago,F.codCRP];
     if(F.finalidade)baseFields.push(F.finalidade);
+    if(F.procPago)baseFields.push(F.procPago);
     let data;
     try{
       const sf=[...baseFields,F.contactos].join(',');
@@ -3500,6 +3512,36 @@ async function apagarRegisto(itemId, nome){
   }catch(e){showToast('Erro ao apagar: '+e.message,'error');}
 }
 
+/* ── PROCURADOR A PAGAR ──
+   Quem recebe o Val. Procurador desta escritura. É daqui que o Pessoal lança o
+   serviço do colaborador, que aparece nos custos com pessoal do dashboard.
+   As opções são as mesmas pessoas do «Ent. Depósito» (tirando a Liliana, que
+   não se paga a si própria) e os colaboradores do Pessoal, quando a conta os
+   pode ler. */
+function preencherProcPago(atual){
+  const s=document.getElementById('p-procPago');if(!s)return;
+  const nomes=new Set();
+  [...(document.getElementById('p-procurador')?.options||[])].forEach(o=>{
+    const t=(o.value||o.textContent||'').trim();
+    if(t&&t!=='—'&&!/^liliana/i.test(t))nomes.add(t);
+  });
+  try{(window.pesNomesColaboradores?window.pesNomesColaboradores():[]).forEach(n=>{if(n)nomes.add(n);});}catch(_){}
+  if(atual)nomes.add(atual);
+  s.innerHTML='<option value="">—</option>'+[...nomes].sort((a,b)=>a.localeCompare(b,'pt'))
+    .map(n=>`<option${n===atual?' selected':''}>${escHtml(n)}</option>`).join('');
+  s.value=atual||'';
+  s.disabled=!F.procPago;
+  avisoProcPago();
+}
+function avisoProcPago(){
+  const n=document.getElementById('p-procPago-nota');if(!n)return;
+  if(!F.procPago){n.innerHTML='<span style="color:var(--amber)">Falta a coluna <b>Procurador_Pago</b> (texto) na lista das escrituras.</span>';return;}
+  const v=parseFloat(document.getElementById('p-valorProc')?.value||0)||0;
+  const q=document.getElementById('p-procPago')?.value||'';
+  n.innerHTML=(v>0&&!q)?'<span style="color:var(--amber)">Indique quem recebe o Val. Procurador.</span>'
+    :(q&&!(v>0))?'<span style="color:var(--amber)">Falta o Val. Procurador.</span>'
+    :(q?'Entra nos custos com pessoal na data da escritura.':'');
+}
 function calcMargemLiq(){
   const serv=parseFloat(document.getElementById('p-valorServico').value||0);
   const proc=parseFloat(document.getElementById('p-valorProc').value||0);
@@ -3622,6 +3664,7 @@ function abrirPainelNovo(){
    'p-valorProc','p-valorServico','p-margemLiq','p-custoSup','p-dataResolSup','p-observacoes','p-finalidade'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
+  preencherProcPago('');
   document.getElementById('p-estado').value='Agendado';
   document.getElementById('p-pago').value='';
   // Contactos
@@ -3671,6 +3714,7 @@ function abrirPainelRegisto(itemId){
   document.getElementById('contactos-chevron').style.transform='rotate(0deg)';
   sv('p-montCredito').value=i[F.montCredito]||'';
   sv('p-valorProc').value=i[F.valorProc]||'';
+  preencherProcPago(F.procPago?(i[F.procPago]||''):'');
   sv('p-valorServico').value=i[F.valorServico]||'';
   sv('p-margemLiq').value=i[F.margemLiq]||'';
   sv('p-custoSup').value=i[F.custoSup]||'';
@@ -3954,6 +3998,10 @@ async function guardarPainel(){
   const dataResolSup=svDate('p-dataResolSup'); if(dataResolSup) body[F.dataResolSup]=dataResolSup;
   const observacoes=svText('p-observacoes'); if(observacoes) body[F.observacoes]=observacoes;
   const finalidade=svChoice('p-finalidade'); if(finalidade&&F.finalidade) body[F.finalidade]=finalidade;
+  /* Procurador a pagar: grava-se sempre (também vazio), para que tirar o nome
+     retire o custo do Pessoal. */
+  if(F.procPago) body[F.procPago]=sv('p-procPago')||null;
+  if((valorProc||0)>0&&!sv('p-procPago'))showToast('Tem Val. Procurador mas não indicou o procurador a pagar — não entra nos custos com pessoal.','');
   // Contactos como JSON
   const contactos=recolherContactos();
   if(contactos.telefones.length||contactos.emails.length){
@@ -3986,6 +4034,7 @@ async function guardarPainel(){
       } else throw e;
     }
     if(!painelItemId){registosCarregados=false;await carregarRegistos();}
+    if(window.pesSincronizar)window.pesSincronizar();
     fecharPainel();
     renderRegistos(registosFiltradosAtual);
   }catch(e){showToast('Erro: '+e.message,'error');}
@@ -12386,6 +12435,83 @@ async function carregarDados(){
   ]);
   const map=x=>({id:x.id,...x.fields});
   COLS=c.map(map);MOVS=m.map(map);AUSE=a.map(map);
+  try{if(await sincronizarEscrituras()){
+    const m2=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items?$expand=fields($select=${sel('mov')})&$top=999`);
+    MOVS=m2.map(map);
+  }}catch(e){console.warn('Sincronização das escrituras:',e);SYNC_AVISOS=['Não consegui ler as escrituras: '+(e.message||e)];}
+}
+
+/* ── ESCRITURAS → SERVIÇOS ──
+   Cada escritura com «Procurador a pagar» e Val. Procurador gera um lançamento
+   do tipo Serviço para esse colaborador, na data da escritura. O lançamento
+   fica ligado pelo ProcessoRef «ESC:<id da escritura>», e acompanha a
+   escritura: muda de valor, de pessoa ou de data, ou desaparece, se a
+   escritura mudar — enquanto não estiver pago. Depois de pago não se mexe, e
+   qualquer diferença aparece como aviso. */
+let SYNC_AVISOS=[];
+const TAG_ESC='ESC:';
+function colPorNome(nome){
+  const n=norm(nome);if(!n)return null;
+  let c=COLS.find(x=>norm(cNome(x))===n);if(c)return c;
+  /* «Luis Vieira» ↔ «Luís Miguel Vieira»: primeiro e último nome. */
+  const pal=t=>decodeSP(t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/\s+/).filter(Boolean);
+  const a=pal(nome);
+  return COLS.find(x=>{const b=pal(cNome(x));return b.length&&a.length&&b[0]===a[0]&&b[b.length-1]===a[a.length-1];})||null;
+}
+async function sincronizarEscrituras(){
+  SYNC_AVISOS=[];
+  if(typeof resolverColunaFinalidade==='function')await resolverColunaFinalidade();
+  if(!listaId||typeof F==='undefined'||!F.procPago)return false;
+  if(!FLD.mov.processo){SYNC_AVISOS.push('Para ligar as escrituras aos serviços falta a coluna ProcessoRef em '+L.mov+'.');return false;}
+  const campos=[F.titulo,F.nome,F.data,F.valorProc,F.procPago].filter(Boolean).join(',');
+  const r=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${campos})&$top=500`);
+  const escs=r.map(x=>({id:String(x.id),...x.fields}));
+  const tipoServ=(OPCOES.mov.tipo||[]).find(t=>/servi/i.test(t))||'Serviço';
+  const ligados={};MOVS.forEach(m=>{const p=String(m[FLD.mov.processo]||'');if(p.startsWith(TAG_ESC))ligados[p.slice(TAG_ESC.length)]=m;});
+  const base=`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items`;
+  let mudou=false;
+  for(const e of escs){
+    const quem=String(e[F.procPago]||'').trim();
+    const valor=num(e[F.valorProc]);
+    const data=dia10(e[F.data]);
+    const m=ligados[e.id];delete ligados[e.id];
+    const ref=`${e[F.titulo]||''} ${e[F.nome]||''}`.trim()||('escritura '+e.id);
+    const quer=quem&&valor>0;
+    if(!quer){
+      if(m&&!mPago(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+      else if(m)SYNC_AVISOS.push(`${ref}: o serviço já foi pago mas a escritura deixou de ter procurador ou valor.`);
+      continue;
+    }
+    const c=colPorNome(quem);
+    if(!c){SYNC_AVISOS.push(`${ref}: «${quem}» não está nos colaboradores do Pessoal.`);continue;}
+    if(!data){SYNC_AVISOS.push(`${ref}: a escritura não tem data.`);continue;}
+    const body={Title:`Escritura — ${e[F.nome]||e[F.titulo]||e.id}`};
+    body[FLD.mov.ref]=parseInt(c.id)||c.id;
+    if(FLD.mov.nome)body[FLD.mov.nome]=cNome(c);
+    body[FLD.mov.data]=data+'T12:00:00Z';
+    body[FLD.mov.tipo]=tipoServ;
+    body[FLD.mov.valor]=valor;
+    body[FLD.mov.processo]=TAG_ESC+e.id;
+    if(!m){
+      if(FLD.mov.obs)body[FLD.mov.obs]='Lançado a partir do registo de escrituras.';
+      await graphPost(base,{fields:body});mudou=true;continue;
+    }
+    const igual=mRef(m)===String(c.id)&&Math.abs(mValor(m)-valor)<0.005&&mData(m)===data;
+    if(igual)continue;
+    if(mPago(m)){SYNC_AVISOS.push(`${ref}: o serviço já foi pago (${eur(mValor(m))}) mas a escritura foi alterada — confira.`);continue;}
+    await graphPatch(`${base}/${m.id}/fields`,body);mudou=true;
+  }
+  /* Serviços ligados a escrituras que já não existem. */
+  for(const m of Object.values(ligados)){
+    if(!mPago(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+    else SYNC_AVISOS.push(`${m.Title||'Serviço'}: a escritura ligada já não existe, mas o serviço foi pago.`);
+  }
+  return mudou;
+}
+function avisosSyncHTML(){
+  if(!SYNC_AVISOS.length)return'';
+  return`<div class="notice notice-warning" style="font-size:11px;display:block;margin:0 0 .5rem">
+    <b>Escrituras com procurador a pagar:</b>${SYNC_AVISOS.map(a=>`<div>· ${esc(a)}</div>`).join('')}</div>`;
 }
 
 // ─── Leitura tipada ──────────────────────────────────────────────────────────
@@ -12444,7 +12570,7 @@ function render(){
   renderDash();
   if(!corpo)return;
   if(!pronto){corpo.innerHTML=avisoSetup||'';return;}
-  $('pes-aviso').innerHTML='';
+  $('pes-aviso').innerHTML=avisosSyncHTML();
   corpo.innerHTML=cardsHTML()+tabelaHTML()+feriasHTML();
 }
 
@@ -12503,11 +12629,11 @@ function renderDash(){
             p:meus.filter(m=>!mPago(m)).reduce((s,m)=>s+mValor(m),0)};
   }).filter(x=>x.n).sort((a,b)=>b.t-a.t);
   if(!linhas.length){
-    el.innerHTML=`<div style="color:var(--text-faint);text-align:center;padding:1rem;font-size:11.5px">Sem custos com pessoal ${dMes===''?'em '+dAno:'em '+MESES[parseInt(dMes)].toLowerCase()+' de '+dAno}.</div>`;
+    el.innerHTML=avisosSyncHTML()+`<div style="color:var(--text-faint);text-align:center;padding:1rem;font-size:11.5px">Sem custos com pessoal ${dMes===''?'em '+dAno:'em '+MESES[parseInt(dMes)].toLowerCase()+' de '+dAno}.</div>`;
     return;
   }
   const maior=Math.max(...linhas.map(x=>x.t))||1;
-  el.innerHTML=linhas.map(x=>{
+  el.innerHTML=avisosSyncHTML()+linhas.map(x=>{
     const cor=cCor(x.c,x.i);
     return `<div style="padding:.45rem 0;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:.5rem;font-size:12px">
@@ -12976,6 +13102,19 @@ async function init(forcar){
 
 // ─── API pública ─────────────────────────────────────────────────────────────
 window.pesInit=init;
+window.pesNomesColaboradores=()=>COLS.filter(cAtivo).map(cNome);
+/* Depois de gravar uma escritura: se o Pessoal já estiver carregado nesta
+   sessão, acerta logo os serviços, sem esperar por um ⟳. */
+window.pesSincronizar=async()=>{
+  if(!pronto)return;
+  try{
+    if(await sincronizarEscrituras()){
+      const m2=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items?$expand=fields($select=${sel('mov')})&$top=999`);
+      MOVS=m2.map(x=>({id:x.id,...x.fields}));
+    }
+    render();
+  }catch(e){console.warn('Sincronização das escrituras:',e);}
+};
 window.pesRecarregar=()=>init(true);
 window.pesSetPeriodo=setPeriodo;
 window.pesMes=mudarMes;
