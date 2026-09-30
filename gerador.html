@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-09-26.6</span>
+    <span class="page-sub">piloto · v2026-09-30.6</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -950,49 +950,48 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <div class="cond-block" style="margin-top:.7rem">
       <div class="cond-block-title">7.2 · Título urbanístico</div>
       <div id="aviso-rjue" style="display:none;font-size:10.5px;color:#7A5A20;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:8px;padding:.5rem .6rem;margin-bottom:.5rem"></div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem" id="nota-rjue">Artigo 4.º-A, n.º 14, do RJUE (DL 108/2026, em vigor desde 3 de agosto de 2026). A menção é obrigatória sob pena de anulabilidade do negócio.</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem" id="nota-rjue">Artigo 4.º-A, n.º 14, do RJUE (DL 108/2026, em vigor desde 1 de outubro de 2026). A menção é obrigatória sob pena de anulabilidade do negócio.</div>
       <div class="form-group form-full"><label class="form-label">Situação do imóvel <span>*</span></label>
         <select class="form-select" id="f-tu-caso" onchange="onTituloUrb();atualizar()">
           <option value="">— por responder —</option>
-          <option value="apresentado">Título apresentado — verifiquei-o</option>
-          <option value="declarado">Transmitente declara que dispõe — não exibido</option>
-          <option value="nao-dispoe">Transmitente declara que não dispõe de título</option>
-          <option value="isento">Isento de controlo prévio</option>
-          <option value="anterior">Anterior à exigência de licenciamento — certidão camarária</option>
+          <option value="apresentado">Declara que dispõe e apresenta — verifiquei o documento</option>
+          <option value="declarado">Declara que dispõe mas não apresenta</option>
+          <option value="nao-dispoe">Declara que não dispõe</option>
         </select></div>
 
       <div class="form-grid form-grid-3 form-full tu-apresentado" style="display:none">
-        <div class="form-group"><label class="form-label">Tipo de título</label>
-          <select class="form-select" id="f-tu-tipo" onchange="atualizar()">
+        <div class="form-group form-full"><label class="form-label">Documento apresentado</label>
+          <select class="form-select" id="f-tu-tipo" onchange="onTituloUrb();atualizar()">
+            <option value="alvará de licença de utilização">Alvará de licença de utilização</option>
             <option value="licença de utilização">Licença de utilização</option>
-            <option value="comunicação prévia">Comunicação prévia</option>
-            <option value="comunicação prévia com prazo">Comunicação prévia com prazo</option>
-            <option value="informação prévia favorável">Informação prévia favorável</option>
+            <option value="resposta à comunicação prévia">Resposta à comunicação prévia</option>
+            <option value="resposta à comunicação prévia após operação urbanística sujeita a controlo prévio">Resposta à comunicação prévia após operação urbanística sujeita a controlo prévio</option>
+            <option value="resposta à comunicação prévia com prazo">Resposta à comunicação prévia com prazo</option>
+            <option value="certidão de isenção">Certidão de isenção</option>
+            <option value="certidão de anterioridade">Certidão de anterioridade à exigência de licenciamento</option>
           </select></div>
         <div class="form-group"><label class="form-label">N.º</label>
           <input class="form-input" id="f-tu-num" oninput="atualizar()" placeholder="Ex: 55/2020"></div>
         <div class="form-group"><label class="form-label">Data</label>
           <input type="date" class="form-input" id="f-tu-data" onchange="atualizar()"></div>
-        <div class="form-group form-full"><label class="form-label">Câmara Municipal</label>
-          <input class="form-input" id="f-tu-camara" oninput="atualizar()" placeholder="Ex: Évora"></div>
-      </div>
-
-      <div class="form-grid form-grid-2 form-full tu-isento" style="display:none">
-        <div class="form-group form-full"><label class="form-label">Norma de isenção</label>
-          <input class="form-input" id="f-tu-norma" oninput="atualizar()" placeholder="Ex: alínea b) do n.º 1 do artigo 6.º do RJUE"></div>
-        <div class="form-group"><label class="form-label">Declaração de isenção emitida em</label>
-          <input type="date" class="form-input" id="f-tu-isento-data" onchange="atualizar()"></div>
-      </div>
-
-      <div class="form-grid form-grid-3 form-full tu-anterior" style="display:none">
-        <div class="form-group form-full" style="font-size:11px;color:var(--text-faint)">Certidão camarária que atesta a anterioridade — arquivada, não exibida. Validade de 18 meses.</div>
-        <div class="form-group"><label class="form-label">Certidão n.º</label>
-          <input class="form-input" id="f-tu-cert-num" oninput="atualizar()"></div>
-        <div class="form-group"><label class="form-label">Emitida em</label>
-          <input type="date" class="form-input" id="f-tu-cert-data" onchange="atualizar()"></div>
         <div class="form-group"><label class="form-label">Câmara Municipal</label>
-          <input class="form-input" id="f-tu-cert-camara" oninput="atualizar()"></div>
+          <input class="form-input" id="f-tu-camara" oninput="atualizar()" placeholder="Ex: Évora"></div>
+        <div class="form-group form-full tu-isento" style="display:none"><label class="form-label">Norma de isenção</label>
+          <input class="form-input" id="f-tu-norma" oninput="atualizar()" placeholder="Ex: alínea b) do n.º 1 do artigo 6.º do RJUE"></div>
+        <div class="form-group form-full tu-anterior" style="display:none;font-size:11px;color:var(--text-faint)">Certidão de anterioridade: validade de 18 meses.</div>
+        <div class="form-group form-full">
+          <div class="toggle-row" style="margin:0">
+            <span class="toggle-label" style="font-size:12px">As áreas do documento não coincidem com as atuais</span>
+            <label class="toggle-switch"><input type="checkbox" id="t-tu-areas" onchange="onTituloUrb();atualizar()"><span class="toggle-slider"></span></label>
+          </div></div>
+        <div class="form-group form-full tu-areas" style="display:none"><label class="form-label">Divergência (opcional)</label>
+          <input class="form-input" id="f-tu-areas-txt" oninput="atualizar()" placeholder="Ex: o título refere 120 m² de área bruta de construção e a caderneta 165 m²">
+          <div style="font-size:10.5px;color:#7A5A20;margin-top:2px">Sai no contrato como declaração das duas partes e no termo como advertência. Uma licença antiga não cobre obras posteriores.</div></div>
       </div>
+
+      <div class="form-group form-full tu-motivo" style="display:none"><label class="form-label">Motivo por que não é apresentado</label>
+        <input class="form-input" id="f-tu-motivo" oninput="atualizar()" placeholder="Ex: se encontrar em poder da entidade bancária">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Entra como «…, o qual não é apresentado neste ato por <i>[motivo]</i>.»</div></div>
 
       <div class="form-grid form-grid-2 form-full tu-mod1" style="display:none;gap:.55rem;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:8px;padding:.6rem;margin-top:.5rem">
         <div class="form-group form-full" style="font-size:11px;color:#7A5A20">
@@ -1008,7 +1007,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </div>
       </div>
       <div class="form-group form-full tu-advert" style="display:none;font-size:10.5px;color:#7A5A20;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:8px;padding:.5rem .6rem">
-        Não sendo exibido o título, o termo leva a advertência de que a situação urbanística não foi confirmada perante ti. A declaração da parte vendedora fica no contrato, onde é dela.
+        Não sendo apresentado documento, o termo leva a advertência de que não foi apresentado e de que a existência do título não pôde ser confirmada perante ti. A declaração do transmitente fica no contrato, onde é dela.
       </div>
     </div>
     <div class="toggle-row" style="margin-top:.7rem">
@@ -2275,11 +2274,14 @@ function textoVendedorCurto(v){
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
   const eu=idCurta(v.nome,v.natural,v.nif);
-  /* Só entram no contrato os que transmitem. Quem apenas consente não é parte:
-     o consentimento é declaração autónoma, feita no termo. */
-  const base=(!ehCasado(v.ec)||(v['conj-out']||'ambos')!=='ambos')
-    ? eu
-    : `${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
+  /* Só são parte os que transmitem ou adquirem. Mas o cônjuge que apenas
+     consente, ou que não outorga, tem de ficar identificado no contrato com
+     nome e NIF — «A, casado com B, NIF …» —, senão o registo sai com
+     suprimento. O consentimento continua a ser declarado no termo. */
+  const co=v['conj-out']||'ambos';
+  const base=!ehCasado(v.ec)?eu
+    :co==='ambos'?`${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
+    :`${eu}, ${v.ec||'…'} com ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -3346,8 +3348,11 @@ function comporMH_CCAM(variante){
       return`${den}, pessoa coletiva n.º ${nipc||'…'}, neste ato representad${o.tipo==='municipio'?'o':'a'} por ${juntarE(reps.map(r=>nomeNif(r.nome,r.nif)))}`;
     }
     const eu=nomeNif(o.nome,o.nif);
-    return(ehCasado(o.ec)&&(o['conj-out']||'ambos')==='ambos'&&o['conj-nome'])
-      ?`${eu} e ${nomeNif(o['conj-nome'],o['conj-nif'])}`:eu;
+    if(!ehCasado(o.ec))return eu;
+    /* O cônjuge que só consente ou não outorga também fica: nome e NIF. */
+    return(o['conj-out']||'ambos')==='ambos'
+      ?`${eu} e ${nomeNif(o['conj-nome'],o['conj-nif'])}`
+      :`${eu}, ${o.ec||'…'} com ${nomeNif(o['conj-nome'],o['conj-nif'])}`;
   };
 
   /* ── SEGUNDO · a CAIXA AGRÍCOLA ── */
@@ -4984,13 +4989,9 @@ function compor(){
   if(ehCVMH){const _bk=bancoAtual();
     g4.push(`— Para efeitos da Lei n.º 78/2021, de 24 de novembro, verifiquei que o contrato ora autenticado é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde ${_bk.curto} se encontra registada sob o n.º ${_bk.bdp};`);}
   g4.push(...onusTermo);
+  /* Apresentado: identifica o documento. Não apresentado ou inexistente: a
+     advertência. Vem tudo de textosTituloUrb, que serve também a doação. */
   if(tu.termo)g4.push(tu.termo);
-  /* Não sendo exibido o título, o termo leva só a advertência — a declaração da
-     parte vive no contrato. A redação segue o regime em vigor à data do ato. */
-  if(!['apresentado','isento','anterior'].includes(v('f-tu-caso')))
-    g4.push(regimeNovoRJUE()
-      ?'— adverti os outorgantes de que, não tendo sido exibido o título urbanístico, a situação urbanística do imóvel não foi confirmada perante mim;'
-      :'— nos termos do artigo 19.º do Decreto-Lei n.º 10/2024, de 8 de janeiro, as partes foram por mim informadas de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização;');
 
   const linhasVerif=[...g1,...g2,...g3,...g4].filter(Boolean);
   const abertura=linhasVerif.join('\n');
@@ -6083,6 +6084,15 @@ function restaurarEstado(d){
   /* Antes havia «financiamento sim/não»; passou a subtipo explícito. */
   if(d.campos&&d.campos['f-subtipo-cv']===undefined)
     d.campos['f-subtipo-cv']=d.campos['f-financiamento']==='sim'?'mh':'simples';
+  /* Título urbanístico: «isento» e «anterior» deixaram de ser hipóteses e
+     passaram a documento apresentado (30/09/2026). */
+  if(d.campos&&(d.campos['f-tu-caso']==='isento'||d.campos['f-tu-caso']==='anterior')){
+    const C=d.campos,ant=C['f-tu-caso']==='anterior';
+    C['f-tu-caso']='apresentado';
+    C['f-tu-tipo']=ant?'certidão de anterioridade':'certidão de isenção';
+    if(ant){C['f-tu-num']=C['f-tu-cert-num']||'';C['f-tu-data']=C['f-tu-cert-data']||'';C['f-tu-camara']=C['f-tu-cert-camara']||'';}
+    else C['f-tu-data']=C['f-tu-isento-data']||C['f-tu-data']||'';
+  }
   const migrarConj=x=>{if(x&&x['conj-out']==='sim')x['conj-out']='ambos';return x;};
   /* Os representantes são criados depois do bloco existir. */
   const reporReps=(bloco,x)=>{
@@ -7092,12 +7102,23 @@ const TU_ART19=[['','— por responder —'],
   ['apresentado','Licença exibida — verifiquei-a'],
   ['isento','Isenção de controlo prévio — arquivo-a'],
   ['sem-doc','Sem documento — sai a advertência']];
+/* As três declarações do art. 4.º-A, n.º 14. O que antes eram hipóteses
+   próprias — isenção e anterioridade — passam a ser documentos apresentados:
+   há um documento camarário, e o transmitente exibe-o. */
 const TU_NOVO=[['','— por responder —'],
-  ['apresentado','Título apresentado — verifiquei-o'],
-  ['declarado','Transmitente declara que dispõe — não exibido'],
-  ['nao-dispoe','Transmitente declara que não dispõe de título'],
-  ['isento','Isento de controlo prévio'],
-  ['anterior','Anterior à exigência de licenciamento — certidão camarária']];
+  ['apresentado','Declara que dispõe e apresenta — verifiquei o documento'],
+  ['declarado','Declara que dispõe mas não apresenta'],
+  ['nao-dispoe','Declara que não dispõe']];
+/* Documentos: género (para «o qual / a qual») e se é certidão camarária — às
+   certidões aplica-se a verificação do Modelo 1 do IMI. */
+const TU_DOCS={
+  'alvará de licença de utilização':{g:'m'},
+  'licença de utilização':{g:'f'},
+  'resposta à comunicação prévia':{g:'f'},
+  'resposta à comunicação prévia após operação urbanística sujeita a controlo prévio':{g:'f'},
+  'resposta à comunicação prévia com prazo':{g:'f'},
+  'certidão de isenção':{g:'f',cert:'isencao'},'certidão de anterioridade':{g:'f',cert:'anterior'}};
+function tuDoc(){const t=v('f-tu-tipo')||'licença de utilização';return{t,...(TU_DOCS[t]||{g:'f'})};}
 function aplicarRegimeTU(){
   const sel=document.getElementById('f-tu-caso');if(!sel)return;
   const novo=regimeNovoRJUE();
@@ -7116,48 +7137,65 @@ function aplicarRegimeTU(){
   setDisp('aviso-rjue',novo?'none':'block');
 }
 function onTituloUrb(){
-  const c=v('f-tu-caso');
+  const c=v('f-tu-caso'),doc=tuDoc();
   const mostra=(cls,on,modo)=>document.querySelectorAll(cls).forEach(e=>e.style.display=on?modo:'none');
   mostra('.tu-apresentado',c==='apresentado','grid');
-  mostra('.tu-isento',c==='isento','flex');
-  mostra('.tu-anterior',c==='anterior','grid');
+  mostra('.tu-isento',c==='apresentado'&&doc.cert==='isencao','block');
+  mostra('.tu-anterior',c==='apresentado'&&doc.cert==='anterior','block');
+  mostra('.tu-motivo',c==='declarado','block');
   mostra('.tu-advert',c==='declarado'||c==='nao-dispoe','block');
-  mostra('.tu-mod1',c==='isento'||c==='anterior','grid');
+  mostra('.tu-mod1',c==='apresentado'&&!!doc.cert,'grid');
+  mostra('.tu-areas',c==='apresentado'&&chk('t-tu-areas'),'block');
 }
 /* Certidão camarária de anterioridade: validade de 18 meses. */
 function certidaoVelha(){
-  const m=mesesEntre(v('f-tu-cert-data'),v('f-data-ato'));
+  const m=mesesEntre(v('f-tu-data'),v('f-data-ato'));
   return m!==null&&m>18;
 }
 function textosTituloUrb(){
   const c=v('f-tu-caso');
   const d=(id)=>v(id)?dPT(v(id)):'…';
-  /* O contrato menciona sempre o título urbanístico, seja qual for o regime.
-     O que muda com a data é só a advertência do termo: não o vendo, a
-     solicitadora adverte nos termos do artigo 19.º do DL 10/2024. */
   if(!c)return{contrato:'',termo:''};
-  if(c==='apresentado')
+  /* Quem declara é o transmitente, com a designação que o contrato lhe dá:
+     «A PARTE VENDEDORA» na compra e venda; na doação, o(s) Primeiro(s)
+     Outorgante(s), como no resto do contrato da doação. */
+  const ato=atoEscolhido();
+  const plD=ato==='doacao'&&lerVendedores().length>1;
+  const [QUEM,DECL]=ato==='doacao'?(plD?['Os Primeiros Outorgantes','declaram']:['O Primeiro Outorgante','declara'])
+    :ato==='partilhas'?['Os Outorgantes','declaram']:['A PARTE VENDEDORA','declara'];
+  /* A advertência do termo, quando nada é apresentado: não foi exibido e não
+     posso garantir que o imóvel disponha de título. */
+  const advert=regimeNovoRJUE()
+    ?'— adverti os outorgantes de que não me foi apresentado o título urbanístico do imóvel, pelo que não posso confirmar que o mesmo disponha de título;'
+    :'— nos termos do artigo 19.º do Decreto-Lei n.º 10/2024, de 8 de janeiro, as partes foram por mim informadas de que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização;';
+  if(c==='apresentado'){
+    const doc=tuDoc(),a=doc.g==='m'?'o':'a';
+    const num=v('f-tu-num')?` n.º ${v('f-tu-num')}`:'';
+    const norma=doc.cert==='isencao'&&v('f-tu-norma')?`, nos termos ${v('f-tu-norma')}`:'';
+    const ident=`${doc.t}${num}, de ${d('f-tu-data')}, emitid${a} pela Câmara Municipal de ${v('f-tu-camara')||'…'}${norma}`;
+    let contrato=`${QUEM} ${DECL} que o imóvel dispõe de ${ident}, ${a} qual foi apresentad${a} neste ato.`;
+    let termo=`— ${a} ${ident}, que me foi apresentad${a};`;
+    /* ⚠ Título que não coincide com as áreas atuais: não cobre o que foi feito
+       depois. O transmitente declara a divergência, o adquirente declara que a
+       conhece e aceita, e fica a advertência no termo. */
+    if(chk('t-tu-areas')){
+      const plN=ato==='doacao'&&lerCompradores().length>1;
+      const ADQ=ato==='doacao'?(plN?'Os Segundos Outorgantes declaram':'O Segundo Outorgante declara'):'A PARTE COMPRADORA declara';
+      const div=(v('f-tu-areas-txt')||'').trim().replace(/[.;]\s*$/,'');
+      contrato+=` ${QUEM} ${DECL} ainda que as áreas constantes d${a} ${doc.t} não coincidem com as áreas atuais do imóvel${div?` (${div})`:''}. ${ADQ} ter conhecimento dessa divergência e aceitar o imóvel no estado em que se encontra.`;
+      termo+=`\n— adverti os outorgantes de que as áreas constantes d${a} ${doc.t} apresentad${a} não coincidem com as áreas atuais do imóvel, pelo que o título pode não abranger todas as construções existentes, podendo ser necessária a sua legalização;`;
+    }
+    return{contrato,termo};
+  }
+  if(c==='declarado'){
+    const mot=(v('f-tu-motivo')||'').trim().replace(/^por\s+/i,'').replace(/[.;]\s*$/,'');
     return{
-      contrato:`O imóvel dispõe de ${v('f-tu-tipo')||'licença de utilização'} n.º ${v('f-tu-num')||'…'}, de ${d('f-tu-data')}, da Câmara Municipal de ${v('f-tu-camara')||'…'}.`,
-      termo:`— o título urbanístico do imóvel, ${v('f-tu-tipo')||'licença de utilização'} n.º ${v('f-tu-num')||'…'}, de ${d('f-tu-data')}, da Câmara Municipal de ${v('f-tu-camara')||'…'}, que me foi apresentado;`};
-  if(c==='declarado')
-    return{
-      /* Só o contrato: a declaração é da parte vendedora, e no termo basta-me
-         a advertência de que a situação urbanística não foi confirmada. Repetir
-         a declaração no termo seria eu a dar-lhe corpo, que não é o meu papel. */
-      contrato:`A Parte Vendedora declara que o imóvel dispõe do título urbanístico correspondente, o qual não é exibido neste ato.`,
-      termo:''};
-  if(c==='nao-dispoe')
-    return{
-      contrato:`A Parte Vendedora declara que o imóvel não dispõe de título urbanístico.`,
-      termo:''};
-  if(c==='isento')
-    return{
-      contrato:`A operação urbanística de que resultou o imóvel está isenta de licença e de comunicação prévia, nos termos ${v('f-tu-norma')||'…'}.`,
-      termo:`— a isenção de controlo prévio da operação urbanística, nos termos ${v('f-tu-norma')||'…'};`};
+      contrato:`${QUEM} ${DECL} que o imóvel dispõe do título urbanístico correspondente, o qual não é apresentado neste ato${mot?` por ${mot}`:''}.`,
+      termo:advert};
+  }
   return{
-    contrato:`A Parte Vendedora declara que a edificação é anterior à exigência legal de licenciamento, não carecendo de título urbanístico à data da sua construção.`,
-    termo:`— a certidão emitida pela Câmara Municipal de ${v('f-tu-cert-camara')||'…'} em ${d('f-tu-cert-data')}, sob o n.º ${v('f-tu-cert-num')||'…'}, que atesta ser a edificação anterior à exigência legal de licenciamento, que arquivo;`};
+    contrato:`${QUEM} ${DECL} que o imóvel não dispõe de título urbanístico.`,
+    termo:advert};
 }
 function notaNumerario(){
   const empresa=(()=>{try{return lerCompradores().some(c=>c.tipo==='empresa'||c.tipo==='cgd');}catch(e){return false;}})();
@@ -7238,8 +7276,10 @@ function calcularAlertas(){
      Esconder um bloco não desliga a regra que o lê. Na divisão e nas partilhas
      não há comprador, nem preço, nem regime fiscal, e o bloco 5 está escondido
      — os alertas que os exigem estavam a disparar sobre campos que a Liliana
-     não tem sequer à vista. Ficam o título urbanístico e o condomínio, que se
-     aplicam por haver transmissão do excesso da quota-parte. */
+     não tem sequer à vista. O título urbanístico também sai: a divisão não é
+     transmissão, e o art. 4.º-A do RJUE não se aplica (decisão da Liliana,
+     30/09/2026) — o bloco 7 já estava escondido e o alerta bloqueava sobre um
+     campo invisível. Fica o condomínio. */
   const SEM_NO_DCC=new Set(['sem-preco','pag-soma','mat-soma','fisc-regime','areas-p0','areas-p0-u',
     'apb-valor','apb-origem','apb-iban','apb-banco','apb-excede','rem-meio','rem-iban','sinal-valor']);
   const ehDCC=atoEscolhido()==='partilhas';
@@ -7248,7 +7288,7 @@ function calcularAlertas(){
        não existe; v0-coincide é o trato sucessivo da compra e venda. */
     if(ehDCC&&(SEM_NO_DCC.has(chave)
       ||/^c\d+-/.test(chave)||/^pag-/.test(chave)
-      ||/-areas(-u)?$/.test(chave)||/-coincide$/.test(chave)))return;
+      ||/-areas(-u)?$/.test(chave)||/-coincide$/.test(chave)||/^tu-/.test(chave)))return;
     A.push({chave,nivel,onde,texto});
   };
   const vend=lerVendedores(),comps=lerCompradores();
@@ -7424,26 +7464,25 @@ function calcularAlertas(){
   (function(){
     const c=v('f-tu-caso');
     if(!c){push('tu-caso','bloqueio','Certificados / Licenças','Falta indicar a situação do título urbanístico — a menção é obrigatória sob pena de anulabilidade do negócio.');return;}
-    if(c==='apresentado'&&(!v('f-tu-num')||!v('f-tu-data')))
-      push('tu-dados','bloqueio','Certificados / Licenças','Título apresentado sem número ou data.');
-    if(c==='isento'&&!v('f-tu-norma'))
-      push('tu-norma','aviso','Certificados / Licenças','Isenção sem norma indicada.');
+    if(c!=='apresentado')return;
+    const doc=tuDoc();
+    if(!v('f-tu-data')||!v('f-tu-camara'))
+      push('tu-dados','bloqueio','Certificados / Licenças','Documento apresentado sem data ou sem câmara municipal.');
+    if(!v('f-tu-num')&&!doc.cert)
+      push('tu-num','aviso','Certificados / Licenças','Documento apresentado sem número.');
+    if(doc.cert==='isencao'&&!v('f-tu-norma'))
+      push('tu-norma','aviso','Certificados / Licenças','Certidão de isenção sem norma indicada.');
     /* A certidão atesta um estado à data; obras posteriores comunicadas só por
        Modelo 1 do IMI invalidam-na, porque não passaram pela câmara. */
-    if(c==='isento'||c==='anterior'){
-      const dCert=c==='anterior'?v('f-tu-cert-data'):v('f-tu-isento-data');
-      const dMod1=v('f-tu-mod1-data');
+    if(doc.cert){
+      const dCert=v('f-tu-data'),dMod1=v('f-tu-mod1-data');
       if(!chk('t-tu-cpu'))
-        push('tu-cpu','bloqueio','Certificados / Licenças','Falta confirmar na caderneta predial urbana se há Modelo 1 do IMI posterior à certidão — obras não licenciadas invalidam a isenção.');
+        push('tu-cpu','bloqueio','Certificados / Licenças','Falta confirmar na caderneta predial urbana se há Modelo 1 do IMI posterior à certidão — obras não licenciadas invalidam a certidão.');
       else if(dCert&&dMod1&&dMod1>dCert)
-        push('tu-mod1-posterior','bloqueio','Certificados / Licenças',`Modelo 1 do IMI de ${dPT(dMod1)} é posterior à certidão de ${dPT(dCert)} — houve intervenção no imóvel depois da vistoria camarária e a isenção deixou de ser válida.`);
+        push('tu-mod1-posterior','bloqueio','Certificados / Licenças',`Modelo 1 do IMI de ${dPT(dMod1)} é posterior à certidão de ${dPT(dCert)} — houve intervenção no imóvel depois da certidão camarária, que deixou de valer.`);
     }
-    if(c==='anterior'){
-      if(!v('f-tu-cert-num')||!v('f-tu-cert-data'))
-        push('tu-cert','bloqueio','Certificados / Licenças','Certidão camarária de anterioridade por juntar.');
-      else if(certidaoVelha())
-        push('tu-cert-velha','bloqueio','Certificados / Licenças',`Certidão camarária emitida em ${dPT(v('f-tu-cert-data'))} — mais de 18 meses. Pedir nova certidão.`);
-    }
+    if(doc.cert==='anterior'&&v('f-tu-data')&&certidaoVelha())
+      push('tu-cert-velha','bloqueio','Certificados / Licenças',`Certidão de anterioridade emitida em ${dPT(v('f-tu-data'))} — mais de 18 meses. Pedir nova certidão.`);
   })();
 
   /* ── Mútuo com hipoteca ── */
