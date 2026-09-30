@@ -760,16 +760,13 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-label">Concelho</div>
               <input class="form-input" id="p-concelho" placeholder="—">
             </div>
-            <div class="field-group">
-              <div class="field-label">Matriz</div>
-              <div style="display:flex;gap:.35rem">
-                <select class="form-select" id="p-matTipo" style="width:96px;flex-shrink:0"><option value="">—</option><option>urbano</option><option>rústico</option><option>misto</option></select>
-                <input class="form-input" id="p-matArtigo" placeholder="Artigo n.º" style="flex:1">
+            <div class="field-group field-full">
+              <div class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+                <span>Matrizes</span>
+                <button type="button" class="btn btn-sm" onclick="matAdicionar()" style="padding:1px 8px;font-size:10.5px">+ artigo</button>
               </div>
-            </div>
-            <div class="field-group">
-              <div class="field-label">Freguesia da matriz</div>
-              <input class="form-input" id="p-matFreg" placeholder="Se vazia, usa a de cima">
+              <div id="p-mat-lista"></div>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:2px">Um por artigo matricial. Freguesia vazia = a de cima.</div>
             </div>
             <div class="field-group field-full" id="p-mat-nota" style="display:none;font-size:10px;color:var(--amber);margin-top:-4px"></div>
 
@@ -2729,8 +2726,9 @@ function textoDeposito(cod,canal){
   const ato=ATOS[val('p-produto').toUpperCase()]||'';
   const predio=val('p-predio'),freg=val('p-freguesia'),conc=val('p-concelho');
   const imovel=[predio,freg&&`freguesia de ${freg}`,conc&&`concelho de ${conc}`].filter(Boolean).join(', ');
-  const matArt=val('p-matArtigo'),matTipo=val('p-matTipo'),matFreg=val('p-matFreg')||freg;
-  const temMatriz=!!matArt;
+  const mats=(typeof matLer==='function'?matLer():[]).map(r=>({...r,freg:r.freg||freg}));
+  const temMatriz=mats.length>0;
+  const artTxt=r=>`${r.tipo?r.tipo+' ':''}${r.artigo}`;
   const b=t=>wa?`*${t}*`:t;
   const L=[];
   L.push(nome?`Exmo.(a) Senhor(a) ${titulo(nome)},`:'Exmo.(a) Senhor(a),');
@@ -2738,10 +2736,20 @@ function textoDeposito(cod,canal){
   L.push(`Informamos que o Documento Particular Autenticado${ato?` de ${ato}`:''} foi depositado eletronicamente, com o seguinte código de depósito:`);
   L.push('');
   L.push(b(cod));
-  /* Com a matriz preenchida, a freguesia e o concelho vão no bloco dela; aqui
-     fica só a identificação do prédio, para não se repetir. */
-  const linhaIm=temMatriz?predio:imovel;
-  if(linhaIm){L.push('');L.push(`Imóvel: ${linhaIm}.`);}
+  /* ── Registo predial ── identifica o imóvel na Conservatória: descrição,
+     freguesia e concelho do registo, e o código da certidão permanente. A
+     freguesia da matriz pode ser outra — vai no bloco da matriz. */
+  const codCRP=val('p-codCRP');
+  if(predio||freg||conc||codCRP){
+    const desc=/^\d+(\s*\/\s*\d+)?$/.test(predio)?`n.º ${predio}`:predio;
+    L.push('');
+    L.push(b('Registo predial'));
+    L.push('O registo predial é a inscrição do imóvel na Conservatória. Os dados do seu imóvel são:');
+    if(desc)L.push(`— Descrição predial: ${desc}`);
+    if(freg)L.push(`— Freguesia: ${freg}`);
+    if(conc)L.push(`— Concelho: ${conc}`);
+    if(codCRP)L.push(`— Código de acesso à certidão permanente: ${b(codCRP)}`);
+  }
   L.push('');
   L.push(b('Consultar o documento'));
   L.push('Aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action, introduza o código, selecione a caixa «documentos instrutórios» e valide.');
@@ -2750,13 +2758,42 @@ function textoDeposito(cod,canal){
   if(temMatriz){
     /* Os clientes não sabem o que é «a matriz»: diz-se o que é e dão-se os
        dados já prontos a copiar para o pedido. */
-    L.push('A matriz é o registo do imóvel nas Finanças. Os dados do seu imóvel são:');
-    L.push(`— Artigo matricial: ${matTipo?matTipo+' ':''}${matArt}`);
-    if(matFreg)L.push(`— Freguesia: ${matFreg}`);
-    if(conc)L.push(`— Concelho: ${conc}`);
-    L.push('Para pedir a alteração, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique estes dados e junte o código de depósito.');
+    if(mats.length===1){
+      const r=mats[0];
+      L.push('A matriz é o registo do imóvel nas Finanças. Os dados do seu imóvel são:');
+      L.push(`— Artigo matricial: ${artTxt(r)}`);
+      if(r.freg)L.push(`— Freguesia: ${r.freg}`);
+      if(conc)L.push(`— Concelho: ${conc}`);
+    }else{
+      L.push(`A matriz é o registo do imóvel nas Finanças. O seu imóvel está inscrito em ${['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez'][mats.length]||mats.length} artigos matriciais:`);
+      mats.forEach(r=>L.push(`— Artigo ${artTxt(r)}${r.freg?`, freguesia de ${r.freg}`:''}${conc?`, concelho de ${conc}`:''}`));
+    }
+    L.push(`Para pedir a alteração, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique ${mats.length>1?'estes artigos':'estes dados'} e junte o código de depósito.`);
   }else{
-    L.push(`Para a pedir, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique ${imovel?'os dados do imóvel acima':'a matriz, a freguesia e o concelho do imóvel'} e junte este código.`);
+    L.push(`Para a pedir, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique o artigo matricial, a freguesia e o concelho do imóvel, que constam da caderneta predial, e junte este código.`);
+  }
+  L.push('');
+  /* ── Texto pronto para o e-Balcão ── só quando o cliente adquiriu (compra,
+     doação, partilha…); num mútuo não há titularidade a mudar. */
+  const AQUIS={CVMH:'compra e venda',CV:'compra e venda','DOAÇÃO':'doação',PARTILHAS:'partilha',
+    PERMUTA:'permuta','DIVISÃO':'divisão de coisa comum'};
+  const aquis=AQUIS[val('p-produto').toUpperCase()];
+  if(aquis){
+    const fregDe=r=>r.freg?` da freguesia de ${r.freg}`:'';
+    const concDe=conc?`, concelho de ${conc}`:'';
+    const alvo=temMatriz
+      ?(mats.length===1
+        ?`do prédio inscrito na matriz sob o artigo ${artTxt(mats[0])}${fregDe(mats[0])}${concDe}`
+        :`dos prédios inscritos na matriz sob os artigos ${mats.map(r=>`${artTxt(r)}${fregDe(r)}`).join(', ').replace(/, ([^,]*)$/,' e $1')}${concDe}`)
+      :`do prédio inscrito na matriz sob o artigo […] da freguesia de […]${concDe}`;
+    L.push('No pedido do e-Balcão pode copiar e colar o seguinte texto:');
+    L.push('');
+    L.push('- - - - - - - - - - - - - - - - - - - -');
+    L.push(`Venho solicitar a atualização da titularidade ${alvo}, por mim adquirido${temMatriz&&mats.length>1?'s':''} por ${aquis}, titulada por Documento Particular Autenticado depositado eletronicamente com o código de depósito ${cod}, que pode ser consultado em www.predialonline.pt.`);
+    L.push('');
+    L.push('Com os melhores cumprimentos,');
+    L.push(nome?titulo(nome):'[nome]');
+    L.push('- - - - - - - - - - - - - - - - - - - -');
   }
   L.push('');
   L.push('Recomendamos que guarde esta mensagem, com o código, para consulta futura.');
@@ -3595,19 +3632,49 @@ function preencherProcPago(atual){
   s.disabled=!F.procPago;
   avisoProcPago();
 }
-/* ── MATRIZ ── guarda-se «urbano 1234»; separa-se ao abrir. */
+/* ── MATRIZES ──
+   Uma escritura pode ter vários artigos (prédio misto, vários prédios). Grava-se
+   um artigo por linha na coluna Matriz_Artigo, na forma
+   «urbano 1234 | União das Freguesias de …»; a freguesia é opcional.
+   Lê-se também o formato antigo, de um só artigo, com a freguesia na coluna
+   Matriz_Freguesia. */
+const MAT_TIPOS=['urbano','rústico','misto'];
+function matParse(txt,fregAntiga){
+  const linhas=String(txt||'').split(/\r?\n|;/).map(l=>l.trim()).filter(Boolean);
+  return linhas.map((l,k)=>{
+    const [art,freg]=l.split('|').map(x=>(x||'').trim());
+    const m=art.match(/^(urbano|r[úu]stico|misto)\s+(.+)$/i);
+    return{tipo:m?m[1].toLowerCase().replace('rustico','rústico'):'',artigo:m?m[2]:art,
+           freg:freg||(k===0&&linhas.length===1?(fregAntiga||''):'')};
+  });
+}
+function matLinhaHTML(r){
+  const e=t=>escHtml(t||'');
+  return`<div class="p-mat-row" style="display:flex;gap:.35rem;margin-bottom:.3rem">
+    <select class="form-select p-mat-tipo" style="width:92px;flex-shrink:0"><option value="">—</option>${MAT_TIPOS.map(t=>`<option${t===r.tipo?' selected':''}>${t}</option>`).join('')}</select>
+    <input class="form-input p-mat-art" value="${e(r.artigo)}" placeholder="Artigo n.º" style="width:110px;flex-shrink:0">
+    <input class="form-input p-mat-freg" value="${e(r.freg)}" placeholder="Freguesia da matriz" style="flex:1;min-width:0">
+    <button type="button" class="btn btn-sm" onclick="this.parentElement.remove()" title="Retirar" style="padding:1px 8px;flex-shrink:0">×</button>
+  </div>`;
+}
+function matAdicionar(r){
+  const l=document.getElementById('p-mat-lista');if(!l)return;
+  l.insertAdjacentHTML('beforeend',matLinhaHTML(r||{tipo:'urbano',artigo:'',freg:''}));
+}
+function matLer(){
+  return[...document.querySelectorAll('#p-mat-lista .p-mat-row')].map(row=>({
+    tipo:row.querySelector('.p-mat-tipo').value,artigo:row.querySelector('.p-mat-art').value.trim(),
+    freg:row.querySelector('.p-mat-freg').value.trim()})).filter(r=>r.artigo);
+}
+function matSerializar(rs){
+  return rs.map(r=>[r.tipo,r.artigo].filter(Boolean).join(' ')+(r.freg?` | ${r.freg}`:'')).join('\n');
+}
 function preencherMatriz(art,freg){
-  const m=String(art||'').trim().match(/^(urbano|r[úu]stico|misto)\s+(.+)$/i);
-  const t=document.getElementById('p-matTipo'),a=document.getElementById('p-matArtigo'),f=document.getElementById('p-matFreg');
-  if(t)t.value=m?m[1].toLowerCase().replace('rustico','rústico'):'';
-  if(a)a.value=m?m[2]:String(art||'');
-  if(f)f.value=freg||'';
+  const l=document.getElementById('p-mat-lista');
+  if(l){l.innerHTML='';const rs=matParse(art,freg);(rs.length?rs:[{tipo:'urbano',artigo:'',freg:''}]).forEach(r=>matAdicionar(r));}
   const n=document.getElementById('p-mat-nota');
-  const falta=[!F.matArtigo&&'Matriz_Artigo',!F.matFreg&&'Matriz_Freguesia'].filter(Boolean);
-  if(n){n.style.display=falta.length?'block':'none';
-    n.textContent=!falta.length?'':falta.length>1
-      ?`Faltam as colunas ${falta.join(' e ')} (texto) na lista das escrituras — sem elas a matriz não fica gravada.`
-      :`Falta a coluna ${falta[0]} (texto) na lista das escrituras — sem ela a matriz não fica completa.`;}
+  if(n){n.style.display=F.matArtigo?'none':'block';
+    n.textContent=F.matArtigo?'':'Falta a coluna Matriz_Artigo (várias linhas de texto) na lista das escrituras — sem ela as matrizes não ficam gravadas.';}
 }
 function avisoProcPago(){
   const n=document.getElementById('p-procPago-nota');if(!n)return;
@@ -4079,8 +4146,9 @@ async function guardarPainel(){
   /* Procurador a pagar: grava-se sempre (também vazio), para que tirar o nome
      retire o custo do Pessoal. */
   if(F.procPago) body[F.procPago]=sv('p-procPago')||null;
-  if(F.matArtigo){const t=sv('p-matTipo'),a=sv('p-matArtigo').trim();body[F.matArtigo]=a?[t,a].filter(Boolean).join(' '):null;}
-  if(F.matFreg) body[F.matFreg]=sv('p-matFreg').trim()||null;
+  if(F.matArtigo){const rs=matLer();body[F.matArtigo]=rs.length?matSerializar(rs):null;
+    /* Compatibilidade: a coluna antiga fica com a freguesia do primeiro artigo. */
+    if(F.matFreg)body[F.matFreg]=rs[0]?.freg||null;}
   if((valorProc||0)>0&&!sv('p-procPago'))showToast('Tem Val. Procurador mas não indicou o procurador a pagar — não entra nos custos com pessoal.','');
   // Contactos como JSON
   const contactos=recolherContactos();
