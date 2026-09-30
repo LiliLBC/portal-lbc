@@ -760,6 +760,18 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-label">Concelho</div>
               <input class="form-input" id="p-concelho" placeholder="—">
             </div>
+            <div class="field-group">
+              <div class="field-label">Matriz</div>
+              <div style="display:flex;gap:.35rem">
+                <select class="form-select" id="p-matTipo" style="width:96px;flex-shrink:0"><option value="">—</option><option>urbano</option><option>rústico</option><option>misto</option></select>
+                <input class="form-input" id="p-matArtigo" placeholder="Artigo n.º" style="flex:1">
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Freguesia da matriz</div>
+              <input class="form-input" id="p-matFreg" placeholder="Se vazia, usa a de cima">
+            </div>
+            <div class="field-group field-full" id="p-mat-nota" style="display:none;font-size:10px;color:var(--amber);margin-top:-4px"></div>
 
             <div class="section-divider">Registo</div>
             <div class="field-group field-full">
@@ -2717,6 +2729,8 @@ function textoDeposito(cod,canal){
   const ato=ATOS[val('p-produto').toUpperCase()]||'';
   const predio=val('p-predio'),freg=val('p-freguesia'),conc=val('p-concelho');
   const imovel=[predio,freg&&`freguesia de ${freg}`,conc&&`concelho de ${conc}`].filter(Boolean).join(', ');
+  const matArt=val('p-matArtigo'),matTipo=val('p-matTipo'),matFreg=val('p-matFreg')||freg;
+  const temMatriz=!!matArt;
   const b=t=>wa?`*${t}*`:t;
   const L=[];
   L.push(nome?`Exmo.(a) Senhor(a) ${titulo(nome)},`:'Exmo.(a) Senhor(a),');
@@ -2724,13 +2738,26 @@ function textoDeposito(cod,canal){
   L.push(`Informamos que o Documento Particular Autenticado${ato?` de ${ato}`:''} foi depositado eletronicamente, com o seguinte código de depósito:`);
   L.push('');
   L.push(b(cod));
-  if(imovel){L.push('');L.push(`Imóvel: ${imovel}.`);}
+  /* Com a matriz preenchida, a freguesia e o concelho vão no bloco dela; aqui
+     fica só a identificação do prédio, para não se repetir. */
+  const linhaIm=temMatriz?predio:imovel;
+  if(linhaIm){L.push('');L.push(`Imóvel: ${linhaIm}.`);}
   L.push('');
   L.push(b('Consultar o documento'));
   L.push('Aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action, introduza o código, selecione a caixa «documentos instrutórios» e valide.');
   L.push('');
   L.push(b('Alteração matricial'));
-  L.push(`Para a pedir, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique ${imovel?'os dados do imóvel acima':'a matriz, a freguesia e o concelho do imóvel'} e junte este código.`);
+  if(temMatriz){
+    /* Os clientes não sabem o que é «a matriz»: diz-se o que é e dão-se os
+       dados já prontos a copiar para o pedido. */
+    L.push('A matriz é o registo do imóvel nas Finanças. Os dados do seu imóvel são:');
+    L.push(`— Artigo matricial: ${matTipo?matTipo+' ':''}${matArt}`);
+    if(matFreg)L.push(`— Freguesia: ${matFreg}`);
+    if(conc)L.push(`— Concelho: ${conc}`);
+    L.push('Para pedir a alteração, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique estes dados e junte o código de depósito.');
+  }else{
+    L.push(`Para a pedir, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique ${imovel?'os dados do imóvel acima':'a matriz, a freguesia e o concelho do imóvel'} e junte este código.`);
+  }
   L.push('');
   L.push('Recomendamos que guarde esta mensagem, com o código, para consulta futura.');
   L.push('');
@@ -3329,7 +3356,13 @@ async function resolverColunaFinalidade(){
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const pp=cols.find(x=>['procuradorpago','procuradorapagar','procpago','procuradorpagar'].some(k=>nn(x.name)===k||nn(x.displayName)===k));
     F.procPago=(pp&&pp.name)?pp.name:null;
-  }catch(e){F.finalidade=null;F.procPago=null;}
+    /* Matriz: «Matriz_Artigo» guarda tipo e número («urbano 1234»);
+       «Matriz_Freguesia» a freguesia da matriz, que pode não ser a do registo
+       (uniões de freguesias). */
+    const acha=ks=>{const c=cols.find(x=>ks.some(k=>nn(x.name)===k||nn(x.displayName)===k));return(c&&c.name)?c.name:null;};
+    F.matArtigo=acha(['matrizartigo','artigomatricial','artigomatriz']);
+    F.matFreg=acha(['matrizfreguesia','freguesiamatriz','freguesiadamatriz']);
+  }catch(e){F.finalidade=null;F.procPago=null;F.matArtigo=null;F.matFreg=null;}
   _finalidadeResolvida=true;
 }
 
@@ -3360,6 +3393,8 @@ async function carregarRegistos(){
     const baseFields=[F.titulo,F.numProcesso,F.nome,F.data,F.produto,F.entidade,F.procurador,F.valorProc,F.montCredito,F.estado,F.predio,F.freguesia,F.concelho,F.apRegisto,F.apData,F.apConserv,F.numPedido,F.codDeposito,F.margemLiq,F.valorServico,F.observacoes,F.custoSup,F.dataResolSup,F.foiSuprimento,F.dataFoiSup,F.ligacaoPasta,F.pago,F.codCRP];
     if(F.finalidade)baseFields.push(F.finalidade);
     if(F.procPago)baseFields.push(F.procPago);
+    if(F.matArtigo)baseFields.push(F.matArtigo);
+    if(F.matFreg)baseFields.push(F.matFreg);
     let data;
     try{
       const sf=[...baseFields,F.contactos].join(',');
@@ -3560,6 +3595,20 @@ function preencherProcPago(atual){
   s.disabled=!F.procPago;
   avisoProcPago();
 }
+/* ── MATRIZ ── guarda-se «urbano 1234»; separa-se ao abrir. */
+function preencherMatriz(art,freg){
+  const m=String(art||'').trim().match(/^(urbano|r[úu]stico|misto)\s+(.+)$/i);
+  const t=document.getElementById('p-matTipo'),a=document.getElementById('p-matArtigo'),f=document.getElementById('p-matFreg');
+  if(t)t.value=m?m[1].toLowerCase().replace('rustico','rústico'):'';
+  if(a)a.value=m?m[2]:String(art||'');
+  if(f)f.value=freg||'';
+  const n=document.getElementById('p-mat-nota');
+  const falta=[!F.matArtigo&&'Matriz_Artigo',!F.matFreg&&'Matriz_Freguesia'].filter(Boolean);
+  if(n){n.style.display=falta.length?'block':'none';
+    n.textContent=!falta.length?'':falta.length>1
+      ?`Faltam as colunas ${falta.join(' e ')} (texto) na lista das escrituras — sem elas a matriz não fica gravada.`
+      :`Falta a coluna ${falta[0]} (texto) na lista das escrituras — sem ela a matriz não fica completa.`;}
+}
 function avisoProcPago(){
   const n=document.getElementById('p-procPago-nota');if(!n)return;
   if(!F.procPago){n.innerHTML='<span style="color:var(--amber)">Falta a coluna <b>Procurador_Pago</b> (texto) na lista das escrituras.</span>';return;}
@@ -3692,6 +3741,7 @@ function abrirPainelNovo(){
     const el=document.getElementById(id);if(el)el.value='';
   });
   preencherProcPago('');
+  preencherMatriz('','');
   document.getElementById('p-estado').value='Agendado';
   document.getElementById('p-pago').value='';
   // Contactos
@@ -3742,6 +3792,7 @@ function abrirPainelRegisto(itemId){
   sv('p-montCredito').value=i[F.montCredito]||'';
   sv('p-valorProc').value=i[F.valorProc]||'';
   preencherProcPago(F.procPago?(i[F.procPago]||''):'');
+  preencherMatriz(F.matArtigo?(i[F.matArtigo]||''):'',F.matFreg?(i[F.matFreg]||''):'');
   sv('p-valorServico').value=i[F.valorServico]||'';
   sv('p-margemLiq').value=i[F.margemLiq]||'';
   sv('p-custoSup').value=i[F.custoSup]||'';
@@ -4028,6 +4079,8 @@ async function guardarPainel(){
   /* Procurador a pagar: grava-se sempre (também vazio), para que tirar o nome
      retire o custo do Pessoal. */
   if(F.procPago) body[F.procPago]=sv('p-procPago')||null;
+  if(F.matArtigo){const t=sv('p-matTipo'),a=sv('p-matArtigo').trim();body[F.matArtigo]=a?[t,a].filter(Boolean).join(' '):null;}
+  if(F.matFreg) body[F.matFreg]=sv('p-matFreg').trim()||null;
   if((valorProc||0)>0&&!sv('p-procPago'))showToast('Tem Val. Procurador mas não indicou o procurador a pagar — não entra nos custos com pessoal.','');
   // Contactos como JSON
   const contactos=recolherContactos();
