@@ -1089,7 +1089,7 @@ tbody tr:hover td{background:#FAFAF8}
             </div>
             <div class="field-group" style="margin-bottom:.75rem">
               <div class="field-label">Mensagem</div>
-              <textarea class="form-input" id="dep-email-corpo" rows="9" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.6"></textarea>
+              <textarea class="form-input" id="dep-email-corpo" rows="16" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.6"></textarea>
             </div>
             <div class="modal-actions">
               <button class="btn" onclick="fecharModalCodDeposito()" style="flex:1">Cancelar</button>
@@ -2702,14 +2702,41 @@ function toggleSidebar(){
 }
 // ─── MODAL CÓDIGO DEPÓSITO ────────────────────────────────────────────────────
 function textoDeposito(cod,canal){
-  const c=canal==='wa'?`*${cod}*`:cod;
-  return `Código de Depósito: ${c}.
-
-Para consultar o seu Documento Particular Autenticado aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action e insira o código. Selecione a caixa de documentos instrutório e valide.
-
-Para pedir a alteração matricial, abra um E-Balcão → IMI / AIMI → IMI → Atualização Matriz / VPT, indique a matriz, freguesia e concelho e junte o código.
-
-Qualquer questão, não hesite em contactar-nos.`;
+  /* E-mail do código de depósito. Usa o que está no painel da escritura: nome
+     do cliente para a saudação, o ato, e o imóvel — assim o cliente já recebe a
+     matriz, a freguesia e o concelho que vai precisar de indicar nas Finanças.
+     O texto continua editável no modal antes de enviar. */
+  const wa=canal==='wa';
+  const val=id=>(document.getElementById(id)?.value||'').trim();
+  const titulo=t=>t.toLowerCase().replace(/(^|[\s-])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase())
+    .replace(/ (De|Da|Do|Das|Dos|E) /g,m=>m.toLowerCase());
+  const nome=val('p-nome');
+  const ATOS={CVMH:'compra e venda e mútuo com hipoteca',MH:'mútuo com hipoteca',TOIC:'mútuo com hipoteca',
+    LEASING:'locação financeira',CV:'compra e venda','DOAÇÃO':'doação',PARTILHAS:'partilha',PERMUTA:'permuta',
+    PH:'constituição de propriedade horizontal','DIVISÃO':'divisão de coisa comum'};
+  const ato=ATOS[val('p-produto').toUpperCase()]||'';
+  const predio=val('p-predio'),freg=val('p-freguesia'),conc=val('p-concelho');
+  const imovel=[predio,freg&&`freguesia de ${freg}`,conc&&`concelho de ${conc}`].filter(Boolean).join(', ');
+  const b=t=>wa?`*${t}*`:t;
+  const L=[];
+  L.push(nome?`Exmo.(a) Senhor(a) ${titulo(nome)},`:'Exmo.(a) Senhor(a),');
+  L.push('');
+  L.push(`Informamos que o Documento Particular Autenticado${ato?` de ${ato}`:''} foi depositado eletronicamente, com o seguinte código de depósito:`);
+  L.push('');
+  L.push(b(cod));
+  if(imovel){L.push('');L.push(`Imóvel: ${imovel}.`);}
+  L.push('');
+  L.push(b('Consultar o documento'));
+  L.push('Aceda a https://www.predialonline.pt/PredialOnline/FRM005RPOLDDPA_input.action, introduza o código, selecione a caixa «documentos instrutórios» e valide.');
+  L.push('');
+  L.push(b('Alteração matricial'));
+  L.push(`Para a pedir, no Portal das Finanças abra um pedido no e-Balcão (IMI / AIMI → IMI → Atualização Matriz / VPT), indique ${imovel?'os dados do imóvel acima':'a matriz, a freguesia e o concelho do imóvel'} e junte este código.`);
+  L.push('');
+  L.push('Recomendamos que guarde esta mensagem, com o código, para consulta futura.');
+  L.push('');
+  L.push('Qualquer questão, não hesite em contactar-nos.');
+  if(!wa){L.push('');L.push('Com os melhores cumprimentos,');}
+  return L.join('\n');
 }
 
 function abrirModalCodDeposito(){
