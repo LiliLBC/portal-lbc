@@ -3639,8 +3639,19 @@ function preencherProcPago(atual){
    Lê-se também o formato antigo, de um só artigo, com a freguesia na coluna
    Matriz_Freguesia. */
 const MAT_TIPOS=['urbano','rústico','misto'];
+/* Se a coluna for de texto formatado (rich text), o SharePoint devolve HTML —
+   «<div>urbano 1234&#160;| …</div>» — e era isso que aparecia como caracteres
+   estranhos. Limpa-se antes de ler. */
+function matLimpar(txt){
+  let t=String(txt||'');
+  if(/<[a-z][\s\S]*>|&[#a-z0-9]+;/i.test(t)){
+    t=t.replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li)>/gi,'\n').replace(/<[^>]+>/g,'');
+    const ta=document.createElement('textarea');ta.innerHTML=t;t=ta.value;
+  }
+  return t.replace(/\u00a0/g,' ').replace(/\u200b/g,'');
+}
 function matParse(txt,fregAntiga){
-  const linhas=String(txt||'').split(/\r?\n|;/).map(l=>l.trim()).filter(Boolean);
+  const linhas=matLimpar(txt).split(/\r?\n|;/).map(l=>l.trim()).filter(Boolean);
   return linhas.map((l,k)=>{
     const [art,freg]=l.split('|').map(x=>(x||'').trim());
     const m=art.match(/^(urbano|r[úu]stico|misto)\s+(.+)$/i);
@@ -3666,12 +3677,17 @@ function matLer(){
     tipo:row.querySelector('.p-mat-tipo').value,artigo:row.querySelector('.p-mat-art').value.trim(),
     freg:row.querySelector('.p-mat-freg').value.trim()})).filter(r=>r.artigo);
 }
+/* Separador «; » em vez de quebra de linha: sobrevive a qualquer tipo de
+   coluna (uma linha, várias linhas, texto formatado). A leitura aceita os dois. */
 function matSerializar(rs){
-  return rs.map(r=>[r.tipo,r.artigo].filter(Boolean).join(' ')+(r.freg?` | ${r.freg}`:'')).join('\n');
+  return rs.map(r=>[r.tipo,r.artigo].filter(Boolean).join(' ')+(r.freg?` | ${r.freg}`:'')).join('; ');
 }
 function preencherMatriz(art,freg){
   const l=document.getElementById('p-mat-lista');
-  if(l){l.innerHTML='';const rs=matParse(art,freg);(rs.length?rs:[{tipo:'urbano',artigo:'',freg:''}]).forEach(r=>matAdicionar(r));}
+  if(l){l.innerHTML='';const rs=matParse(art,freg);(rs.length?rs:[{tipo:'urbano',artigo:'',freg:''}]).forEach(r=>matAdicionar(r));
+    /* Só se grava se, ao abrir, a coluna já era conhecida — senão a lista
+       abria vazia e gravar apagava os artigos que estavam guardados. */
+    l.dataset.carregado=F.matArtigo?'1':'';}
   const n=document.getElementById('p-mat-nota');
   if(n){n.style.display=F.matArtigo?'none':'block';
     n.textContent=F.matArtigo?'':'Falta a coluna Matriz_Artigo (várias linhas de texto) na lista das escrituras — sem ela as matrizes não ficam gravadas.';}
@@ -4148,7 +4164,7 @@ async function guardarPainel(){
   /* Só se grava se o campo estava ativo ao abrir — se a coluna ainda não
      tinha sido detetada, o menu abriu vazio e gravar apagaria o nome. */
   if(F.procPago&&!document.getElementById('p-procPago')?.disabled) body[F.procPago]=sv('p-procPago')||null;
-  if(F.matArtigo){const rs=matLer();body[F.matArtigo]=rs.length?matSerializar(rs):null;
+  if(F.matArtigo&&document.getElementById('p-mat-lista')?.dataset.carregado==='1'){const rs=matLer();body[F.matArtigo]=rs.length?matSerializar(rs):null;
     /* Compatibilidade: a coluna antiga fica com a freguesia do primeiro artigo. */
     if(F.matFreg)body[F.matFreg]=rs[0]?.freg||null;}
   if((valorProc||0)>0&&!sv('p-procPago'))showToast('Tem Val. Procurador mas não indicou o procurador a pagar — não entra nos custos com pessoal.','');
