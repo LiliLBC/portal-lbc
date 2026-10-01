@@ -5315,11 +5315,25 @@ async function sincronizarTodosCGD(){
     return !num||!naMarc;
   });
 
+  /* Diagnóstico: eventos CGD futuros que não vão entrar no mapa, e porquê. */
+  const fmtD=x=>{const t=(x||'').substring(0,10);return t?t.split('-').reverse().join('/'):'sem data';};
+  const foraDoMapa=itensCalendario.filter(f=>{
+    const sp=_serialDe((f[A.data]||'').substring(0,10));return sp!==null&&sp>hojeSerial;
+  }).map(f=>{
+    const num=(f[A.numProcesso]||'').trim();
+    const na=f[A.naoAdjudicado];const naMarc=(na===true||na==='true'||na===1||na==='1');
+    const motivo=!num?'sem n.º de processo':!naMarc?'«Não Adjudicado» desmarcado':!(f[A.dataPedido]||'')?'sem data do pedido':'';
+    return motivo?`${fmtD(f[A.data])} · ${f[A.titulo]||'(sem título)'}${num?' · '+num:''} — ${motivo}`:'';
+  }).filter(Boolean);
+
   // 4) Confirmação detalhada
   const partes=[];
   partes.push(`APAGAR ${linhasParaApagar.length} linha(s): Data Pretendida até hoje, inclusive (e/ou já adjudicadas)`);
   partes.push(`Inserir/atualizar ${validos.length} processo(s) futuros com checkbox marcada`);
-  const msg=`A sincronização vai:\n\n• ${partes.join('\n• ')}\n\nNota: linhas com Data Pretendida ≤ hoje são apagadas, mesmo as órfãs.\n\nContinuar?`;
+  const fora=foraDoMapa.length
+    ?`\n\nFICAM DE FORA ${foraDoMapa.length} escritura(s) CGD futura(s):\n${foraDoMapa.slice(0,25).map(x=>'  - '+x).join('\n')}${foraDoMapa.length>25?`\n  … e mais ${foraDoMapa.length-25}`:''}`
+    :'';
+  const msg=`A sincronização vai:\n\n• ${partes.join('\n• ')}${fora}\n\nNota: linhas com Data Pretendida ≤ hoje são apagadas, mesmo as órfãs.\n\nContinuar?`;
   if(!confirm(msg))return;
 
   showToast('A sincronizar mapa CGD...','info');
@@ -5396,10 +5410,36 @@ async function exportarMapaCGD(){
         body:JSON.stringify({fields:[{key:2,ascending:true,sortOn:'Value'}],matchCase:false,hasHeaders:false,orientation:'Rows'})
       });
     }catch(_){/* ignora falha de ordenação */}
-    // Descarregar o ficheiro já ordenado
-    const r=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/content`,{headers:{'Authorization':'Bearer '+graphToken}});
-    if(!r.ok) throw new Error(`HTTP ${r.status} ao descarregar`);
-    const blob=await r.blob();
+    /* Quantos processos tem o mapa, lido diretamente da folha. As alterações
+       feitas pela API do Excel podem demorar a chegar ao ficheiro: o download
+       podia vir com uma versão antiga (só com os primeiros processos). Por isso
+       compara-se o ficheiro descarregado com a folha e repete-se até bater. */
+    const contarFolha=async()=>{
+      const sn=encodeURIComponent('Agendamentos DPA');
+      const rr=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sn}/range(address='B2:B500')`,{headers:{'Authorization':'Bearer '+graphToken}});
+      if(!rr.ok)return null;
+      const j=await rr.json();return(j.values||[]).filter(x=>String(x[0]||'').trim()).length;
+    };
+    const contarFicheiro=async b=>{
+      try{const wb=XLSX.read(await b.arrayBuffer(),{type:'array'});
+        const ws=wb.Sheets['Agendamentos DPA']||wb.Sheets[wb.SheetNames[0]];
+        return XLSX.utils.sheet_to_json(ws,{header:1}).slice(1).filter(x=>String(x[1]||'').trim()).length;
+      }catch(_){return null;}
+    };
+    try{await carregarScriptUma('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');}catch(_){}
+    const naFolha=await contarFolha();
+    let blob=null,noFicheiro=null;
+    for(let t=0;t<6;t++){
+      if(t)await new Promise(res=>setTimeout(res,3000));
+      const r=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/content`,{headers:{'Authorization':'Bearer '+graphToken}});
+      if(!r.ok) throw new Error(`HTTP ${r.status} ao descarregar`);
+      blob=await r.blob();
+      noFicheiro=await contarFicheiro(blob);
+      if(naFolha===null||noFicheiro===null||noFicheiro===naFolha)break;
+      showToast(`O ficheiro ainda não tem os ${naFolha} processos (tem ${noFicheiro}) — a aguardar o Excel…`,'info');
+    }
+    if(naFolha!==null&&noFicheiro!==null&&noFicheiro!==naFolha)
+      showToast(`Atenção: a folha tem ${naFolha} processos mas o ficheiro descarregado só ${noFicheiro}. Tente exportar de novo daqui a um minuto.`,'error');
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
@@ -5407,7 +5447,7 @@ async function exportarMapaCGD(){
     a.download=`agendamentos_dpa_pro_${dataStr}.xlsx`;
     document.body.appendChild(a);a.click();a.remove();
     URL.revokeObjectURL(url);
-    showToast('✓ Mapa CGD ordenado por Data Pretendida e descarregado','success');
+    if(naFolha===null||noFicheiro===naFolha)showToast(`✓ Mapa CGD descarregado${naFolha!==null?` — ${naFolha} processo(s)`:''}`,'success');
   }catch(e){
     showToast('Erro ao exportar mapa: '+e.message,'error');
   }
@@ -5722,7 +5762,9 @@ function abrirModalEvento(dateStr){
   const elNum=document.getElementById('ev-num-processo');if(elNum)elNum.value='';
   const elDP=document.getElementById('ev-data-pedido');if(elDP)elDP.value='';
   const elEst=document.getElementById('ev-estado-cgd');if(elEst)elEst.value='Pendente';
-  const elNA=document.getElementById('ev-nao-adjudicado');if(elNA)elNA.checked=false;
+  /* Ao agendar, o processo ainda não está adjudicado: a caixa vem marcada e
+     desmarca-se quando for adjudicado. Desmarcada tirava-o do mapa. */
+  const elNA=document.getElementById('ev-nao-adjudicado');if(elNA)elNA.checked=true;
   const elEmA=document.getElementById('ev-email-agendamento');if(elEmA)elEmA.checked=false;
   // Reset campos de upload PDF
   const pFile=document.getElementById('ev-pdf-file');if(pFile)pFile.value='';
@@ -5821,6 +5863,8 @@ async function guardarEvento(){
   const estadoCGD=document.getElementById('ev-estado-cgd')?.value||'Pendente';
   const naoAdjudicado=!!document.getElementById('ev-nao-adjudicado')?.checked;
   const emailAgendamento=!!document.getElementById('ev-email-agendamento')?.checked;
+  if(entidade==='CGD'&&numProcesso&&naoAdjudicado&&!dataPedidoStr){
+    showToast('Falta a data do pedido — sem ela o processo não entra no mapa CGD.','error');return;}
   const bodyBase={
     [A.titulo]:titulo,
     [A.data]:dataParaSP,
