@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-01.2</span>
+    <span class="page-sub">piloto · v2026-10-01.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2548,22 +2548,56 @@ function listaEVirgula(arr){
 function textosTratoSuc(){
   const fs=lerFalecidos();
   if(!fs.length)return{legitimidade:'',narrativa:''};
-  /* «legitimidade dos herdeiros de X» — identifica a sucessão sem enumerar
-     os herdeiros um a um: não generaliza, mas também não restringe. */
   /* O campo pede só o nome, mas é fácil escrever «Conservatória de Estremoz»
      e o texto ficar «na Conservatória de Conservatória de Estremoz». */
   const soNome=x=>(x||'').replace(/^\s*(conservat[óo]ria|cart[óo]rio\s+notarial)\s+(de|da|do)\s+/i,'').trim();
-  const legit=fs.map(f=>{
-    const d=dPT(f.habData),n=soNome(f.habNotario)||'…';
-    const quem=`dos herdeiros de ${(f.nome||'…').toUpperCase()}`;
+  const NOME=f=>(f.nome||'…').toUpperCase();
+  const nrm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+  /* Agrupa por chave, mantendo a ordem de quem aparece primeiro. */
+  const agrupar=(lista,chave)=>{const m=new Map();lista.forEach(f=>{const k=chave(f);if(!m.has(k))m.set(k,[]);m.get(k).push(f);});return[...m.values()];};
+  const deTodos=g=>listaEVirgula(g.map(NOME)).replace(/ e (?=[^,]*$)/,' e de ').replace(/, /g,', de ');
+
+  /* ── TERMO · legitimidade ──
+     Uma linha por habilitação: se a mesma habilitação serve vários falecidos
+     (o casal habilitado no mesmo ato), diz-se uma vez só. (01/10/2026) */
+  const chaveHab=f=>[f.habTipo,f.habData,nrm(soNome(f.habNotario)),f.habCodigo,f.habNumero].join('|');
+  const legit=agrupar(fs,chaveHab).map(g=>{
+    const f=g[0],d=dPT(f.habData),n=soNome(f.habNotario)||'…';
+    const quem=`dos herdeiros de ${deTodos(g)}`;
     if(f.habTipo==='codigo')return`— a legitimidade ${quem} pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, através do código ${f.habCodigo||'…'};`;
     if(f.habTipo==='simplificado')return`— a legitimidade ${quem} pelo Procedimento Simplificado de Habilitação de Herdeiros n.º ${f.habNumero||'…'}, lavrado em ${d}, na Conservatória de ${n};`;
     return`— a legitimidade ${quem} pela Habilitação de Herdeiros lavrada em ${d}, no cartório notarial de ${n}, que arquivo;`;
   });
-  const selo=fs.filter(f=>seloExigivel(f.dataObito)&&(f.isNumero||f.isData||f.isSF)).map(f=>
-    `— nos termos e para os efeitos do disposto no artigo 63.º-A do Código do Imposto do Selo, o cumprimento das obrigações declarativas relativas ao Imposto do Selo devido pela transmissão gratuita por óbito de ${(f.nome||'…').toUpperCase()}, mediante a exibição da participação a que se refere o artigo 26.º do mesmo Código, registada sob o n.º ${f.isNumero||'…'}, apresentada no Serviço de Finanças de ${f.isSF||'…'} em ${dPT(f.isData)}, da qual consta a relação dos bens objeto do presente contrato;`);
-  const narr=fs.map(f=>
-    `${(f.nome||'…').toUpperCase()} faleceu em ${dPT(f.dataObito)}, na freguesia de ${f.freguesia||'…'}, sem deixar testamento ou disposição de última vontade, sucedendo-lhe como herdeiros ${listaEVirgula(f.herdeiros.map(x=>(x.nome||'').toUpperCase()).filter(Boolean))}.`);
+
+  /* ── TERMO · Imposto do Selo ── ⚠ uma só linha para todos os óbitos, em
+     vez de repetir a frase inteira por cada um. */
+  const comSelo=fs.filter(f=>seloExigivel(f.dataObito)&&(f.isNumero||f.isData||f.isSF));
+  const selo=[];
+  if(comSelo.length){
+    const sfs=[...new Set(comSelo.map(f=>nrm(f.isSF)))];
+    const umSF=sfs.length===1&&comSelo.length>1;
+    const part=f=>`n.º ${f.isNumero||'…'}, apresentada${umSF?'':` no Serviço de Finanças de ${f.isSF||'…'}`} em ${dPT(f.isData)}`;
+    const pl=comSelo.length>1;
+    const lista=pl?comSelo.slice(0,-1).map(part).join(', ')+', e '+part(comSelo[comSelo.length-1])+', respetivamente':part(comSelo[0]);
+    selo.push(`— nos termos do artigo 63.º-A do Código do Imposto do Selo, o cumprimento das obrigações declarativas relativas à transmissão gratuita por óbito de ${deTodos(comSelo)}, pela exibição ${pl?'das participações':'da participação'} a que se refere o artigo 26.º do mesmo Código, ${lista}${umSF?`, ${comSelo.length===2?'ambas':'todas'} no Serviço de Finanças de ${comSelo[0].isSF||'…'}`:''}, ${pl?'das quais consta':'da qual consta'} a relação dos bens objeto do presente contrato;`);
+  }
+
+  /* ── CONTRATO · narrativa ── ⚠ falecidos com exatamente os mesmos herdeiros
+     dizem-se numa só frase. Se um for herdeiro do outro, os herdeiros já não
+     são os mesmos e cada um fica com a sua frase — a cadeia tem de se ver. */
+  const chaveHerd=f=>f.herdeiros.map(x=>nrm(x.nome)).filter(Boolean).sort().join('|')||('#'+Math.random());
+  const narr=agrupar(fs,chaveHerd).map(g=>{
+    const herd=listaEVirgula(g[0].herdeiros.map(x=>(x.nome||'').toUpperCase()).filter(Boolean));
+    if(g.length===1){const f=g[0];
+      return`${NOME(f)} faleceu em ${dPT(f.dataObito)}, na freguesia de ${f.freguesia||'…'}, sem deixar testamento ou disposição de última vontade, sucedendo-lhe como herdeiros ${herd}.`;}
+    const amb=g.length===2?'ambos':'todos';
+    const umaFreg=new Set(g.map(f=>nrm(f.freguesia))).size===1;
+    const datas=listaEVirgula(g.map(f=>`em ${dPT(f.dataObito)}`));
+    const corpo=umaFreg
+      ?`faleceram, respetivamente, ${datas}, ${amb} na freguesia de ${g[0].freguesia||'…'} e sem deixar testamento ou disposição de última vontade`
+      :`faleceram, respetivamente, ${g.map(f=>`em ${dPT(f.dataObito)}, na freguesia de ${f.freguesia||'…'}`).join(', e ')}, ${amb} sem deixar testamento ou disposição de última vontade`;
+    return`${listaEVirgula(g.map(NOME))} ${corpo}, sucedendo-lhes como herdeiros ${herd}.`;
+  });
   return{legitimidade:[...legit,...selo].join('\n'),narrativa:narr.join('\n')};
 }
 
@@ -2607,10 +2641,61 @@ function onImTipo(){
   }
   atualizar();
 }
+/* «da freguesia de União das Freguesias de …» lia-se mal: com uma união de
+   freguesias diz-se só «da União das Freguesias de …». */
+function daFreg(f){
+  const t=String(f||'').trim();
+  if(!t)return'da freguesia de …';
+  return/^uni[ãa]o\s+das\s+freguesias/i.test(t)?`da ${t}`:`da freguesia de ${t}`;
+}
+/* Entidade a favor de quem está o ónus: a certidão traz «CAIXA GERAL DE
+   DEPOSITOS S.A.» — acentua-se o nome da CGD e põe-se a vírgula antes de S.A.,
+   e escolhe-se o artigo («da CAIXA», «do BANCO»). */
+function entidadeOnus(ent,nif){
+  let e=String(ent||'…').trim().replace(/\s+/g,' ');
+  if(String(nif||'').replace(/\D/g,'')==='500960046'||/CAIXA GERAL DE DEP[OÓ]SITOS/i.test(e))e='CAIXA GERAL DE DEPÓSITOS, S.A.';
+  e=e.replace(/[,.]?\s+(S\.?\s?A\.?|LDA\.?|C\.?R\.?L\.?)$/i,(m,b)=>`, ${b.replace(/\s/g,'')}`);
+  const art=/^(CAIXA|SOCIEDADE|COOPERATIVA|INSTITUI[ÇC][ÃA]O|UNI[ÃA]O|AUTORIDADE|FAZENDA|SEGURAN[ÇC]A|C[ÂA]MARA|JUNTA|REP[ÚU]BLICA)/i.test(e)?'da'
+    :/^(BANCO|INSTITUTO|ESTADO|MUNIC[ÍI]PIO|FUNDO|CONDOM[ÍI]NIO)/i.test(e)?'do':'de';
+  return`${art} ${e}`;
+}
+/* «AP. 2656 de 2017/11/10 e AP. 2657 de 2017/11/10» → «AP. 2656 e AP. 2657,
+   ambas de 2017/11/10». Devolve o texto e se é plural. */
+function apsAgrupadas(ap){
+  const t=String(ap||'').trim();
+  const re=/AP\.?\s*(\d+)\s+de\s+(\d{4}\/\d{2}\/\d{2})/gi;
+  const v=[...t.matchAll(re)].map(m=>({n:m[1],d:m[2]}));
+  if(v.length<2)return{txt:t||'…',pl:false};
+  const datas=[...new Set(v.map(x=>x.d))];
+  const lista=a=>a.length<2?a[0]:a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+  if(datas.length===1)return{txt:`${lista(v.map(x=>'AP. '+x.n))}, ${v.length===2?'ambas':'todas'} de ${datas[0]}`,pl:true};
+  return{txt:lista(v.map(x=>`AP. ${x.n} de ${x.d}`)),pl:true};
+}
+const pluralOnus=d=>String(d||'…').split(/\s+/).map(w=>/^(de|da|do|e|a)$/i.test(w)?w
+  :/l$/i.test(w)?w.replace(/l$/i,'is'):/[aeiouáéíóú]$/i.test(w)?w+'s':w).join(' ');
+/* Fragmento do ónus que se mantém, para entrar na frase única do imóvel:
+   «onerado com hipoteca voluntária registada pela AP. …, a favor da …, NIF …,
+   que se mantém». */
+function onusMantidoFrag(o){
+  const a=apsAgrupadas(o.ap);
+  const desc=a.pl?pluralOnus(o.desc):(o.desc||'…');
+  const fem=/^(hipoteca|penhora|servid|consigna|apreens|reserva)/i.test(String(o.desc||'').trim());
+  const reg=a.pl?(fem?'registadas pelas':'registados pelas'):(fem?'registada pela':'registado pela');
+  return`${desc} ${reg} ${a.txt}, a favor ${entidadeOnus(o.ent,o.nif)}, NIF ${o.nif||'…'}, que se ${a.pl?'mantêm':'mantém'}`;
+}
+/* A frase única do imóvel nos mútuos: registo, ónus que se mantêm e matriz.
+   Antes eram três frases seguidas a começar por «O imóvel ora hipotecado…» e
+   «O prédio encontra-se…» (pedido da Liliana, 01/10/2026). */
+function fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz){
+  const mat=String(txtMatriz||'').replace(/^O prédio encontra-se inscrito\s*/,'').replace(/\.\s*$/,'');
+  const on=mantidos.map(onusMantidoFrag);
+  const onTxt=on.length?`, onerado com ${on.join(', e com ')},`:'';
+  return`O imóvel encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}${onTxt} e inscrito ${mat||'na respetiva matriz predial …'}.`;
+}
 function textoMatrizG(m,multi){
   /* A secção só existe nas matrizes rústicas e vem colada ao artigo:
      «sob o artigo 29, Secção G, da freguesia de …». Faltava. */
-  return`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}${m.seccao?`, Secção ${m.seccao}`:''}, da freguesia de ${m.freg||'…'}, com o valor patrimonial atribuído de ${m.vpt||'…'} Euros${m.ano?`, determinado no ano de ${m.ano}`:''}${multi?`, ao qual foi atribuído o valor de ${m.vimt||'…'} Euros para efeitos de IMT`:''}`;
+  return`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}${m.seccao?`, Secção ${m.seccao}`:''}, ${daFreg(m.freg)}, com o valor patrimonial atribuído de ${m.vpt||'…'} Euros${m.ano?`, determinado no ano de ${m.ano}`:''}${multi?`, ao qual foi atribuído o valor de ${m.vimt||'…'} Euros para efeitos de IMT`:''}`;
 }
 
 /* ═══════════ PRÉDIOS ADICIONAIS ═══════════ */
@@ -3068,8 +3153,9 @@ function comporMH(variante){
   /* Os ónus que se mantêm dizem-se em qualquer dos contratos; só o cancelamento
      é que fica no primeiro. E o texto livre do bloco do imóvel entra também —
      antes era ignorado neste tronco. */
+  const mantidosCGD=onusLista.filter(o=>o.canc==='nao');
   const clBancoHip=[
-    ...onusLista.filter(o=>o.canc==='nao'||toic).map(o=>textoOnusContrato(o,true)),
+    ...onusLista.filter(o=>o.canc!=='nao'&&toic).map(o=>textoOnusContrato(o,true)),
     v('f-onus-txt')
   ].filter(Boolean);
   const bancoOIC=bancoACancelar();
@@ -3261,10 +3347,8 @@ function comporMH(variante){
     `O mútuo, a hipoteca${fiadores.length?' e a fiança':''} aqui exarados, bem como as responsabilidades ${muP?'dos PRIMEIROS':(femM?'da MUTUÁRIA':'do MUTUÁRIO')} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
     `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
-  contrato.push({id:P+'c-hip-registo',T:'',X:
-    `O imóvel ora hipotecado encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}.`});
+  contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidosCGD,txtMatriz)});
   if(clBancoHip.length)contrato.push({id:P+'c-hip-banco',T:'',X:clBancoHip.join('\n')});
-  contrato.push({id:P+'c-hip-matriz',T:'',X:txtMatriz});
   contrato.push({id:P+'c-hip-vigencia',T:'',X:
     `A hipoteca ora constituída vigorará por tempo indeterminado, subsistindo enquanto perdurar qualquer das responsabilidades por ela garantidas, abrangendo o Imóvel, bem como todas as construções, edificações, melhoramentos, benfeitorias e acessões, presentes ou futuras, que já existam ou que nele venham a ser incorporadas.\n`
     +`A CAIXA poderá, a todo o tempo, requerer e promover os respetivos averbamentos junto da Conservatória do Registo Predial competente, considerando-se, para efeitos de exequibilidade, que os recibos comprovativos desses atos constituem parte integrante do presente contrato.\n`
@@ -3429,7 +3513,7 @@ function comporMH_CCAM(variante){
   /* ── ónus ── */
   const onusLista=lerOnus();
   const mantidos=onusLista.filter(o=>o.canc==='nao');
-  const clOnus=[...mantidos.map(o=>textoOnusContrato(o,true)),v('f-onus-txt')].filter(Boolean);
+  const clOnus=[v('f-onus-txt')].filter(Boolean);
 
   /* ── Imposto do Selo · verba 17.1.3, 6/1000 ── */
   const montante=parseValor(v(`${F}-montante`));
@@ -3538,9 +3622,8 @@ function comporMH_CCAM(variante){
     `O mútuo e a hipoteca aqui exarados, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
     `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
-  contrato.push({id:P+'c-hip-registo',T:'',X:`O imóvel ora hipotecado encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}.`});
+  contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz)});
   if(clOnus.length)contrato.push({id:P+'c-hip-onus',T:'',X:clOnus.join('\n')});
-  contrato.push({id:P+'c-hip-matriz',T:'',X:txtMatriz});
   /* Exceção aos ónus só quando há ónus que se mantêm. */
   const excecao=mantidos.length
     ?`, excetuando ${mantidos.length>1?'os ónus acima mencionados':(/hipoteca/i.test(mantidos[0].desc||'')?'a hipoteca acima mencionada':'o ónus acima mencionado')}`:'';
@@ -3787,7 +3870,7 @@ function comporLeasing(){
     :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
   /* A descrição predial escreve-se como nos restantes atos: conservatória por
      extenso e freguesia da descrição, que aqui faltavam. */
-  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com o registo de aquisição a favor da locadora pela inscrição ${v('f-im-apaq')||'…'}, e a da respetiva locação financeira a favor da locatária pela inscrição ${v('f-lea-ap')||'…'}, ${matriz}, adiante designad${isFr?'a':'o'} por Imóvel.`;
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com o registo de aquisição a favor da locadora pela inscrição ${v('f-im-apaq')||'…'}, e a da respetiva locação financeira a favor da locatária pela inscrição ${v('f-lea-ap')||'…'}, ${matriz}, adiante designad${isFr?'a':'o'} por Imóvel.`;
 
   /* ══════════════ TERMO ══════════════ */
   const termo=[];
@@ -4260,7 +4343,7 @@ function textoBem(b){
   const corpo=fr
     ?`a fração autónoma designada pela letra «${b['im-letra']||'…'}»${b['im-apph']?`, constituída pela ${b['im-apph']}`:''}, do prédio composto de ${b['im-desc']||'…'}`
     :`o prédio ${b['im-tipo']==='rustico'?'rústico':b['im-tipo']==='misto'?'misto':'urbano'} composto de ${b['im-desc']||'…'}`;
-  return`${corpo}, sito em ${b['im-sito']||'…'}, descrito na Conservatória do Registo Predial de ${b['im-crp']||'…'} sob o número ${b['im-num']||'…'} da freguesia de ${b['im-freg']||'…'}${b['im-apaq']?`, com aquisição registada pela ${b['im-apaq']}`:''}, e inscrito na respetiva matriz predial ${fr||b['im-tipo']==='urbano'?'urbana':'rústica'} sob o artigo ${b['im-artigo']||'…'}, da ${b['im-fregmat']||'…'}, com o valor patrimonial tributário de € ${b['im-vpt']?fmtValor(parseValor(b['im-vpt'])):'…'}${b['im-vptano']?`, determinado no ano de ${b['im-vptano']}`:''}`;
+  return`${corpo}, sito em ${b['im-sito']||'…'}, descrito na Conservatória do Registo Predial de ${b['im-crp']||'…'} sob o número ${b['im-num']||'…'} ${daFreg(b['im-freg'])}${b['im-apaq']?`, com aquisição registada pela ${b['im-apaq']}`:''}, e inscrito na respetiva matriz predial ${fr||b['im-tipo']==='urbano'?'urbana':'rústica'} sob o artigo ${b['im-artigo']||'…'}, da ${b['im-fregmat']||'…'}, com o valor patrimonial tributário de € ${b['im-vpt']?fmtValor(parseValor(b['im-vpt'])):'…'}${b['im-vptano']?`, determinado no ano de ${b['im-vptano']}`:''}`;
 }
 /* ── DOCUMENTOS DE CADA IMÓVEL ──
    Um bem, uma linha. Antes lia-se o bloco 5, que neste ato deixou de ser usado,
@@ -4308,7 +4391,7 @@ function comporDCC(){
   const matriz=isFr
     ?`inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial tributário de € ${v('f-im-vpt')||'…'}`
     :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
-  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, e ${matriz}, a que os outorgantes atribuem o valor de ${par('f-dcc-valor')}.`;
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, e ${matriz}, a que os outorgantes atribuem o valor de ${par('f-dcc-valor')}.`;
 
   /* ══════════════ TERMO ══════════════ */
   const termo=[];
@@ -4563,7 +4646,7 @@ function comporDoacao(){
   const matriz=isFr
     ?`inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial tributário de ${v('f-im-vpt')||'…'} Euros`
     :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
-  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}${v('f-im-apaq')?`, com aquisição registada a favor d${plD?'os doadores':'o doador'} pela inscrição ${v('f-im-apaq')}`:''}, e ${matriz}, adiante designado por Imóvel.`;
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}${v('f-im-apaq')?`, com aquisição registada a favor d${plD?'os doadores':'o doador'} pela inscrição ${v('f-im-apaq')}`:''}, e ${matriz}, adiante designado por Imóvel.`;
 
   /* ══════════════ TERMO ══════════════ */
   const termo=[];
@@ -4772,17 +4855,17 @@ function compor(){
     ?(matrizes.length>1?matrizes.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(matrizes[matrizes.length-1],true):textoMatrizG(matrizes[0],false))
     :'na respetiva matriz predial …';
   const txtImovel=isFr
-    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da Freguesia de ${v('f-im-freg-mat')||'…'}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
+    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, ${daFreg(v('f-im-freg-mat'))}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
     :(()=>{
       const extras=lerPrediosExtra();
       const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
       const multiVerbas=extras.length>0;
       const multiIMT=p=>p.matrizes.length>1||multiVerbas;
       const txtMats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],true):textoMatrizG(ms[0],multiVerbas)):'na respetiva matriz predial …';
-      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} da freguesia de ${v('f-im-freg-crp')||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
+      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
       if(!multiVerbas)return p1+', adiante designado abreviadamente por Imóvel.';
       const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
-      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} da freguesia de ${p.freg||'…'}, com aquisição registada a favor da parte vendedora pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor da parte vendedora pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
       return[p1,...pxs].map((t,i)=>`${CARD[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
     })();
 
