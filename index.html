@@ -4145,7 +4145,9 @@ async function guardarPainel(){
   const finalidade=svChoice('p-finalidade'); if(finalidade&&F.finalidade) body[F.finalidade]=finalidade;
   /* Procurador a pagar: grava-se sempre (também vazio), para que tirar o nome
      retire o custo do Pessoal. */
-  if(F.procPago) body[F.procPago]=sv('p-procPago')||null;
+  /* Só se grava se o campo estava ativo ao abrir — se a coluna ainda não
+     tinha sido detetada, o menu abriu vazio e gravar apagaria o nome. */
+  if(F.procPago&&!document.getElementById('p-procPago')?.disabled) body[F.procPago]=sv('p-procPago')||null;
   if(F.matArtigo){const rs=matLer();body[F.matArtigo]=rs.length?matSerializar(rs):null;
     /* Compatibilidade: a coluna antiga fica com a freguesia do primeiro artigo. */
     if(F.matFreg)body[F.matFreg]=rs[0]?.freg||null;}
@@ -12606,7 +12608,18 @@ function colPorNome(nome){
   const a=pal(nome);
   return COLS.find(x=>{const b=pal(cNome(x));return b.length&&a.length&&b[0]===a[0]&&b[b.length-1]===a[a.length-1];})||null;
 }
-async function sincronizarEscrituras(){
+/* Pago a sério é pago com data: marcar como pago grava sempre a data de
+   pagamento. «Pago» sem data é o valor por omissão da coluna no SharePoint —
+   foi o que pôs os serviços criados daqui como pagos. */
+const pagoReal=m=>mPago(m)&&(!FLD.mov.dataPag||!!m[FLD.mov.dataPag]);
+/* Uma sincronização de cada vez: o arranque do dashboard e a gravação de uma
+   escritura corriam em paralelo e criavam o mesmo serviço duas vezes. */
+let _syncEmCurso=null;
+function sincronizarEscrituras(){
+  if(!_syncEmCurso)_syncEmCurso=_sincronizarEscrituras().finally(()=>{_syncEmCurso=null;});
+  return _syncEmCurso;
+}
+async function _sincronizarEscrituras(){
   SYNC_AVISOS=[];
   if(typeof resolverColunaFinalidade==='function')await resolverColunaFinalidade();
   if(!listaId||typeof F==='undefined'||!F.procPago)return false;
@@ -12615,9 +12628,22 @@ async function sincronizarEscrituras(){
   const r=await graphAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items?$expand=fields($select=${campos})&$top=500`);
   const escs=r.map(x=>({id:String(x.id),...x.fields}));
   const tipoServ=(OPCOES.mov.tipo||[]).find(t=>/servi/i.test(t))||'Serviço';
-  const ligados={};MOVS.forEach(m=>{const p=String(m[FLD.mov.processo]||'');if(p.startsWith(TAG_ESC))ligados[p.slice(TAG_ESC.length)]=m;});
   const base=`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.mov}/items`;
   let mudou=false;
+  /* Serviços ligados a cada escritura. Se houver mais do que um (duplicados
+     de antes da correção), fica o primeiro e apagam-se os outros não pagos. */
+  const ligados={};
+  for(const m of MOVS){
+    const p=String(m[FLD.mov.processo]||'');if(!p.startsWith(TAG_ESC))continue;
+    const k=p.slice(TAG_ESC.length);
+    if(!ligados[k]){ligados[k]=m;continue;}
+    if(!pagoReal(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+    else if(!pagoReal(ligados[k])){await graphDelete(`${base}/${ligados[k].id}`);ligados[k]=m;mudou=true;}
+  }
+  /* Corrige os que ficaram «pagos» sem data de pagamento. */
+  if(FLD.mov.pago)for(const m of Object.values(ligados)){
+    if(mPago(m)&&!pagoReal(m)){const b={};b[FLD.mov.pago]=false;await graphPatch(`${base}/${m.id}/fields`,b);m[FLD.mov.pago]=false;mudou=true;}
+  }
   for(const e of escs){
     const quem=String(e[F.procPago]||'').trim();
     const valor=num(e[F.valorProc]);
@@ -12626,7 +12652,7 @@ async function sincronizarEscrituras(){
     const ref=`${e[F.titulo]||''} ${e[F.nome]||''}`.trim()||('escritura '+e.id);
     const quer=quem&&valor>0;
     if(!quer){
-      if(m&&!mPago(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+      if(m&&!pagoReal(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
       else if(m)SYNC_AVISOS.push(`${ref}: o serviço já foi pago mas a escritura deixou de ter procurador ou valor.`);
       continue;
     }
@@ -12642,16 +12668,17 @@ async function sincronizarEscrituras(){
     body[FLD.mov.processo]=TAG_ESC+e.id;
     if(!m){
       if(FLD.mov.obs)body[FLD.mov.obs]='Lançado a partir do registo de escrituras.';
+      if(FLD.mov.pago)body[FLD.mov.pago]=false;
       await graphPost(base,{fields:body});mudou=true;continue;
     }
     const igual=mRef(m)===String(c.id)&&Math.abs(mValor(m)-valor)<0.005&&mData(m)===data;
     if(igual)continue;
-    if(mPago(m)){SYNC_AVISOS.push(`${ref}: o serviço já foi pago (${eur(mValor(m))}) mas a escritura foi alterada — confira.`);continue;}
+    if(pagoReal(m)){SYNC_AVISOS.push(`${ref}: o serviço já foi pago (${eur(mValor(m))}) mas a escritura foi alterada — confira.`);continue;}
     await graphPatch(`${base}/${m.id}/fields`,body);mudou=true;
   }
   /* Serviços ligados a escrituras que já não existem. */
   for(const m of Object.values(ligados)){
-    if(!mPago(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+    if(!pagoReal(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
     else SYNC_AVISOS.push(`${m.Title||'Serviço'}: a escritura ligada já não existe, mas o serviço foi pago.`);
   }
   return mudou;
@@ -12746,12 +12773,28 @@ const CARD_DASH=`
             ${MESES.map((m,i)=>`<option value="${i}">${m}</option>`).join('')}
           </select>
         </div>
+        <button class="btn btn-sm" onclick="pesNovoLancDash()">+ Lançamento</button>
         <button class="btn btn-sm" onclick="pesIrParaPessoal()">Ver detalhe</button>
       </div>
     </div>
     <div id="pd-lista"></div>
   </div>`;
 
+/* Avenças do mês ainda por lançar: colaboradores ativos em avença, com valor
+   mensal, sem lançamento de avença nesse mês. É o caso de quem trabalha sem
+   intervir em escrituras. */
+function avencasPorLancarHTML(doPeriodo){
+  if(dMes==='')return'';
+  const falta=COLS.filter(c=>cAtivo(c)&&cTipo(c)==='Avença'&&cValor(c)>0
+    &&!doPeriodo.some(m=>mRef(m)===String(c.id)&&/aven/i.test(mTipo(m)||'')));
+  if(!falta.length)return'';
+  return`<div class="notice notice-info" style="font-size:11px;display:block;margin:0 0 .5rem">
+    <b>Avenças de ${MESES[parseInt(dMes)].toLowerCase()} por lançar:</b>
+    ${falta.map(c=>`<div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">
+      <span style="flex:1">· ${esc(cNome(c))} — ${eur(cValor(c))}</span>
+      <button class="btn btn-sm" onclick="pesLancarAvencaDash('${c.id}')" style="padding:1px 8px;font-size:10px">Lançar</button></div>`).join('')}
+  </div>`;
+}
 function renderDash(){
   const el=$('pd-lista');if(!el)return;
   const sa=$('pd-ano'),sm=$('pd-mes');
@@ -12777,11 +12820,11 @@ function renderDash(){
             p:meus.filter(m=>!mPago(m)).reduce((s,m)=>s+mValor(m),0)};
   }).filter(x=>x.n).sort((a,b)=>b.t-a.t);
   if(!linhas.length){
-    el.innerHTML=avisosSyncHTML()+`<div style="color:var(--text-faint);text-align:center;padding:1rem;font-size:11.5px">Sem custos com pessoal ${dMes===''?'em '+dAno:'em '+MESES[parseInt(dMes)].toLowerCase()+' de '+dAno}.</div>`;
+    el.innerHTML=avisosSyncHTML()+avencasPorLancarHTML(doPeriodo)+`<div style="color:var(--text-faint);text-align:center;padding:1rem;font-size:11.5px">Sem custos com pessoal ${dMes===''?'em '+dAno:'em '+MESES[parseInt(dMes)].toLowerCase()+' de '+dAno}.</div>`;
     return;
   }
   const maior=Math.max(...linhas.map(x=>x.t))||1;
-  el.innerHTML=avisosSyncHTML()+linhas.map(x=>{
+  el.innerHTML=avisosSyncHTML()+avencasPorLancarHTML(doPeriodo)+linhas.map(x=>{
     const cor=cCor(x.c,x.i);
     return `<div style="padding:.45rem 0;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:.5rem;font-size:12px">
@@ -13282,6 +13325,24 @@ window.pesFechar=fecharModal;
 window.pesCopiarFecho=copiarFecho;
 window.pesMarcarTudoPago=marcarTudoPago;
 window.pesDashFiltro=()=>{const a=$('pd-ano'),m=$('pd-mes');if(a)dAno=parseInt(a.value);if(m)dMes=m.value;renderDash();};
+/* Lançamentos a partir do dashboard. O modal do Pessoal passa para o corpo
+   da página, para abrir também fora do ecrã Pessoal. */
+function modalForaDoEcra(){const ov=$('pes-ov');if(ov&&ov.parentElement!==document.body)document.body.appendChild(ov);}
+window.pesNovoLancDash=async()=>{
+  if(!pronto)await init();
+  modalForaDoEcra();
+  const hojeISO=iso(new Date());
+  const data=(dMes!==''&&(parseInt(hojeISO.slice(0,4))!==dAno||parseInt(hojeISO.slice(5,7))-1!==parseInt(dMes)))
+    ?iso(new Date(dAno,parseInt(dMes),1)):hojeISO;
+  modalMov(null,{data});
+};
+window.pesLancarAvencaDash=cid=>{
+  const c=colPorId(cid);if(!c)return;
+  modalForaDoEcra();
+  const m=parseInt(dMes);
+  modalMov(null,{ref:cid,tipo:'Avença',valor:cValor(c),data:iso(new Date(dAno,m,1)),
+    desc:'Avença de '+MESES[m].toLowerCase()+' de '+dAno});
+};
 window.pesIrParaPessoal=()=>{const it=$('nav-fin-pessoal');if(it)it.click();else if(typeof window.nav==='function')window.nav('pessoal');};
 /* O cartão do dashboard precisa dos dados mesmo que a página Pessoal nunca
    tenha sido aberta nesta sessão. */
