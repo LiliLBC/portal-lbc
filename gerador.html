@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-09-30.6</span>
+    <span class="page-sub">piloto · v2026-10-01.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1044,12 +1044,10 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
             <option value="arquivo">Apresentada com assinatura reconhecida — arquivo</option>
             <option value="exibida">Apresentada sem reconhecimento — apenas exibida</option>
             <option value="sem">Não foi apresentada</option>
-            <option value="naoorg">Condomínio não organizado (até 4 frações)</option>
+            <option value="naoorg">Vendedor declara que o condomínio não está constituído</option>
           </select></div>
-        <div class="form-group cond-naoorg" style="display:none"><label class="form-label">N.º de frações do prédio <span>*</span></label>
-          <input type="number" min="2" class="form-input" id="f-cond-fracoes" oninput="onCondominio();atualizar()" placeholder="Ex: 4"></div>
-        <div class="form-group form-full cond-aviso4" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
-          Com mais de quatro condóminos é obrigatória a elaboração de regulamento do condomínio (artigo 1429.º-A do Código Civil). Confirma se a declaração se sustenta neste prédio.</div>
+        <div class="form-group form-full cond-advert" style="display:none;font-size:11px;background:var(--amber-light);border:1px solid #E8D5B5;border-radius:6px;padding:.5rem .6rem;color:#7A5A20">
+          Sem declaração válida (com assinatura reconhecida), o termo leva sempre a advertência de que a parte compradora prescinde da declaração e assume as dívidas que existam.</div>
         <div class="form-group cond-dados" style="display:none"><label class="form-label">Emitida em</label>
           <input type="date" class="form-input" id="f-cond-data" onchange="atualizar()"></div>
         <div class="form-group cond-dados" style="display:none"><label class="form-label">Administrador do condomínio</label>
@@ -7053,11 +7051,7 @@ function onCondominio(){
   const c=v('f-cond-caso');
   document.querySelectorAll('.cond-dados').forEach(e=>e.style.display=(c==='arquivo'||c==='exibida')?'flex':'none');
   document.querySelectorAll('.cond-aviso').forEach(e=>e.style.display=c==='exibida'?'block':'none');
-  document.querySelectorAll('.cond-naoorg').forEach(e=>e.style.display=c==='naoorg'?'flex':'none');
-  /* Num prédio grande a declaração de condomínio não organizado é bem mais
-     difícil de sustentar — avisa, mas não impede. */
-  const nf=parseInt(v('f-cond-fracoes')||'0');
-  document.querySelectorAll('.cond-aviso4').forEach(e=>e.style.display=(c==='naoorg'&&nf>4)?'block':'none');
+  document.querySelectorAll('.cond-advert').forEach(e=>e.style.display=(c&&c!=='arquivo')?'block':'none');
 }
 function textosCondominio(){
   if(v('f-im-tipo')!=='fracao')return{contrato:'',termo:''};
@@ -7073,21 +7067,15 @@ function textosCondominio(){
   if(c==='exibida')
     return{contrato:verificou,
       termo:`FOI EXIBIDA declaração de condomínio, emitida em ${d}${admin}, a qual não se mostra com assinatura reconhecida e, por esse motivo, não reúne os requisitos para ficar arquivada como documento instrutório. ${advert}`};
-  /* ── CONDOMÍNIO NÃO ORGANIZADO ──
-     Não há renúncia à declaração do artigo 1424.º-A, logo o comprador não
-     assume dívidas anteriores e não há nada de que o advertir: o termo fica
-     em branco. Declara-se apenas o estado de facto, com o número de frações,
-     que é o que dá contexto à afirmação. */
-  if(c==='naoorg'){
-    const nf=parseInt(v('f-cond-fracoes')||'0');
-    /* Um prédio destes tem poucas frações; a tabela chega e evita depender
-       do conversor de valores, que é para montantes. */
-    const CARD=['','uma','duas','três','quatro','cinco','seis','sete','oito','nove','dez',
-      'onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove','vinte'];
-    const ext=nf?`${CARD[nf]||nf} (${nf})`:'…';
-    return{contrato:`A parte vendedora declara que o prédio é composto por ${ext} frações autónomas, que o condomínio não se encontra organizado, não tendo sido eleito administrador nem fixadas quotizações, e que não existem dívidas ou encargos relativos à fração ora transmitida.`,
-      termo:''};
-  }
+  /* ── CONDOMÍNIO NÃO CONSTITUÍDO ──
+     Ou há declaração válida (com assinatura reconhecida, arquivada) ou não há.
+     O número de frações não muda nada: sem declaração válida o termo leva
+     sempre a advertência de que a parte compradora prescinde. A declaração do
+     vendedor de que o condomínio não está constituído fica no contrato, mas
+     não dispensa a advertência — foi motivo de suprimento (01/10/2026). */
+  if(c==='naoorg')
+    return{contrato:`A PARTE VENDEDORA declara que o condomínio não se encontra constituído nem organizado, não tendo sido eleito administrador nem fixadas quotizações, e que não existem dívidas ou encargos relativos à fração ora transmitida.`,
+      termo:advert};
   return{contrato:'',termo:advert};
 }
 function onCE(){
@@ -7175,6 +7163,15 @@ function textosTituloUrb(){
     const ident=`${doc.t}${num}, de ${d('f-tu-data')}, emitid${a} pela Câmara Municipal de ${v('f-tu-camara')||'…'}${norma}`;
     let contrato=`${QUEM} ${DECL} que o imóvel dispõe de ${ident}, ${a} qual foi apresentad${a} neste ato.`;
     let termo=`— ${a} ${ident}, que me foi apresentad${a};`;
+    /* Certidão de isenção: volta a redação anterior a 30/09/2026 («a operação
+       urbanística … está isenta de licença e de comunicação prévia»), agora
+       como declaração do transmitente e com a certidão identificada. */
+    if(doc.cert==='isencao'){
+      const norm=v('f-tu-norma')||'…';
+      const cert=`certidão${num}, de ${d('f-tu-data')}, emitida pela Câmara Municipal de ${v('f-tu-camara')||'…'}`;
+      contrato=`${QUEM} ${DECL} que a operação urbanística de que resultou o imóvel está isenta de licença e de comunicação prévia, nos termos ${norm}, conforme ${cert}, a qual foi apresentada neste ato.`;
+      termo=`— a isenção de controlo prévio da operação urbanística, nos termos ${norm}, atestada pela ${cert}, que me foi apresentada;`;
+    }
     /* ⚠ Título que não coincide com as áreas atuais: não cobre o que foi feito
        depois. O transmitente declara a divergência, o adquirente declara que a
        conhece e aceita, e fica a advertência no termo. */
