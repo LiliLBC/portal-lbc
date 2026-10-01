@@ -13008,8 +13008,54 @@ function fecharModal(){$('pes-ov').classList.remove('show');}
 function optColabs(sel){return COLS.filter(c=>cAtivo(c)||String(c.id)===String(sel)).map(c=>`<option value="${c.id}"${String(c.id)===String(sel)?' selected':''}>${esc(cNome(c))}</option>`).join('');}
 
 // ── Movimento (serviço / avença / ajuste)
+/* ── Terceiro / colaborador novo a partir do lançamento ──
+   Quem recebe pode não estar ainda no Pessoal (um procurador externo, uma
+   colaboradora nova). Cria-se ali mesmo, só com o essencial, e volta-se ao
+   lançamento com essa pessoa escolhida e o que já estava escrito. */
+let _movRascunho=null;
+function lerRascunhoMov(){
+  const g=id=>$(id)?$(id).value:'';
+  return{data:g('pm-data'),tipo:g('pm-tipo'),desc:g('pm-desc'),valor:g('pm-valor')};
+}
+window.pesNovoTerceiro=()=>{
+  _movRascunho=lerRascunhoMov();
+  abrirModal(`
+    <div class="modal-box-title">Novo colaborador / terceiro</div>
+    <div class="field-grid">
+      <div class="field-group field-full"><div class="field-label">Nome *</div>
+        <input class="form-input" id="pt-nome" style="width:100%" placeholder="Ex: Isa Guerra"></div>
+      <div class="field-group"><div class="field-label">Modalidade *</div>
+        <select class="form-select" id="pt-tipo" style="width:100%">${opts('col','tipo',TIPOS_COL,'Ao serviço')}</select></div>
+      <div class="field-group"><div class="field-label">Valor mensal (€)</div>
+        <input class="form-input" id="pt-valor" inputmode="decimal" placeholder="Só para avença" style="width:100%"></div>
+      <div class="field-group field-full" style="font-size:10.5px;color:var(--text-faint)">«Ao serviço» para quem recebe por serviço prestado (procuradores externos); «Avença» para quem recebe um valor fixo por mês — passa a aparecer nas avenças por lançar.</div>
+    </div>
+    <div class="modal-actions"><button class="btn" onclick="pesVoltarMov()" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" onclick="pesCriarTerceiro()" style="flex:2">Criar e continuar</button></div>`);
+};
+window.pesVoltarMov=(ref)=>{const r=_movRascunho||{};_movRascunho=null;modalMov(null,{...r,ref:ref||undefined});};
+window.pesCriarTerceiro=async()=>{
+  const nome=($('pt-nome').value||'').trim();
+  if(!nome){toast('Indica o nome','error');return;}
+  if(COLS.some(c=>norm(cNome(c))===norm(nome))){toast('Já existe um colaborador com esse nome','error');return;}
+  const body={Title:nome};
+  body[FLD.col.tipo]=$('pt-tipo').value;
+  body[FLD.col.valor]=num($('pt-valor').value);
+  if(FLD.col.ativo)body[FLD.col.ativo]=true;
+  try{
+    const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID.col}/items`,{fields:body});
+    const novo={id:r.id,...(r.fields||body)};
+    COLS.push(novo);
+    toast('Colaborador criado','success');
+    /* Avença: o lançamento já vem com o valor mensal, se ainda não havia valor. */
+    if(_movRascunho&&cTipo(novo)==='Avença'&&!_movRascunho.valor){
+      _movRascunho.valor=cValor(novo)||'';_movRascunho.tipo='Avença';}
+    pesVoltarMov(novo.id);
+  }catch(e){toast('Erro: '+e.message,'error');}
+};
 function modalMov(id,pre){
-  if(!COLS.filter(cAtivo).length){toast('Adiciona primeiro um colaborador','error');return modalColab();}
+  /* Sem colaboradores, começa-se por criar o primeiro. */
+  if(!COLS.filter(cAtivo).length&&!id){_movRascunho=pre||{};return pesNovoTerceiro();}
   const m=id?MOVS.find(x=>String(x.id)===String(id)):null;
   movId=m?m.id:null;
   const p=pre||{};
@@ -13024,7 +13070,7 @@ function modalMov(id,pre){
     <div class="modal-box-title">${m?'Editar lançamento':'Novo lançamento'}</div>
     <div class="field-grid">
       <div class="field-group field-full"><div class="field-label">Colaborador *</div>
-        <select class="form-select" id="pm-ref" style="width:100%">${optColabs(vRef)}</select></div>
+        <select class="form-select" id="pm-ref" style="width:100%" onchange="if(this.value==='__novo__')pesNovoTerceiro()">${optColabs(vRef)}<option value="__novo__">+ Novo colaborador / terceiro…</option></select></div>
       <div class="field-group"><div class="field-label">Data *</div>
         <input class="form-input" id="pm-data" type="date" value="${vData}" style="width:100%"></div>
       <div class="field-group"><div class="field-label">Tipo *</div>
