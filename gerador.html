@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-01.4</span>
+    <span class="page-sub">piloto · v2026-10-02.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -886,6 +886,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           </select>
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Título único acrescenta a declaração de recebimento por conta dos demais; um por vendedor acrescenta a quitação conjunta.</div>
         </div>
+        <div class="form-group form-full"><label class="form-label">Quitação</label>
+          <select class="form-select" id="f-rem-quitacao" onchange="onRemMeio();atualizar()">
+            <option value="simples">a) A parte vendedora declara receber a totalidade do preço e dá quitação</option>
+            <option value="unica">b) Um vendedor recebe por conta e em representação dos demais</option>
+          </select>
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">A escolha é sua — o gerador não decide pela forma de pagamento nem pelo número de vendedores.</div></div>
         <div class="form-group form-full rem-quem" style="display:none"><label class="form-label">Vendedor que recebe</label>
           <input class="form-input" id="f-rem-quem" oninput="atualizar()" style="text-transform:uppercase" placeholder="Nome do vendedor a quem o título é emitido"></div>
 
@@ -2545,6 +2551,14 @@ function listaEVirgula(arr){
   return arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1];
 }
 /* Devolve {legitimidade, narrativa} — vazios se o trato sucessivo estiver desligado */
+/* A favor de quem está registada a aquisição. Havendo trato sucessivo, o
+   imóvel ainda está em nome dos falecidos — é a eles que o registo se refere,
+   não à parte vendedora (02/10/2026). Com um só falecido usa-se «autor da
+   herança», que serve para homem e mulher (o bloco não pede o género). */
+function favorRegisto(padrao){
+  const n=lerFalecidos().length;
+  return n>1?'dos mencionados falecidos':n===1?'do mencionado autor da herança':padrao;
+}
 function textosTratoSuc(){
   const fs=lerFalecidos();
   if(!fs.length)return{legitimidade:'',narrativa:''};
@@ -4646,7 +4660,7 @@ function comporDoacao(){
   const matriz=isFr
     ?`inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, da ${v('f-im-freg-mat')||'…'}, com o valor patrimonial tributário de ${v('f-im-vpt')||'…'} Euros`
     :`inscrito ${mats.length?textoMatrizG(mats[0],false):'na respetiva matriz predial …'}`;
-  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}${v('f-im-apaq')?`, com aquisição registada a favor d${plD?'os doadores':'o doador'} pela inscrição ${v('f-im-apaq')}`:''}, e ${matriz}, adiante designado por Imóvel.`;
+  const txtImovel=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}${v('f-im-apaq')?`, com aquisição registada a favor ${favorRegisto(plD?'dos doadores':'do doador')} pela inscrição ${v('f-im-apaq')}`:''}, e ${matriz}, adiante designado por Imóvel.`;
 
   /* ══════════════ TERMO ══════════════ */
   const termo=[];
@@ -4855,17 +4869,17 @@ function compor(){
     ?(matrizes.length>1?matrizes.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(matrizes[matrizes.length-1],true):textoMatrizG(matrizes[0],false))
     :'na respetiva matriz predial …';
   const txtImovel=isFr
-    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, ${daFreg(v('f-im-freg-mat'))}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
+    ?`${dtoPrefixo}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${v('f-im-apph')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${v('f-im-apaq')||'…'}, inscrito na respetiva matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, ${daFreg(v('f-im-freg-mat'))}, com o valor patrimonial atribuído de ${v('f-im-vpt')||'…'} Euros, adiante designado abreviadamente por Imóvel.`
     :(()=>{
       const extras=lerPrediosExtra();
       const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
       const multiVerbas=extras.length>0;
       const multiIMT=p=>p.matrizes.length>1||multiVerbas;
       const txtMats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],true):textoMatrizG(ms[0],multiVerbas)):'na respetiva matriz predial …';
-      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor da parte vendedora pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
+      const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
       if(!multiVerbas)return p1+', adiante designado abreviadamente por Imóvel.';
       const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
-      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor da parte vendedora pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
       return[p1,...pxs].map((t,i)=>`${CARD[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
     })();
 
@@ -6429,6 +6443,10 @@ function blocosFinais(i){
       titEsq:i===0&&a.titEsq,
       temX:!!(linha&&linha.trim())
     }));
+    /* Linha inteira de tracejado a separar as identificações do resto do
+       termo — antes do «Os Outorgantes/signatários apresentaram…», que é o
+       primeiro parágrafo depois delas em todos os atos (02/10/2026). */
+    if(/t-apresentaram$/.test(b.id||''))partes.unshift({T:'',X:'',titCentro:false,titEsq:false,temX:false});
     return[...partes,...cadeiaDados(b.id)];
   });
   return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temTermo:termo.length>0,temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||''),
@@ -6772,7 +6790,8 @@ function onRemMeio(){
   const varios=(()=>{try{return generosOutorgantes(lerVendedores()).length>1;}catch(e){return false;}})();
   const podeUnica=varios&&meio!=='numerario';
   mostra('.rem-unica',podeUnica,'block');
-  mostra('.rem-quem',podeUnica&&(v('f-rem-titulos')||'unico')==='unico','flex');
+  /* O vendedor que recebe pelos demais só se pede na quitação b). */
+  mostra('.rem-quem',(v('f-rem-quitacao')||'simples')==='unica','flex');
   /* Sugestão do valor: preço menos o que já foi imputado nas alíneas e no APB. */
   const jaImputado=lerPagamentos().reduce((s,p)=>s+parseValor(p.valor),0)
     +(chk('t-apb')?parseValor(v('f-apb-valor')):0);
@@ -6833,7 +6852,7 @@ function lerRemanescente(){
     mesmas:chk('f-rem-mesmas'),'iban-o':v('f-rem-iban-o'),'iban-d':v('f-rem-iban-d'),
     'cheque-tipo':v('f-rem-cheque-tipo')||'bancário',banco:v('f-rem-banco'),
     'cheque-num':v('f-rem-cheque-num'),ordem:v('f-rem-ordem'),
-    titulos:v('f-rem-titulos')||'unico',quem:v('f-rem-quem')};
+    titulos:v('f-rem-titulos')||'unico',quem:v('f-rem-quem'),quitacao:v('f-rem-quitacao')||'simples'};
 }
 /* ── REMANESCENTE ──
    Parágrafo próprio, a seguir às alíneas. O meio descreve-se como nas alíneas. */
@@ -6856,26 +6875,19 @@ function textoRemanescente(r,letra){
    entregar-lhes a parte proporcional. Redação fixada pela Liliana. */
 function textoViaUnica(r,nVendedores){
   if(!r)return'';
-  /* ── VENDEDOR ÚNICO ──
-     Não há recebimento por conta de outrem, mas a quitação faz falta na mesma:
-     é ela que prova que o preço foi pago e extingue a obrigação. Aplica-se
-     qualquer que seja o meio, incluindo numerário.
-     Estando o preço já pago antes deste ato, não se pode declarar recebê-lo
-     «neste ato» — só dar quitação do que se recebeu. */
-  if(nVendedores<2){
+  /* ── QUITAÇÃO ── escolhida pela Liliana no formulário (02/10/2026), em vez
+     de o gerador a deduzir do meio e do número de vendedores.
+     a) quitação simples; b) um vendedor recebe por conta dos demais. */
+  if((r.quitacao||'simples')==='simples'){
     const ja=(r.quando==='ja');
     return`A parte vendedora declara ${ja?'ter recebido':'receber, neste ato,'} da parte compradora a totalidade do preço convencionado, do qual dá integral e total quitação.`;
   }
-  if(r.meio==='numerario')return'';
-  if((r.titulos||'unico')==='cada')
-    /* Um título por vendedor: não há recebimento por conta de outrem, basta a
-       quitação conjunta. */
-    return`A parte vendedora declara receber, neste ato, da parte compradora a totalidade do preço convencionado, do qual dá integral e total quitação.`;
-  const quem=r.quem||'…';
-  const titulo=r.meio==='cheque'
-    ?`um único cheque emitido à ordem do Primeiro Outorgante ${quem}`
+  const quem=(r.quem||(r.meio==='cheque'?r.ordem:'')||'…').toUpperCase();
+  const titulo=r.meio==='cheque'?`um único cheque emitido à ordem do Primeiro Outorgante ${quem}`
+    :r.meio==='numerario'?`numerário entregue ao Primeiro Outorgante ${quem}`
     :`uma única transferência efetuada para a conta do Primeiro Outorgante ${quem}`;
-  return`Sendo o preço titulado por ${titulo}, declaram todos os vendedores que este recebe a totalidade do preço por conta e em representação dos demais, ficando o mesmo, sob sua exclusiva responsabilidade, obrigado a entregar a cada um dos restantes vendedores a quantia que proporcionalmente lhe couber em função da respetiva quota, dando todos, desde já, integral quitação à parte compradora da totalidade do preço, que consideram para todos os efeitos integralmente pago.`;
+  const sendo=r.meio==='numerario'?`Sendo o preço pago em ${titulo}`:`Sendo o preço titulado por ${titulo}`;
+  return`${sendo}, declaram todos os vendedores que este recebe a totalidade do preço por conta e em representação dos demais, ficando o mesmo, sob sua exclusiva responsabilidade, obrigado a entregar a cada um dos restantes vendedores a quantia que proporcionalmente lhe couber em função da respetiva quota, dando todos, desde já, integral quitação à parte compradora da totalidade do preço, que consideram para todos os efeitos integralmente pago.`;
 }
 /* ── 7.2 · TÍTULO URBANÍSTICO ──
    Artigo 4.º-A, n.º 14, do RJUE (DL 108/2026). A lei prevê três menções; as
@@ -7244,8 +7256,13 @@ function textosTituloUrb(){
     const num=v('f-tu-num')?` n.º ${v('f-tu-num')}`:'';
     const norma=doc.cert==='isencao'&&v('f-tu-norma')?`, nos termos ${v('f-tu-norma')}`:'';
     const ident=`${doc.t}${num}, de ${d('f-tu-data')}, emitid${a} pela Câmara Municipal de ${v('f-tu-camara')||'…'}${norma}`;
-    let contrato=`${QUEM} ${DECL} que o imóvel dispõe de ${ident}, ${a} qual foi apresentad${a} neste ato.`;
-    let termo=`— ${a} ${ident}, que me foi apresentad${a};`;
+    /* Licença, alvará ou resposta à comunicação prévia: o documento é
+       apresentado e entregue. As certidões (isenção, anterioridade) só são
+       apresentadas, porque ficam arquivadas (02/10/2026). */
+    let contrato=doc.cert
+      ?`${QUEM} ${DECL} que o imóvel dispõe de ${ident}, ${a} qual foi apresentad${a} neste ato.`
+      :`${QUEM} ${DECL} que o imóvel dispõe de ${ident}, ${a} qual foi apresentad${a} e entregue ${ato==='doacao'?(lerCompradores().length>1?'aos Segundos Outorgantes':'ao Segundo Outorgante'):'à PARTE COMPRADORA'} neste ato.`;
+    let termo=doc.cert?`— ${a} ${ident}, que arquivo;`:`— ${a} ${ident}, que me foi apresentad${a};`;
     /* Certidão de isenção: volta a redação anterior a 30/09/2026 («a operação
        urbanística … está isenta de licença e de comunicação prévia»), agora
        como declaração do transmitente e com a certidão identificada. */
@@ -7253,7 +7270,7 @@ function textosTituloUrb(){
       const norm=v('f-tu-norma')||'…';
       const cert=`certidão${num}, de ${d('f-tu-data')}, emitida pela Câmara Municipal de ${v('f-tu-camara')||'…'}`;
       contrato=`${QUEM} ${DECL} que a operação urbanística de que resultou o imóvel está isenta de licença e de comunicação prévia, nos termos ${norm}, conforme ${cert}, a qual foi apresentada neste ato.`;
-      termo=`— a isenção de controlo prévio da operação urbanística, nos termos ${norm}, atestada pela ${cert}, que me foi apresentada;`;
+      termo=`— a isenção de controlo prévio da operação urbanística, nos termos ${norm}, atestada pela ${cert}, que arquivo;`;
     }
     /* ⚠ Título que não coincide com as áreas atuais: não cobre o que foi feito
        depois. O transmitente declara a divergência, o adquirente declara que a
