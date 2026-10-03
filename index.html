@@ -5187,7 +5187,8 @@ function onEvEntidadeChange(){
   // Checkbox "Email de Agendamento" só para CGD
   if(wrapEmailAg)wrapEmailAg.style.display=isCGD?'block':'none';
   // Marcas de obrigatório só para CGD
-  if(reqData)reqData.style.display=isCGD?'inline':'none';
+  /* A data do pedido é informativa: não condiciona o mapa nem é obrigatória. */
+  if(reqData)reqData.style.display='none';
   if(reqNum)reqNum.style.display=isCGD?'inline':'none';
   // Aviso de "Sem nº processo" só para CGD sem número preenchido
   const num=(document.getElementById('ev-num-processo')?.value||'').trim();
@@ -5243,168 +5244,134 @@ async function _getDocsDrive(){
 }
 
 // Sincronização em massa: percorre todos os eventos CGD do calendário e re-cria/atualiza linhas no mapa Excel
-async function sincronizarTodosCGD(){
-  showToast('A verificar mapa Excel...','info');
-
-  // 1) Carregar eventos CGD do calendário PRIMEIRO (para sabermos quais têm checkbox marcada/desmarcada)
-  let itensCalendario=[];
-  try{
-    const selComCGD=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado},${A.emailAgendamento}`;
-    let data;
-    try{
-      data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
-    }catch(_){
-      const selAlt=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.entidade},${A.numProcesso},${A.dataPedido},Estado_x005f_CGD,${A.naoAdjudicado},${A.emailAgendamento}`;
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selAlt})&$top=500`);
-    }
-    itensCalendario=(data.value||[]).map(i=>i.fields).filter(f=>(f[A.entidade]||'')==='CGD');
-  }catch(e){
-    showToast('Erro a ler calendário: '+e.message,'error');
-    return;
-  }
-
-  // Helper: verifica se um nº processo tem "Não Adjudicado" marcado no calendário
-  const naMarcadaParaProc=numProc=>{
-    const ev=itensCalendario.find(f=>(f[A.numProcesso]||'').trim()===numProc);
-    if(!ev)return null; // não existe no calendário (órfão)
-    const na=ev[A.naoAdjudicado];
-    return (na===true||na==='true'||na===1||na==='1');
-  };
-
-  // Limpeza por DATA: apagar do mapa tudo o que tenha Data Pretendida <= hoje (inclusive)
-  const _serialDe=v=>{
+/* ═══ MAPA CGD · RECONSTRUÇÃO ═══
+   O mapa deixou de ser mantido linha a linha (inserir aqui, apagar ali), que
+   deixava processos de fora e criava duplicados. Agora é refeito de uma vez a
+   partir do calendário, sempre que se sincroniza e antes de cada exportação:
+     · entram todos os eventos CGD com n.º de processo, «Não Adjudicado»
+       marcado e data pretendida depois de hoje — com ou sem data do pedido
+       (sem ela, a coluna A fica vazia e o evento é assinalado);
+     · cada processo aparece uma vez só;
+     · linhas que não vêm do calendário (escritas à mão) mantêm-se enquanto a
+       data pretendida for futura;
+     · a prioridade e o n.º de intervenções (F e G) que estejam escritos no
+       Excel são mantidos;
+     · ordena por data pretendida. (02/10/2026) */
+async function reconstruirMapaCGD(silencioso){
+  const sheetName=encodeURIComponent('Agendamentos DPA');
+  const ESCRITORIO='Évora II - Liliana Burrica Cardoso';
+  const serialDe=v=>{
     if(v===''||v==null)return null;
-    if(typeof v==='number')return v;                 // já é serial Excel
-    const s=String(v).trim();let y,m,d,mt;
-    if(mt=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)){y=+mt[1];m=+mt[2];d=+mt[3];}
-    else if(mt=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)){d=+mt[1];m=+mt[2];y=+mt[3];}
+    if(typeof v==='number')return v;
+    const t=String(v).trim();let y,m,d,mt;
+    if(mt=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)){y=+mt[1];m=+mt[2];d=+mt[3];}
+    else if(mt=t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)){d=+mt[1];m=+mt[2];y=+mt[3];}
     else return null;
     return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);
   };
-  const _hoje=new Date();
-  const hojeSerial=Math.round((Date.UTC(_hoje.getFullYear(),_hoje.getMonth(),_hoje.getDate())-Date.UTC(1899,11,30))/86400000);
+  const h=new Date();
+  const hoje=Math.round((Date.UTC(h.getFullYear(),h.getMonth(),h.getDate())-Date.UTC(1899,11,30))/86400000);
+  const marcado=v=>v===true||v==='true'||v===1||v==='1';
+  const ref=x=>String(x||'').trim().replace(/\s+/g,'');
+  const fmtD=x=>{const t=(x||'').substring(0,10);return t?t.split('-').reverse().join('/'):'sem data';};
 
-  // 2) Ler o Excel e identificar quais linhas apagar
-  //    Regra: apagar SE existir evento no calendário com mesmo nº processo E checkbox desmarcada
-  //    Órfãos (sem evento no calendário) → DEIXAR EM PAZ
-  let docsDrive,itemId,valoresExcel=[];
-  const linhasParaApagar=[];
+  // 1) Calendário: todos os eventos CGD
+  let cal=[];
+  try{
+    const sel=`${A.titulo},${A.data},${A.entidade},${A.numProcesso},${A.dataPedido},${A.estadoCGD},${A.naoAdjudicado}`;
+    let data;
+    try{data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${sel})&$top=500`);}
+    catch(_){data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields&$top=500`);}
+    cal=(data.value||[]).map(i=>i.fields).filter(f=>String(f[A.entidade]||'').trim().toUpperCase()==='CGD');
+  }catch(e){showToast('Erro a ler o calendário: '+e.message,'error');return null;}
+
+  // 2) O que entra, o que fica de fora (e porquê)
+  const entram=new Map(),fora=[],semDataPedido=[];
+  for(const f of cal){
+    const num=ref(f[A.numProcesso]);
+    const sp=serialDe((f[A.data]||'').substring(0,10));
+    if(sp===null||sp<=hoje)continue;
+    const nome=`${fmtD(f[A.data])} · ${f[A.titulo]||'(sem título)'}${num?' · '+num:''}`;
+    if(!num){fora.push(`${nome} — sem n.º de processo`);continue;}
+    if(!marcado(f[A.naoAdjudicado])){fora.push(`${nome} — «Não Adjudicado» desmarcado (já adjudicado?)`);continue;}
+    if(entram.has(num))continue;   // o mesmo processo em dois eventos entra uma vez
+    if(!f[A.dataPedido])semDataPedido.push(nome);
+    entram.set(num,{ped:serialDe((f[A.dataPedido]||'').substring(0,10)),pret:sp,
+      estado:f[A.estadoCGD]||f['Estado_x005f_CGD']||'Pendente'});
+  }
+  const noCalendario=new Set(cal.map(f=>ref(f[A.numProcesso])).filter(Boolean));
+
+  if(!silencioso){
+    const partes=[`O mapa fica com ${entram.size} processo(s) do calendário.`];
+    if(fora.length)partes.push(`\nFICAM DE FORA:\n${fora.slice(0,30).map(x=>'  - '+x).join('\n')}${fora.length>30?`\n  … e mais ${fora.length-30}`:''}`);
+    if(!confirm(partes.join('\n')+'\n\nContinuar?'))return null;
+  }
+
+  // 3) Excel atual
+  let docsDrive,itemId,atuais=[];
   try{
     docsDrive=await _getDocsDrive();
-    const itemRes=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/CGD/${encodeURIComponent('agendamentos_dpa_pro.xlsx')}`,{headers:{'Authorization':'Bearer '+graphToken}});
-    if(!itemRes.ok) throw new Error(`Excel não encontrado (HTTP ${itemRes.status})`);
-    const item=await itemRes.json();
-    itemId=item.id;
-    const sheetName=encodeURIComponent('Agendamentos DPA');
-    const rangeRes=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A2:G500')`,{headers:{'Authorization':'Bearer '+graphToken}});
-    if(!rangeRes.ok) throw new Error(`Erro ao ler sheet (${rangeRes.status})`);
-    const range=await rangeRes.json();
-    valoresExcel=range.values||[];
-    for(let i=0;i<valoresExcel.length;i++){
-      // 1) Regra por DATA: Data Pretendida (coluna C, índice 2) <= hoje → apagar (todas as linhas, órfãos incluídos)
-      const serialPret=_serialDe(valoresExcel[i][2]);
-      if(serialPret!==null && serialPret<=hojeSerial){ linhasParaApagar.push(i); continue; }
-      const ref=String(valoresExcel[i][1]||'').trim();
-      if(!ref)continue; // linha vazia
-      // 2) Regra da checkbox: existe no calendário com "Não Adjudicado" desmarcada (já adjudicado) → apagar
-      const naStatus=naMarcadaParaProc(ref);
-      if(naStatus===false){ linhasParaApagar.push(i); }
-    }
-  }catch(e){
-    showToast('Erro a ler Excel: '+e.message,'error');
-    return;
+    const ir=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/CGD/${encodeURIComponent('agendamentos_dpa_pro.xlsx')}`,{headers:{'Authorization':'Bearer '+graphToken}});
+    if(!ir.ok)throw new Error(`Excel não encontrado (HTTP ${ir.status})`);
+    itemId=(await ir.json()).id;
+    const rr=await fetch(`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A2:G500')`,{headers:{'Authorization':'Bearer '+graphToken}});
+    if(!rr.ok)throw new Error(`Erro ao ler a folha (${rr.status})`);
+    atuais=((await rr.json()).values||[]);
+  }catch(e){showToast('Erro a ler o mapa: '+e.message,'error');return null;}
+  const ocupadas=atuais.reduce((n,r,i)=>r.some(c=>String(c??'').trim())?i+1:n,0);
+
+  // 4) Linhas novas
+  const extra={};             // F e G já escritos, por processo
+  const manuais=[];           // linhas que não vêm do calendário
+  const vistos=new Set();
+  for(const r of atuais.slice(0,ocupadas)){
+    const k=ref(r[1]);if(!k)continue;
+    const e0=extra[k]||['',''];   /* com duplicados, fica o que estiver preenchido */
+    extra[k]=[String(e0[0]).trim()?e0[0]:(r[5]??''),String(e0[1]).trim()?e0[1]:(r[6]??'')];
+    if(entram.has(k)||noCalendario.has(k)||vistos.has(k))continue;
+    const sp=serialDe(r[2]);
+    if(sp!==null&&sp>hoje){manuais.push([serialDe(r[0])??'',String(r[1]).trim(),sp,r[3]||ESCRITORIO,r[4]||'Pendente',r[5]??'',r[6]??'']);vistos.add(k);}
   }
+  const linhas=[...[...entram.entries()].map(([k,x])=>[x.ped??'',k,x.pret,ESCRITORIO,x.estado,...(extra[k]||['',''])]),...manuais]
+    .sort((a,b)=>(a[2]||0)-(b[2]||0));
 
-  // 3) Identificar válidos para sincronizar (CGD + nº processo + Não Adjudicado marcado)
-  const validos=itensCalendario.filter(f=>{
-    const num=(f[A.numProcesso]||'').trim();
-    const na=f[A.naoAdjudicado];
-    const naMarc=(na===true||na==='true'||na===1||na==='1');
-    const sp=_serialDe((f[A.data]||'').substring(0,10));
-    const futuro=(sp!==null&&sp>hojeSerial); // não reinserir os que já passaram ou são de hoje
-    return num&&naMarc&&futuro;
-  });
-  const ignorados=itensCalendario.filter(f=>{
-    const num=(f[A.numProcesso]||'').trim();
-    const na=f[A.naoAdjudicado];
-    const naMarc=(na===true||na==='true'||na===1||na==='1');
-    return !num||!naMarc;
-  });
-
-  /* Diagnóstico: eventos CGD futuros que não vão entrar no mapa, e porquê. */
-  const fmtD=x=>{const t=(x||'').substring(0,10);return t?t.split('-').reverse().join('/'):'sem data';};
-  const foraDoMapa=itensCalendario.filter(f=>{
-    const sp=_serialDe((f[A.data]||'').substring(0,10));return sp!==null&&sp>hojeSerial;
-  }).map(f=>{
-    const num=(f[A.numProcesso]||'').trim();
-    const na=f[A.naoAdjudicado];const naMarc=(na===true||na==='true'||na===1||na==='1');
-    const motivo=!num?'sem n.º de processo':!naMarc?'«Não Adjudicado» desmarcado':!(f[A.dataPedido]||'')?'sem data do pedido':'';
-    return motivo?`${fmtD(f[A.data])} · ${f[A.titulo]||'(sem título)'}${num?' · '+num:''} — ${motivo}`:'';
-  }).filter(Boolean);
-
-  // 4) Confirmação detalhada
-  const partes=[];
-  partes.push(`APAGAR ${linhasParaApagar.length} linha(s): Data Pretendida até hoje, inclusive (e/ou já adjudicadas)`);
-  partes.push(`Inserir/atualizar ${validos.length} processo(s) futuros com checkbox marcada`);
-  const fora=foraDoMapa.length
-    ?`\n\nFICAM DE FORA ${foraDoMapa.length} escritura(s) CGD futura(s):\n${foraDoMapa.slice(0,25).map(x=>'  - '+x).join('\n')}${foraDoMapa.length>25?`\n  … e mais ${foraDoMapa.length-25}`:''}`
-    :'';
-  const msg=`A sincronização vai:\n\n• ${partes.join('\n• ')}${fora}\n\nNota: linhas com Data Pretendida ≤ hoje são apagadas, mesmo as órfãs.\n\nContinuar?`;
-  if(!confirm(msg))return;
-
-  showToast('A sincronizar mapa CGD...','info');
+  // 5) Escrever tudo de uma vez e limpar o que sobrar por baixo
+  const base=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}`;
+  const H={'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'};
   try{
-    const sheetName=encodeURIComponent('Agendamentos DPA');
-    // 5) APAGAR linhas (de baixo para cima, para não estragar índices)
-    let apagadas=0;
-    linhasParaApagar.sort((a,b)=>b-a); // descendente
-    for(const idx of linhasParaApagar){
-      const rowNum=idx+2;
-      const delUrl=`${GRAPH_BASE}/drives/${docsDrive.id}/items/${itemId}/workbook/worksheets/${sheetName}/range(address='A${rowNum}:G${rowNum}')/delete`;
-      const delRes=await fetch(delUrl,{
-        method:'POST',
-        headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
-        body:JSON.stringify({shift:'Up'})
-      });
-      if(delRes.ok)apagadas++;
-      else console.warn(`Falha ao apagar linha ${rowNum}: ${delRes.status}`);
+    if(linhas.length){
+      const fim=linhas.length+1;
+      const fmt=linhas.map(()=>['dd-mm-yyyy','@','dd-mm-yyyy','General','General','General','General']);
+      const w=await fetch(`${base}/range(address='A2:G${fim}')`,{method:'PATCH',headers:H,body:JSON.stringify({numberFormat:fmt,values:linhas})});
+      if(!w.ok)throw new Error(`Erro ao escrever (${w.status}): ${await w.text()}`);
     }
+    if(ocupadas>linhas.length){
+      const c=await fetch(`${base}/range(address='A${linhas.length+2}:G${ocupadas+1}')/clear`,{method:'POST',headers:H,body:JSON.stringify({applyTo:'Contents'})});
+      if(!c.ok)throw new Error(`Erro ao limpar linhas (${c.status})`);
+    }
+  }catch(e){showToast('Erro a escrever o mapa: '+e.message,'error');return null;}
 
-    if(!validos.length){
-      const tot=apagadas>0?` (${apagadas} linhas apagadas — processos já adjudicados)`:'';
-      showToast(`Nenhum processo CGD com "Não Adjudicado" marcado.${tot}`,'');
-      return;
-    }
-    // 6) Sincronizar válidos um a um (em série)
-    let ok=0,fail=0;
-    for(const f of validos){
-      const numProc=(f[A.numProcesso]||'').trim();
-      const dataPed=(f[A.dataPedido]||'').substring(0,10);
-      const dataPret=(f[A.data]||'').substring(0,10);
-      const est=f[A.estadoCGD]||f['Estado_x005f_CGD']||'Pendente';
-      if(!dataPed){ fail++; console.warn('Processo',numProc,'sem data pedido — ignorado'); continue; }
-      try{
-        await sincronizarMapaCGD({numProcesso:numProc,dataPedido:dataPed,dataPretendida:dataPret,estado:est});
-        ok++;
-      }catch(e){
-        console.warn('Falha a sincronizar processo',numProc,':',e.message);
-        fail++;
-      }
-    }
-    const partesOk=[];
-    if(apagadas>0)partesOk.push(`${apagadas} linha(s) apagadas`);
-    partesOk.push(`${ok} processo(s) inseridos/atualizados`);
-    if(fail>0)partesOk.push(`${fail} falha(s)`);
-    if(ignorados.length>0)partesOk.push(`${ignorados.length} CGD ignorados (sem nº processo ou já adjudicados)`);
-    const tipo=fail===0?'success':'';
-    showToast(`✓ Sincronização concluída: ${partesOk.join(' · ')}`,tipo);
-  }catch(e){
-    showToast('Erro a sincronizar: '+e.message,'error');
-  }
+  return{total:linhas.length,doCalendario:entram.size,manuais:manuais.length,fora,semDataPedido};
+}
+
+async function sincronizarTodosCGD(){
+  showToast('A rever o mapa CGD…','info');
+  const r=await reconstruirMapaCGD(false);
+  if(!r)return;
+  showToast(`✓ Mapa CGD com ${r.total} processo(s)${r.fora.length?` · ${r.fora.length} de fora`:''}`,'success');
 }
 
 // Descarregar o ficheiro Excel agendamentos_dpa_pro.xlsx
 async function exportarMapaCGD(){
+  /* Antes de descarregar, o mapa é refeito a partir do calendário — assim o
+     ficheiro tem sempre todos os processos por adjudicar. */
+  showToast('A atualizar o mapa CGD a partir do calendário…','info');
+  const rec=await reconstruirMapaCGD(true);
+  if(!rec)return;
+  if(rec.fora.length)setTimeout(()=>alert(`Ficaram de fora:\n${rec.fora.slice(0,30).map(x=>'  - '+x).join('\n')}`),1500);
+  return exportarMapaCGDFicheiro();
+}
+async function exportarMapaCGDFicheiro(){
   showToast('A organizar e descarregar mapa CGD...','info');
   try{
     const docsDrive=await _getDocsDrive();
@@ -5879,8 +5846,6 @@ async function guardarEvento(){
   const estadoCGD=document.getElementById('ev-estado-cgd')?.value||'Pendente';
   const naoAdjudicado=!!document.getElementById('ev-nao-adjudicado')?.checked;
   const emailAgendamento=!!document.getElementById('ev-email-agendamento')?.checked;
-  if(entidade==='CGD'&&numProcesso&&naoAdjudicado&&!dataPedidoStr){
-    showToast('Falta a data do pedido — sem ela o processo não entra no mapa CGD.','error');return;}
   const bodyBase={
     [A.titulo]:titulo,
     [A.data]:dataParaSP,
@@ -5915,7 +5880,7 @@ async function guardarEvento(){
   const sincronizarSeCGD=async ()=>{
     if(entidade==='CGD'&&numProcesso){
       try{
-        if(naoAdjudicado&&dataPedidoStr){
+        if(naoAdjudicado){
           // Inserir/atualizar linha
           await sincronizarMapaCGD({
             numProcesso,
