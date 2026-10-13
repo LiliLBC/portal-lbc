@@ -2648,11 +2648,31 @@ async function mostrarApp(){
   setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
 }
 
+/* ── LEITURA DE LISTAS · TODAS AS PÁGINAS ──
+   O Graph devolve os itens de uma lista por páginas e indica a seguinte em
+   @odata.nextLink. Muitas leituras pediam só a primeira página ($top=500 ou
+   menos) e o que estava para além dela — os lançamentos mais recentes, porque
+   a ordem é a de criação — gravava-se mas não aparecia (contabilidade, conta
+   corrente, relatórios, tarefas…). Nas leituras de itens de listas, segue-se
+   agora o nextLink até ao fim e devolve-se tudo junto. (13/10/2026) */
 async function graphGet(url){
   await renovarToken();
   const r=await fetch(url,{headers:{'Authorization':'Bearer '+graphToken,'Accept':'application/json'}});
   if(!r.ok)throw new Error(`Erro ${r.status}: ${await r.text()}`);
-  return r.json();
+  const j=await r.json();
+  if(/\/lists\/[^/]+\/items(\?|$)/.test(url)&&Array.isArray(j.value)){
+    let prox=j['@odata.nextLink'],n=0;
+    while(prox&&n<100){
+      await renovarToken();
+      const rr=await fetch(prox,{headers:{'Authorization':'Bearer '+graphToken,'Accept':'application/json'}});
+      if(!rr.ok)throw new Error(`Erro ${rr.status}: ${await rr.text()}`);
+      const jj=await rr.json();
+      j.value=j.value.concat(jj.value||[]);
+      prox=jj['@odata.nextLink'];n++;
+    }
+    delete j['@odata.nextLink'];
+  }
+  return j;
 }
 async function graphPatch(url,body){
   await renovarToken();
