@@ -15089,12 +15089,19 @@ function mountMapaRegisto(ROOT){
 
   /* ---------- public API ---------- */
   function getData(){ const d=JSON.parse(JSON.stringify(state)); d.atos.forEach(a=>a.sujeitos.forEach(s=>delete s._col)); d.doisPedidos = isJovem() && hasCanc(); d.totalAtos=Number($('#mr-totalAtos').textContent.replace(/\./g,'').replace(',','.')); if(d.doisPedidos) d.totalCanc=Number($('#mr-totalCanc').textContent.replace(/\./g,'').replace(',','.')); return d; }
+  /* O mapa é montado uma vez e reaproveitado para todos os registos. O
+     setData só limpava docs, atos e prédios: o resto — pagamento MB, data de
+     submissão, observações, declarações, valor do Predial, isenção — ficava
+     do mapa anterior sempre que o novo não o trazia (um registo novo não traz
+     nada). Agora parte sempre de um mapa vazio. (14/10/2026) */
+  const VAZIO = () => ({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD',processo:'',cliente:''});
   function setData(d){
-    Object.assign(state, {docs:[],atos:[],predios:[]}, d||{});
+    Object.keys(state).forEach(k=>{ delete state[k]; });
+    Object.assign(state, VAZIO(), d||{});
     state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
     renderAll();
   }
-  function reset(){ setData({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD',processo:'',cliente:''}); }
+  function reset(){ setData({}); }
   window.MapaRegisto = {getData, setData, reset, state, config, pedirPagamento};
 
   /* modo colaboradora */
