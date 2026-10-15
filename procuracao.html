@@ -121,17 +121,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section-card">
     <div class="section-card-header">
       <div class="section-num">1</div>
-      <div><div class="section-name">Tipo de documento</div><div class="section-desc">Define como a procuração vai ser formalizada</div></div>
+      <div><div class="section-name">Data e local</div><div class="section-desc">O gerador faz só o documento da procuração. O termo de autenticação ou o reconhecimento faz-se na plataforma profissional.</div></div>
     </div>
     <div class="form-grid form-grid-2">
-      <div class="form-group">
-        <label class="form-label">Forma</label>
-        <select class="form-select" id="tipo-documento" onchange="onTipoDocumentoChange()">
-          <option value="toic">Procuração com Termo de Autenticação (TOIC)</option>
-          <option value="escritura">Procuração por Escritura Pública</option>
-        </select>
-        <div class="form-hint" id="tipo-documento-hint">Autenticada por Advogado/Solicitador ao abrigo do DL 76-A/2006</div>
-      </div>
       <div class="form-group">
         <label class="form-label">Data de outorga <span>*</span></label>
         <input type="date" class="form-input" id="data-outorga" onchange="updateDataOutorgaExtenso()">
@@ -140,10 +132,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="form-group">
         <label class="form-label">Local de outorga <span>*</span></label>
         <input type="text" class="form-input" id="local-outorga" value="Évora" placeholder="Ex: Évora">
-      </div>
-      <div class="form-group" id="cartorio-group" style="display:none">
-        <label class="form-label">Cartório / Notário</label>
-        <input type="text" class="form-input" id="cartorio-nome" placeholder="Ex: Cartório Notarial de Évora — Dr. X">
       </div>
     </div>
   </div>
@@ -592,13 +580,10 @@ function addMandatariaFixa(chave){
 // ═══════════════════════════════════════════════════════════════════════════════
 // TIPO DE DOCUMENTO / VALIDADE / CLÁUSULAS LIVRES
 // ═══════════════════════════════════════════════════════════════════════════════
-function onTipoDocumentoChange(){
-  const v=document.getElementById('tipo-documento').value;
-  document.getElementById('cartorio-group').style.display=v==='escritura'?'block':'none';
-  document.getElementById('tipo-documento-hint').textContent=v==='toic'
-    ?'Autenticada por Advogado/Solicitador ao abrigo do DL 76-A/2006'
-    :'Outorgada perante Notário em cartório público';
-}
+/* 15/10/2026: retirada a escolha «TOIC / escritura pública» e o cartório.
+   A procuração é só o documento com as declarações do mandante; o termo
+   faz-se na plataforma profissional. Nenhum destes campos ia para o template. */
+function onTipoDocumentoChange(){}
 function onValidadeChange(){
   const v=document.getElementById('tipo-validade').value;
   const numG=document.getElementById('validade-num-group');
@@ -1305,7 +1290,7 @@ function renderPoderesDetalhes(){
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEMPLATE — guardado localmente em IndexedDB (não depende de pasta/SP)
 // ═══════════════════════════════════════════════════════════════════════════════
-let templateBuffer=null; // ArrayBuffer do TEMPL_PROC.docx carregado
+let templateBuffer=null; // ArrayBuffer do TEMPL_PROC_v2.docx carregado (15/10/2026: o v1 não tinha {TXT_Bens})
 
 function openTemplateDB(){
   return new Promise((res,rej)=>{
@@ -1319,7 +1304,7 @@ async function guardarTemplateDB(buf){
   const db=await openTemplateDB();
   return new Promise((res,rej)=>{
     const tx=db.transaction('templates','readwrite');
-    tx.objectStore('templates').put(buf,'TEMPL_PROC');
+    tx.objectStore('templates').put(buf,'TEMPL_PROC_v2');
     tx.oncomplete=()=>res();
     tx.onerror=()=>rej(tx.error);
   });
@@ -1329,7 +1314,7 @@ async function carregarTemplateDB(){
     const db=await openTemplateDB();
     return await new Promise((res,rej)=>{
       const tx=db.transaction('templates','readonly');
-      const req=tx.objectStore('templates').get('TEMPL_PROC');
+      const req=tx.objectStore('templates').get('TEMPL_PROC_v2');
       req.onsuccess=()=>res(req.result||null);
       req.onerror=()=>rej(req.error);
     });
@@ -1366,7 +1351,7 @@ async function carregarTemplateSP(){
     const docsDrive=drives.value.find(d=>d.name==='Documentos Partilhados'||d.name==='Documents'||d.webUrl?.includes('Documentos'));
     if(!docsDrive)return false;
     const templateRes=await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_PROC.docx:/content`,
+      `https://graph.microsoft.com/v1.0/drives/${docsDrive.id}/root:/Templates/TEMPL_PROC_v2.docx:/content`,
       {headers:{Authorization:'Bearer '+token}}
     );
     if(!templateRes.ok)return false;
@@ -1657,9 +1642,9 @@ async function gerarProcuracao(){
     const TXT_Subtitulo=ativas.length===1?ativas[0].titulo
       :ativas.length?`Poderes de ${ativas.slice(0,-1).map(x=>x.titulo.toLowerCase()).join(', ')} e ${ativas[ativas.length-1].titulo.toLowerCase()}`
       :'Poderes de representação';
-    const Forma_Exigida=formaExigida()==='autenticacao'
-      ?'A presente procuração é outorgada por documento particular autenticado, nos termos do n.º 2 do artigo 262.º do Código Civil.'
-      :'As assinaturas apostas na presente procuração são objeto de reconhecimento presencial.';
+    /* 15/10/2026: a procuração não diz como é autenticada — isso fica no termo
+       ou no reconhecimento feito na plataforma. O aviso no ecrã mantém-se. */
+    const Forma_Exigida='';
     const TXT_Validade=textoValidade();
     const TXT_Atuacao=textoAtuacaoMandatarios(mandatarios);
     const TXT_Substabelecimento=textoSubstabelecimento();
@@ -1671,10 +1656,22 @@ async function gerarProcuracao(){
 
     const Local_Outorga=v('local-outorga')||'Évora';
     const Data_Outorga_Extenso=fmtDataExtenso(v('data-outorga'));
-    const Tipo_Documento=v('tipo-documento');
-    const Cartorio=v('cartorio-nome');
+    const Tipo_Documento='';
+    const Cartorio='';
 
+    /* Títulos e assinatura concordam com os intervenientes (15/10/2026):
+       «MANDANTE/MANDANTES», «MANDATÁRIO/MANDATÁRIA/MANDATÁRIOS/MANDATÁRIAS»,
+       «O/A Mandante,» ou «Os/As Mandantes,». O cônjuge que outorga conta. */
+    const pessoas=lista=>lista.flatMap(o=>o.tipo==='empresa'?[{g:'F',soc:true}]:[{g:o.genero}].concat(o.conjuge?[{g:o.conjuge.genero}]:[]));
+    const titulo=(lista,base)=>{const p=pessoas(lista),pl=p.length>1,fe=p.length&&p.every(x=>x.g==='F');
+      if(base==='MANDANTE')return pl?'MANDANTES':'MANDANTE';
+      return pl?(fe?'MANDATÁRIAS':'MANDATÁRIOS'):(fe?'MANDATÁRIA':'MANDATÁRIO');};
+    const pm=pessoas(mandantes),plM=pm.length>1,feM=pm.length&&pm.every(x=>x.g==='F');
+    const Tit_Mandantes=titulo(mandantes,'MANDANTE');
+    const Tit_Mandatarios=titulo(mandatarios,'MANDATARIO');
+    const Rotulo_Assinatura=plM?(feM?'As Mandantes,':'Os Mandantes,'):(feM?'A Mandante,':'O Mandante,');
     const data={
+      Tit_Mandantes,Tit_Mandatarios,Rotulo_Assinatura,
       TXT_Mandantes,TXT_Mandatarios,TXT_Abertura,TXT_Bens,TXT_Poderes,
       TXT_Validade,TXT_Atuacao,TXT_Substabelecimento,TXT_Clausulas_Livres,
       Local_Outorga,Data_Outorga_Extenso,Tipo_Documento,Cartorio,
