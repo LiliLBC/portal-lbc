@@ -90,6 +90,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 </head>
 <body>
 <div class="toast" id="toast"></div>
+<input type="file" id="template-file" accept=".docx" style="display:none">
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -225,6 +226,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <input type="text" class="form-input" id="preco-forma-pagamento" value="cheque bancário ou transferência bancária imediata">
       </div>
     </div>
+    <div class="toggle-row" style="margin-top:.9rem">
+      <div class="toggle-label">Há sinal <span style="font-weight:400;color:var(--text-faint)">— o confinante tem de conhecer as condições de pagamento</span></div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-sinal" onchange="onSinalToggle()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="sinal-block" class="cond-block cond-block-amber" style="display:none">
+      <div class="cond-block-title">Sinal ⚠ redação por validar</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Valor do sinal (€) <span>*</span></label>
+          <input type="number" class="form-input" id="sinal-valor" step="0.01" min="0" placeholder="17500" oninput="atualizarSinalHint()">
+          <div class="form-hint" id="sinal-hint"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Situação <span>*</span></label>
+          <select class="form-select" id="sinal-estado" onchange="onSinalToggle()">
+            <option value="pago">Já entregue</option>
+            <option value="cpcv">A entregar na assinatura do contrato-promessa</option>
+          </select>
+        </div>
+        <div class="form-group" id="sinal-data-group">
+          <label class="form-label">Data da entrega</label>
+          <input type="date" class="form-input" id="sinal-data">
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 6. DESTINATÁRIOS -->
@@ -326,13 +352,14 @@ function numExtenso(n){
     if(n<1000)return ate999(n);
     const mil=Math.floor(n/1000),resto=n%1000;
     let s=mil===1?'mil':ate999(mil)+' mil';
-    if(resto)s+=(resto<100?' e ':' ')+ate999(resto);
+    if(resto)s+=(resto<100||resto%100===0?' e ':' ')+ate999(resto);
     return s;
   }
   if(n<1000000)return ate999999(n);
   const milhoes=Math.floor(n/1000000),resto=n%1000000;
   let s=milhoes===1?'um milhão':ate999(milhoes)+' milhões';
-  if(resto)s+=' '+ate999999(resto);
+  const redondo=resto<1000?(resto<100||resto%100===0):(resto%1000===0&&(resto/1000<100||(resto/1000)%100===0));
+  if(resto)s+=(redondo?' e ':' ')+ate999999(resto);
   return s;
 }
 function valorPorExtenso(n){
@@ -775,19 +802,46 @@ function atualizarPrecoExtenso(){
   const hint=document.getElementById('preco-extenso-hint');
   if(!val){hint.textContent='';return;}
   hint.textContent=valorPorExtenso(val).toUpperCase();
+  atualizarSinalHint();
 }
 
+/* SINAL (15/10/2026) — o projeto de venda comunicado ao preferente tem de
+   incluir as condições de pagamento (arts. 416.º e 1380.º CC): havendo sinal,
+   diz-se o valor, quando foi ou será entregue, e o remanescente a pagar na
+   escritura. ⚠ Redação por validar. */
+function onSinalToggle(){
+  const on=document.getElementById('toggle-sinal').checked;
+  document.getElementById('sinal-block').style.display=on?'block':'none';
+  document.getElementById('sinal-data-group').style.display=v('sinal-estado')==='pago'?'flex':'none';
+}
+function atualizarSinalHint(){
+  const s=parseFloat(v('sinal-valor')||0),hint=document.getElementById('sinal-hint');
+  if(!s){hint.textContent='';return;}
+  const p=parseFloat(v('preco-valor')||0);
+  hint.textContent=valorPorExtenso(s).toUpperCase()+(p>s?` · remanescente ${fmtEur(Math.round((p-s)*100)/100)}`:'');
+}
 function textoPreco(numImoveis){
   const val=parseFloat(v('preco-valor'));
   if(!val||val<=0)throw new Error('Preenche o valor da venda.');
   const forma=v('preco-forma-pagamento')||'cheque bancário ou transferência bancária imediata';
   const ext=valorPorExtenso(val).toUpperCase();
   const valFmt=fmtEur(val);
-  
-  if(numImoveis===1){
-    return `O valor estipulado para a venda é de ${valFmt} (${ext}), com pagamento integral aceite por ${forma}, na outorga do contrato de compra e venda.`;
+  const conjunto=numImoveis===1?'':' A presente venda é efetuada em conjunto, abrangendo a totalidade dos prédios supra identificados, não sendo admitida a sua aquisição parcial ou separada.';
+  const abre=numImoveis===1?'O valor estipulado para a venda':'O valor total estipulado para a venda';
+
+  if(!document.getElementById('toggle-sinal').checked){
+    return `${abre} é de ${valFmt} (${ext}), com pagamento integral aceite por ${forma}, na outorga do contrato de compra e venda.${conjunto}`;
   }
-  return `O valor total estipulado para a venda é de ${valFmt} (${ext}), com pagamento integral aceite por ${forma}, na outorga do contrato de compra e venda. A presente venda é efetuada em conjunto, abrangendo a totalidade dos prédios supra identificados, não sendo admitida a sua aquisição parcial ou separada.`;
+  const sinal=parseFloat(v('sinal-valor'));
+  if(!sinal||sinal<=0)throw new Error('Preenche o valor do sinal (ou desliga a opção "Há sinal").');
+  if(sinal>=val)throw new Error('O sinal não pode ser igual ou superior ao valor da venda.');
+  const resto=Math.round((val-sinal)*100)/100;
+  const sTxt=`${fmtEur(sinal)} (${valorPorExtenso(sinal).toUpperCase()})`;
+  const rTxt=`${fmtEur(resto)} (${valorPorExtenso(resto).toUpperCase()})`;
+  const quando=v('sinal-estado')==='cpcv'
+    ?`a entregar pela parte compradora, a título de sinal e princípio de pagamento, na assinatura do contrato-promessa de compra e venda, a quantia de ${sTxt}`
+    :`tendo já sido entregue pela parte compradora, a título de sinal e princípio de pagamento${v('sinal-data')?`, em ${fmtDataPT(v('sinal-data'))}`:''}, a quantia de ${sTxt}`;
+  return `${abre} é de ${valFmt} (${ext}), ${quando}, e o remanescente, no montante de ${rTxt}, a pagar por ${forma}, na outorga do contrato de compra e venda.${conjunto}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -882,7 +936,10 @@ async function carregarTemplate(){
   }
 }
 
+function selecionarTemplate(){document.getElementById('template-file').click();}
 function atualizarEstadoTemplate(ok){
+  const lbl=document.getElementById('btn-template-label');
+  if(lbl)lbl.textContent=ok?'✓ Template carregado':'⚠ Selecionar template';
   const el=document.getElementById('template-status');
   if(!el)return;
   if(ok){
@@ -998,6 +1055,9 @@ function limparFormulario(){
   document.getElementById('preco-forma-pagamento').value='cheque bancário ou transferência bancária imediata';
   document.getElementById('toggle-outorga').checked=false;
   onOutorgaToggle();
+  document.getElementById('toggle-sinal').checked=false;
+  document.getElementById('sinal-estado').value='pago';
+  onSinalToggle();atualizarSinalHint();
   document.getElementById('agencia').value='lbc';
   onAgenciaChange();
   vendedorIdx=imovelIdx=compradorIdx=destinatarioIdx=0;
