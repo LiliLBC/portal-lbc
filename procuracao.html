@@ -703,7 +703,9 @@ function onImovelTipoChange(id){
   document.getElementById(`${id}-fracao-fields`).style.display=isFracao?'block':'none';
   document.getElementById(`${id}-matriz-urbana-fields`).style.display=(isFracao||isUrbano||isMisto)?'block':'none';
   document.getElementById(`${id}-matriz-rustica-fields`).style.display=(isRustico||isMisto)?'block':'none';
-  document.getElementById(`${id}-lu-group`).style.display=(isFracao||isUrbano)?'flex':'none';
+  /* O grupo «lu» já não existe no formulário; sem esta guarda o erro impedia
+     de acrescentar a primeira matriz automaticamente. (15/10/2026) */
+  const lu=document.getElementById(`${id}-lu-group`);if(lu)lu.style.display=(isFracao||isUrbano)?'flex':'none';
   // Auto-adicionar primeira matriz do tipo certo se estiver vazio
   if((isFracao||isUrbano||isMisto)&&!document.querySelectorAll(`#${id}-mus-container > div`).length)addMatrizImovel(id,'u');
   if((isRustico||isMisto)&&!document.querySelectorAll(`#${id}-mrs-container > div`).length)addMatrizImovel(id,'r');
@@ -780,16 +782,17 @@ function textoImovel(id){
   }else{
     txt=`o prédio urbano${desc?', '+desc:''}`;
   }
-  if(loc)txt+=`, sito em ${loc}`;
+  const fem=tipo==='fracao';
+  if(loc)txt+=`, sit${fem?'a':'o'} em ${loc}`;
   if(conserv||numDesc||freg){
     const partes=[];
     if(numDesc)partes.push(`sob o número ${numDesc}`);
     if(freg)partes.push(`freguesia de ${freg}`);
     txt+=`, descrit${tipo==='fracao'?'a':'o'} na Conservatória do Registo Predial${conserv?' de '+conserv:''}${partes.length?', '+partes.join(', '):''}`;
   }
-  if(mus.length) txt+=`, inscrito na matriz predial urbana sob o ${mus.join(' e o ')}`;
-  if(mrs.length) txt+=`${mus.length?', e':', inscrito'} na matriz predial rústica sob o ${mrs.join(' e o ')}`;
-  if(ap) txt+=`, adquirido pela ${ap}`;
+  if(mus.length) txt+=`, inscrit${fem?'a':'o'} na matriz predial urbana sob o ${mus.join(' e o ')}`;
+  if(mrs.length) txt+=`${mus.length?', e':`, inscrit${fem?'a':'o'}`} na matriz predial rústica sob o ${mrs.join(' e o ')}`;
+  if(ap) txt+=`, adquirid${fem?'a':'o'} pela ${ap}`;
   return txt;
 }
 
@@ -858,14 +861,34 @@ function textoConta(id){
   if(banco)txt+=`, d${banco.match(/^[aeiouáéíóúâêôãõà]/i)?"":"o"} ${banco}`.replace(/d(a|o|e)\s+([AEIOU])/,'d$1 $2').replace(', do ',', do ');
   // Simplificar: "da instituição X" quando banco começa por consoante, senão "do"
   if(banco){
-    // refazer simples
-    txt=`${tipoNome.charAt(0).toUpperCase()+tipoNome.slice(1)}${numero?' n.º '+numero:''}, do ${banco}`;
+    /* Nome do banco por extenso e com o artigo certo: «CGD» → «da Caixa Geral
+       de Depósitos». Nomes não conhecidos ficam como escritos; os que começam
+       por Caixa levam «da». (15/10/2026) */
+    const nb=nomeBanco(banco);
+    txt=`${tipoNome.charAt(0).toUpperCase()+tipoNome.slice(1)}${numero?' n.º '+numero:''}, ${nb.f?'da':'do'} ${nb.nome}`;
   }
   if(agencia)txt+=`, agência de ${agencia}`;
   if(obs)txt+=`, ${obs}`;
   return txt;
 }
 
+function nomeBanco(b){
+  const k=String(b).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const T=[
+    [/^(cgd|caixa geral( de depositos)?)$/,'Caixa Geral de Depósitos',true],
+    [/^(ca|cca|ccam|credito agricola|caixa (de )?credito agricola.*)$/,'Caixa de Crédito Agrícola Mútuo',true],
+    [/^(bcp|millennium( bcp)?|banco comercial portugues)$/,'Banco Comercial Português',false],
+    [/^(bpi|banco bpi)$/,'Banco BPI',false],
+    [/^(santander|santander totta|banco santander( totta)?)$/,'Banco Santander Totta',false],
+    [/^(novo banco|novobanco|nb)$/,'Novo Banco',false],
+    [/^(montepio|caixa economica montepio geral)$/,'Caixa Económica Montepio Geral',true],
+    [/^(bankinter)$/,'Bankinter',false],
+    [/^(activobank|activo bank)$/,'ActivoBank',false],
+    [/^(ctt|banco ctt)$/,'Banco CTT',false]
+  ];
+  for(const [re,nome,f] of T)if(re.test(k))return{nome,f};
+  return{nome:b,f:/^caixa\b/i.test(b)};
+}
 function textoContasLista(){
   if(!document.getElementById('toggle-contas').checked)return[];
   const blocos=document.querySelectorAll('#contas-container .outorgante-block');
