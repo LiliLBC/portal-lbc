@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-02.4</span>
+    <span class="page-sub">piloto · v2026-10-15.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -5229,8 +5229,16 @@ function compor(){
   /* ── IMT JOVEM · declaração dos compradores ──
      Os cinco requisitos do regime. Fundidos os dois da titularidade, que a lei
      trata numa só previsão. A idade é «igual ou inferior», nos termos da lei. */
-  if(v('f-fisc-regime')==='jovens')
-    contrato.push({id:'c-imt-jovem',T:'',X:`Declaram os SEGUNDOS OUTORGANTES que, à presente data, têm idade igual ou inferior a trinta e cinco anos; que, no ano da presente transmissão, não são considerados dependentes para efeitos do artigo 13.º do Código do Imposto sobre o Rendimento das Pessoas Singulares; que não são, nem foram nos três anos anteriores, titulares de direito de propriedade ou de figura parcelar desse direito sobre prédio urbano ou fração autónoma de prédio urbano com fim habitacional; e que a presente aquisição constitui a sua primeira aquisição, a título oneroso, de prédio urbano ou de fração autónoma de prédio urbano destinado exclusivamente a habitação própria e permanente.`});
+  /* Concorda com quem adquire: um comprador, uma compradora, um casal ou
+     duas compradoras. Estava sempre no plural masculino. (15/10/2026) */
+  if(v('f-fisc-regime')==='jovens'){
+    const gj=generosOutorgantes(lerCompradores());
+    const pl=gj.length>1, fe=gj.length>0&&gj.every(g=>g==='F');
+    const Q=pl?(fe?'as SEGUNDAS OUTORGANTES':'os SEGUNDOS OUTORGANTES'):(fe?'a SEGUNDA OUTORGANTE':'o SEGUNDO OUTORGANTE');
+    const k=(sg,pll)=>pl?pll:sg;
+    const dep=pl?(fe?'consideradas dependentes':'considerados dependentes'):(fe?'considerada dependente':'considerado dependente');
+    contrato.push({id:'c-imt-jovem',T:'',X:`${k('Declara','Declaram')} ${Q} que, à presente data, ${k('tem','têm')} idade igual ou inferior a trinta e cinco anos; que, no ano da presente transmissão, não ${k('é','são')} ${dep} para efeitos do artigo 13.º do Código do Imposto sobre o Rendimento das Pessoas Singulares; que não ${k('é','são')}, nem ${k('foi','foram')} nos três anos anteriores, ${k('titular','titulares')} de direito de propriedade ou de figura parcelar desse direito sobre prédio urbano ou fração autónoma de prédio urbano com fim habitacional; e que a presente aquisição constitui a sua primeira aquisição, a título oneroso, de prédio urbano ou de fração autónoma de prédio urbano destinado exclusivamente a habitação própria e permanente.`});
+  }
   contrato.push({id:'c-cl2',T:clausula('Preço'),X:txtPreco});
   /* O DL 118/2013 foi revogado pelo DL 101-D/2020, de 7 de dezembro, com
      efeitos a 1 de julho de 2021. A citação foi corrigida. */

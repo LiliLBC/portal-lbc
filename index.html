@@ -386,6 +386,9 @@ tbody tr:hover td{background:#FAFAF8}
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M5 7h6M5 10h4"/></svg></span>Serviços em curso
     </div>
     <div class="nav-section">Recursos</div>
+    <div class="nav-item" onclick="nav('etiquetas',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 2.5v5l7 7 6-6-7-7h-5z"/><circle cx="5" cy="5" r="1.2"/></svg></span>Etiquetas
+    </div>
     <div class="nav-item" onclick="nav('material',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3a2 2 0 00-2-2H1v11h5a2 2 0 012 2zM8 3a2 2 0 012-2h5v11h-5a2 2 0 00-2 2zM8 3v11"/></svg></span>Material de apoio
     </div>
@@ -900,6 +903,25 @@ tbody tr:hover td{background:#FAFAF8}
       </div>
 
       <!-- MATERIAL DE APOIO -->
+      <!-- ═══════════ ETIQUETAS ═══════════ -->
+      <div class="screen" id="screen-etiquetas">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="font-weight:600;font-size:15px">Etiquetas</div>
+            <div style="font-size:11px;color:var(--text-muted)">Pastas e documentos marcados nas escrituras e nos processos. Para etiquetar, use 🏷 em Pastas / clientes ou em Processos.</div>
+          </div>
+          <button class="btn btn-sm" onclick="etqRecarregar()">↺ Atualizar</button>
+        </div>
+        <input class="form-input" id="etq-q" placeholder="Procurar etiqueta (ex.: apostila) — várias palavras procuram todas" style="width:100%;font-size:13px;margin-bottom:.6rem" oninput="etqPesquisar()">
+        <div id="etq-sel" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem"></div>
+        <div id="etq-nuvem" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.9rem"></div>
+        <div id="etq-aviso"></div>
+        <div id="etq-res"></div>
+      </div>
+      <div class="modal-overlay" id="etq-ov" onclick="if(event.target===this)etqFechar()">
+        <div class="modal-box" id="etq-box" style="max-width:720px;width:96%"></div>
+      </div>
+
       <div class="screen" id="screen-material">
         <div class="section-header">
           <div><div class="section-title">Material de apoio</div><div class="section-sub">Minutas, contratos exemplo, legislação e notas úteis do escritório</div></div>
@@ -2739,7 +2761,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={empresas:'Empresas',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
+const pageTitles={etiquetas:'Etiquetas',empresas:'Empresas',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
 
 function toggleSidebar(){
   const sidebar=document.querySelector('.sidebar');
@@ -2980,6 +3002,7 @@ function nav(id,el){
   if(id==='material')carregarMaterial();
   if(id==='clientes')cliInit();
   if(id==='empresas')empInit();
+  if(id==='etiquetas')etqInit();
   if(id==='servicos')servicosInit();
   if(id==='relatorios')carregarRelatorios();
   if(id==='calendario'){carregarCalendario();carregarDashboard();carregarLembretes();}
@@ -3344,8 +3367,9 @@ function renderPastas(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
   el.innerHTML=lista.map(p=>`
     <div class="pasta-card">
-      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div></div>
+      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div></div>
       <div class="pasta-actions">
+        <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir pasta</a>
@@ -3353,6 +3377,7 @@ function renderPastas(lista){
       </div>
     </div>`).join('');
   el.style.display='block';
+  if(window.etqPintar)etqPintar();
 }
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
 function limparFiltrosPastas(){document.getElementById('search-pastas').value='';filtrarPastas();setTimeout(atualizarBotoesLimparFiltros,50);}
@@ -6205,9 +6230,10 @@ function renderProcessos(lista){
     <div class="pasta-card" id="pc-${p.id}">
       <div style="flex:1;min-width:0">
         <div class="pasta-ref">${escHtml(p.nome||'—')}</div>
-        <div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)}</div>
+        <div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="PROCESSOS|${p.id}"></span></div>
       </div>
       <div class="pasta-actions">
+        <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),'pasta','')" title="Etiquetas">🏷</button>
         <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
         <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
         <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
@@ -6218,6 +6244,7 @@ function renderProcessos(lista){
     <div id="pc-procs-${p.id}" style="display:none;margin:-.5rem 0 .75rem 1.5rem;padding:.5rem .75rem;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 7px 7px 0"></div>`;
   }).join('');
   el.style.display='block';
+  if(window.etqPintar)etqPintar();
 }
 
 // ─── EDITAR / APAGAR PASTA DE CLIENTE ─────────────────────────────────────────
@@ -6298,11 +6325,13 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
         const safeNomeProc=escHtml(s.name||'').replace(/'/g,'&#39;');
         return `<div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .55rem;margin-bottom:.3rem;background:var(--surface);border-radius:6px;border:1px solid var(--border)">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
-          <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)}</a>
+          <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)} <span data-etq="PROCESSOS|${s.id}"></span></a>
+          <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),'pasta',decodeURIComponent('${encodeURIComponent(nomeCliente||'')}'))" title="Etiquetas" style="padding:2px 6px;font-size:10px">🏷</button>
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
         </div>`;
       }).join('');
+    if(window.etqPintar)etqPintar();
   }catch(e){
     wrap.innerHTML=`<div class="notice notice-error" style="margin:0;font-size:11px">Erro: ${escHtml(e.message)}</div>`;
   }
@@ -9703,7 +9732,8 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
 /* ═══════════ EMPRESAS · reservatório de sociedades ═══════════
    Guarda uma vez os dados de cada sociedade (firma, NIPC, sede, capital,
    certidão permanente, forma de obrigar) e das pessoas ligadas (sócios e
-   gerentes), para não os pedir de cada vez. Gera o texto do reconhecimento:
+   gerentes), para não os pedir de cada vez. Gera o texto do reconhecimento
+   ou do termo de autenticação (15/10/2026):
    escolhem-se os intervenientes e a qualidade de cada um, e escreve-se só o
    nome do documento. (13/10/2026)
    SharePoint: lista «Empresas» com Título (firma), NIPC (uma linha de texto) e
@@ -9759,7 +9789,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
           <div style="font-size:11px;color:var(--text-muted);margin-top:1px">NIPC ${esc(e.nipc||'—')}${ger?' · Gerência: '+esc(ger):''}
             ${e.crcCod?` · certidão ${cad?`<b style="color:var(--red)">caducada em ${dPT(e.crcVal)}</b>`:`válida até ${dPT(e.crcVal)}`}`:' · <span style="color:var(--amber)">sem certidão</span>'}</div>
         </div>
-        <button class="btn btn-sm" onclick="empRecon('${e.id}')">Reconhecimento</button>
+        <button class="btn btn-sm" onclick="empRecon('${e.id}')">Gerar texto</button>
         <button class="btn btn-sm" onclick="empEditar('${e.id}')">Editar</button>
       </div>`;}).join('');
   }
@@ -9767,7 +9797,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   window.empFechar=()=>$('emp-ov').classList.remove('show');
 
   /* ── Ficha da empresa ── */
-  const pessoaVazia=()=>({nome:'',genero:'M',ec:'',cc:'',ccVal:'',nif:'',morada:'',socio:true,gerente:true});
+  const pessoaVazia=()=>({nome:'',genero:'M',ec:'',cc:'',ccVal:'',nif:'',natural:'',morada:'',socio:true,gerente:true});
   function formPessoa(p,i){
     const cad=caducado(p.ccVal);
     return`<div class="emp-p" data-i="${i}" style="border:1px solid var(--border);border-radius:8px;padding:.6rem;margin-bottom:.5rem">
@@ -9783,7 +9813,8 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
         <input class="form-input ep-cc" value="${esc(p.cc)}" placeholder="N.º cartão de cidadão">
         <input type="date" class="form-input ep-ccval" value="${esc(p.ccVal)}" title="Validade do CC"${cad?' style="border-color:var(--red)"':''}>
         <input class="form-input ep-ec" value="${esc(p.ec)}" placeholder="Estado civil (ex.: casado)">
-        <input class="form-input ep-morada" value="${esc(p.morada)}" placeholder="Residência" style="grid-column:1/-1">
+        <input class="form-input ep-natural" value="${esc(p.natural)}" placeholder="Natural de (ex.: Abrigada, Alenquer)" style="grid-column:1/3">
+        <input class="form-input ep-morada" value="${esc(p.morada)}" placeholder="Residência" style="grid-column:3/-1">
       </div>
       ${cad?`<div style="font-size:10.5px;color:var(--red);margin-top:3px">Cartão de cidadão caducado.</div>`:''}
     </div>`;
@@ -9817,14 +9848,14 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     const card=inp.closest('.emp-p');if(card.querySelector('.ep-nome').value.trim())return;
     for(const e of EMPS)for(const p of (e.pessoas||[]))if(String(p.nif).replace(/\D/g,'')===nif){
       const s=(c,v)=>{const x=card.querySelector(c);if(x)x.value=v||'';};
-      s('.ep-nome',p.nome);s('.ep-genero',p.genero||'M');s('.ep-cc',p.cc);s('.ep-ccval',p.ccVal);s('.ep-ec',p.ec);s('.ep-morada',p.morada);
+      s('.ep-nome',p.nome);s('.ep-genero',p.genero||'M');s('.ep-cc',p.cc);s('.ep-ccval',p.ccVal);s('.ep-ec',p.ec);s('.ep-natural',p.natural);s('.ep-morada',p.morada);
       showToast(`Dados de ${p.nome} trazidos de ${e.firma}`,'success');return;}
   };
   function lerFicha(){
     const g=id=>($(id)?.value||'').trim();
     const pessoas=[...document.querySelectorAll('#ef-pessoas .emp-p')].map(c=>{const q=s=>c.querySelector(s);
       return{nome:q('.ep-nome').value.trim(),genero:q('.ep-genero').value,ec:q('.ep-ec').value.trim(),cc:q('.ep-cc').value.trim(),
-        ccVal:q('.ep-ccval').value,nif:q('.ep-nif').value.trim(),morada:q('.ep-morada').value.trim(),
+        ccVal:q('.ep-ccval').value,nif:q('.ep-nif').value.trim(),natural:q('.ep-natural').value.trim(),morada:q('.ep-morada').value.trim(),
         socio:q('.ep-socio').checked,gerente:q('.ep-gerente').checked};}).filter(p=>p.nome);
     return{firma:g('ef-firma'),nipc:g('ef-nipc'),sede:g('ef-sede'),capital:g('ef-capital'),crcCod:g('ef-crc'),crcVal:g('ef-crcval'),
       obrigar:g('ef-obrigar'),nGerentes:parseInt(g('ef-ngerentes'))||1,pessoas};
@@ -9853,47 +9884,125 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   window.empNova=()=>{if(!LID){showToast('Falta a lista Empresas no SharePoint','error');return;}ficha({pessoas:[]});};
   window.empEditar=id=>ficha(EMPS.find(e=>e.id===id));
 
-  /* ── Reconhecimento ── */
-  let rec=null;
+  /* ── Gerar texto: reconhecimento ou termo de autenticação ──
+     Matriz única para os atos de sociedades. Escolhem-se as pessoas da ficha
+     (e, se preciso, outras que não são sócias nem gerentes — garantes) e a
+     qualidade de cada uma; o texto sai na redação da LBC e pode ser corrigido
+     antes de copiar.
+     · Reconhecimento: redação validada a 13/10/2026 (GRITAR100MEDO).
+     · Termo: redação do exemplo ANIPURA (agosto 2026); o que não estava no
+       exemplo vai marcado ⚠ no aviso por baixo do texto. */
+  const ORD=['PRIMEIRO','SEGUNDO','TERCEIRO','QUARTO','QUINTO','SEXTO','SÉTIMO','OITAVO','NONO','DÉCIMO'];
+  const ORDm=ORD.map(o=>o.toLowerCase());
+  const UNI=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+  const DEZ=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const CEM=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function ext(n){n=Number(n);if(!n)return'zero';if(n<20)return UNI[n];
+    if(n<100){const d=Math.floor(n/10),u=n%10;return DEZ[d]+(u?' e '+UNI[u]:'');}
+    if(n===100)return'cem';if(n<1000){const c=Math.floor(n/100),r=n%100;return CEM[c]+(r?' e '+ext(r):'');}
+    const m=Math.floor(n/1000),r=n%1000,mil=m===1?'mil':ext(m)+' mil';return r?mil+(r<100||r%100===0?' e ':' ')+ext(r):mil;}
+  const dataExt=iso=>{const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${ext(+m[3])} de ${MESES[+m[2]-1]} de ${ext(+m[1])}`:'';};
+  const listaOrd=idx=>{const o=idx.map(i=>ORDm[i]||(i+1)+'.º');
+    return`${o.length>1?'os':'o'} ${o.length>1?o.slice(0,-1).join(', ')+' e '+o[o.length-1]:o[0]} outorgante${o.length>1?'s':''}`;};
+
+  let gen=null;
+  const selVazia=p=>({on:false,rep:!!p.gerente,fiador:false,avalista:false,outra:''});
   window.empRecon=id=>{
     const e=EMPS.find(x=>x.id===id);if(!e)return;
-    rec={e,doc:'',sel:{}};
-    (e.pessoas||[]).forEach((p,i)=>{rec.sel[i]={on:false,rep:!!p.gerente,fiador:false,avalista:false};});
-    abrir(`<div class="modal-box-title">Reconhecimento · ${esc(e.firma)}</div>
-      <div class="field-label">Documento — «no documento em anexo que é…»</div>
-      <input class="form-input" id="er-doc" placeholder="Ex.: AUTORIZAÇÃO DE PREENCHIMENTO DE LIVRANÇA" style="width:100%;margin-bottom:.7rem" oninput="empReconTexto()">
-      <div class="field-label">Quem assina</div>
-      <div id="er-pessoas">${(e.pessoas||[]).map((p,i)=>`
-        <div style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.35rem 0;border-bottom:1px solid var(--border-soft)">
-          <label style="flex:1;min-width:220px;font-size:12.5px"><input type="checkbox" data-i="${i}" data-k="on" onchange="empReconSel(this)"> <b>${esc(p.nome)}</b>
-            <span style="color:var(--text-faint);font-size:11px">${[p.socio&&'sócio',p.gerente&&'gerente'].filter(Boolean).join(' e ')}</span></label>
-          <label style="font-size:11.5px"><input type="checkbox" data-i="${i}" data-k="rep"${p.gerente?' checked':''} onchange="empReconSel(this)"> em representação</label>
-          <label style="font-size:11.5px"><input type="checkbox" data-i="${i}" data-k="fiador" onchange="empReconSel(this)"> por si como fiador</label>
-          <label style="font-size:11.5px"><input type="checkbox" data-i="${i}" data-k="avalista" onchange="empReconSel(this)"> por si como avalista</label>
-        </div>`).join('')}</div>
-      <div id="er-avisos" style="margin:.6rem 0"></div>
-      <textarea class="form-input" id="er-texto" rows="11" style="width:100%;font-size:12.5px;line-height:1.5"></textarea>
+    gen={e,ato:'ra',pessoas:(e.pessoas||[]).map(p=>({...p})),sel:[]};
+    gen.sel=gen.pessoas.map(selVazia);
+    const ob=String(e.obrigar||'').trim();
+    abrir(`<div class="modal-box-title">Gerar texto · ${esc(e.firma)}</div>
+      <div style="display:flex;gap:.4rem;margin-bottom:.7rem">
+        <button class="btn btn-sm btn-primary" id="eg-ato-ra" onclick="empGenAto('ra')">Reconhecimento de assinaturas</button>
+        <button class="btn btn-sm" id="eg-ato-ta" onclick="empGenAto('ta')">Termo de autenticação</button></div>
+      <div style="display:grid;grid-template-columns:2fr .7fr .8fr 1fr;gap:.45rem;align-items:end">
+        <div><div class="field-label">Documento — «que é…»</div><input class="form-input" id="eg-doc" placeholder="Ex.: CONTRATO DE MÚTUO COM FIANÇA" style="width:100%" oninput="empGenTexto()"></div>
+        <div class="eg-ta"><div class="field-label">Artigo</div><select class="form-select" id="eg-art" onchange="empGenTexto()" style="width:100%"><option value="">auto</option><option>um</option><option>uma</option></select></div>
+        <div class="eg-ta"><div class="field-label">N.º de folhas</div><input class="form-input" id="eg-folhas" style="width:100%" oninput="empGenTexto()"></div>
+        <div class="eg-ta"><div class="field-label">Data do ato</div><input type="date" class="form-input" id="eg-data" value="${hoje()}" style="width:100%" onchange="empGenTexto()"></div>
+      </div>
+      <div class="eg-ta" style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.45rem">
+        <div><div class="field-label">Qualidade dos representantes</div><input class="form-input" id="eg-qualrep" style="width:100%" oninput="this.dataset.mexido=1;empGenTexto()"></div>
+        <div><div class="field-label">Forma de obrigar — «obrigando-se a sociedade, nos termos da respetiva forma de obrigar,…»</div><input class="form-input" id="eg-obrigar" value="${esc(ob&&!/^(pela?|com|mediante)\b/i.test(ob)?'com a '+ob:ob)}" placeholder="Ex.: pela intervenção de um gerente" style="width:100%" oninput="empGenTexto()"></div>
+        <div style="grid-column:1/-1"><div class="field-label">Cargos que exercem (opcional)</div><input class="form-input" id="eg-cargos" placeholder="Ex.: exercendo o primeiro outorgante as funções de Presidente do Conselho de Administração…" style="width:100%" oninput="empGenTexto()"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:.8rem 0 .3rem">
+        <div class="field-label" style="margin:0">Quem assina <span style="font-weight:400;color:var(--text-faint)">— pela ordem da lista</span></div>
+        <button class="btn btn-sm" onclick="empGenOutra()">+ Outra pessoa (garante, não sócio)</button></div>
+      <div id="eg-pessoas"></div>
+      <div id="eg-avisos" style="margin:.6rem 0"></div>
+      <textarea class="form-input" id="eg-texto" rows="13" style="width:100%;font-size:12.5px;line-height:1.5"></textarea>
+      <div id="eg-validar" style="font-size:10.5px;color:var(--amber);margin-top:.3rem"></div>
       <div class="modal-actions"><button class="btn" onclick="empFechar()" style="flex:1">Fechar</button>
         <button class="btn btn-primary" onclick="empReconCopiar()" style="flex:2">Copiar texto</button></div>`);
-    empReconTexto();
+    pintarPessoas();empGenAto('ra');
   };
-  window.empReconSel=cb=>{rec.sel[cb.dataset.i][cb.dataset.k]=cb.checked;
-    if(cb.dataset.k!=='on'&&cb.checked){rec.sel[cb.dataset.i].on=true;document.querySelector(`#er-pessoas input[data-i="${cb.dataset.i}"][data-k="on"]`).checked=true;}
-    empReconTexto();};
-  window.empReconCopiar=()=>{const t=$('er-texto');navigator.clipboard.writeText(t.value).then(()=>showToast('Texto copiado','success')).catch(()=>{t.select();document.execCommand('copy');});};
+  window.empGenAto=a=>{gen.ato=a;
+    $('eg-ato-ra').classList.toggle('btn-primary',a==='ra');$('eg-ato-ta').classList.toggle('btn-primary',a==='ta');
+    document.querySelectorAll('#emp-box .eg-ta').forEach(x=>x.style.display=a==='ta'?'':'none');
+    pintarPessoas();empGenTexto();};
+  function pintarPessoas(){
+    const c=$('eg-pessoas');if(!c)return;
+    c.innerHTML=gen.pessoas.map((p,i)=>{const s=gen.sel[i];const ext=p._extra;
+      return`<div style="padding:.4rem 0;border-bottom:1px solid var(--border-soft,var(--border))">
+        <div style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap">
+          <label style="flex:1;min-width:200px;font-size:12.5px"><input type="checkbox" data-i="${i}" data-k="on"${s.on?' checked':''} onchange="empGenSel(this)"> <b>${esc(p.nome||'(nova pessoa)')}</b>
+            <span style="color:var(--text-faint);font-size:11px">${ext?'não é sócio nem gerente':[p.socio&&'sócio',p.gerente&&'gerente'].filter(Boolean).join(' e ')}</span></label>
+          ${ext?'':`<label style="font-size:11.5px"><input type="checkbox" data-i="${i}" data-k="rep"${s.rep?' checked':''} onchange="empGenSel(this)"> em representação</label>`}
+          <label style="font-size:11.5px"><input type="checkbox" data-i="${i}" data-k="fiador"${s.fiador?' checked':''} onchange="empGenSel(this)"> por si como fiador</label>
+          <label style="font-size:11.5px"><input type="checkbox" data-i="${i}" data-k="avalista"${s.avalista?' checked':''} onchange="empGenSel(this)"> por si como avalista</label>
+          <input class="form-input" data-i="${i}" data-k="outra" value="${esc(s.outra)}" placeholder="outra qualidade (por si)" style="width:170px;font-size:11.5px;padding:3px 6px" oninput="empGenSel(this)">
+          ${ext?`<button class="btn btn-sm" title="Retirar" onclick="empGenTirar(${i})">×</button>`:''}
+        </div>
+        ${ext?`<div style="display:grid;grid-template-columns:1.6fr .5fr 1fr 1fr;gap:.35rem;margin-top:.35rem">
+          ${campo(i,'nome','Nome completo')}<select class="form-select" data-i="${i}" data-c="genero" onchange="empGenCampo(this)"><option value="M"${p.genero!=='F'?' selected':''}>M</option><option value="F"${p.genero==='F'?' selected':''}>F</option></select>
+          ${campo(i,'nif','NIF','onchange="empGenNif(this)"')}${campo(i,'ec','Estado civil')}
+          ${campo(i,'cc','N.º cartão de cidadão')}<input type="date" class="form-input" data-i="${i}" data-c="ccVal" value="${esc(p.ccVal)}" title="Validade do CC" onchange="empGenCampo(this)">
+          ${campo(i,'natural','Natural de')}${campo(i,'morada','Residência')}</div>`:''}
+        ${gen.ato==='ta'&&!ext&&!p.natural?`<div style="margin-top:.3rem;display:flex;gap:.4rem;align-items:center;font-size:11px;color:var(--text-muted)">Natural de ${campo(i,'natural','(falta na ficha)','style="width:220px;font-size:11.5px;padding:3px 6px"')}</div>`:''}
+      </div>`;}).join('')||'<div style="font-size:11.5px;color:var(--text-faint)">A ficha não tem pessoas.</div>';
+  }
+  const campo=(i,c,ph,extra)=>`<input class="form-input" data-i="${i}" data-c="${c}" value="${esc(gen.pessoas[i][c]||'')}" placeholder="${ph}" ${extra&&extra.startsWith('on')?extra:''} ${extra&&extra.startsWith('style')?extra:''} oninput="empGenCampo(this)">`;
+  window.empGenCampo=el=>{gen.pessoas[el.dataset.i][el.dataset.c]=el.value.trim();
+    if(el.dataset.c==='nome'){const b=el.closest('div[style*="border-bottom"]')?.querySelector('b');if(b)b.textContent=el.value||'(nova pessoa)';}
+    empGenTexto();};
+  window.empGenNif=el=>{const nif=el.value.replace(/\D/g,'');if(nif.length<9)return;const i=+el.dataset.i;
+    for(const e of EMPS)for(const p of (e.pessoas||[]))if(String(p.nif).replace(/\D/g,'')===nif){
+      gen.pessoas[i]={...p,socio:false,gerente:false,_extra:true};showToast(`Dados de ${p.nome} trazidos de ${e.firma}`,'success');pintarPessoas();empGenTexto();return;}};
+  window.empGenOutra=()=>{gen.pessoas.push({nome:'',genero:'M',ec:'',cc:'',ccVal:'',nif:'',natural:'',morada:'',socio:false,gerente:false,_extra:true});
+    gen.sel.push({on:true,rep:false,fiador:true,avalista:false,outra:''});pintarPessoas();empGenTexto();};
+  window.empGenTirar=i=>{gen.pessoas.splice(i,1);gen.sel.splice(i,1);pintarPessoas();empGenTexto();};
+  window.empGenSel=el=>{const s=gen.sel[el.dataset.i],k=el.dataset.k;
+    s[k]=el.type==='checkbox'?el.checked:el.value.trim();
+    if(k!=='on'&&s[k]&&!s.on){s.on=true;const cb=document.querySelector(`#eg-pessoas input[data-i="${el.dataset.i}"][data-k="on"]`);if(cb)cb.checked=true;}
+    empGenTexto();};
+  window.empReconCopiar=()=>{const t=$('eg-texto');navigator.clipboard.writeText(t.value).then(()=>showToast('Texto copiado','success')).catch(()=>{t.select();document.execCommand('copy');});
+    guardarNovos();};
+  /* A naturalidade escrita aqui para quem é da ficha fica gravada na ficha. */
+  async function guardarNovos(){
+    const e=gen.e;let mudou=false;
+    const pessoas=(e.pessoas||[]).map((p,i)=>{const g=gen.pessoas[i];if(g&&!g._extra&&g.natural&&g.natural!==p.natural){mudou=true;return{...p,natural:g.natural};}return p;});
+    if(!mudou)return;
+    const {id,firma,nipc,...resto}=e;resto.pessoas=pessoas;
+    try{await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${id}/fields`,{[COL.dados]:JSON.stringify(resto)});
+      e.pessoas=pessoas;showToast('Naturalidade gravada na ficha da empresa','success');}catch(err){showToast('Não gravei a naturalidade: '+err.message,'error');}
+  }
 
+  /* Reconhecimento — redação validada; «outra qualidade» é texto livre. */
   function textoRecon(e,doc,escolhidos){
     const ids=escolhidos.map(({p,s})=>{
       const f=p.genero==='F';
       const id=`${(p.nome||'…').toUpperCase()}, ${p.ec?p.ec+', ':''}${f?'portadora':'portador'} do cartão de cidadão emitido pela República Portuguesa com o número ${p.cc||'…'}, válido até ${dPT(p.ccVal)} e número de identificação fiscal ${p.nif||'…'}, residente em ${p.morada||'…'}`;
-      const papel=[p.socio&&(f?'sócia':'sócio'),p.gerente&&'gerente'].filter(Boolean).join(' e ')||(f?'representante':'representante');
-      const porSi=[s.fiador&&(f?'fiadora':'fiador'),s.avalista&&'avalista'].filter(Boolean).join(' e ');
+      const papel=[p.socio&&(f?'sócia':'sócio'),p.gerente&&'gerente'].filter(Boolean).join(' e ')||'representante';
+      const porSi=[s.fiador&&(f?'fiadora':'fiador'),s.avalista&&'avalista',s.outra].filter(Boolean).join(' e ');
       const q=s.rep
         ?`na qualidade de ${papel} com poderes para o ato${porSi?` e ainda por si como ${porSi}`:''}`
         :(porSi?`por si como ${porSi}`:'por si');
       return{id,q,rep:s.rep};
     });
-    const nAss=escolhidos.reduce((n,{s})=>n+(s.rep?1:0)+(s.fiador?1:0)+(s.avalista?1:0)+(!s.rep&&!s.fiador&&!s.avalista?1:0),0);
+    const nAss=escolhidos.reduce((n,{s})=>n+(s.rep?1:0)+(s.fiador?1:0)+(s.avalista?1:0)+(s.outra?1:0)+(!s.rep&&!s.fiador&&!s.avalista&&!s.outra?1:0),0);
     const ass=nAss>1?'as assinaturas':'a assinatura';
     const soc=`Sociedade Comercial denominada ${e.firma.toUpperCase()}, com sede em ${e.sede||'…'}, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e identificação fiscal ${e.nipc||'…'}, com o capital social de ${capTxt(e.capital)} EUROS`;
     const docTxt=`no documento em anexo que é ${(doc||'…').toUpperCase()}`;
@@ -9912,23 +10021,276 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     return corpo+`\nVerifiquei ${quem} para este ato por consulta à certidão permanente em www.portaldaempresa.pt com o código de acesso ${e.crcCod||'…'}, válida até ${dPT(e.crcVal)}.`
       +`\nVerifiquei ainda o cumprimento das obrigações declarativas relativas ao Registo Central do Beneficiário Efetivo, por consulta em rcbe.justica.gov.pt.`;
   }
-  window.empReconTexto=()=>{
-    const e=rec.e;const doc=$('er-doc').value.trim();
-    const esc2=Object.entries(rec.sel).filter(([,s])=>s.on).map(([i,s])=>({p:e.pessoas[i],s}));
+
+  /* Qualidade dos representantes, sugerida pelos papéis na ficha. */
+  function qualRepAuto(reps){
+    if(!reps.length)return'';
+    const pl=reps.length>1,fe=reps.every(({p})=>p.genero==='F');
+    const todosSocios=reps.every(({p})=>p.socio&&p.gerente);
+    const s=pl?(fe?'sócias':'sócios'):(fe?'sócia':'sócio');
+    return`${todosSocios?s+' e ':''}${pl?'gerentes':'gerente'} com poderes para o ato`;
+  }
+  /* Texto da qualidade própria, concordado com quem a tem. */
+  function qualPropria(tipo,grupo,primeiraFianca,haSoc){
+    const pl=grupo.length>1,fe=grupo.every(({p})=>p.genero==='F');
+    if(tipo==='fiador'){
+      const t=pl?(fe?'fiadoras e principais pagadoras':'fiadores e principais pagadores'):(fe?'fiadora e principal pagadora':'fiador e principal pagador');
+      return t+(haSoc?(primeiraFianca?' de todas as obrigações assumidas pela sociedade representada':' das mesmas obrigações'):'');
+    }
+    if(tipo==='avalista')return pl?'avalistas':'avalista';
+    return tipo.slice(6);
+  }
+  /* Termo de autenticação — modelo ANIPURA. */
+  function textoTermo(e,o,escolhidos){
+    const val=[];
+    const idT=p=>[(p.nome||'…').toUpperCase(),`contribuinte fiscal n.º ${p.nif||'…'}`,p.ec,
+      `natural de ${p.natural||'…'}`,`titular do Cartão de Cidadão n.º ${p.cc||'…'}, válido até ${dPT(p.ccVal)}`,`residente em ${p.morada||'…'}`].filter(Boolean).join(', ');
+    const pars=[];
+    if(o.data){pars.push(`Aos ${dataExt(o.data)}, perante mim compareceram:`);val.push('a abertura com a data');}
+    escolhidos.forEach(({p},i)=>pars.push(`${ORD[i]||(i+1)+'.º'} OUTORGANTE: ${idT(p)}${i===escolhidos.length-1?'.':';'}`));
+    const reps=escolhidos.map((x,i)=>x.s.rep?i:-1).filter(i=>i>=0);
+    const haSoc=reps.length>0;
+    /* Grupos de qualidade própria, pela ordem dos outorgantes. */
+    const grupos=[];
+    escolhidos.forEach(({s},i)=>{[s.fiador&&'fiador',s.avalista&&'avalista',s.outra&&'outra:'+s.outra].filter(Boolean).forEach(t=>{
+      const r=escolhidos[i].s.rep;let g=grupos.find(x=>x.tipo===t&&x.rep===r);if(!g){g={tipo:t,rep:r,idx:[]};grupos.push(g);}g.idx.push(i);});});
+    /* Os representantes primeiro (a «dupla qualidade»), depois os outros — como no exemplo ANIPURA. */
+    grupos.sort((a,b)=>(b.rep-a.rep)||(a.idx[0]-b.idx[0]));
+    if(grupos.some(g=>g.tipo==='avalista'))val.push('a qualidade de avalista');
+    if(grupos.some(g=>g.tipo.startsWith('outra:')))val.push('a qualidade escrita à mão');
+    const alineas=[];let dupla=false,primeiraFianca=true;
+    if(haSoc){
+      alineas.push(`${o.qualRep||'…'}, em representação da sociedade comercial ${e.firma.toUpperCase()}, pessoa coletiva e matriculada sob o número único de matrícula e de identificação fiscal ${e.nipc||'…'}, com sede em ${e.sede||'…'}, com o capital social de ${capTxt(e.capital)} Euros${o.cargos?', '+o.cargos:''}${o.obrigar?`, obrigando-se a sociedade, nos termos da respetiva forma de obrigar, ${o.obrigar}`:''}, conforme verifiquei pela certidão permanente do registo comercial com o código de acesso ${e.crcCod||'…'} válida até ${dPT(e.crcVal)}`);
+    }
+    grupos.forEach(g=>{
+      const membros=g.idx.map(i=>escolhidos[i]);
+      const q=qualPropria(g.tipo,membros,primeiraFianca,haSoc);if(g.tipo==='fiador')primeiraFianca=false;
+      const mesmos=haSoc&&g.idx.length===reps.length&&g.idx.every(i=>reps.includes(i));
+      if(mesmos&&!dupla){dupla=true;alineas.push(`por si e em nome próprio, na qualidade de ${q}`);}
+      else if(haSoc){alineas.push(`${listaOrd(g.idx)} intervindo, igualmente por si e em nome próprio, na qualidade de ${q}`);if(g.rep)val.push('a fiança/aval só de parte dos representantes');}
+      else alineas.push(`${listaOrd(g.idx)} por si e em nome próprio, na qualidade de ${q}`);
+    });
+    if(haSoc){
+      if(alineas.length===1)pars.push(`Intervindo ${listaOrd(reps)} na qualidade de ${alineas[0]}.`);
+      else{
+        if(!dupla)val.push('o cabeçalho das alíneas sem dupla qualidade');
+        pars.push(`Intervindo ${listaOrd(reps)} na ${dupla?'dupla ':''}qualidade de:\n`+alineas.map((a,i)=>`${'abcdefghij'[i]}) ${a}${i===alineas.length-1?'.':';'}`).join('\n'));
+      }
+      pars.push('Verifiquei o cumprimento das obrigações declarativas relativas ao Registo Central do Beneficiário Efetivo (RCBE) da sociedade encontrando-se a respetiva declaração devidamente atualizada nos termos da Lei n.º 89/2017, de 21 de agosto.');
+    }else if(alineas.length){
+      val.push('o texto sem sociedade representada');
+      alineas.forEach(a=>pars.push(`Intervindo ${a}.`));
+    }
+    const pl=escolhidos.length>1;
+    if(!pl)val.push('as frases finais no singular');
+    const doc=(o.doc||'…').toUpperCase();
+    const art=o.art||(/^(AUTORIZA|DECLARA|PROCURA|CONFISS|CESS|ADENDA|ACTA|ATA|LIVRAN|FIAN|PROMESSA|MINUTA|ESCRITURA|ALTERA|RENÚNCIA|RENUNCIA|DOA|PARTILHA|PERMUTA|HIPOTECA|CARTA)/.test(doc.normalize('NFD').replace(/[̀-ͯ]/g,''))?'uma':'um');
+    const fol=o.folhas?`, composto de ${o.folhas} folha${String(o.folhas).trim()==='1'?'':'s'}`:'';
+    pars.push(pl
+      ?`Os signatários apresentaram o documento em anexo, que é ${art} ${doc}${fol}, tendo declarado que já o leram e assinaram, e que o conteúdo do mesmo exprime a sua vontade.`
+      :`O signatário apresentou o documento em anexo, que é ${art} ${doc}${fol}, tendo declarado que já o leu e assinou, e que o conteúdo do mesmo exprime a sua vontade.`);
+    pars.push(pl
+      ?'O presente termo de autenticação, tal como o documento que o antecede, foram lidos e explicados aos signatários, tudo em voz alta e na presença simultânea de todos os intervenientes.'
+      :'O presente termo de autenticação, tal como o documento que o antecede, foram lidos e explicados ao signatário, tudo em voz alta.');
+    return{texto:pars.join('\n'),validar:[...new Set(val)]};
+  }
+
+  window.empGenTexto=()=>{
+    const e=gen.e;const doc=$('eg-doc').value.trim();
+    const esc2=gen.sel.map((s,i)=>({p:gen.pessoas[i],s})).filter(x=>x.s.on);
     const av=[];
-    if(!esc2.length){$('er-texto').value='';$('er-avisos').innerHTML='<div style="font-size:11.5px;color:var(--text-faint)">Escolha quem assina.</div>';return;}
-    const nRep=esc2.filter(x=>x.s.rep).length;
-    if(nRep&&nRep<(e.nGerentes||1))av.push(`A sociedade obriga-se com ${e.nGerentes} gerentes${e.obrigar?` (${esc(e.obrigar)})`:''} e só ${nRep} assina${nRep>1?'m':''} em representação.`);
-    if(nRep&&caducado(e.crcVal))av.push(`A certidão permanente caducou em ${dPT(e.crcVal)}.`);
-    if(nRep&&!e.crcCod)av.push('Falta o código da certidão permanente.');
-    esc2.forEach(({p})=>{if(caducado(p.ccVal))av.push(`O cartão de cidadão de ${esc(p.nome)} caducou em ${dPT(p.ccVal)}.`);
-      if(!p.cc||!p.nif||!p.morada)av.push(`Faltam dados de ${esc(p.nome)} (cartão, NIF ou residência).`);});
-    $('er-avisos').innerHTML=av.map(a=>`<div style="font-size:11.5px;color:var(--red)">⚠ ${a}</div>`).join('');
-    $('er-texto').value=textoRecon(e,doc,esc2);
+    $('eg-validar').innerHTML='';
+    if(!esc2.length){$('eg-texto').value='';$('eg-avisos').innerHTML='<div style="font-size:11.5px;color:var(--text-faint)">Escolha quem assina.</div>';return;}
+    const reps=esc2.filter(x=>x.s.rep);
+    const qr=$('eg-qualrep');if(qr&&!qr.dataset.mexido)qr.value=qualRepAuto(reps);
+    if(reps.length&&reps.length<(e.nGerentes||1))av.push(`A sociedade obriga-se com ${e.nGerentes} gerentes${e.obrigar?` (${esc(e.obrigar)})`:''} e só ${reps.length} assina${reps.length>1?'m':''} em representação.`);
+    if(reps.length&&caducado(e.crcVal))av.push(`A certidão permanente caducou em ${dPT(e.crcVal)}.`);
+    if(reps.length&&!e.crcCod)av.push('Falta o código da certidão permanente.');
+    esc2.forEach(({p})=>{const n=esc(p.nome||'pessoa sem nome');
+      if(caducado(p.ccVal))av.push(`O cartão de cidadão de ${n} caducou em ${dPT(p.ccVal)}.`);
+      if(!p.nome||!p.cc||!p.nif||!p.morada)av.push(`Faltam dados de ${n} (nome, cartão, NIF ou residência).`);
+      if(gen.ato==='ta'&&!p.natural)av.push(`Falta a naturalidade de ${n}.`);});
+    if(gen.ato==='ta'&&!$('eg-folhas').value.trim())av.push('Falta o número de folhas.');
+    $('eg-avisos').innerHTML=av.map(a=>`<div style="font-size:11.5px;color:var(--red)">⚠ ${a}</div>`).join('');
+    if(gen.ato==='ra'){$('eg-texto').value=textoRecon(e,doc,esc2);return;}
+    const r=textoTermo(e,{doc,art:$('eg-art').value,folhas:$('eg-folhas').value.trim(),data:$('eg-data').value,
+      qualRep:$('eg-qualrep').value.trim(),obrigar:$('eg-obrigar').value.trim(),cargos:$('eg-cargos').value.trim()},esc2);
+    $('eg-texto').value=r.texto;
+    $('eg-validar').innerHTML=r.validar.length?`⚠ Redação por validar (não estava no exemplo ANIPURA): ${r.validar.join('; ')}.`:'';
   };
   window.empInit=()=>{if(!carregado)carregar();else render();};
   window.empRender=render;
-  window._empTextoRecon=textoRecon;
+  window._empTextoRecon=textoRecon;window._empTextoTermo=textoTermo;
+})();
+
+/* ═══════════ ETIQUETAS · pastas e documentos ═══════════
+   Etiquetas livres, várias por pasta ou documento, nas bibliotecas ESCRITURAS
+   e PROCESSOS. Guardam-se numa lista à parte, «Etiquetas» (Título + coluna
+   Dados, várias linhas de texto simples), identificadas pelo id do item no
+   SharePoint — se a pasta mudar de nome ou de sítio, a etiqueta acompanha-a.
+   Ao escrever, sugere as etiquetas já usadas e avisa quando a nova é parecida
+   com uma existente («apostilha» → «apostila»). (15/10/2026) */
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=t=>escHtml(t==null?'':t);
+  const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const LIBS={ESCRITURAS:{nome:'Escrituras',drive:()=>bibliotecaId},PROCESSOS:{nome:'Processos',drive:()=>bibliotecaProcessosId}};
+  let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
+  const chave=(lib,id)=>`${lib}|${id}`;
+
+  function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;
+    let p=Array.from({length:n+1},(_,j)=>j);
+    for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c;}
+    return p[n];}
+  const parecida=(a,b)=>{const x=norm(a),y=norm(b);if(!x||!y)return false;if(x===y)return true;
+    const lim=Math.min(x.length,y.length)>=6?2:1;return lev(x,y)<=lim;};
+
+  async function carregar(forcar){
+    if(carregado&&!forcar)return;
+    if(aCarregar)return aCarregar;
+    aCarregar=(async()=>{
+      try{
+        if(!LID){
+          const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName`);
+          const l=(r.value||[]).find(x=>norm(x.name)==='etiquetas'||norm(x.displayName)==='etiquetas');
+          if(!l){const a=$('etq-aviso');if(a)a.innerHTML=`<div class="notice notice-warning" style="display:block;font-size:12px">Falta criar no SharePoint (site das escrituras) a lista <b>Etiquetas</b>, com a coluna <b>Dados</b> (várias linhas de texto, <b>texto simples</b>).</div>`;return;}
+          LID=l.id;
+          const cs=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/columns?$select=name,displayName`);
+          const c=(cs.value||[]).find(x=>norm(x.name)==='dados'||norm(x.displayName)==='dados');if(c)COLD=c.name;
+        }
+        const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items?$expand=fields&$top=999`);
+        ITENS={};
+        (r.value||[]).forEach(i=>{let d={};try{d=JSON.parse(i.fields[COLD]||'{}');}catch(_){}
+          if(d.lib&&d.itemId)ITENS[chave(d.lib,d.itemId)]={spId:i.id,nome:i.fields.Title||'',...d,tags:d.tags||[]};});
+        carregado=true;
+      }catch(e){showToast('Etiquetas: '+e.message,'error');}
+      finally{aCarregar=null;}
+    })();
+    return aCarregar;
+  }
+  /* Todas as etiquetas em uso, com contagem e a grafia mais usada. */
+  function todas(){const m={};Object.values(ITENS).forEach(it=>it.tags.forEach(t=>{const k=norm(t);if(!m[k])m[k]={t,n:0};m[k].n++;}));
+    return Object.values(m).sort((a,b)=>b.n-a.n||a.t.localeCompare(b.t,'pt'));}
+  const chipsHTML=(tags,peq)=>tags.map(t=>`<span style="background:var(--accent-light);color:var(--accent-dark);border-radius:10px;padding:${peq?'0 6px':'2px 8px'};font-size:${peq?'9.5':'11'}px;white-space:nowrap">${esc(t)}</span>`).join(' ');
+
+  /* Pinta as etiquetas nos cartões das pastas (Pastas / clientes, Processos). */
+  window.etqPintar=async()=>{await carregar();
+    document.querySelectorAll('[data-etq]').forEach(el=>{const it=ITENS[el.dataset.etq];el.innerHTML=it&&it.tags.length?chipsHTML(it.tags,true):'';});};
+
+  /* ── Editor ── */
+  let ed=null;
+  const abrir=html=>{$('etq-box').innerHTML=html;$('etq-ov').classList.add('show');};
+  window.etqFechar=()=>{$('etq-ov').classList.remove('show');ed=null;window.etqPintar();if($('screen-etiquetas')?.classList.contains('active'))etqPesquisar();};
+  window.etqEditar=async(lib,itemId,nome,tipo,pasta,volta)=>{
+    await carregar();
+    if(!LID){showToast('Falta criar a lista Etiquetas no SharePoint','error');return;}
+    const it=ITENS[chave(lib,itemId)];
+    ed={lib,itemId,nome,tipo,pasta:pasta||'',tags:[...(it?.tags||[])],volta:volta||null};
+    abrir(`<div class="modal-box-title">🏷 ${tipo==='pasta'?'Pasta':'Documento'} · ${esc(nome)}</div>
+      <div style="font-size:11px;color:var(--text-faint);margin:-.4rem 0 .7rem">${esc(LIBS[lib]?.nome||lib)}${pasta?' · em '+esc(pasta):''}</div>
+      <div id="etq-ed-chips" style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem"></div>
+      <div style="position:relative">
+        <input class="form-input" id="etq-ed-in" placeholder="Escreva uma etiqueta e carregue Enter (ex.: apostila)" style="width:100%" oninput="etqSugerir()" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();etqAdd(this.value);}">
+        <div id="etq-ed-sug" style="margin-top:.35rem"></div>
+      </div>
+      ${tipo==='pasta'?`<div style="margin-top:1rem"><div class="field-label">Documentos desta pasta</div><div id="etq-ed-docs" style="max-height:260px;overflow:auto;font-size:12px">A carregar…</div></div>`:''}
+      <div class="modal-actions" style="margin-top:1rem">
+        ${volta?`<button class="btn" onclick="etqVoltar()">‹ Voltar à pasta</button>`:''}
+        <button class="btn" onclick="etqFechar()" style="flex:1">Fechar</button>
+        <button class="btn btn-primary" onclick="etqGravar()" style="flex:2">Gravar etiquetas</button></div>`);
+    pintarChips();etqSugerir();setTimeout(()=>$('etq-ed-in')?.focus(),50);
+    if(tipo==='pasta')listarDocs();
+  };
+  function pintarChips(){const c=$('etq-ed-chips');if(!c)return;
+    c.innerHTML=ed.tags.map((t,i)=>`<span style="background:var(--accent-light);color:var(--accent-dark);border-radius:12px;padding:3px 4px 3px 10px;font-size:12px">${esc(t)} <button onclick="etqTirar(${i})" style="border:none;background:none;cursor:pointer;color:var(--accent-dark);font-size:13px" title="Retirar">×</button></span>`).join('')
+      ||'<span style="font-size:11.5px;color:var(--text-faint)">Sem etiquetas.</span>';}
+  window.etqTirar=i=>{ed.tags.splice(i,1);pintarChips();etqSugerir();};
+  window.etqAdd=(txt,forcar)=>{
+    const t=String(txt||'').replace(/^[\s^#,;]+|[\s^#,;]+$/g,'').replace(/\s+/g,' ');
+    if(!t)return;
+    if(ed.tags.some(x=>norm(x)===norm(t))){$('etq-ed-in').value='';return;}
+    const ex=todas();
+    const igual=ex.find(e=>norm(e.t)===norm(t));
+    let final=igual?igual.t:t;
+    if(!igual&&!forcar){
+      const par=ex.find(e=>parecida(e.t,t));
+      if(par){$('etq-ed-sug').innerHTML=`<div style="font-size:12px;background:var(--amber-light,#fff7ed);border-radius:6px;padding:.45rem .6rem">Já existe <b>${esc(par.t)}</b> (${par.n}). 
+        <button class="btn btn-sm" onclick="etqAdd('${esc(par.t).replace(/'/g,"\\'")}')">Usar «${esc(par.t)}»</button>
+        <button class="btn btn-sm" onclick="etqAdd('${esc(t).replace(/'/g,"\\'")}',true)">Criar «${esc(t)}»</button></div>`;return;}
+    }
+    ed.tags.push(final);$('etq-ed-in').value='';pintarChips();etqSugerir();
+  };
+  window.etqSugerir=()=>{const box=$('etq-ed-sug');if(!box)return;
+    const q=norm($('etq-ed-in')?.value);
+    const ex=todas().filter(e=>!ed.tags.some(x=>norm(x)===norm(e.t)));
+    const l=(q?ex.filter(e=>norm(e.t).includes(q)||parecida(e.t,q)):ex).slice(0,14);
+    box.innerHTML=l.length?`<div style="display:flex;gap:.3rem;flex-wrap:wrap">${l.map(e=>`<button class="btn btn-sm" style="font-size:11px;padding:2px 8px" onclick="etqAdd('${esc(e.t).replace(/'/g,"\\'")}')">${esc(e.t)} <span style="color:var(--text-faint)">${e.n}</span></button>`).join('')}</div>`:'';};
+  window.etqGravar=async()=>{
+    const k=chave(ed.lib,ed.itemId),it=ITENS[k];
+    const pend=($('etq-ed-in')?.value||'').trim();if(pend)etqAdd(pend);
+    try{
+      if(!ed.tags.length){
+        if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+          if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
+      }else{
+        const d={lib:ed.lib,itemId:ed.itemId,tipo:ed.tipo,pasta:ed.pasta,tags:ed.tags};
+        const body={Title:ed.nome,[COLD]:JSON.stringify(d)};
+        if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={...it,nome:ed.nome,...d};}
+        else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:ed.nome,...d};}
+      }
+      showToast('Etiquetas gravadas','success');
+      if(ed.volta){const v=ed.volta;etqEditar(v.lib,v.itemId,v.nome,'pasta',v.pasta);}else etqFechar();
+    }catch(e){showToast('Erro: '+e.message,'error');}
+  };
+  window.etqVoltar=()=>{const v=ed.volta;etqEditar(v.lib,v.itemId,v.nome,'pasta',v.pasta);};
+  async function listarDocs(){
+    const box=$('etq-ed-docs');if(!box)return;
+    try{
+      const d=await graphGet(`${GRAPH_BASE}/drives/${LIBS[ed.lib].drive()}/items/${ed.itemId}/children?$top=200&$select=id,name,folder,file`);
+      const l=(d.value||[]).sort((a,b)=>(!!b.folder-!!a.folder)||a.name.localeCompare(b.name,'pt'));
+      const volta={lib:ed.lib,itemId:ed.itemId,nome:ed.nome,pasta:ed.pasta};
+      window._etqVolta=volta;
+      box.innerHTML=l.map(x=>{const it=ITENS[chave(ed.lib,x.id)];
+        return`<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--border-soft,var(--border))">
+          <span>${x.folder?'📁':'📄'}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</span>
+          <span>${it?chipsHTML(it.tags,true):''}</span>
+          <button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px" onclick="etqEditar('${ed.lib}','${x.id}',decodeURIComponent('${encodeURIComponent(x.name)}'),'${x.folder?'pasta':'documento'}',decodeURIComponent('${encodeURIComponent(ed.nome)}'),window._etqVolta)">🏷</button></div>`;}).join('')
+        ||'<div style="color:var(--text-faint)">Pasta vazia.</div>';
+    }catch(e){box.innerHTML=`<div style="color:var(--red)">Erro: ${esc(e.message)}</div>`;}
+  }
+
+  /* ── Pesquisa ── */
+  window.etqSelTag=t=>{if(!selTags.some(x=>norm(x)===norm(t)))selTags.push(t);$('etq-q').value='';etqPesquisar();};
+  window.etqTirarSel=i=>{selTags.splice(i,1);etqPesquisar();};
+  window.etqAbrir=async(lib,id)=>{
+    try{const d=await graphGet(`${GRAPH_BASE}/drives/${LIBS[lib].drive()}/items/${id}?$select=webUrl`);window.open(embedSP(d.webUrl),'_blank');}
+    catch(e){showToast('Não encontrei o item — pode ter sido apagado no SharePoint.','error');}
+  };
+  window.etqPesquisar=()=>{
+    const q=norm($('etq-q')?.value),pal=q?q.split(' ').filter(Boolean):[];
+    $('etq-sel').innerHTML=selTags.map((t,i)=>`<span style="background:var(--accent);color:#fff;border-radius:12px;padding:3px 4px 3px 10px;font-size:12px">${esc(t)} <button onclick="etqTirarSel(${i})" style="border:none;background:none;color:#fff;cursor:pointer">×</button></span>`).join('');
+    const tagOk=(it,p)=>it.tags.some(t=>{const n=norm(t);return n.includes(p)||n.split(' ').some(w=>w.length>=4&&parecida(w,p));});
+    const l=Object.entries(ITENS).filter(([,it])=>
+      selTags.every(s=>it.tags.some(t=>norm(t)===norm(s)))&&pal.every(p=>tagOk(it,p)||norm(it.nome).includes(p)));
+    const viz=todas().filter(e=>!selTags.some(s=>norm(s)===norm(e.t))&&(!pal.length||pal.some(p=>norm(e.t).includes(p)||parecida(e.t,p))));
+    $('etq-nuvem').innerHTML=viz.slice(0,40).map(e=>`<button class="btn btn-sm" style="font-size:11px;padding:2px 9px" onclick="etqSelTag('${esc(e.t).replace(/'/g,"\\'")}')">${esc(e.t)} <span style="color:var(--text-faint)">${e.n}</span></button>`).join('');
+    const res=$('etq-res');
+    if(!selTags.length&&!pal.length){res.innerHTML=`<div style="font-size:12px;color:var(--text-faint)">${Object.keys(ITENS).length} pasta(s) e documento(s) etiquetados. Escolha uma etiqueta acima ou escreva para procurar.</div>`;return;}
+    res.innerHTML=l.length?l.sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt')).map(([k,it])=>`
+      <div class="pasta-card" style="margin-bottom:.45rem">
+        <div style="flex:1;min-width:0">
+          <div class="pasta-ref">${it.tipo==='pasta'?'📁':'📄'} ${esc(it.nome)}</div>
+          <div class="pasta-meta">${esc(LIBS[it.lib]?.nome||it.lib)}${it.pasta?' · em '+esc(it.pasta):''}</div>
+          <div style="margin-top:.3rem">${chipsHTML(it.tags)}</div>
+        </div>
+        <div class="pasta-actions">
+          <button class="btn btn-sm" onclick="etqEditar('${it.lib}','${it.itemId}',decodeURIComponent('${encodeURIComponent(it.nome)}'),'${it.tipo}',decodeURIComponent('${encodeURIComponent(it.pasta||'')}'))">🏷</button>
+          <button class="btn btn-primary btn-sm" onclick="etqAbrir('${it.lib}','${it.itemId}')">Abrir</button>
+        </div></div>`).join(''):'<div class="notice notice-info" style="display:block">Nada encontrado com essa etiqueta.</div>';
+  };
+  window.etqInit=async()=>{await carregar();etqPesquisar();};
+  window.etqRecarregar=async()=>{await carregar(true);etqPesquisar();window.etqPintar();};
+  window._etq={norm,parecida,todas,ITENS:()=>ITENS};
 })();
 
 async function cliInit(){
