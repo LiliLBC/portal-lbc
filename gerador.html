@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-15.2</span>
+    <span class="page-sub">piloto · v2026-10-15.3</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -5164,7 +5164,8 @@ function compor(){
     if(quartos.length)contrato.push({id:'c-quartos',T:quartos.length>1?'QUARTOS':'QUARTO',
       X:quartos.map(textoVendedorCurto).join(', ')+`, adiante designad${quartos.length>1?'os':'o'} por Quart${quartos.length>1?'os':'o'} Outorgante${quartos.length>1?'s':''}.`});
   }
-  contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
+  /* No CVMH o preâmbulo próprio (DL 74-A/2017) substitui este — não sair os dois. */
+  if(!ehCVMH)contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
   /* O preâmbulo não é cláusula — abre o contrato e fica sem título. */
   if(ehCVMH)contrato.push({id:'c-preambulo',T:'',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
