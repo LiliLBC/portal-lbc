@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-15.1</span>
+    <span class="page-sub">piloto · v2026-10-15.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -3730,7 +3730,7 @@ function calcHipotecaCCAM(){
    A dispensa do Documento Complementar e do Anexo I é redação da Liliana, e
    entra em qualquer mútuo com hipoteca — na compra e venda e no ato 4. */
 function fechoTermo(temMH){
-  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, em seguida nesta mesma data, em www.predialonline.mj.pt.`;
+  const base=`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após o respetivo depósito eletrónico, que será efetuado em seguida, nesta mesma data, em www.predialonline.mj.pt.`;
   const dispensa=`As partes dispensaram a leitura do Documento Complementar e Anexo I por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-os, ainda assim, como parte integrante do presente contrato.`;
   return temMH?`${base}\n${dispensa}`:base;
 }
@@ -4431,7 +4431,7 @@ function comporDCC(){
     .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
   termo.push({id:'t-verifiquei',T:'',X:`VERIFIQUEI\n${ver.join('\n')}`});
   termo.push({id:'t-informei',T:'',X:
-    `INFORMEI\n— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`});
+    `INFORMEI\n— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado em seguida, nesta mesma data, em www.predialonline.mj.pt.`});
   termo.push({id:'t-rgpd',T:'',X:
     `Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   termo.push({id:'t-leitura',T:'',X:
@@ -4706,7 +4706,7 @@ function comporDoacao(){
       : `, e ao da verba 1.2 da mesma Tabela, que àquela acresce, no valor de ${e12} €`;
     inf.push(`${base}${meio}, cuja liquidação precede o presente ato;`);
   }
-  inf.push(`— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado hoje, em www.predialonline.mj.pt.`);
+  inf.push(`— os outorgantes que nos termos do número 2 do artigo 24.º do Decreto-Lei 116/2008, de 4 de julho, o presente Documento Particular Autenticado só tem validade após o respetivo depósito eletrónico, que será obrigatoriamente efetuado em seguida, nesta mesma data, em www.predialonline.mj.pt.`);
   termo.push({id:'t-informei',T:'',X:`INFORMEI\n${inf.join('\n')}`});
   termo.push({id:'t-rgpd',T:'',X:
     `Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
@@ -7279,6 +7279,15 @@ function textosTituloUrb(){
       const cert=`certidão${num}, de ${d('f-tu-data')}, emitida pela Câmara Municipal de ${v('f-tu-camara')||'…'}`;
       contrato=`${QUEM} ${DECL} que a operação urbanística de que resultou o imóvel está isenta de licença e de comunicação prévia, nos termos ${norm}, conforme ${cert}, a qual foi apresentada neste ato.`;
       termo=`— a isenção de controlo prévio da operação urbanística, nos termos ${norm}, atestada pela ${cert}, que arquivo;`;
+    }
+    /* Certidão de anterioridade: volta a redação de antes (13/10/2026), que a
+       Liliana prefere a «dispõe de certidão de anterioridade» (15/10/2026).
+       ⚠ Acrescento meu no contrato: «conforme certidão…, a qual foi
+       apresentada neste ato», como na isenção. */
+    if(doc.cert==='anterior'){
+      const cert=`certidão emitida pela Câmara Municipal de ${v('f-tu-camara')||'…'} em ${d('f-tu-data')}${v('f-tu-num')?`, sob o n.º ${v('f-tu-num')}`:''}`;
+      contrato=`${QUEM} ${DECL} que a edificação é anterior à exigência legal de licenciamento, não carecendo de título urbanístico à data da sua construção, conforme ${cert}, a qual foi apresentada neste ato.`;
+      termo=`— a ${cert}, que atesta ser a edificação anterior à exigência legal de licenciamento, que arquivo;`;
     }
     /* ⚠ Título que não coincide com as áreas atuais: não cobre o que foi feito
        depois. O transmitente declara a divergência, o adquirente declara que a
