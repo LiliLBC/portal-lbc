@@ -3372,12 +3372,22 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
+        <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Receber documentos: o verificador separa, renomeia e grava na pasta, com a matriz de dados">📥 Documentos</button>
         <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir pasta</a>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
     </div>`).join('');
   el.style.display='block';
   if(window.etqPintar)etqPintar();
+}
+/* Receção de documentos (17/10/2026): abre o verificador já na pasta do cliente.
+   O verificador usa a sessão do Portal (mesmo endereço lililbc.github.io), separa e
+   renomeia os documentos, grava-os na pasta principal (originais em «_originais») e
+   atualiza a MATRIZ_VERIFICADOR.json. As pastas continuam a criar-se aqui no Portal. */
+const VERIFICADOR_URL='https://lililbc.github.io/verificador-lbc/verificador.html';
+function abrirRececao(pastaId){
+  if(!bibliotecaId||!pastaId){showToast('Biblioteca ESCRITURAS ainda não carregada.','error');return;}
+  window.open(`${VERIFICADOR_URL}?pasta=${encodeURIComponent(bibliotecaId+'|'+pastaId)}`,'_blank');
 }
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
 function limparFiltrosPastas(){document.getElementById('search-pastas').value='';filtrarPastas();setTimeout(atualizarBotoesLimparFiltros,50);}
@@ -4830,8 +4840,9 @@ async function agendar(){
   const pasta=nomePasta(nome,data);
   const btn=document.getElementById('btn-agendar');btn.disabled=true;btn.textContent='A criar...';
   try{
-    await graphPost(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children`,{name:pasta,folder:{},'@microsoft.graph.conflictBehavior':'rename'});
-    showToast('✓ Pasta criada: '+pasta,'success');limparForm();pastasCarregadas=false;
+    const criada=await graphPost(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children`,{name:pasta,folder:{},'@microsoft.graph.conflictBehavior':'rename'});
+    showToast('✓ Pasta criada: '+(criada.name||pasta),'success');limparForm();pastasCarregadas=false;
+    if(criada.id)setTimeout(()=>{if(confirm(`Pasta «${criada.name||pasta}» criada. Receber já os documentos do cliente?`))abrirRececao(criada.id);},300);
   }catch(e){showToast('Erro: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='Agendar e criar pasta';}
 }
