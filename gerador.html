@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-20.1</span>
+    <span class="page-sub">piloto · v2026-10-20.5</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -871,30 +871,15 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
             <input class="form-input" id="f-pcv-sinal-iban-d" oninput="atualizar()" placeholder="PT50 …"></div>
         </div>
         <div class="toggle-row" style="margin-top:.5rem">
-          <span class="toggle-label" style="font-size:12px">Reforço de sinal</span>
+          <span class="toggle-label" style="font-size:12px">Reforço de sinal (por transferência)</span>
           <label class="toggle-switch"><input type="checkbox" id="t-pcv-ref1" onchange="atualizar()"><span class="toggle-slider"></span></label>
         </div>
         <div class="form-grid form-grid-3" id="g-pcv-ref1" style="display:none">
           <div class="form-group"><label class="form-label">Reforço (€)</label><input class="form-input" id="f-pcv-ref1-valor" oninput="atualizar()"></div>
-          <div class="form-group"><label class="form-label">Até ao dia</label><input type="date" class="form-input" id="f-pcv-ref1-data" onchange="atualizar()"></div>
-          <div class="form-group"><label class="form-label">Meio</label>
-            <select class="form-select" id="f-pcv-ref1-meio" onchange="atualizar()">
-              <option value="transferencia">Transferência bancária, para a mesma conta</option>
-              <option value="cheque">Cheque</option>
-            </select></div>
-        </div>
-        <div class="toggle-row" style="margin-top:.3rem">
-          <span class="toggle-label" style="font-size:12px">Segundo reforço de sinal</span>
-          <label class="toggle-switch"><input type="checkbox" id="t-pcv-ref2" onchange="atualizar()"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="form-grid form-grid-3" id="g-pcv-ref2" style="display:none">
-          <div class="form-group"><label class="form-label">Reforço (€)</label><input class="form-input" id="f-pcv-ref2-valor" oninput="atualizar()"></div>
-          <div class="form-group"><label class="form-label">Até ao dia</label><input type="date" class="form-input" id="f-pcv-ref2-data" onchange="atualizar()"></div>
-          <div class="form-group"><label class="form-label">Meio</label>
-            <select class="form-select" id="f-pcv-ref2-meio" onchange="atualizar()">
-              <option value="transferencia">Transferência bancária, para a mesma conta</option>
-              <option value="cheque">Cheque</option>
-            </select></div>
+          <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="f-pcv-ref1-data" onchange="atualizar()"></div>
+          <div class="form-group"></div>
+          <div class="form-group"><label class="form-label">IBAN de origem (compradora)</label><input class="form-input" id="f-pcv-ref1-iban-o" oninput="atualizar()" placeholder="PT50 …"></div>
+          <div class="form-group"><label class="form-label">IBAN de destino (vendedora)</label><input class="form-input" id="f-pcv-ref1-iban-d" oninput="atualizar()" placeholder="PT50 …"></div>
         </div>
       </div>
       <div id="g-pcv-penal" style="display:none;margin-top:.5rem">
@@ -930,48 +915,39 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
     <div class="cond-block" style="margin-top:.7rem">
       <div class="cond-block-title">6.4 · Contrato definitivo</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.4rem">Redação do v2: marca a parte compradora, com 10 dias de antecedência; prorrogação automática por períodos de 30 dias, salvo oposição.</div>
       <div class="form-grid form-grid-2">
         <div class="form-group"><label class="form-label">Outorga até <span>*</span></label>
           <input type="date" class="form-input" id="f-pcv-escr-data" onchange="atualizar()"></div>
-        <div class="form-group"><label class="form-label">Quem marca</label>
-          <select class="form-select" id="f-pcv-quem" onchange="atualizar()">
-            <option value="compradora">A parte compradora</option>
-            <option value="vendedora">A parte vendedora</option>
-            <option value="qualquer">Qualquer das partes</option>
-          </select></div>
-        <div class="form-group"><label class="form-label">Antecedência do aviso (dias)</label>
-          <input class="form-input" id="f-pcv-antec" value="10" oninput="atualizar()"></div>
-        <div class="form-group"><label class="form-label">Prorrogação do prazo</label>
-          <select class="form-select" id="f-pcv-prorr" onchange="atualizar()">
-            <option value="auto">Automática, salvo oposição de uma das partes</option>
-            <option value="acordo">Só por acordo escrito das partes</option>
-            <option value="nao">Sem prorrogação prevista</option>
-          </select></div>
-        <div class="form-group pcv-prorr-dias"><label class="form-label">Períodos de (dias)</label>
-          <input class="form-input" id="f-pcv-prorr-dias" value="30" oninput="atualizar()"></div>
       </div>
     </div>
 
     <div class="cond-block" style="margin-top:.7rem">
-      <div class="cond-block-title">6.5 · Imóvel — o que o contrato-promessa acrescenta</div>
+      <div class="cond-block-title">6.5 · Imóvel — Câmara Municipal e licença de utilização</div>
       <div class="form-grid form-grid-2">
         <div class="form-group"><label class="form-label">Câmara Municipal</label>
           <input class="form-input" id="f-pcv-camara" oninput="atualizar()" placeholder="Ex: Évora"></div>
-        <div class="form-group"><label class="form-label">Certidão predial consultada em</label>
-          <input type="date" class="form-input" id="f-pcv-crp-data" onchange="atualizar()"></div>
-        <div class="form-group form-full"><label class="form-label">Artigos matriciais anteriores (opcional)</label>
-          <input class="form-input" id="f-pcv-art-ant" oninput="atualizar()" placeholder="Ex: artigo 1234 da extinta freguesia de São Mamede">
-          <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Quando a caderneta diz «teve origem no artigo…». Fica escrito ao lado do artigo atual.</div></div>
+        <div class="form-group"><label class="form-label">Licença de utilização</label>
+          <select class="form-select" id="f-pcv-lu" onchange="atualizar()">
+            <option value="alvara">Alvará de Licença de Utilização</option>
+            <option value="comunicacao">Resposta à Comunicação Prévia</option>
+            <option value="isencao">Certidão de Isenção</option>
+            <option value="sem">Sem licença — informação às partes</option>
+            <option value="na">Não aplicável — não sai o n.º 2</option>
+          </select></div>
+        <div class="form-group pcv-lu-dados"><label class="form-label">N.º</label><input class="form-input" id="f-pcv-lu-num" oninput="atualizar()"></div>
+        <div class="form-group pcv-lu-dados"><label class="form-label">Emitido em</label><input type="date" class="form-input" id="f-pcv-lu-data" onchange="atualizar()"></div>
       </div>
-      <div class="toggle-row" style="margin-top:.5rem" id="row-pcv-direto">
-        <span class="toggle-label" style="font-size:12px">Hipoteca a cancelar paga diretamente ao credor, por conta do preço</span>
-        <label class="toggle-switch"><input type="checkbox" id="t-pcv-direto" onchange="atualizar()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row" style="margin-top:.3rem">
-        <span class="toggle-label" style="font-size:12px">Declaração da parte vendedora sobre a situação urbanística</span>
-        <label class="toggle-switch"><input type="checkbox" id="t-pcv-decl-urb" onchange="atualizar()"><span class="toggle-slider"></span></label>
-      </div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px">Os ónus vêm do bloco 5; o título urbanístico e o certificado energético vêm do bloco 7. O comprovativo do estado civil entra sozinho quando um vendedor responde que o estado civil não coincide com o registo.</div>
+      <div class="form-group form-full" style="margin-top:.6rem"><label class="form-label">Há construção, alteração ou situação do imóvel que não conste dos documentos? <span>*</span></label>
+        <select class="form-select" id="f-pcv-situacao" onchange="atualizar()">
+          <option value="">— por perguntar às partes —</option>
+          <option value="nao">Não — o imóvel corresponde ao que consta dos documentos</option>
+          <option value="sim">Sim — descrever</option>
+        </select>
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Anexos, ampliações, marquises, telheiros, piscinas, divisões alteradas, ocupações, servidões de facto… O que não está escrito no contrato é como se não existisse.</div></div>
+      <div class="form-group form-full" id="g-pcv-situacao" style="display:none"><label class="form-label">Descrição da situação e o que as partes acordam quanto a ela</label>
+        <textarea class="form-input" id="f-pcv-situacao-txt" rows="3" oninput="atualizar()" placeholder="Ex: existe no logradouro um anexo com cerca de 20 m², destinado a arrumos, que não consta da descrição predial, da caderneta nem do título urbanístico; o anexo é vendido no estado em que se encontra"></textarea></div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px">Os ónus vêm do bloco 5; o certificado energético, do bloco 7.</div>
     </div>
 
     <div class="cond-block" style="margin-top:.7rem">
@@ -1133,6 +1109,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="">— por responder —</option>
           <option value="apresentado">Declara que dispõe e apresenta — verifiquei o documento</option>
           <option value="declarado">Declara que dispõe mas não apresenta</option>
+          <option value="nao-exigido">Declara que não dispõe por não ser exigido à data da construção</option>
           <option value="nao-dispoe">Declara que não dispõe</option>
         </select></div>
 
@@ -1166,6 +1143,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <div style="font-size:10.5px;color:#7A5A20;margin-top:2px">Sai no contrato como declaração das duas partes e no termo como advertência. Uma licença antiga não cobre obras posteriores.</div></div>
       </div>
 
+      <div class="form-group form-full tu-construcao" style="display:none"><label class="form-label">Época da construção (opcional)</label>
+        <input class="form-input" id="f-tu-construcao" oninput="atualizar()" placeholder="Ex: em data anterior a 1951 · na década de 1940">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Sem certidão de anterioridade da câmara. Havendo certidão, escolha «Declara que dispõe e apresenta» → certidão de anterioridade. Entra como «… construído <i>[época]</i> …».</div></div>
       <div class="form-group form-full tu-motivo" style="display:none"><label class="form-label">Motivo por que não é apresentado</label>
         <input class="form-input" id="f-tu-motivo" oninput="atualizar()" placeholder="Ex: se encontrar em poder da entidade bancária">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Entra como «…, o qual não é apresentado neste ato por <i>[motivo]</i>.»</div></div>
@@ -5313,7 +5293,9 @@ function compor(){
   /* ── TEXTOS FIXOS DO TERMO ── do TEMPL_CVMH_CGD_v2.docx
      A declaração da veracidade do preço fica no termo: não é a cláusula do
      preço, é a declaração dos outorgantes prestada perante a solicitadora. */
-  termo.push({id:'t-preco-decl',T:'',X:`Os Outorgantes declararam que o teor da cláusula relativa ao preço, respetivos meios e datas de pagamento corresponde inteiramente à verdade, dando-se aqui a mesma por integralmente reproduzida para todos os efeitos legais.`});
+  /* ⚠ Por validar (20/10/2026): a declaração deixou de ser só sobre o preço e
+     passou a cobrir tudo o que consta do contrato anexo — pedido da Liliana. */
+  termo.push({id:'t-preco-decl',T:'',validar:true,X:`Os Outorgantes declararam, sob sua inteira responsabilidade, que todas as declarações e informações constantes do contrato anexo são verdadeiras, exatas e completas, designadamente as relativas à sua identificação e estado civil, ao imóvel e à sua situação jurídica e urbanística, ao preço e aos respetivos meios e datas de pagamento e à intervenção de mediação imobiliária, dando-se aqui o seu teor por integralmente reproduzido para todos os efeitos legais.`});
   /* A advertência acompanha sempre a declaração, e não só quando há mediação:
      a norma pune quem omite ou declara falsamente, portanto é justamente na
      declaração de que não houve intervenção que ela tem sentido. */
@@ -6299,29 +6281,24 @@ document.getElementById('pane-form').addEventListener('input',()=>{
 });
 
 /* ═══════════ ATO 9 · CONTRATO-PROMESSA DE COMPRA E VENDA · piloto (20/10/2026) ═══════════
-   Um só modelo, com opções por caso. A base é o TEMPL_CPCV_v2 (redação já em uso);
-   o que é novo vai marcado ⚠ na folha e nos alertas até a Liliana validar:
-     · cláusula do cônjuge autorizante;
-     · hipoteca a cancelar com pagamento direto ao credor;
-     · artigos matriciais anteriores e data da certidão predial consultada;
-     · comprovativo do estado civil quando não coincide com o registo;
-     · declaração da parte vendedora sobre a situação urbanística;
-     · marcação por qualquer das partes, prorrogação só por acordo, CE em falta,
-       título urbanístico na forma de promessa.
-   A execução específica fica como estava no v2 (n.º 3 do art. 830.º CC, dentro da
-   cláusula do sinal / da cláusula penal) — não se acrescenta nada ligado ao cônjuge.
-   Nas situações normais o texto não puxa para nenhuma das partes: as opções que
-   pesam para um lado (quem marca, prorrogação) são escolhas explícitas.
-   As partes são os blocos 3 e 4; o imóvel e os ónus, o bloco 5; o título
-   urbanístico e o certificado energético, o bloco 7; a mediação, o bloco 8. Assim o
-   mesmo rascunho serve depois para o DPA, mudando só o ato. */
+   A redação é a do TEMPL_CPCV_v2 / cpcv_v2.html, já validada pela Liliana, transcrita
+   palavra por palavra. Só os dados vêm dos blocos do gerador: partes (3 e 4), imóvel e
+   ónus (5), certificado energético (7) e mediação (8).
+   Alterações à redação validada — só estas:
+     · ⚠ cláusula do cônjuge autorizante (nova, por validar), a seguir à 12.ª para não
+       mexer na numeração;
+     · cláusula 2.ª, n.º 2: «… até à outorga do contrato definitivo ou em simultâneo com
+       esta» (pedido da Liliana, 20/10/2026);
+     · ⚠ cláusula da situação do imóvel não documentada (anexos, ampliações…), só
+       quando as partes a declaram — pedido da Liliana, 20/10/2026.
+   Nada mais se acrescenta sem a Liliana pedir. */
 function ehCPCV(){return atoEscolhido()==='cpcv';}
 function funilCPCV(){
   desfazerFunilMH();
   nomearBloco('card-b3','Promitente parte vendedora','Quem promete vender');
   nomearBloco('card-b4','Promitente parte compradora','Quem promete comprar');
   nomearBloco('card-b5','Imóvel','Objeto da promessa');
-  nomearBloco('card-b7','Título urbanístico e certificado energético','O que a parte vendedora declara sobre o imóvel');
+  nomearBloco('card-b7','Certificado energético','Certificado do imóvel');
   ['card-b2','card-b6','card-b9','card-b10'].forEach(k=>setDisp(k,'none'));
   ['card-b3','card-b4','card-b5','card-b7','card-b8','card-cpcv'].forEach(k=>setDisp(k,'block'));
   /* No bloco 7 só interessam o título urbanístico e o certificado: o Casa Pronta e
@@ -6339,7 +6316,11 @@ function funilCPCV(){
   const pp=v('f-pcv-preco');if(pp){const f=document.getElementById('f-preco');if(f&&f.value!==pp)f.value=pp;}
   const sinal=chk('t-pcv-sinal');
   setDisp('g-pcv-sinal',sinal?'block':'none');setDisp('g-pcv-penal',sinal?'none':'block');
-  setDisp('g-pcv-ref1',chk('t-pcv-ref1')?'grid':'none');setDisp('g-pcv-ref2',chk('t-pcv-ref2')?'grid':'none');
+  setDisp('g-pcv-ref1',chk('t-pcv-ref1')?'grid':'none');
+  setDisp('g-pcv-situacao',v('f-pcv-situacao')==='sim'?'flex':'none');
+  document.querySelectorAll('.pcv-lu-dados').forEach(e=>e.style.display=['alvara','comunicacao','isencao'].includes(v('f-pcv-lu'))?'flex':'none');
+  /* A licença do contrato-promessa é a do v2, no bloco 6; do bloco 7 só se usa o certificado. */
+  {const tu=document.getElementById('f-tu-caso');const cb=tu&&tu.closest('.cond-block');if(cb)cb.style.display='none';}
   const meio=v('f-pcv-sinal-meio');
   document.querySelectorAll('.pcv-sinal-transf').forEach(e=>e.style.display=meio==='transferencia'?'flex':'none');
   document.querySelectorAll('.pcv-sinal-cheque').forEach(e=>e.style.display=meio==='cheque'?'flex':'none');
@@ -6347,8 +6328,6 @@ function funilCPCV(){
   document.querySelectorAll('.pcv-cp-euros').forEach(e=>e.style.display=cpm==='euros'?'flex':'none');
   document.querySelectorAll('.pcv-cp-pct').forEach(e=>e.style.display=cpm==='percent'?'flex':'none');
   setDisp('g-pcv-fin',chk('t-pcv-fin')?'grid':'none');
-  document.querySelectorAll('.pcv-prorr-dias').forEach(e=>e.style.display=v('f-pcv-prorr')==='auto'?'flex':'none');
-  setDisp('row-pcv-direto',lerOnus().some(o=>o.canc!=='nao')?'flex':'none');
   /* Bloco 5: mesmas regras de visibilidade da compra e venda. */
   const isFr=v('f-im-tipo')==='fracao';
   setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
@@ -6366,6 +6345,7 @@ function funilCPCV(){
 }
 /* Desliga o que o funil do contrato-promessa mexeu, ao voltar a outro ato. */
 function desfazerFunilCPCV(){
+  {const tu=document.getElementById('f-tu-caso');const cb=tu&&tu.closest('.cond-block');if(cb)cb.style.display='';}
   setDisp('card-cpcv','none');setDisp('row-pcv-prime','none');setDisp('card-b2','block');
   nomearBloco('card-b7','Certificados / Licenças / Preferências','Certificados, licenças e direitos de preferência');
   const tcp=document.getElementById('t-casapronta');if(tcp){const r=tcp.closest('.toggle-row');if(r)r.style.display='';}
@@ -6375,266 +6355,230 @@ function pcvValores(){
   const preco=parseValor(v('f-pcv-preco'));
   const sinal=chk('t-pcv-sinal')?parseValor(v('f-pcv-sinal-valor')):0;
   const r1=chk('t-pcv-sinal')&&chk('t-pcv-ref1')?parseValor(v('f-pcv-ref1-valor')):0;
-  const r2=chk('t-pcv-sinal')&&chk('t-pcv-ref2')?parseValor(v('f-pcv-ref2-valor')):0;
-  return{preco,sinal,r1,r2,rem:Math.round((preco-sinal-r1-r2)*100)/100};
+  return{preco,sinal,r1,r2:0,rem:Math.round((preco-sinal-r1)*100)/100};
 }
-/* «€ 235 000,00 (DUZENTOS E TRINTA E CINCO MIL EUROS)» — forma do v2. */
-function pcvEuros(n){return n?`€ ${fmtValor(n)} (${valorExtenso(n).toUpperCase()})`:'€ … (…)';}
+/* Valores: «€ 235 000,00» e o extenso em maiúsculas, como no v2. */
+function pcvFmt(n){return`€ ${fmtValor(n||0)}`;}
+function pcvExt(n){return valorExtenso(n||0).toUpperCase();}
+function pcvEuros(n){return`${pcvFmt(n)} (${pcvExt(n)})`;}
 function pcvOrd(n){return`${n}.ª`;}
 const PCV={V:'Promitente Parte Vendedora',C:'Promitente Parte Compradora'};
-/* Identificação do imóvel — os mesmos campos do bloco 5, na forma do contrato-promessa. */
-function pcvImovel(){
-  const isFr=v('f-im-tipo')==='fracao';
-  const DIREITOS={plena:'',superficie:'do direito de superfície sobre ',usufruto:'do usufruto sobre ',raiz:'da nua-propriedade sobre ',dhp:'do direito real de habitação periódica sobre '};
-  const dto=DIREITOS[v('f-im-direito')]||'';
-  const ant=v('f-pcv-art-ant');
-  const certData=v('f-pcv-crp-data');
-  const mats=ms=>{
-    if(!ms.length)return'inscrito na respetiva matriz predial sob o artigo …';
-    const um=m=>`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}${m.seccao?`, secção ${m.seccao}`:''}, ${daFreg(m.freg)}`;
-    return'inscrito '+(ms.length>1?ms.slice(0,-1).map(um).join(', ')+' e '+um(ms[ms.length-1]):um(ms[0]));
-  };
-  const desig=t=>t==='misto'?'prédio misto':t==='rustico'?'prédio rústico':'prédio urbano';
-  const descr=(crp,num,freg)=>`descrito na Conservatória do Registo Predial de ${crp||'…'} sob o número ${num||'…'} ${daFreg(freg)}`;
-  let txt;
-  if(isFr){
-    txt=`${dto}da fração autónoma designada pela letra «${v('f-im-letra')||'…'}», ${v('f-im-descricao')||'…'}, do prédio urbano em regime de propriedade horizontal sito em ${v('f-im-sito')||'…'}, ${descr(v('f-im-crp'),v('f-im-num'),v('f-im-freg-crp'))}, inscrito na matriz predial urbana sob o artigo ${v('f-im-artigo')||'…'}, ${daFreg(v('f-im-freg-mat'))}`;
-  }else{
-    const extras=lerPrediosExtra();
-    const p1=`${dto}do ${desig(v('f-im-tipo'))} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, ${descr(v('f-im-crp'),v('f-im-num'),v('f-im-freg-crp'))}, ${mats(lerMatrizes())}`;
-    txt=extras.length
-      ?[p1,...extras.map(p=>`${dto}do ${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, ${descr(p.crp,p.num,p.freg)}, ${mats(p.matrizes)}`)].join('; e ')
-      :p1;
+/* ── IDENTIFICAÇÃO DAS PARTES · redação do TEMPL_CPCV_v2 (cpcv_v2.html) ──
+   Transcrita palavra por palavra, só com os dados a virem dos blocos 3 e 4. */
+function pcvOutorgante(o){
+  const dd=x=>x?dataCC(x):'…';
+  if(o.tipo==='empresa'||o.tipo==='municipio'||o.tipo==='cgd'){
+    const reps=(o.reps&&o.reps.length)?o.reps:[{}];
+    const txtGer=g=>`${g.nome||'…'}, ${g.ec||'…'}, natural de ${g.natural||'…'}, portador${g.genero==='F'?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${g.cc||'…'}, válido até ${dd(g.ccval)}, e número de identificação fiscal ${g.nif||'…'}`;
+    let rep;
+    if(reps.length===1)rep=`aqui representada ${reps[0].genero==='F'?'pela sua gerente':'pelo seu gerente'} ${txtGer(reps[0])}`;
+    else{const l=reps.map(txtGer);rep=`aqui representada ${reps.every(g=>g.genero==='F')?'pelas suas gerentes':'pelos seus gerentes'} ${l.slice(0,-1).join(', ')}, e ${l[l.length-1]}`;}
+    const nomeE=o.tipo==='municipio'?`MUNICÍPIO DE ${(o['mun-nome']||'…').toUpperCase()}`:(o.denom||'…');
+    const nipc=o.tipo==='municipio'?o['mun-nipc']:o.nipc,sede=o.tipo==='municipio'?o['mun-sede']:o.sede;
+    return`${nomeE}, pessoa coletiva número ${nipc||'…'}, com sede em ${sede||'…'}, ${rep}`;
   }
-  /* ⚠ Os artigos anteriores ficam ao lado do atual: é por eles que se faz a
-     correspondência com a descrição predial quando esta ainda os refere. */
-  if(ant)txt+=`, o qual teve origem no ${ant.replace(/^(o|no)\s+/i,'')}`;
-  if(certData)txt+=`, conforme certidão do registo predial consultada em ${dPT(certData)}`;
+  /* O v2 não tinha procurador: aqui fica a identificação do gerador. */
+  if(o['repr-tipo']==='procurador')return textoVendedor(o);
+  const fem=o.genero==='F';
+  const casadoComRegime=ehCasado(o.ec)&&o.regime;
+  const comConj=casadoComRegime&&o['conj-nome'];
+  let txt=`${o.nome||'…'}${casadoComRegime?'':`, ${o.ec||'…'}`}, natural de ${o.natural||'…'}, portador${fem?'a':''} do cartão de cidadão emitido pela República Portuguesa com o número ${o.cc||'…'}, válido até ${dd(o.ccval)}, e número de identificação fiscal ${o.nif||'…'}${comConj?'':`, residente em ${o.morada||'…'}`}`;
+  if(casadoComRegime){
+    txt+=`, ${fem?'casada':'casado'} no regime de ${o.regime}`;
+    if(comConj){
+      const cF=o['conj-genero']==='F';
+      txt+=` com ${o['conj-nome']}, natural de ${o['conj-natural']||'…'}, portador${cF?'a':''} do cartão de cidadão com o número ${o['conj-cc']||'…'}, válido até ${dd(o['conj-ccval'])}, e NIF ${o['conj-nif']||'…'}, residentes em ${o.morada||'…'}`;
+    }
+  }
   return txt;
 }
-function pcvDesig(list,parte){
-  const g=generosOutorgantes(list);
-  const pl=g.length>1,fem=g.length>0&&g.every(x=>x==='F');
-  return`Adiante designad${pl?(fem?'as':'os'):(fem?'a':'o')} por ${parte}`;
+/* ── IMÓVEL · redação do v2 (gerarTextoImovel), com os campos do bloco 5 ── */
+function pcvImovel(){
+  const t=v('f-im-tipo')||'urbano';
+  const sitoDe=x=>x?`sito em ${x}, `:'';
+  const matsTxt=(ms)=>{
+    const urb=ms.filter(m=>m.nat!=='rustica'&&m.artigo).map(m=>`artigo matricial ${m.artigo}, da freguesia de ${m.freg||'…'}`);
+    const rus=ms.filter(m=>m.nat==='rustica'&&m.artigo).map(m=>`artigo matricial ${m.artigo}${m.seccao?', secção '+m.seccao:''}, da freguesia de ${m.freg||'…'}`);
+    const a=[];
+    if(urb.length)a.push(`na matriz predial urbana sob o ${urb.join(' e o ')}`);
+    if(rus.length)a.push(`na matriz predial rústica sob o ${rus.join(' e o ')}`);
+    return a.length?`, inscrito ${a.join(' e ')}`:'';
+  };
+  const um=(tipo,desc,sito,crp,num,freg,ms)=>{
+    const S=sitoDe(sito);
+    if(tipo==='rustico')return`do prédio rústico, ${desc?desc+', ':''}${S}descrito na Conservatória do Registo Predial de ${crp||'…'}, sob o número ${num||'…'}, freguesia de ${freg||'…'}`+matsTxt(ms);
+    if(tipo==='misto')return`do prédio misto, ${desc?desc+', ':''}${S}descrito na Conservatória do Registo Predial de ${crp||'…'}, sob o número ${num||'…'}, freguesia de ${freg||'…'}`+matsTxt(ms);
+    return`do prédio urbano, ${desc?desc+', ':''}${S}descrito na Conservatória do Registo Predial de ${crp||'…'}, sob o número ${num||'…'}, freguesia de ${freg||'…'}`+matsTxt(ms);
+  };
+  if(t==='fracao'){
+    const desc=v('f-im-descricao'),S=sitoDe(v('f-im-sito'));
+    return`da fração autónoma designada pela letra "${v('f-im-letra')||'…'}", do prédio em regime de propriedade horizontal constituído pela ${v('f-im-apph')||'…'}, ${desc?'composta por '+desc+', ':''}${S}descrita na Conservatória do Registo Predial de ${v('f-im-crp')||'…'}, sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}`
+      +(v('f-im-artigo')?`, inscrito na matriz predial urbana sob o artigo matricial ${v('f-im-artigo')}, da freguesia de ${v('f-im-freg-mat')||'…'}`:'');
+  }
+  const p1=um(t,v('f-im-descricao'),v('f-im-sito'),v('f-im-crp'),v('f-im-num'),v('f-im-freg-crp'),lerMatrizes());
+  /* O v2 só tinha um prédio; havendo mais no bloco 5, juntam-se na mesma forma. */
+  const ex=lerPrediosExtra().map(p=>um(p.tipo,p.descricao,p.sito,p.crp,p.num,p.freg,p.matrizes));
+  return[p1,...ex].join('; e ');
 }
 function comporCPCV(){
   const vend=lerVendedores(),comps=lerCompradores();
   const V=PCV.V,C=PCV.C;
   const out=[];
-  const negrV=vend.flatMap(o=>o.tipo==='singular'?[o['repr-tipo']==='procurador'?o['proc-nome']:'',o.nome,ehCasado(o.ec)&&(o['conj-out']||'ambos')!=='nao'?o['conj-nome']:'']:[o.denom,...(o.reps||[]).map(r=>r.nome)]).filter(Boolean);
-  const negrC=comps.flatMap(o=>o.tipo==='singular'?[o['repr-tipo']==='procurador'?o['proc-nome']:'',o.nome,ehCasado(o.ec)&&(o['conj-out']||'ambos')!=='nao'?o['conj-nome']:'']:[o.denom,...(o.reps||[]).map(r=>r.nome)]).filter(Boolean);
-  out.push({id:'k-vend',T:'ENTRE:',X:vend.length?vend.map(textoVendedor).join(';\n'):'…',negrito:negrV,cab:true});
-  out.push({id:'k-vend-d',T:'',X:pcvDesig(vend,V)+';',cab:true});
-  out.push({id:'k-comp',T:'E',X:comps.length?comps.map(textoVendedor).join(';\n'):'…',negrito:negrC,cab:true});
-  out.push({id:'k-comp-d',T:'',X:pcvDesig(comps,C)+'.',cab:true});
+  const nomesNeg=list=>list.flatMap(o=>o.tipo==='singular'?[o['repr-tipo']==='procurador'?o['proc-nome']:'',o.nome,ehCasado(o.ec)?o['conj-nome']:'']:[o.denom,...(o.reps||[]).map(r=>r.nome)]).filter(Boolean);
+  out.push({id:'k-vend',T:'ENTRE:',X:vend.length?vend.map(pcvOutorgante).join(';\n'):'…',negrito:nomesNeg(vend),cab:true});
+  out.push({id:'k-vend-d',T:'',X:'Adiante identificado(s) como Promitente Parte Vendedora;',cab:true});
+  out.push({id:'k-comp',T:'E',X:comps.length?comps.map(pcvOutorgante).join(';\n'):'…',negrito:nomesNeg(comps),cab:true});
+  out.push({id:'k-comp-d',T:'',X:'Adiante identificado(s) como Promitente Parte Compradora.',cab:true});
   out.push({id:'k-intro',T:'',X:'É celebrado, de livre vontade e de boa fé, o presente contrato-promessa de compra e venda, que se rege pelas cláusulas seguintes e, no que for omisso, pela lei portuguesa.',cab:true});
 
-  const cl=[];   /* {id,tit,linhas:[...],validar} — a numeração faz-se no fim */
-  const num=a=>a.map((t,i)=>`${i+1}. ${t}`);
-
-  /* 1.ª OBJETO */
-  const onus=lerOnus();
-  const onusTxt=!chk('t-onus')||!onus.length
-    ?'Sobre o Imóvel não incidem ónus ou encargos.'
-    :onus.map(o=>o.canc==='nao'
-      ?`Sobre o Imóvel incide ${o.desc||'…'}, registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, que se mantém e que a ${C} declara conhecer e aceitar.`
-      :`Sobre o Imóvel incide ${o.desc||'…'}, registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, que a ${V} se obriga a fazer cancelar até à outorga do contrato definitivo.`).join(' ');
-  const camara=v('f-pcv-camara')||v('f-tu-camara')||'…';
-  cl.push({id:'k-c-objeto',tit:'OBJETO',validar:!!(v('f-pcv-art-ant')||v('f-pcv-crp-data')),linhas:num([
-    `A ${V} é dona e legítima possuidora ${pcvImovel()}, adiante designado por «Imóvel».`,
-    onusTxt,
-    `É da responsabilidade da ${V} a conformidade e a atualização dos elementos do Imóvel junto da Câmara Municipal de ${camara}, do Serviço de Finanças e da Conservatória do Registo Predial, designadamente quanto à descrição, composição, áreas e confrontações, que devem estar coincidentes à data da outorga do contrato definitivo.`])});
-
-  /* 2.ª PROMESSA */
-  const prom=[
-    `A ${V} promete vender à ${C}, e esta promete comprar-lhe, o Imóvel, livre de pessoas e bens e livre de ónus, encargos e responsabilidades, no estado de conservação em que se encontra.`,
-    `Os ónus, encargos e dívidas de impostos ou taxas que incidam sobre o Imóvel serão cancelados ou liquidados até à outorga do contrato definitivo, mediante entrega do respetivo comprovativo.`,
-    `A ${C} declara ter visitado o Imóvel e aceitá-lo no estado físico em que se encontra.`,
-    `Na véspera ou no dia da outorga do contrato definitivo, a ${C} poderá visitar o Imóvel, por si ou por terceiro que indique, obrigando-se a ${V} a facultar o acesso, para confirmar que se encontra livre de pessoas e bens e no estado em que se encontrava à data do presente contrato.`];
-  const aCancelar=chk('t-onus')?onus.filter(o=>o.canc!=='nao'):[];
-  const direto=aCancelar.length&&chk('t-pcv-direto');
-  if(direto){
-    const cred=[...new Set(aCancelar.map(o=>o.ent).filter(Boolean))];
-    const credTxt=cred.length?cred.join(' e '):'…';
-    prom.push(`Para o cancelamento ${aCancelar.length>1?'dos ónus referidos':'do ónus referido'} no n.º 2 da cláusula 1.ª, as Partes acordam que a parte do preço necessária à liquidação da dívida garantida é entregue pela ${C} diretamente ${cred.length>1?'aos credores':'ao credor'}, ${credTxt}, na data da outorga do contrato definitivo, por conta do preço devido à ${V}, que dá desde já o seu acordo a esse pagamento.`);
-    prom.push(`A ${V} obriga-se a obter junto ${cred.length>1?'dos credores':'do credor'}, e a comunicar à ${C} com a antecedência mínima de 5 dias relativamente à outorga, o montante exato em dívida à data da outorga e a forma de pagamento, bem como a assegurar que o documento de autorização do cancelamento é entregue no ato.`);
-  }
-  cl.push({id:'k-c-promessa',tit:'PROMESSA',validar:!!direto,linhas:num(prom)});
-
-  /* CÔNJUGE AUTORIZANTE ⚠ */
-  const autoriz=vend.filter(o=>o.tipo==='singular'&&ehCasado(o.ec)&&o['conj-out']==='consente'&&o['conj-nome']);
-  if(autoriz.length){
-    const pl=autoriz.length>1;
-    const lista=autoriz.map(o=>`${o['conj-nome']}, cônjuge de ${o.nome||'…'}`).join(', e ');
-    cl.push({id:'k-c-autoriz',tit:pl?'CÔNJUGES AUTORIZANTES':'CÔNJUGE AUTORIZANTE',validar:true,linhas:num([
-      `${lista}, ${pl?'intervêm':'intervém'} no presente contrato na qualidade de ${pl?'cônjuges autorizantes':'cônjuge autorizante'} e ${pl?'declaram':'declara'}, nos termos e para os efeitos do artigo 1682.º-A do Código Civil, que ${pl?'dão':'dá'} o seu consentimento à presente promessa de venda e à venda prometida.`,
-      `${pl?'Os cônjuges autorizantes obrigam-se':'O cônjuge autorizante obriga-se'} a prestar o mesmo consentimento no contrato definitivo, outorgando-o ou emitindo-o pela forma legalmente exigida.`])});
-  }
-
-  /* DECLARAÇÕES DA PARTE VENDEDORA */
-  const decl=[
-    `A ${V} declara ter plena capacidade e legitimidade para celebrar o presente contrato e outorgar o contrato definitivo, e deter a posse do Imóvel sem oposição de terceiros.`,
-    `Declara ainda que, de acordo com o seu conhecimento à data da assinatura do presente contrato:\na) não corre ação judicial, administrativa ou executiva em que se discuta a titularidade do Imóvel, nem sobre ele incide penhora, arresto ou procedimento de expropriação;\nb) não existe sobre o Imóvel contrato-promessa, arrendamento, comodato ou outro título que limite a sua disponibilidade;\nc) não foram executadas no Imóvel obras carecidas de licenciamento sem que este tenha sido obtido;\nd) não tem conhecimento de vício estrutural ou de construção que ponha em causa a segurança e a estabilidade do Imóvel.`,
-    `A ${V} obriga-se a manter o Imóvel, até à outorga do contrato definitivo, na situação jurídica e física existente à data do presente contrato, e a comunicar de imediato à ${C} qualquer alteração relevante.`];
-  let declVal=false;
-  if(chk('t-pcv-decl-urb')){
-    declVal=true;
-    decl.push(`A ${V} declara que o Imóvel, na sua configuração atual, corresponde ao que consta do respetivo título urbanístico ou, não o exigindo a lei à data da construção, à situação existente nessa data, não tendo sido nele realizadas obras de construção, ampliação ou alteração sem o controlo prévio legalmente exigido, e obriga-se a entregar à ${C}, até à outorga do contrato definitivo, os documentos que o comprovem.`);
-  }
-  const ecDiverge=vend.filter(o=>o.tipo==='singular'&&o.coincide==='nao');
-  if(ecDiverge.length){
-    declVal=true;
-    const nomes=ecDiverge.map(o=>o.nome||'…').join(' e ');
-    const casados=ecDiverge.some(o=>ehCasado(o.ec));
-    decl.push(`Não coincidindo o estado civil de ${nomes} com o que consta do registo predial, a ${V} obriga-se a apresentar, até à outorga do contrato definitivo, certidão do assento de nascimento${casados?' e, sendo o caso, do assento de casamento,':''} que comprove o estado civil atual, para atualização do registo.`);
-  }
-  cl.push({id:'k-c-decl',tit:'DECLARAÇÕES DA PARTE VENDEDORA',validar:declVal,linhas:num(decl)});
-
-  /* PREÇO E PAGAMENTO */
+  const cl=[];
+  const camara=v('f-pcv-camara')||'…';
+  /* 1.ª — v2. Os ónus vêm do bloco 5, na frase do v2. */
+  const onus=chk('t-onus')?lerOnus():[];
+  const onusDesc=[...onus.map(o=>`${o.desc||'…'}, registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}`),v('f-onus-txt')].filter(Boolean).join('; ');
+  const TXT_Onus=onus.length||v('f-onus-txt')&&chk('t-onus')
+    ?`Sobre o referido imóvel incidem os seguintes ónus ou encargos: ${onusDesc.replace(/[.;\s]+$/,'')}.`
+    :'Sobre o referido imóvel não incidem ónus ou encargos, nem qualquer servidão;';
+  cl.push({id:'k-c-objeto',tit:'OBJETO',linhas:[
+    `1. A ${V} é dona e legítima possuidora ${pcvImovel()}, adiante designado por «Imóvel».`,
+    `2. ${TXT_Onus}`,
+    `3. É da responsabilidade da ${V} a conformidade e a atualização dos elementos do Imóvel junto da Câmara Municipal de ${camara}, do Serviço de Finanças e da Conservatória do Registo Predial, designadamente quanto à descrição, composição, áreas e confrontações, que devem estar coincidentes à data da outorga do contrato definitivo.`]});
+  /* 2.ª — v2; no n.º 2 acrescentou-se «ou em simultâneo com esta» (Liliana, 20/10/2026). */
+  cl.push({id:'k-c-promessa',tit:'PROMESSA',linhas:[
+    `1. A ${V} promete vender à ${C}, e esta promete comprar-lhe, o Imóvel, livre de pessoas e bens e livre de ónus, encargos e responsabilidades, no estado de conservação em que se encontra.`,
+    `2. Os ónus, encargos e dívidas de impostos ou taxas que incidam sobre o Imóvel serão cancelados ou liquidados até à outorga do contrato definitivo ou em simultâneo com esta, mediante entrega do respetivo comprovativo.`,
+    `3. A ${C} declara ter visitado o Imóvel e aceitá-lo no estado físico em que se encontra.`,
+    `4. Na véspera ou no dia da outorga do contrato definitivo, a ${C} poderá visitar o Imóvel, por si ou por terceiro que indique, obrigando-se a ${V} a facultar o acesso, para confirmar que se encontra livre de pessoas e bens e no estado em que se encontrava à data do presente contrato.`]});
+  /* 3.ª — v2 */
+  cl.push({id:'k-c-decl',tit:'DECLARAÇÕES DA PARTE VENDEDORA',linhas:[
+    `1. A ${V} declara ter plena capacidade e legitimidade para celebrar o presente contrato e outorgar o contrato definitivo, e deter a posse do Imóvel sem oposição de terceiros.`,
+    `2. Declara ainda que, de acordo com o seu conhecimento à data da assinatura do presente contrato:`,
+    'a) não corre ação judicial, administrativa ou executiva em que se discuta a titularidade do Imóvel, nem sobre ele incide penhora, arresto ou procedimento de expropriação;',
+    'b) não existe sobre o Imóvel contrato-promessa, arrendamento, comodato ou outro título que limite a sua disponibilidade;',
+    'c) não foram executadas no Imóvel obras carecidas de licenciamento sem que este tenha sido obtido;',
+    'd) não tem conhecimento de vício estrutural ou de construção que ponha em causa a segurança e a estabilidade do Imóvel.',
+    `3. A ${V} obriga-se a manter o Imóvel, até à outorga do contrato definitivo, na situação jurídica e física existente à data do presente contrato, e a comunicar de imediato à ${C} qualquer alteração relevante.`]});
+  /* 4.ª — v2 (gerarTextoPagamento) */
   const val=pcvValores();
-  const L='abcdefghij';let li=0;
-  const al=[];
+  const pag=[];let letra=97;
   if(chk('t-pcv-sinal')){
-    const m=v('f-pcv-sinal-meio');
-    const meio=m==='transferencia'
-      ?`, mediante transferência bancária da conta com o IBAN ${v('f-pcv-sinal-iban-o')||'…'} para a conta da ${V} com o IBAN ${v('f-pcv-sinal-iban-d')||'…'}`
-      :m==='cheque'?`, mediante cheque${v('f-pcv-sinal-cheque')?` n.º ${v('f-pcv-sinal-cheque')}`:''}`:', em numerário';
-    al.push(`${L[li++]}) com a assinatura do presente contrato, a título de sinal e princípio de pagamento${meio}, a ${C} entrega à ${V} a quantia de ${pcvEuros(val.sinal)}, de que esta dá quitação;`);
-    [['1',val.r1],['2',val.r2]].forEach(([k,n])=>{
-      if(!chk('t-pcv-ref'+k))return;
-      const m2=v(`f-pcv-ref${k}-meio`);
-      al.push(`${L[li++]}) até ao dia ${v(`f-pcv-ref${k}-data`)?dataExtenso(v(`f-pcv-ref${k}-data`)):'…'}, a título de reforço de sinal, ${m2==='cheque'?'mediante cheque':'mediante transferência bancária para a conta da '+V+' acima indicada'}, a quantia de ${pcvEuros(n)};`);
-    });
-  }
-  al.push(`${al.length?L[li++]+') ':''}${al.length?'o remanescente, no valor de '+pcvEuros(val.rem)+', é pago':'a totalidade do preço é paga'} pela ${C} na data da outorga do contrato definitivo${direto?', sem prejuízo do disposto na cláusula 2.ª quanto ao pagamento direto ao credor':''}.`);
-  /* Sem sinal não há alíneas: a totalidade paga-se no definitivo, num número só. */
-  cl.push({id:'k-c-preco',tit:'PREÇO E PAGAMENTO',linhas:al.length>1
-    ?[`1. O preço global acordado é de ${pcvEuros(val.preco)}.`,`2. O preço é pago do seguinte modo:`,...al]
-    :[`1. O preço global acordado é de ${pcvEuros(val.preco)}.`,`2. ${al[0].charAt(0).toUpperCase()+al[0].slice(1)}`]});
-
-  /* SINAL / CLÁUSULA PENAL — redação do v2, com a execução específica que já lá estava. */
+    const f=v('f-pcv-sinal-meio');
+    let t=`${String.fromCharCode(letra++)}. Com a assinatura do presente contrato, a título de sinal e princípio de pagamento`;
+    if(f==='transferencia')t+=`, e mediante transferência bancária da conta com o IBAN ${v('f-pcv-sinal-iban-o')||'…'}, para a conta da ${V} com o IBAN ${v('f-pcv-sinal-iban-d')||'…'}`;
+    else if(f==='cheque')t+=', mediante cheque bancário';
+    else if(f==='numerario')t+=', em numerário';
+    t+=`, a ${C} entrega a quantia de ${pcvFmt(val.sinal)} (${pcvExt(val.sinal)});`;
+    pag.push(t);
+    if(chk('t-pcv-ref1'))
+      pag.push(`${String.fromCharCode(letra++)}. Em ${v('f-pcv-ref1-data')?dPT(v('f-pcv-ref1-data')):'…'}, a título de reforço de sinal, mediante transferência bancária da conta com o IBAN ${v('f-pcv-ref1-iban-o')||'…'} para a conta da ${V} com o IBAN ${v('f-pcv-ref1-iban-d')||'…'}, a ${C} entrega a quantia de ${pcvFmt(val.r1)} (${pcvExt(val.r1)});`);
+    pag.push(`${String.fromCharCode(letra++)}. O remanescente do preço no valor de ${pcvFmt(val.rem)} (${pcvExt(val.rem)}) será liquidado pela ${C} na data da outorga da competente Escritura Pública de Compra e Venda/DPA.`);
+  }else pag.push(`A totalidade do preço será paga pela ${C} na data da outorga da competente Escritura Pública de Compra e Venda/DPA.`);
+  cl.push({id:'k-c-preco',tit:'PREÇO E PAGAMENTO',linhas:[
+    `1. O preço global acordado é de ${pcvFmt(val.preco)} (${pcvExt(val.preco)}).`,
+    '2. O preço é pago do seguinte modo:',...pag]});
+  /* 5.ª — v2, palavra por palavra */
   let inc,titInc;
   if(chk('t-pcv-sinal')){
     titInc='SINAL E INCUMPRIMENTO';
-    inc=num([
-      `A ${V} terá o direito, em caso de incumprimento definitivo da obrigação de celebração do contrato definitivo, dentro do prazo previsto no presente contrato, por motivo imputável à ${C}, a fazer suas todas as quantias recebidas a título de sinal e princípio de pagamento, nos termos do n.º 2 do artigo 442.º do Código Civil.`,
-      `A ${C} terá direito, em caso de incumprimento definitivo do presente contrato, por motivo imputável à ${V}, a receber em dobro as quantias entregues a título de sinal, nos termos do n.º 2 do artigo 442.º do Código Civil.`,
-      `Sem prejuízo do disposto nos números anteriores, qualquer das Partes poderá exigir a execução específica do presente contrato-promessa, nos termos do n.º 3 do artigo 830.º do Código Civil e demais legislação aplicável.`]);
+    inc=[
+      `1. A ${V} terá o direito, em caso de incumprimento definitivo da obrigação de celebração da Escritura Pública ou DPA, dentro do prazo limite previsto no presente contrato, por motivo imputável à ${C}, a fazer suas todas as quantias recebidas a título de sinal e princípio de pagamento, nos termos do artigo 442.º, n.º 2, do Código Civil.`,
+      `2. A ${C} terá direito, em caso de incumprimento definitivo deste contrato, por motivo imputável à ${V}, a receber a restituição em dobro das quantias entregues a título de sinal, nos termos do artigo 442.º, n.º 2, do Código Civil.`,
+      '3. Sem prejuízo do disposto nos números anteriores, qualquer das Partes poderá exigir a execução específica do presente contrato-promessa, nos termos do n.º 3 do artigo 830.º do Código Civil e demais legislação aplicável.'];
   }else{
     titInc='INCUMPRIMENTO E CLÁUSULA PENAL';
     const pct=v('f-pcv-cp-pct');
-    const valorTxt=v('f-pcv-cp-modo')==='percent'
-      ?`o valor correspondente a ${pct||'…'}% (${pct?extInt(parseValor(pct)):'…'} por cento) do preço global acordado na cláusula «PREÇO»`
-      :`a quantia de ${pcvEuros(parseValor(v('f-pcv-cp-valor')))}`;
+    const valorTexto=v('f-pcv-cp-modo')==='percent'
+      ?`o valor correspondente a ${pct||'…'}% (${pct||'…'} por cento) do preço global acordado na Cláusula 4ª`
+      :`a quantia de ${pcvFmt(parseValor(v('f-pcv-cp-valor')))} (${pcvExt(parseValor(v('f-pcv-cp-valor')))})`;
     const n1=chk('t-pcv-100')
-      ?'As Partes reconhecem que a aquisição prometida será integralmente financiada por instituição de crédito, correspondendo o empréstimo a 100% (cem por cento) do preço da transação, com prestação de garantia pessoal do Estado ao abrigo do Decreto-Lei n.º 44/2024, de 10 de julho, regulamentado pela Portaria n.º 236-A/2024/1, de 27 de setembro, razão pela qual não há lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento. Nestes termos, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, as Partes acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.'
-      :'Não havendo lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento, as Partes, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.';
-    inc=num([n1,
-      `Em caso de incumprimento definitivo do presente contrato imputável à ${C}, obriga-se esta a pagar à ${V}, a título de cláusula penal, ${valorTxt}.`,
-      `Em caso de incumprimento definitivo do presente contrato imputável à ${V}, obriga-se esta a pagar à ${C}, a título de cláusula penal, quantia de igual montante.`,
-      'As Partes acordam expressamente que a presente cláusula penal tem natureza compulsória e não substitui a indemnização pelos danos efetivamente sofridos pela parte não faltosa, acrescendo a esta nos termos gerais de direito, sem prejuízo do disposto no n.º 2 do artigo 811.º do Código Civil.',
-      'Para os efeitos do presente contrato, considera-se verificado o incumprimento definitivo quando, após interpelação admonitória dirigida à parte faltosa, por carta registada com aviso de receção, fixando um prazo razoável não inferior a 15 (quinze) dias para o cumprimento, esta não cumpra a obrigação em falta dentro do referido prazo, nos termos do artigo 808.º do Código Civil.',
-      'Sem prejuízo do disposto nos números anteriores, qualquer das Partes poderá exigir a execução específica do presente contrato-promessa, nos termos do n.º 3 do artigo 830.º do Código Civil e demais legislação aplicável.']);
+      ?'1. As Partes reconhecem que a aquisição prometida será integralmente financiada por instituição de crédito, correspondendo o empréstimo a 100% (cem por cento) do preço da transação, com prestação de garantia pessoal do Estado ao abrigo do Decreto-Lei n.º 44/2024, de 10 de julho, regulamentado pela Portaria n.º 236-A/2024/1, de 27 de setembro, razão pela qual não há lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento. Nestes termos, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, as Partes acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.'
+      :'1. Não tendo havido lugar à entrega de qualquer quantia a título de sinal ou princípio de pagamento no presente contrato, as Partes, ao abrigo do princípio da liberdade contratual previsto no artigo 405.º do Código Civil, acordam expressamente em fixar a presente cláusula penal, nos termos e para os efeitos dos artigos 810.º e seguintes do Código Civil.';
+    inc=[n1,
+      `2. Em caso de incumprimento definitivo do presente contrato imputável à ${C}, obriga-se esta a pagar à ${V}, a título de cláusula penal, ${valorTexto}.`,
+      `3. Em caso de incumprimento definitivo do presente contrato imputável à ${V}, obriga-se esta a pagar à ${C}, a título de cláusula penal, quantia de igual montante.`,
+      '4. As Partes acordam expressamente que a presente cláusula penal tem natureza compulsória e não substitui a indemnização pelos danos efetivamente sofridos pela parte não faltosa, acrescendo a esta nos termos gerais de direito, sem prejuízo do disposto no artigo 811.º, n.º 2, do Código Civil.',
+      '5. Para os efeitos do presente contrato, considera-se verificado o incumprimento definitivo quando, após interpelação admonitória dirigida à parte faltosa, por carta registada com aviso de receção, fixando um prazo razoável não inferior a 15 (quinze) dias para o cumprimento, esta não cumpra a obrigação em falta dentro do referido prazo, nos termos do artigo 808.º do Código Civil.',
+      '6. Sem prejuízo do disposto nos números anteriores, qualquer das Partes poderá exigir a execução específica do presente contrato-promessa, nos termos do nº 3 do artigo 830.º do Código Civil e demais legislação aplicável.'];
   }
   cl.push({id:'k-c-incump',tit:titInc,linhas:inc});
-
-  /* DOCUMENTAÇÃO DO IMÓVEL */
-  let ceTxt,ceVal=false;
-  if(chk('t-ce')){
-    ceTxt=v('f-ce-tipo')==='isencao'
-      ?`o Imóvel dispõe de declaração de isenção de certificação energética${v('f-ce-num')?` n.º ${v('f-ce-num')}`:''}${v('f-ce-val')?`, emitida em ${dPT(v('f-ce-val'))}`:''}${v('f-ce-norma')?`, nos termos ${v('f-ce-norma')}`:''}.`
-      :`o Imóvel dispõe de certificado energético n.º ${v('f-ce-num')||'…'}${v('f-ce-val')?`, válido até ${dPT(v('f-ce-val'))}`:''}.`;
-  }else{ceVal=true;ceTxt=`o Imóvel ainda não dispõe de certificado energético, obrigando-se a obtê-lo e a exibi-lo até à outorga do contrato definitivo.`;}
-  const tuC=v('f-tu-caso');let tuTxt,tuVal=true;
-  if(tuC==='apresentado'){
-    const doc=tuDoc(),a=doc.g==='m'?'o':'a';
-    const ident=`${doc.t}${v('f-tu-num')?` n.º ${v('f-tu-num')}`:''}${v('f-tu-data')?`, de ${dPT(v('f-tu-data'))}`:''}, emitid${a} pela Câmara Municipal de ${v('f-tu-camara')||camara}`;
-    tuTxt=`A ${V} declara que o Imóvel dispõe de ${ident}, cuja cópia foi exibida à ${C}.`;
-  }else if(tuC==='declarado'){
-    const doc=tuDoc(),a=doc.g==='m'?'o':'a';
-    tuTxt=`A ${V} declara que o Imóvel dispõe de ${doc.t}${v('f-tu-num')?` n.º ${v('f-tu-num')}`:''}, emitid${a} pela Câmara Municipal de ${v('f-tu-camara')||camara}, e obriga-se a entregar cópia à ${C} até à outorga do contrato definitivo.`;
-  }else if(tuC==='nao-dispoe'){
-    tuTxt=`A ${V} declara que o Imóvel não dispõe de título urbanístico, o que a ${C} declara conhecer e aceitar.`;
-  }else tuTxt='…';
-  cl.push({id:'k-c-docs',tit:'DOCUMENTAÇÃO DO IMÓVEL',validar:ceVal||tuVal,linhas:num([
-    `Nos termos da alínea a) do n.º 1 do artigo 18.º do Decreto-Lei n.º 101-D/2020, de 7 de dezembro, declara a ${V} que ${ceTxt}`,
-    tuTxt])});
-
-  /* DIREITOS DE PREFERÊNCIA — v2 */
-  cl.push({id:'k-c-pref',tit:'DIREITOS DE PREFERÊNCIA',linhas:num([
-    `A ${V} obriga-se a assegurar, até à outorga do contrato definitivo, o cumprimento de todas as formalidades legais relativas ao exercício de direitos de preferência sobre o Imóvel, designadamente através da publicitação dos elementos essenciais do negócio no sítio www.casapronta.pt e da notificação, nos termos dos artigos 416.º e seguintes do Código Civil, dos titulares de direito de preferência que sejam identificáveis.`,
-    `Sendo solicitados pela ${C}, a ${V} entrega-lhe os comprovativos das diligências referidas no número anterior, até à outorga do contrato definitivo.`,
-    `O exercício do direito legal de preferência por qualquer titular não constitui incumprimento do presente contrato por parte da ${V}, determinando a caducidade do contrato, sem direito a indemnização de qualquer das partes, e devendo as quantias entregues a título de sinal e de reforço ser restituídas em singelo no prazo de 5 dias.`])});
-
-  /* CONTRATO DEFINITIVO */
-  const antec=v('f-pcv-antec')||'10';
-  const emV=v('f-pcv-email-v')||'…',emC=v('f-pcv-email-c')||'…';
-  const quem=v('f-pcv-quem')||'compradora';
-  const dataEsc=v('f-pcv-escr-data')?dataExtenso(v('f-pcv-escr-data')):'…';
-  const marca=quem==='compradora'
-    ?`competindo à ${C} comunicar a data, a hora e o local, com a antecedência mínima de ${antec} dias, por correio eletrónico para ${emV}`
-    :quem==='vendedora'
-      ?`competindo à ${V} comunicar a data, a hora e o local, com a antecedência mínima de ${antec} dias, por correio eletrónico para ${emC}`
-      :`podendo qualquer das Partes proceder à marcação e devendo comunicar à outra a data, a hora e o local, com a antecedência mínima de ${antec} dias, por correio eletrónico para o endereço indicado na cláusula «COMUNICAÇÕES»`;
-  const defin=[`A escritura pública ou o documento particular autenticado será outorgado até ${dataEsc}, ${marca}.`];
-  const pr=v('f-pcv-prorr')||'auto',dias=v('f-pcv-prorr-dias')||'30';
-  if(pr==='auto')defin.push(`O prazo referido no número anterior considera-se prorrogado por períodos sucessivos de ${dias} dias, salvo se qualquer das Partes manifestar oposição à prorrogação, por qualquer meio que permita a sua receção pela outra Parte, até ao termo do prazo em curso.`);
-  else if(pr==='acordo')defin.push('O prazo referido no número anterior só pode ser prorrogado por acordo escrito das Partes.');
-  defin.push('A tradição e a transferência da posse do Imóvel ocorrem na data da outorga do contrato definitivo, contra o pagamento integral do preço.');
-  cl.push({id:'k-c-defin',tit:'CONTRATO DEFINITIVO',validar:quem==='qualquer'||pr==='acordo',linhas:num(defin)});
-
-  /* CONDIÇÃO DE FINANCIAMENTO — v2 */
-  if(chk('t-pcv-fin')){
-    const prazo=v('f-pcv-fin-prazo')||'45';
-    const mont=parseValor(v('f-pcv-fin-montante'));
-    cl.push({id:'k-c-fin',tit:'CONDIÇÃO SUSPENSIVA DE FINANCIAMENTO',linhas:num([
-      `A presente promessa é celebrada sob condição suspensiva de aprovação, à ${C}, de financiamento bancário${mont?`, no montante mínimo de ${pcvEuros(mont)},`:''} destinado à aquisição do Imóvel, no prazo de ${prazo} dias a contar da data do presente contrato.`,
-      `A ${C} obriga-se a diligenciar, com a devida prontidão, pela instrução do processo de crédito e a comunicar à ${V}, logo que a receba, a decisão da instituição de crédito, entregando o respetivo comprovativo.`,
-      `Não sendo o financiamento aprovado dentro do prazo referido no n.º 1, por motivo não imputável à ${C}, o presente contrato caduca, sem direito a indemnização de qualquer das partes, devendo as quantias entregues a título de sinal e de reforço ser restituídas em singelo no prazo de 5 dias.`])});
-  }
-
-  /* DESPESAS E IMPOSTOS — v2 */
-  cl.push({id:'k-c-despesas',tit:'DESPESAS E IMPOSTOS',linhas:num([
-    `São da responsabilidade da ${V} as despesas com a documentação necessária ao contrato definitivo, com o cancelamento de ónus e encargos e com a regularização do trato sucessivo, bem como os impostos e taxas inerentes à propriedade ou à utilização do Imóvel referentes ao período anterior à outorga, ainda que se vençam depois dessa data.`,
-    `São da responsabilidade da ${C} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis, o Imposto do Selo e os emolumentos e custos de registo inerentes à aquisição.`])});
-
-  /* COMUNICAÇÕES — v2 */
-  cl.push({id:'k-c-comunic',tit:'COMUNICAÇÕES',linhas:num([
-    `As comunicações entre as partes são feitas por escrito, por carta registada com aviso de receção para as moradas indicadas na identificação das partes, ou por correio eletrónico para ${emV}, quanto à ${V}, e para ${emC}, quanto à ${C}.`,
-    'Qualquer alteração de morada ou de endereço eletrónico deve ser comunicada à outra parte.',
-    'A carta que não seja recebida ou reclamada considera-se recebida no terceiro dia útil seguinte ao envio de segunda carta registada.'])});
-
-  /* MEDIAÇÃO — v2 */
+  /* 6.ª — v2. O certificado vem do bloco 7; a licença tem campo próprio, com as hipóteses do v2. */
+  const ceTxt=!chk('t-ce')?'o imóvel não dispõe de certificação energética, nos termos legalmente aplicáveis.'
+    :v('f-ce-tipo')==='isencao'?`o imóvel dispõe de Certificado de Isenção Energética com o número ${v('f-ce-num')||'…'}, emitido em ${v('f-ce-val')?dPT(v('f-ce-val')):'…'}.`
+    :`o imóvel dispõe de Certificação Energética com o número ${v('f-ce-num')||'…'}, válido até ${v('f-ce-val')?dPT(v('f-ce-val')):'…'}.`;
+  const lu=v('f-pcv-lu');
+  const LU_NOME={alvara:'Alvará de Licença de Utilização',comunicacao:'Resposta à Comunicação Prévia',isencao:'Certidão de Isenção'};
+  const luTxt=lu==='sem'?'Ao abrigo do DL 10/2024 de 08 de janeiro, as partes foram informadas que o imóvel pode não dispor dos títulos urbanísticos necessários à sua utilização.'
+    :LU_NOME[lu]?`Os Contratantes reconhecem que o imóvel dispõe de ${LU_NOME[lu]} com o número ${v('f-pcv-lu-num')||'…'}, emitido em ${v('f-pcv-lu-data')?dPT(v('f-pcv-lu-data')):'…'}.`:'';
+  cl.push({id:'k-c-docs',tit:'DOCUMENTAÇÃO DO IMÓVEL',linhas:[
+    `1. Nos termos da alínea a) do n.º 1 do artigo 18.º do Decreto-Lei n.º 101-D/2020, de 7 de dezembro, declara a ${V} que ${ceTxt}`,
+    ...(luTxt?[`2. ${luTxt}`]:[])]});
+  /* 7.ª — v2 */
+  cl.push({id:'k-c-pref',tit:'DIREITOS DE PREFERÊNCIA',linhas:[
+    `1. A ${V} obriga-se a assegurar, até à outorga do contrato definitivo, o cumprimento de todas as formalidades legais relativas ao exercício de direitos de preferência sobre o Imóvel, designadamente através da publicitação dos elementos essenciais do negócio no sítio www.casapronta.pt e da notificação, nos termos dos artigos 416.º e seguintes do Código Civil, dos titulares de direito de preferência que sejam identificáveis.`,
+    `2. Sendo solicitados pela ${C}, a ${V} entrega-lhe os comprovativos das diligências referidas no número anterior, até à outorga do contrato definitivo.`,
+    `3. O exercício do direito legal de preferência por qualquer titular não constitui incumprimento do presente contrato por parte da ${V}, determinando a caducidade do contrato, sem direito a indemnização de qualquer das partes, e devendo as quantias entregues a título de sinal e de reforço ser restituídas em singelo no prazo de 5 dias.`]});
+  /* 8.ª — v2 */
+  const emV=v('f-pcv-email-v')||'___@___.___',emC=v('f-pcv-email-c')||'___@___.___';
+  cl.push({id:'k-c-defin',tit:'CONTRATO DEFINITIVO',linhas:[
+    `1. A escritura pública ou o documento particular autenticado será outorgado até ${v('f-pcv-escr-data')?dataExtenso(v('f-pcv-escr-data')):'…'}, competindo à ${C} comunicar a data, a hora e o local, com a antecedência mínima de 10 dias, por correio eletrónico para ${emV}.`,
+    '2. O prazo referido no número anterior considera-se prorrogado por períodos sucessivos de 30 dias, salvo se qualquer das Partes manifestar oposição à prorrogação, por qualquer meio que permita a sua receção pela outra Parte, até ao termo do prazo em curso.',
+    '3. A tradição e a transferência da posse do Imóvel ocorrem na data da outorga do contrato definitivo, contra o pagamento integral do preço.']});
+  /* 9.ª — v2 */
+  cl.push({id:'k-c-despesas',tit:'DESPESAS E IMPOSTOS',linhas:[
+    `1. São da responsabilidade da ${V} as despesas com a documentação necessária ao contrato definitivo, com o cancelamento de ónus e encargos e com a regularização do trato sucessivo, bem como os impostos e taxas inerentes à propriedade ou à utilização do Imóvel referentes ao período anterior à outorga, ainda que se vençam depois dessa data.`,
+    `2. São da responsabilidade da ${C} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis, o Imposto do Selo e os emolumentos e custos de registo inerentes à aquisição.`]});
+  /* 10.ª — v2 */
+  cl.push({id:'k-c-comunic',tit:'COMUNICAÇÕES',linhas:[
+    `1. As comunicações entre as partes são feitas por escrito, por carta registada com aviso de receção para as moradas indicadas na identificação das partes, ou por correio eletrónico para ${emV}, quanto à ${V}, e para ${emC}, quanto à ${C}.`,
+    '2. Qualquer alteração de morada ou de endereço eletrónico deve ser comunicada à outra parte.',
+    '3. A carta que não seja recebida ou reclamada considera-se recebida no terceiro dia útil seguinte ao envio de segunda carta registada.']});
+  /* 11.ª — v2 */
   const meds=[];
   if(chk('t-pcv-prime'))meds.push('PRIME TEAM – SOCIEDADE DE MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL, LDA, titular da licença AMI 13123');
   if(chk('t-mediacao')&&v('f-med-nome'))meds.push(`${v('f-med-nome')}, titular da licença AMI ${v('f-med-ami')||'…'}`);
   cl.push({id:'k-c-mediacao',tit:'MEDIAÇÃO IMOBILIÁRIA',linhas:[meds.length
-    ?`As Partes declaram que na compra e venda ora prometida houve intervenção ${meds.length>1?'das mediadoras imobiliárias':'da mediadora imobiliária'} ${meds.join(' e ')}.`
-    :'As Partes declaram que na compra e venda ora prometida não houve intervenção de mediadora imobiliária.']});
-
-  /* DISPOSIÇÕES FINAIS — v2 */
-  cl.push({id:'k-c-finais',tit:'DISPOSIÇÕES FINAIS',linhas:num([
-    'O presente contrato rege-se pela lei portuguesa.',
-    'Os dados pessoais recolhidos destinam-se exclusivamente à celebração e execução do presente contrato e são tratados nos termos do Regulamento (UE) 2016/679.',
-    chk('t-pcv-recon')
+    ?`As Partes contratantes declaram, nos termos do Art.º 40 da Lei n.º 15/2013, de 08 de fevereiro, que a compra e venda ora prometida, houve intervenção ${meds.length>1?'das Mediadoras Imobiliárias':'da Mediadora Imobiliária'} ${meds.join(' e ')}.`
+    :'As Partes contratantes declaram que na presente compra e venda ora prometida não houve intervenção de mediadora imobiliária.']});
+  /* 12.ª — v2 */
+  cl.push({id:'k-c-finais',tit:'DISPOSIÇÕES FINAIS',linhas:[
+    '1. O presente contrato rege-se pela lei portuguesa.',
+    '2. Os dados pessoais recolhidos destinam-se exclusivamente à celebração e execução do presente contrato e são tratados nos termos do Regulamento (UE) 2016/679.',
+    '3. '+(chk('t-pcv-recon')
       ?'As assinaturas do presente contrato são objeto de reconhecimento presencial, nos termos do n.º 3 do artigo 410.º do Código Civil.'
-      :'As Partes prescindem expressamente do reconhecimento presencial das assinaturas previsto no n.º 3 do artigo 410.º do Código Civil.',
-    'As partes declaram ter lido e compreendido o presente contrato e que o mesmo exprime a sua vontade.',
-    'O presente contrato é feito em duplicado, valendo ambos os exemplares como originais, ficando um na posse de cada parte.'])});
-
-  /* Numeração e referências cruzadas: «cláusula 2.ª» e «cláusula «PREÇO»» apontam para o número real. */
-  const nOf=id=>cl.findIndex(c=>c.id===id)+1;
-  cl.forEach((c,i)=>{
-    const X=c.linhas.join('\n')
-      .replace('cláusula «PREÇO»',`cláusula ${pcvOrd(nOf('k-c-preco'))}`)
-      .replace('n.º 2 da cláusula 1.ª',`n.º 2 da cláusula ${pcvOrd(nOf('k-c-objeto'))}`)
-      .replace('disposto na cláusula 2.ª',`disposto na cláusula ${pcvOrd(nOf('k-c-promessa'))}`)
-      .replace('cláusula «COMUNICAÇÕES»',`cláusula ${pcvOrd(nOf('k-c-comunic'))}`);
-    out.push({id:c.id,T:`CLÁUSULA ${pcvOrd(i+1)} — ${c.tit}`,X,validar:!!c.validar,clausula:true});
-  });
-  const esp=v('f-pcv-especial');
-  if(esp)out.push({id:'k-c-especial',T:'CLÁUSULA ESPECIAL',X:esp,clausula:true});
-  out.push({id:'k-fecho',T:'',X:`O presente contrato é assinado em ${v('f-pcv-local')||'…'}, no dia ${v('f-pcv-data')?dataExtenso(v('f-pcv-data')):'…'}.`,cab:true});
+      :'As Partes prescindem expressamente do reconhecimento presencial das assinaturas previsto no n.º 3 do artigo 410.º do Código Civil.'),
+    '4. As partes declaram ter lido e compreendido o presente contrato e que o mesmo exprime a sua vontade.',
+    '5. O presente contrato é feito em duplicado, valendo ambos os exemplares como originais, ficando um na posse de cada parte.']});
+  /* ⚠ ÚNICO ACRESCENTO · cônjuge autorizante (por validar). Vai a seguir à 12.ª
+     para não mexer na numeração validada — a 5.ª remete para a «Cláusula 4ª». */
+  const autoriz=vend.filter(o=>o.tipo==='singular'&&ehCasado(o.ec)&&o['conj-out']==='consente'&&o['conj-nome']);
+  if(autoriz.length){
+    const pl=autoriz.length>1;
+    const lista=autoriz.map(o=>`${o['conj-nome']}, cônjuge de ${o.nome||'…'}`).join(', e ');
+    cl.push({id:'k-c-autoriz',tit:pl?'CÔNJUGES AUTORIZANTES':'CÔNJUGE AUTORIZANTE',validar:true,linhas:[
+      `1. ${lista}, ${pl?'intervêm':'intervém'} no presente contrato na qualidade de ${pl?'cônjuges autorizantes':'cônjuge autorizante'} e ${pl?'declaram':'declara'}, nos termos e para os efeitos do artigo 1682.º-A do Código Civil, que ${pl?'dão':'dá'} o seu consentimento à presente promessa de venda e à venda prometida.`,
+      `2. ${pl?'Os cônjuges autorizantes obrigam-se':'O cônjuge autorizante obriga-se'} a prestar o mesmo consentimento no contrato definitivo, outorgando-o ou emitindo-o pela forma legalmente exigida.`]});
+  }
+  /* ⚠ Situação não documentada (por validar, 20/10/2026). Só entra quando as
+     partes a declaram; respondendo «não», o contrato fica como o v2. */
+  if(v('f-pcv-situacao')==='sim'){
+    const sit=(v('f-pcv-situacao-txt')||'…').trim().replace(/[.;\s]+$/,'');
+    cl.push({id:'k-c-situacao',tit:'SITUAÇÃO DO IMÓVEL NÃO DOCUMENTADA',validar:true,linhas:[
+      `1. As Partes declaram que o Imóvel apresenta a seguinte situação, que não consta da descrição predial, da inscrição matricial nem do título urbanístico: ${sit}.`,
+      '2. Ambas as Partes declaram conhecer a situação descrita no número anterior e que a mesma foi tida em conta na formação da sua vontade de contratar, fazendo o que nela se descreve e acorda parte integrante do presente contrato.']});
+  }
+  cl.forEach((c,i)=>out.push({id:c.id,T:`CLÁUSULA ${pcvOrd(i+1)} — ${c.tit}`,X:c.linhas.join('\n'),validar:!!c.validar,clausula:true}));
+  /* Cláusula especial — v2: financiamento e texto livre sob o mesmo título. */
+  const esp=[];
+  if(chk('t-pcv-fin')){
+    const prazo=v('f-pcv-fin-prazo')||'45',mont=parseValor(v('f-pcv-fin-montante'));
+    esp.push('CONDIÇÃO SUSPENSIVA DE FINANCIAMENTO\n'
+      +`1. A presente promessa é celebrada sob condição suspensiva de aprovação, à ${C}, de financiamento bancário${mont?`, no montante mínimo de ${pcvFmt(mont)} (${pcvExt(mont)}),`:''} destinado à aquisição do Imóvel, no prazo de ${prazo} dias a contar da data do presente contrato.\n`
+      +`2. A ${C} obriga-se a diligenciar, com a devida prontidão, pela instrução do processo de crédito e a comunicar à ${V}, logo que a receba, a decisão da instituição de crédito, entregando o respetivo comprovativo.\n`
+      +`3. Não sendo o financiamento aprovado dentro do prazo referido no n.º 1, por motivo não imputável à ${C}, o presente contrato caduca, sem direito a indemnização de qualquer das partes, devendo as quantias entregues a título de sinal e de reforço ser restituídas em singelo no prazo de 5 dias.`);
+  }
+  if(v('f-pcv-especial'))esp.push(v('f-pcv-especial'));
+  if(esp.length)out.push({id:'k-c-especial',T:esp.length>1?'CLÁUSULAS ESPECIAIS':'CLÁUSULA ESPECIAL',X:esp.join('\n'),clausula:true});
+  out.push({id:'k-fecho',T:'',X:`O presente contrato é assinado em ${v('f-pcv-local')||'Évora'}, no dia ${v('f-pcv-data')?dataExtenso(v('f-pcv-data')):'…'}.`,cab:true});
   return{termo:[],contrato:out,anexo:[],cpcv:true};
 }
 /* Quem assina, por lado. O cônjuge autorizante assina à parte. */
@@ -6662,15 +6606,12 @@ function resumoCPCV(){
   const sinal=chk('t-pcv-sinal')
     ?`${fmtValor(val.sinal)} €${val.r1||val.r2?` (mais reforço${val.r1&&val.r2?'s':''} de ${[val.r1,val.r2].filter(Boolean).map(n=>fmtValor(n)+' €').join(' e ')})`:''}`
     :'Sem sinal — ver a cláusula penal';
-  const q=v('f-pcv-quem');
   return{
     RES_Vendedor:juntar(lerVendedores().map(nome)),RES_Comprador:juntar(lerCompradores().map(nome)),RES_Imovel:imovel,
     Preco_Total_Fmt:`€ ${fmtValor(val.preco)}`,Preco_Total_Extenso:valorExtenso(val.preco).toUpperCase(),
     RES_Sinal:sinal,RES_Restante:`${fmtValor(val.rem)} €, na outorga da escritura / DPA`,
     Data_Escritura_Extenso:v('f-pcv-escr-data')?dataExtenso(v('f-pcv-escr-data')):'…',
-    RES_QuemMarca:q==='vendedora'?`A parte vendedora, avisando a parte compradora com ${v('f-pcv-antec')||10} dias de antecedência`
-      :q==='qualquer'?`Qualquer das partes, avisando a outra com ${v('f-pcv-antec')||10} dias de antecedência`
-      :`A parte compradora, avisando a parte vendedora com ${v('f-pcv-antec')||10} dias de antecedência`,
+    RES_QuemMarca:'A parte compradora, avisando a parte vendedora com 10 dias de antecedência',
     RES_Financiamento:chk('t-pcv-fin')?`O contrato caduca e o sinal é devolvido em singelo, se o crédito não for aprovado em ${v('f-pcv-fin-prazo')||45} dias.`:'Não aplicável — o negócio não depende de aprovação de crédito.',
     RES_IBAN_Origem:chk('t-pcv-sinal')&&v('f-pcv-sinal-meio')==='transferencia'&&v('f-pcv-sinal-iban-o')||'Não aplicável',
     RES_IBAN_Destino:chk('t-pcv-sinal')&&v('f-pcv-sinal-meio')==='transferencia'&&v('f-pcv-sinal-iban-d')||'Não aplicável'
@@ -6702,7 +6643,6 @@ function alertasCPCV(){
   vend.forEach((o,i)=>{
     if(o.tipo==='singular'&&ehCasado(o.ec)&&o['conj-out']==='nao')
       push(`pcv-v${i}-conj`,'aviso','Parte vendedora',`${o.nome||'Vendedor '+(i+1)}: casado e o cônjuge não intervém — confirme o regime de bens e se o imóvel é bem próprio; se não for, o cônjuge tem de autorizar.`);
-    if(o.tipo==='singular'&&o.coincide==='nao')push(`pcv-v${i}-ec`,'aviso','Parte vendedora',`${o.nome||'Vendedor '+(i+1)}: estado civil diferente do registo — entra a obrigação de apresentar o comprovativo (⚠ redação nova).`);
   });
   if(!v('f-im-num'))push('pcv-imovel','bloqueio','Imóvel','Falta a descrição predial do imóvel.');
   const val=pcvValores();
@@ -6714,15 +6654,18 @@ function alertasCPCV(){
   if(num.length)push('pcv-numerario','aviso','Contrato-promessa','Sinal em numerário de 3 000 € ou mais — o artigo 63.º-E da LGT proíbe pagamentos em numerário a partir desse valor.');
   if(!v('f-pcv-escr-data'))push('pcv-prazo','bloqueio','Contrato-promessa','Falta a data limite do contrato definitivo.');
   else if(v('f-pcv-data')&&v('f-pcv-escr-data')<=v('f-pcv-data'))push('pcv-prazo-antes','bloqueio','Contrato-promessa','A data limite do contrato definitivo é anterior à assinatura.');
-  [['1','primeiro'],['2','segundo']].forEach(([k,o])=>{if(chk('t-pcv-sinal')&&chk('t-pcv-ref'+k)){
-    if(!v(`f-pcv-ref${k}-valor`)||!v(`f-pcv-ref${k}-data`))push(`pcv-ref${k}`,'aviso','Contrato-promessa',`Falta o valor ou a data do ${o} reforço.`);
-    else if(v('f-pcv-escr-data')&&v(`f-pcv-ref${k}-data`)>v('f-pcv-escr-data'))push(`pcv-ref${k}-data`,'aviso','Contrato-promessa',`O ${o} reforço vence depois do prazo do contrato definitivo.`);}});
+  if(chk('t-pcv-sinal')&&chk('t-pcv-ref1')){
+    if(!v('f-pcv-ref1-valor')||!v('f-pcv-ref1-data'))push('pcv-ref1','aviso','Contrato-promessa','Falta o valor ou a data do reforço.');
+    else if(v('f-pcv-escr-data')&&v('f-pcv-ref1-data')>v('f-pcv-escr-data'))push('pcv-ref1-data','aviso','Contrato-promessa','O reforço vence depois do prazo do contrato definitivo.');}
   if(!v('f-pcv-email-v')||!v('f-pcv-email-c'))push('pcv-emails','aviso','Contrato-promessa','Faltam os emails das partes (marcação e comunicações).');
   if(!v('f-pcv-data'))push('pcv-data','aviso','Contrato-promessa','Falta a data da assinatura.');
-  if(!v('f-tu-caso'))push('pcv-tu','aviso','Título urbanístico','Falta dizer a situação do título urbanístico (bloco 7).');
-  if(!chk('t-ce'))push('pcv-ce','aviso','Certificado energético','Sem certificado energético indicado — sai a obrigação de o obter até ao definitivo.');
+  if(['alvara','comunicacao','isencao'].includes(v('f-pcv-lu'))&&(!v('f-pcv-lu-num')||!v('f-pcv-lu-data')))push('pcv-lu','aviso','Licença de utilização','Falta o número ou a data da licença.');
+  if(v('f-pcv-lu')==='sem')push('pcv-lu-sem','aviso','Licença de utilização','«Sem licença» cita o DL 10/2024, que é a redação do v2 — desde 1/10/2026 vale o art. 4.º-A do RJUE (DL 108/2026). Confirme se quer manter.');
+  if(!v('f-pcv-situacao'))push('pcv-situacao','bloqueio','Imóvel','Falta perguntar às partes se há construção ou situação do imóvel que não conste dos documentos.');
+  if(v('f-pcv-situacao')==='sim'&&!v('f-pcv-situacao-txt'))push('pcv-situacao-txt','bloqueio','Imóvel','Situação não documentada sem descrição.');
+  if(!v('f-pcv-camara'))push('pcv-camara','aviso','Imóvel','Falta a Câmara Municipal (cláusula 1.ª, n.º 3).');
+  if(!chk('t-ce'))push('pcv-ce','aviso','Certificado energético','Sem certificado energético indicado — sai «o imóvel não dispõe de certificação energética». Confirme.');
   if(chk('t-onus')&&lerOnus().some(o=>!o.ent||!o.ap))push('pcv-onus','aviso','Imóvel','Ónus sem inscrição ou sem credor identificado.');
-  if(chk('t-pcv-direto')&&!lerOnus().some(o=>o.canc!=='nao'))push('pcv-direto','aviso','Imóvel','Pagamento direto ao credor ligado, mas não há ónus a cancelar no bloco 5.');
   if(!chk('t-pcv-prime')&&!chk('t-mediacao'))push('pcv-med','aviso','Mediação','Sem mediadora indicada — sai «não houve intervenção de mediadora». Confirme.');
   const porValidar=comporCPCV().contrato.filter(b=>b.validar).map(b=>b.T.replace(/^CLÁUSULA \d+\.ª — /,''));
   if(porValidar.length)push('pcv-validar','aviso','Redação','Redação nova, por validar (⚠): '+porValidar.join('; ')+'.');
@@ -6741,7 +6684,7 @@ function dadosCPCV(){
     return{T:String(T||''),X:String(X||'')};
   };
   const pars=X=>String(X).split('\n').map(s=>s.trim()).filter(Boolean).map(P=>{
-    const ali=/^[a-z]\)\s/.test(P),nm=/^\d+\.\s/.test(P);
+    const ali=/^[a-z][.)]\s/.test(P),nm=/^\d+\.\s/.test(P);
     return{P,ali,num:nm&&!ali,txt:!ali&&!nm};
   });
   const cadeia=id=>(inseridos[id]||[]).flatMap(x=>{
@@ -8085,6 +8028,7 @@ const TU_ART19=[['','— por responder —'],
 const TU_NOVO=[['','— por responder —'],
   ['apresentado','Declara que dispõe e apresenta — verifiquei o documento'],
   ['declarado','Declara que dispõe mas não apresenta'],
+  ['nao-exigido','Declara que não dispõe por não ser exigido à data da construção'],
   ['nao-dispoe','Declara que não dispõe']];
 /* Documentos: género (para «o qual / a qual») e se é certidão camarária — às
    certidões aplica-se a verificação do Modelo 1 do IMI. */
@@ -8121,6 +8065,7 @@ function onTituloUrb(){
   mostra('.tu-anterior',c==='apresentado'&&doc.cert==='anterior','block');
   mostra('.tu-motivo',c==='declarado','block');
   mostra('.tu-advert',c==='declarado'||c==='nao-dispoe','block');
+  mostra('.tu-construcao',c==='nao-exigido','block');
   mostra('.tu-mod1',c==='apresentado'&&!!doc.cert,'grid');
   mostra('.tu-areas',c==='apresentado'&&chk('t-tu-areas'),'block');
 }
@@ -8192,6 +8137,17 @@ function textosTituloUrb(){
     return{
       contrato:`${QUEM} ${DECL} que o imóvel dispõe do título urbanístico correspondente, o qual não é apresentado neste ato${mot?` por ${mot}`:''}.`,
       termo:advert};
+  }
+  /* ⚠ Por validar (20/10/2026): edificação anterior à exigência de título, sem
+     certidão camarária. O transmitente declara-o no contrato; no termo fica
+     consignado que, à data da construção, o título não era exigido — como
+     declaração dos outorgantes, porque não há documento que o ateste. */
+  if(c==='nao-exigido'){
+    const ep=(v('f-tu-construcao')||'').trim().replace(/[.;,]\s*$/,'');
+    const epoca=ep?`, construído ${ep},`:'';
+    return{
+      contrato:`${QUEM} ${DECL} que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção.`,
+      termo:`— os outorgantes declararam que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção; não me tendo sido apresentado documento camarário que o ateste, adverti-os de que não posso confirmar essa situação;`};
   }
   return{
     contrato:`${QUEM} ${DECL} que o imóvel não dispõe de título urbanístico.`,
