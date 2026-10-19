@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-20.7</span>
+    <span class="page-sub">piloto · v2026-10-20.8</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6548,7 +6548,9 @@ function comporCPCV(){
       ?'As assinaturas do presente contrato são objeto de reconhecimento presencial, nos termos do n.º 3 do artigo 410.º do Código Civil.'
       :'As Partes prescindem expressamente do reconhecimento presencial das assinaturas previsto no n.º 3 do artigo 410.º do Código Civil.'),
     '4. As partes declaram ter lido e compreendido o presente contrato e que o mesmo exprime a sua vontade.',
-    '5. O presente contrato é feito em duplicado, valendo ambos os exemplares como originais, ficando um na posse de cada parte.']});
+    /* ⚠ n.º 5 novo (Liliana, 20/10/2026): a declaração de veracidade do termo do DPA, adaptada ao contrato-promessa. */
+    '5. As Partes declaram, sob sua inteira responsabilidade, que todas as declarações e informações constantes do presente contrato são verdadeiras, exatas e completas, designadamente as relativas à sua identificação e estado civil, ao Imóvel e à sua situação jurídica e urbanística, ao preço e aos respetivos meios e datas de pagamento e à intervenção de mediação imobiliária.',
+    '6. O presente contrato é feito em duplicado, valendo ambos os exemplares como originais, ficando um na posse de cada parte.'],validar:true});
   /* ⚠ ÚNICO ACRESCENTO · cônjuge autorizante (por validar). Vai a seguir à 12.ª
      para não mexer na numeração validada — a 5.ª remete para a «Cláusula 4ª». */
   const autoriz=vend.filter(o=>o.tipo==='singular'&&ehCasado(o.ec)&&o['conj-out']==='consente'&&o['conj-nome']);
