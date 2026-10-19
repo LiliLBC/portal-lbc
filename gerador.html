@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-19.1</span>
+    <span class="page-sub">piloto · v2026-10-19.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -307,6 +307,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
       <button class="btn btn-sm" onclick="carregarPastasSP()" type="button">↺</button>
       <button class="btn btn-sm btn-primary" id="btn-carregar-rascunho" onclick="carregarRascunho()" type="button" disabled>📄 Carregar rascunho</button>
+      <button class="btn btn-sm" id="btn-docs-pasta" onclick="abrirDocumentos()" type="button" disabled title="Receber documentos para esta pasta: passam pelo verificador (separar, nomear, matriz)">📥 Documentos</button>
       <button class="btn btn-sm" id="btn-importar-matriz" onclick="importarMatriz()" type="button" disabled title="Preencher com os dados que o verificador leu com certeza dos documentos da pasta">📥 Importar da matriz</button>
     </div>
   </div>
@@ -6133,6 +6134,12 @@ function showToast(msg,tipo){
 }
 
 let pastasSP=[],pastaSeleccionada=null;
+/* O verificador, aberto daqui, usa a sessão do gerador (que por sua vez vem do Portal). */
+try{Object.defineProperty(window,'graphToken',{get:()=>graphToken,configurable:true});}catch(_){}
+function abrirDocumentos(){
+  if(!pastaSeleccionada){showToast('Escolha primeiro a pasta do cliente.','error');return;}
+  window.open(`https://lililbc.github.io/verificador-lbc/verificador.html?pasta=${encodeURIComponent(pastaSeleccionada.driveId+'|'+pastaSeleccionada.id)}`,'_blank');
+}
 async function carregarPastasSP(){
   const input=document.getElementById('pasta-search');
   try{
@@ -6166,6 +6173,7 @@ function selecionarPasta(i,q){
   setDisp('pasta-sel','block');
   document.getElementById('btn-carregar-rascunho').disabled=false;
   document.getElementById('btn-importar-matriz').disabled=false;
+  document.getElementById('btn-docs-pasta').disabled=false;
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search'))setDisp('pasta-dropdown','none');});
 /* ═══════════ IMPORTAR DA MATRIZ DO VERIFICADOR · piloto (19/10/2026) ═══════════
@@ -6195,38 +6203,62 @@ function mzPropostas(m){
   const certos=docs.filter(mzCerto),incertos=docs.filter(d=>!mzCerto(d));
   const P=[];const add=(grupo,rot,alvo,valor,origem,extra)=>{if(valor===undefined||valor===null||String(valor).trim()==='')return;P.push({grupo,rot,alvo,valor:String(valor).trim(),origem,...(extra||{})});};
   const by=t=>certos.filter(d=>d.tipoLido===t);
-  /* Imóvel: certidão (fração, se houver) e caderneta. */
-  const crps=by('CRP');const c=crps.find(d=>d.dados.fracao)||crps[0];
-  if(c){const x=c.dados,o=c.ficheiro;
-    add('Imóvel','Conservatória do Registo Predial',{id:'f-im-crp'},x.conservatoria,o);
-    if(!x.descDuvida)add('Imóvel','N.º da descrição',{id:'f-im-num'},x.descricao,o);
-    if(x.fracao){add('Imóvel','Tipo de prédio',{id:'f-im-tipo',sel:1},'fracao',o,{mostra:'Fração autónoma'});add('Imóvel','Fração',{id:'f-im-letra'},x.fracao,o);}
-    add('Imóvel','Freguesia (descrição)',{id:'f-im-freg-crp'},x.fregDesc,o);
-    add('Imóvel','Código da certidão permanente',{id:'f-im-cert-cod'},x.codigo,o);
-    add('Imóvel','Validade da certidão',{id:'f-im-cert-val',data:1},x.validade,o,{mostra:mzDataPT(x.validade)});
-    const ins=(x.inscricoes||[]);const aq=[...ins].reverse().find(i=>/Aquisi/i.test(i.tipo)),ph=ins.find(i=>/Propriedade\s+Horizontal/i.test(i.tipo));
-    if(aq)add('Imóvel','AP da aquisição',{id:'f-im-apaq'},aq.ap,o);
-    if(ph)add('Imóvel','AP da propriedade horizontal',{id:'f-im-apph'},ph.ap,o);}
+  /* Imóveis: cada certidão é um prédio (a da fração substitui a do prédio-mãe com o mesmo
+     n.º de descrição, que só serve de apoio). A caderneta liga-se à certidão pelo artigo
+     (MATRIZ n.º da certidão) e pela fração. O primeiro vai para o imóvel principal; os
+     outros para «Prédios adicionais». Se o n.º da descrição já estiver no gerador, esse é o principal. */
   const avisos=[];
-  /* Documentos que não batem entre si (outro prédio) não se importam. */
-  const artCRP=c&&c.dados.matriz?String(c.dados.matriz):'';
-  const cads=by('CAD');let cad=(c&&c.dados.fracao?cads.find(d=>d.dados.fracao===c.dados.fracao):null)||cads[0];
-  if(cad&&artCRP&&cad.dados.artigo&&String(cad.dados.artigo)!==artCRP){avisos.push(`A caderneta ${cad.ficheiro} (artigo ${cad.dados.artigo}) não corresponde à certidão (matriz ${artCRP}) — não importada.`);cad=null;}
-  const artigo=(cad&&cad.dados.artigo)||artCRP;
-  if(cad){const x=cad.dados,o=cad.ficheiro;const vpt=String(x.vpt||'').replace(/\.(?=\d{3})/g,'');
-    if(x.fracao||(c&&c.dados.fracao)){
-      add('Imóvel','Artigo matricial',{id:'f-im-artigo'},x.artigo,o);add('Imóvel','Freguesia (matriz)',{id:'f-im-freg-mat'},x.freguesia,o);add('Imóvel','VPT',{id:'f-im-vpt'},vpt,o);}
-    else{
-      add('Imóvel','Matriz — natureza',{mat:'nat',sel:1},x.natureza==='rústica'?'rustica':'urbana',o,{mostra:x.natureza==='rústica'?'Rústica':'Urbana'});
-      add('Imóvel','Matriz — artigo',{mat:'artigo'},x.artigo,o);add('Imóvel','Matriz — freguesia',{mat:'freg'},x.freguesia,o);add('Imóvel','Matriz — VPT',{mat:'vpt'},vpt,o);}
-    add('Imóvel','Data da caderneta',{id:'f-im-cad-data',data:1},x.emitida,o,{mostra:mzDataPT(x.emitida)});}
+  const crps=by('CRP');
+  const unid=crps.filter(d=>d.dados.fracao||!crps.some(o=>o!==d&&o.dados.fracao&&o.dados.descricao===d.dados.descricao)).map(d=>({crp:d}));
+  const mae=u=>crps.find(o=>!o.dados.fracao&&o.dados.descricao===u.crp.dados.descricao);
+  /* Artigo sem zeros à esquerda («0375» = «375»). */
+  const artN=a=>String(a||'').replace(/\D/g,'').replace(/^0+/,'');
+  const artDe=u=>artN(u.crp.dados.matriz||(mae(u)&&mae(u).dados.matriz)||'');
+  const cads=by('CAD').slice();
+  unid.forEach(u=>{const a=artDe(u),fr=u.crp.dados.fracao||'';
+    const i=cads.findIndex(d=>(!a||artN(d.dados.artigo)===a)&&(d.dados.fracao||'')===fr&&(a||cads.length===1));
+    if(i>=0)u.cad=cads.splice(i,1)[0];});
+  /* Artigo diferente do que consta da certidão: não se importa — obriga a validar. Se a caderneta
+     disser que o artigo atual teve origem no da certidão, diz-se onde está a correspondência. */
+  cads.forEach(d=>{if(!unid.length){unid.push({cad:d});return;}
+    const cor=unid.find(u=>u.crp&&!u.cad&&artDe(u)&&(d.dados.origem||[]).map(artN).includes(artDe(u))&&(u.crp.dados.fracao||'')===(d.dados.fracao||''));
+    avisos.push(cor?`A caderneta ${d.ficheiro} (artigo ${d.dados.artigo}${d.dados.fracao?', fração '+d.dados.fracao:''}) não tem o artigo que consta da certidão ${cor.crp.ficheiro} (matriz ${artDe(cor)}), mas teve origem nele — confirme a correspondência; dados da matriz não importados.`
+      :`A caderneta ${d.ficheiro} (artigo ${d.dados.artigo}${d.dados.fracao?', fração '+d.dados.fracao:''}) não corresponde ao artigo de nenhuma certidão${unid.some(u=>u.crp)?` (${unid.filter(u=>u.crp).map(u=>'descrição '+u.crp.dados.descricao+': matriz '+(artDe(u)||'—')).join('; ')})`:''} — procure a correspondência; dados da matriz não importados.`);});
+  const jaNum=(document.getElementById('f-im-num')?.value||'').trim();
+  if(jaNum){const k=unid.findIndex(u=>u.crp&&String(u.crp.dados.descricao)===jaNum);if(k>0)unid.unshift(unid.splice(k,1)[0]);}
+  const c=unid[0]&&unid[0].crp;
+  unid.forEach((u,n)=>{
+    const x=u.crp&&u.crp.dados,o=u.crp&&u.crp.ficheiro,y=u.cad&&u.cad.dados,oc=u.cad&&u.cad.ficheiro;
+    const nome=n===0?'Imóvel':`Prédio adicional ${n} — descrição ${x?x.descricao+(x.fracao?'-'+x.fracao:''):'?'}${y?' / artigo '+y.artigo:''}`;
+    const A=n===0?(campo,id)=>({id}):(campo)=>({pred:n-1,campo});
+    const M=n===0?(campo)=>({mat:campo}):(campo)=>({predmat:n-1,campo});
+    const ins=x?(x.inscricoes||[]):[];const aq=[...ins].reverse().find(i=>/Aquisi/i.test(i.tipo)),ph=ins.find(i=>/Propriedade\s+Horizontal/i.test(i.tipo));
+    if(x){add(nome,'Conservatória do Registo Predial',A('crp','f-im-crp'),x.conservatoria,o);
+      if(!x.descDuvida)add(nome,'N.º da descrição',A('num','f-im-num'),x.descricao,o);
+      add(nome,'Freguesia (descrição)',A('freg','f-im-freg-crp'),x.fregDesc,o);
+      add(nome,'Código da certidão permanente',A('cert-cod','f-im-cert-cod'),x.codigo,o);
+      add(nome,'Validade da certidão',A('cert-val','f-im-cert-val'),x.validade,o,{mostra:mzDataPT(x.validade)});
+      if(aq)add(nome,'AP da aquisição',A('apaq','f-im-apaq'),aq.ap,o);}
+    if(n===0&&x&&x.fracao){add(nome,'Tipo de prédio',{id:'f-im-tipo',sel:1},'fracao',o,{mostra:'Fração autónoma'});add(nome,'Fração',{id:'f-im-letra'},x.fracao,o);}
+    if(n===0&&ph)add(nome,'AP da propriedade horizontal',{id:'f-im-apph'},ph.ap,o);
+    if(n>0&&x&&x.fracao)avisos.push(`${nome}: é a fração ${x.fracao} — indique-a no texto do prédio adicional.`);
+    if(y){const vpt=String(y.vpt||'').replace(/\.(?=\d{3})/g,'');
+      if(n===0&&(y.fracao||(x&&x.fracao))){add(nome,'Artigo matricial',{id:'f-im-artigo'},y.artigo,oc);add(nome,'Freguesia (matriz)',{id:'f-im-freg-mat'},y.freguesia,oc);add(nome,'VPT',{id:'f-im-vpt'},vpt,oc);}
+      else{add(nome,'Matriz — natureza',M('nat'),y.natureza==='rústica'?'rustica':'urbana',oc,{mostra:y.natureza==='rústica'?'Rústica':'Urbana'});
+        add(nome,'Matriz — artigo',M('artigo'),y.artigo,oc);add(nome,'Matriz — freguesia',M('freg'),y.freguesia,oc);add(nome,'Matriz — VPT',M('vpt'),vpt,oc);}
+      add(nome,'Data da caderneta',A('cad-data','f-im-cad-data'),y.emitida,oc,{mostra:mzDataPT(y.emitida)});}
+  });
+  const artigos=unid.map(u=>u.cad?artN(u.cad.dados.artigo):artDe(u)).filter(Boolean);
+  const descs=unid.map(u=>u.crp&&String(u.crp.dados.descricao)).filter(Boolean);
+  const artigo=artigos[0]||'';
   /* Certificado energético, preferências, guias. */
   let sce=by('N_SCE')[0];
-  if(sce&&artigo&&sce.dados.artigo&&String(sce.dados.artigo)!==artigo&&!(c&&sce.dados.descricao&&String(sce.dados.descricao)===String(c.dados.descricao))){avisos.push(`O certificado energético ${sce.ficheiro} (artigo ${sce.dados.artigo}) não corresponde ao prédio — não importado.`);sce=null;}
+  if(sce&&artigos.length&&sce.dados.artigo&&!artigos.includes(artN(sce.dados.artigo))){avisos.push(`O certificado energético ${sce.ficheiro} (artigo ${sce.dados.artigo}${sce.dados.descricao?', descrição '+sce.dados.descricao:''}) não tem o artigo dos documentos do prédio (${artigos.join(', ')}) — procure a correspondência; não importado.`);sce=null;}
   if(sce){add('Certificado energético','N.º do certificado',{id:'f-ce-num'},sce.dados.numero,sce.ficheiro);
     add('Certificado energético','Validade',{id:'f-ce-val',data:1},sce.dados.validade,sce.ficheiro,{mostra:mzDataPT(sce.dados.validade)});}
+  if(by('N_SCE').length>1)avisos.push(`Há ${by('N_SCE').length} certificados energéticos — o gerador só tem um; os outros preenchem-se à mão.`);
   let cp=by('N_CP')[0];
-  if(cp&&artigo&&cp.dados.artigo&&String(cp.dados.artigo)!==artigo){avisos.push(`A consulta da Casa Pronta ${cp.ficheiro} (artigo ${cp.dados.artigo}) não corresponde ao prédio — não importada.`);cp=null;}
+  if(cp&&artigos.length&&cp.dados.artigo&&!artigos.includes(artN(cp.dados.artigo))){avisos.push(`A consulta da Casa Pronta ${cp.ficheiro} (artigo ${cp.dados.artigo}) não corresponde ao prédio — não importada.`);cp=null;}
   if(cp){add('Preferências (Casa Pronta)','N.º do pedido',{id:'f-cp-numero'},cp.dados.pedido,cp.ficheiro);
     if(cp.dados.preco)add('Preço','Preço (da consulta Casa Pronta)',{id:'f-preco',num:1},mzPreco(cp.dados.preco),cp.ficheiro);}
   const imt=by('N_IMT'),isv=by('N_ISV');
@@ -6250,11 +6282,11 @@ function mzPropostas(m){
     pessoas.push({chave:'p'+pessoas.length,tipo:'empresa',nome:x.firma,origem:d.ficheiro,bloco:b?b.id:'',papel:b?(b.classList.contains('vend-block')?'vend':'comp'):vNif.has(x.nipc)?'vend':cNif.has(x.nipc)?'comp':'',
       campos:[['denom','Firma',x.firma],['nipc','NIPC',x.nipc],['capital','Capital social',x.capital],['sede','Sede',[x.sede,x.sedePostal].filter(Boolean).join(', ')],['crc-cod','Código da certidão comercial',x.codigo],['crc-val','Validade da certidão comercial',x.validade,1],['objeto','Objeto abrange compra e venda de imóveis',x.imoveis?'sim':'',0,x.imoveis?'Sim':'']]});});
   /* Titulares inscritos na certidão (nome e NIF) que não vieram já por cartão de cidadão. */
-  if(c){const aq=[...(c.dados.inscricoes||[])].reverse().find(i=>/Aquisi/i.test(i.tipo));
+  unid.filter(u=>u.crp).forEach(u=>{const c=u.crp;const aq=[...(c.dados.inscricoes||[])].reverse().find(i=>/Aquisi/i.test(i.tipo));
     (aq&&aq.pessoas||[]).forEach(t=>{if(pessoas.some(p=>p.campos.some(([k,,v])=>(k==='nif'&&v===t.nif)||(k==='nome'&&mzNorm(v)===mzNorm(t.nome)))))return;
       const b=bloco(t.nif,t.nome);
       pessoas.push({chave:'p'+pessoas.length,tipo:/,?\s*(S\.?A\.?|LDA\.?|UNIPESSOAL)\s*$/i.test(t.nome)?'empresa':'singular',nome:t.nome,origem:c.ficheiro+' (titular inscrito)',bloco:b?b.id:'',papel:b?(b.classList.contains('vend-block')?'vend':'comp'):'vend',
-        campos:/,?\s*(S\.?A\.?|LDA\.?|UNIPESSOAL)\s*$/i.test(t.nome)?[['denom','Firma',t.nome],['nipc','NIPC',t.nif]]:[['nome','Nome',t.nome],['nif','NIF',t.nif]]});});}
+        campos:/,?\s*(S\.?A\.?|LDA\.?|UNIPESSOAL)\s*$/i.test(t.nome)?[['denom','Firma',t.nome],['nipc','NIPC',t.nif]]:[['nome','Nome',t.nome],['nif','NIF',t.nif]]});});});
   pessoas.forEach(p=>p.campos=p.campos.filter(c=>c[2]!==undefined&&c[2]!==null&&String(c[2]).trim()!==''));
   return{P,incertos,pessoas,avisos};
 }
@@ -6262,6 +6294,9 @@ function mzPropostas(m){
 function mzAtual(a){
   if(a.id)return document.getElementById(a.id)?.value?.trim()||'';
   if(a.mat){const b=document.querySelector('#matrizes-container .mat-block');return b?(document.getElementById(`${b.id}-${a.mat}`)?.value?.trim()||''):'';}
+  if(a.pred!==undefined||a.predmat!==undefined){const pb=document.querySelectorAll('.pred-block')[a.pred??a.predmat];if(!pb)return'';
+    if(a.pred!==undefined)return document.getElementById(`${pb.id}-${a.campo}`)?.value?.trim()||'';
+    const mb=document.querySelector(`#${pb.id}-mats .mat-block`);return mb?(document.getElementById(`${mb.id}-${a.campo}`)?.value?.trim()||''):'';}
   return'';
 }
 function mzIgual(a,b,num){
@@ -6297,7 +6332,7 @@ function mzPintar(){
       ${p.bloco?`<span style="font-weight:400">(já está no gerador como ${p.bloco.startsWith('vend')?'vendedor':'comprador'})</span>`
         :`<select data-papel="${j}" style="margin-left:.5rem;font-size:12px"><option value="">— não importar —</option><option value="vend"${p.papel==='vend'?' selected':''}>Vendedor</option><option value="comp"${p.papel==='comp'?' selected':''}>Comprador</option></select>${p.papel?' <span style="font-weight:400;font-size:11px">(papel deduzido dos documentos — confirme)</span>':''}`}</td></tr>`
       +p.campos.map(([k,rot,val,data,mostra])=>lin(`p${j}-${k}`,rot,g(k),String(val),mostra||(data?mzDataPT(val):''),p.origem,false)).join('');});
-  const inc=MZ.incertos.filter(d=>d.dados);
+  const inc=MZ.incertos;
   ov.innerHTML=`<div style="background:var(--surface,#fff);border-radius:12px;max-width:980px;width:100%;padding:1.2rem 1.4rem;box-shadow:0 8px 40px rgba(0,0,0,.3)">
     <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem"><div style="font-weight:700;font-size:15px">Importar da matriz do verificador</div>
       <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('mz-ov').remove()">Fechar</button></div>
@@ -6306,7 +6341,7 @@ function mzPintar(){
     ${MZ.props.length||MZ.pessoas.length?`<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="text-align:left;color:var(--text-faint);font-size:11px"><th></th><th>Campo</th><th>No gerador</th><th>Na matriz</th><th>Documento</th></tr></thead><tbody>${h}</tbody></table>`
       :'<div style="font-size:13px">A matriz não tem dados lidos com certeza (texto) para importar.</div>'}
     ${inc.length?`<details style="margin-top:.8rem"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--amber)">${inc.length} documento(s) lidos de imagem ou classificados à mão — não importados, confirme no documento</summary>
-      <ul style="font-size:12px;margin:.4rem 0 0 1rem">${inc.map(d=>`<li>${mzEsc(d.ficheiro)}${d.leitura==='imagem'?' (lido de imagem)':''}</li>`).join('')}</ul></details>`:''}
+      <ul style="font-size:12px;margin:.4rem 0 0 1rem">${inc.map(d=>`<li>${mzEsc(d.ficheiro)}${!d.dados?' — <b>sem dados lidos</b>: abra a pasta pelo «📥 Documentos» do Portal para o verificador o voltar a ler':d.leitura==='imagem'?' (lido de imagem)':' (classificado à mão)'}</li>`).join('')}</ul></details>`:''}
     <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
       <button class="btn btn-sm" onclick="document.getElementById('mz-ov').remove()">Cancelar</button>
       <button class="btn btn-sm btn-primary" onclick="mzAplicar()">Preencher os selecionados</button></div></div>`;
@@ -6324,7 +6359,13 @@ function mzAplicar(){
   MZ.props.forEach((p,i)=>{if(!marc.has('c'+i)||p.alvo.id==='f-im-tipo')return;
     if(p.alvo.id){if(mzPor(p.alvo.id,p.valor))n++;return;}
     if(p.alvo.mat){let b=document.querySelector('#matrizes-container .mat-block');if(!b){try{addMatriz();}catch(_){}b=document.querySelector('#matrizes-container .mat-block');}
-      if(b&&mzPor(`${b.id}-${p.alvo.mat}`,p.valor))n++;}});
+      if(b&&mzPor(`${b.id}-${p.alvo.mat}`,p.valor))n++;return;}
+    const k=p.alvo.pred??p.alvo.predmat;if(k===undefined)return;
+    while(document.querySelectorAll('.pred-block').length<=k){try{addPredioExtra();}catch(_){break;}}
+    const pb=document.querySelectorAll('.pred-block')[k];if(!pb)return;
+    if(p.alvo.pred!==undefined){if(mzPor(`${pb.id}-${p.alvo.campo}`,p.valor))n++;return;}
+    let mb=document.querySelector(`#${pb.id}-mats .mat-block`);if(!mb){try{addMatriz(null,pb.id);}catch(_){}mb=document.querySelector(`#${pb.id}-mats .mat-block`);}
+    if(mb&&mzPor(`${mb.id}-${p.alvo.campo}`,p.valor))n++;});
   MZ.pessoas.forEach((p,j)=>{
     const sel=p.campos.filter(([k])=>marc.has(`p${j}-${k}`));if(!sel.length)return;
     let id=p.bloco;

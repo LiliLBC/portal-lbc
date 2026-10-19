@@ -649,10 +649,7 @@ tbody tr:hover td{background:#FAFAF8}
                 <div id="painel-pasta-existente-nome" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
               </div>
               <div style="display:flex;gap:.35rem;flex-shrink:0">
-                <button class="btn btn-sm" id="painel-btn-pasta" onclick="abrirPastaSP()" style="display:none">
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
-                  Abrir
-                </button>
+                <button class="btn btn-sm" id="painel-btn-pasta" onclick="abrirPastaSP()" style="display:none" title="Ver e receber documentos da pasta (pelo verificador)">📥 Documentos</button>
                 <button class="btn btn-sm" onclick="trocarPastaPainel()" title="Associar outra pasta">
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8h14M8 1l7 7-7 7"/></svg>
                   Alterar
@@ -889,9 +886,8 @@ tbody tr:hover td{background:#FAFAF8}
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-4 8-8M14 2l-4 4"/></svg>
             Guardar
           </button>
-          <button class="btn btn-sm" id="painel-btn-pasta" onclick="abrirPastaSP()" style="display:none" title="Abrir pasta no SharePoint">
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
-            Abrir pasta
+          <button class="btn btn-sm" id="painel-btn-pasta" onclick="abrirPastaSP()" style="display:none" title="Ver e receber documentos da pasta (pelo verificador)">
+            📥 Documentos
           </button>
         </div>
       </div>
@@ -3372,8 +3368,7 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Receber documentos: o verificador separa, renomeia e grava na pasta, com a matriz de dados">📥 Documentos</button>
-        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Ver os documentos da pasta e receber novos: tudo passa pelo verificador (separar, nomear, matriz)">📥 Documentos</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
     </div>`).join('');
@@ -4185,7 +4180,15 @@ function embedSP(url){
   if(/[?&]env=/.test(url)) return url;
   return url + (url.indexOf('?')>=0 ? '&' : '?') + 'env=WebView';
 }
-function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
+/* A pasta do cliente abre-se pelo verificador (📥 Documentos): ver e receber documentos passa sempre por ele. */
+async function abrirPastaSP(){
+  if(!painelPastaUrl)return;
+  const p=[...(pastasPainel||[]),...((typeof todasPastas!=='undefined'&&todasPastas)||[])].find(x=>x.webUrl===painelPastaUrl&&x.id);
+  if(p){abrirRececao(p.id);return;}
+  try{const enc='u!'+btoa(unescape(encodeURIComponent(painelPastaUrl))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+    const d=await graphGet(`${GRAPH_BASE}/shares/${enc}/driveItem?$select=id`);if(d&&d.id){abrirRececao(d.id);return;}}catch(_){}
+  window.open(embedSP(painelPastaUrl),'_blank');
+}
 
 async function guardarPainel(){
   await resolverColunaFinalidade();
