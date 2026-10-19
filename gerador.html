@@ -167,7 +167,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-19.4</span>
+    <span class="page-sub">piloto · v2026-10-19.5</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6264,7 +6264,8 @@ function mzPropostas(m){
   const imt=by('N_IMT'),isv=by('N_ISV');
   if(imt.length===1){add('IMT e Imposto do Selo','IMT — n.º da guia (DUC)',{id:'f-fisc-duc-imt'},imt[0].dados.numero,imt[0].ficheiro);add('IMT e Imposto do Selo','IMT — valor',{id:'f-fisc-val-imt',num:1},mzVal(imt[0].dados.valor),imt[0].ficheiro);}
   if(isv.length===1){add('IMT e Imposto do Selo','Imposto do Selo — n.º da guia (DUC)',{id:'f-fisc-duc-is'},isv[0].dados.numero,isv[0].ficheiro);add('IMT e Imposto do Selo','Imposto do Selo — valor',{id:'f-fisc-val-is',num:1},mzVal(isv[0].dados.valor),isv[0].ficheiro);}
-  if(imt.length>1)avisos.push(`Há ${imt.length} guias de IMT — preencher à mão.`);if(isv.length>1)avisos.push(`Há ${isv.length} guias de Imposto do Selo — preencher à mão.`);
+  if(imt.length>1)avisos.push(`Há ${imt.length} guias de IMT — preencher à mão.`);
+  (m.versoes||[]).filter(v=>v.antigos&&v.antigos.length).forEach(v=>avisos.push(`Há versão mais recente: ${v.novo} (${v.data}) — conta só esta; anterior(es): ${v.antigos.map(x=>x.ficheiro+' ('+x.data+')').join(', ')}.`));if(isv.length>1)avisos.push(`Há ${isv.length} guias de Imposto do Selo — preencher à mão.`);
   /* Pessoas e sociedades: papel deduzido dos documentos (titular inscrito/alienante → vendedor;
      sujeito passivo do IMT/comprador na Casa Pronta → comprador); se não se souber, escolhe-se. */
   const vNif=new Set(),cNif=new Set();
