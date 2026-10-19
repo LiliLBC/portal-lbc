@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-20.5</span>
+    <span class="page-sub">piloto · v2026-10-20.7</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6455,7 +6455,8 @@ function comporCPCV(){
     `2. Declara ainda que, de acordo com o seu conhecimento à data da assinatura do presente contrato:`,
     'a) não corre ação judicial, administrativa ou executiva em que se discuta a titularidade do Imóvel, nem sobre ele incide penhora, arresto ou procedimento de expropriação;',
     'b) não existe sobre o Imóvel contrato-promessa, arrendamento, comodato ou outro título que limite a sua disponibilidade;',
-    'c) não foram executadas no Imóvel obras carecidas de licenciamento sem que este tenha sido obtido;',
+    /* Alínea c) do v2 com «sujeitas» em vez de «carecidas» (Liliana, 20/10/2026). */
+    'c) não foram executadas no Imóvel obras sujeitas a licenciamento sem que este tenha sido obtido;',
     'd) não tem conhecimento de vício estrutural ou de construção que ponha em causa a segurança e a estabilidade do Imóvel.',
     `3. A ${V} obriga-se a manter o Imóvel, até à outorga do contrato definitivo, na situação jurídica e física existente à data do presente contrato, e a comunicar de imediato à ${C} qualquer alteração relevante.`]});
   /* 4.ª — v2 (gerarTextoPagamento) */
