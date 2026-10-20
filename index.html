@@ -3363,8 +3363,9 @@ function renderPastas(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
   el.innerHTML=lista.map(p=>`
     <div class="pasta-card">
-      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div></div>
+      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
       <div class="pasta-actions">
+        <button class="btn btn-sm" data-nota-btn="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Notas da pasta" style="padding:4px 8px">📝</button>
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
@@ -10189,7 +10190,12 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
 
   /* Pinta as etiquetas nos cartões das pastas (Pastas / clientes, Processos). */
   window.etqPintar=async()=>{await carregar();
-    document.querySelectorAll('[data-etq]').forEach(el=>{const it=ITENS[el.dataset.etq];el.innerHTML=it&&it.tags.length?chipsHTML(it.tags,true):'';});};
+    document.querySelectorAll('[data-etq]').forEach(el=>{const it=ITENS[el.dataset.etq];el.innerHTML=it&&it.tags.length?chipsHTML(it.tags,true):'';});
+    /* Notas da pasta: a primeira linha à vista no cartão, o botão aceso quando há nota. */
+    document.querySelectorAll('[data-nota]').forEach(el=>{const n=(ITENS[el.dataset.nota]?.nota||'').trim();
+      el.innerHTML=n?`<div style="margin-top:4px;font-size:11.5px;color:#7A5A20;background:#FFF7E6;border:1px solid #F0DDB8;border-radius:6px;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" title="${esc(n)}">📝 ${esc(n.split('\n')[0])}${n.includes('\n')?' …':''}</div>`:'';});
+    document.querySelectorAll('[data-nota-btn]').forEach(b=>{const n=(ITENS[b.dataset.notaBtn]?.nota||'').trim();
+      b.style.background=n?'#FFF7E6':'';b.style.borderColor=n?'#E8C98A':'';});};
 
   /* ── Editor ── */
   let ed=null;
@@ -10243,11 +10249,12 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     const k=chave(ed.lib,ed.itemId),it=ITENS[k];
     const pend=($('etq-ed-in')?.value||'').trim();if(pend)etqAdd(pend);
     try{
-      if(!ed.tags.length){
+      if(!ed.tags.length&&!(it&&it.nota)){
         if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
           if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
       }else{
         const d={lib:ed.lib,itemId:ed.itemId,tipo:ed.tipo,pasta:ed.pasta,tags:ed.tags};
+        if(it&&it.nota){d.nota=it.nota;d.notaData=it.notaData||'';d.notaPor=it.notaPor||'';}
         const body={Title:ed.nome,[COLD]:JSON.stringify(d)};
         if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={...it,nome:ed.nome,...d};}
         else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:ed.nome,...d};}
@@ -10257,6 +10264,46 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     }catch(e){showToast('Erro: '+e.message,'error');}
   };
   window.etqVoltar=()=>{const v=ed.volta;etqEditar(v.lib,v.itemId,v.nome,'pasta',v.pasta);};
+  /* ── NOTAS DA PASTA (20/10/2026) ──
+     Um bloco de notas por pasta, para indicações especiais do processo. Guarda-se
+     no mesmo registo da lista «Etiquetas» (campo «nota» do JSON), pelo id da pasta:
+     acompanha-a se mudar de nome e não cria ficheiros dentro da pasta do cliente. */
+  let notaEd=null;
+  window.notaEditar=async(lib,itemId,nome)=>{
+    await carregar();
+    if(!LID){showToast('Falta criar a lista Etiquetas no SharePoint','error');return;}
+    const it=ITENS[chave(lib,itemId)];
+    notaEd={lib,itemId,nome};
+    const quando=it&&it.notaData?new Date(it.notaData).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'';
+    abrir(`<div class="modal-box-title">📝 Notas · ${esc(nome)}</div>
+      <div style="font-size:11px;color:var(--text-faint);margin:-.4rem 0 .7rem">Indicações especiais desta pasta. Ficam no Portal e aparecem no cartão da pasta.${quando?` Última alteração: ${esc(quando)}${it.notaPor?' · '+esc(it.notaPor):''}.`:''}</div>
+      <textarea class="form-textarea" id="nota-ed-txt" rows="8" style="width:100%;font-size:13px;line-height:1.5" placeholder="Ex: o vendedor só pode assinar à tarde; a CGD ainda não enviou o distrate; confirmar a área do anexo…">${esc(it?.nota||'')}</textarea>
+      <div class="modal-actions" style="margin-top:1rem">
+        ${it&&it.nota?`<button class="btn" onclick="notaGravar(true)" style="color:var(--red);border-color:var(--red)">Apagar nota</button>`:''}
+        <button class="btn" onclick="etqFechar()" style="flex:1">Fechar</button>
+        <button class="btn btn-primary" onclick="notaGravar()" style="flex:2">Gravar nota</button></div>`);
+    setTimeout(()=>{const t=$('nota-ed-txt');if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length);}},50);
+  };
+  window.notaGravar=async(apagar)=>{
+    if(!notaEd)return;
+    const k=chave(notaEd.lib,notaEd.itemId),it=ITENS[k];
+    const txt=apagar?'':String($('nota-ed-txt')?.value||'').replace(/\s+$/,'');
+    if(apagar&&!confirm('Apagar a nota desta pasta?'))return;
+    try{
+      if(!txt&&!(it&&it.tags&&it.tags.length)){
+        if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+          if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
+      }else{
+        const d={lib:notaEd.lib,itemId:notaEd.itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};
+        if(txt){d.nota=txt;d.notaData=new Date().toISOString();try{d.notaPor=(typeof contaAtual!=='undefined'&&contaAtual&&(contaAtual.name||contaAtual.username))||'';}catch(_){}}
+        const body={Title:notaEd.nome,[COLD]:JSON.stringify(d)};
+        if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={...it,nome:notaEd.nome,...d};if(!txt){delete ITENS[k].nota;delete ITENS[k].notaData;delete ITENS[k].notaPor;}}
+        else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:notaEd.nome,...d};}
+      }
+      showToast(apagar?'Nota apagada':'Nota gravada','success');
+      notaEd=null;etqFechar();
+    }catch(e){showToast('Erro: '+e.message,'error');}
+  };
   async function listarDocs(){
     const box=$('etq-ed-docs');if(!box)return;
     try{
@@ -10284,12 +10331,12 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     const q=norm($('etq-q')?.value),pal=q?q.split(' ').filter(Boolean):[];
     $('etq-sel').innerHTML=selTags.map((t,i)=>`<span style="background:var(--accent);color:#fff;border-radius:12px;padding:3px 4px 3px 10px;font-size:12px">${esc(t)} <button onclick="etqTirarSel(${i})" style="border:none;background:none;color:#fff;cursor:pointer">×</button></span>`).join('');
     const tagOk=(it,p)=>it.tags.some(t=>{const n=norm(t);return n.includes(p)||n.split(' ').some(w=>w.length>=4&&parecida(w,p));});
-    const l=Object.entries(ITENS).filter(([,it])=>
+    const l=Object.entries(ITENS).filter(([,it])=>it.tags.length&&
       selTags.every(s=>it.tags.some(t=>norm(t)===norm(s)))&&pal.every(p=>tagOk(it,p)||norm(it.nome).includes(p)));
     const viz=todas().filter(e=>!selTags.some(s=>norm(s)===norm(e.t))&&(!pal.length||pal.some(p=>norm(e.t).includes(p)||parecida(e.t,p))));
     $('etq-nuvem').innerHTML=viz.slice(0,40).map(e=>`<button class="btn btn-sm" style="font-size:11px;padding:2px 9px" onclick="etqSelTag('${esc(e.t).replace(/'/g,"\\'")}')">${esc(e.t)} <span style="color:var(--text-faint)">${e.n}</span></button>`).join('');
     const res=$('etq-res');
-    if(!selTags.length&&!pal.length){res.innerHTML=`<div style="font-size:12px;color:var(--text-faint)">${Object.keys(ITENS).length} pasta(s) e documento(s) etiquetados. Escolha uma etiqueta acima ou escreva para procurar.</div>`;return;}
+    if(!selTags.length&&!pal.length){res.innerHTML=`<div style="font-size:12px;color:var(--text-faint)">${Object.values(ITENS).filter(it=>it.tags.length).length} pasta(s) e documento(s) etiquetados. Escolha uma etiqueta acima ou escreva para procurar.</div>`;return;}
     res.innerHTML=l.length?l.sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt')).map(([k,it])=>`
       <div class="pasta-card" style="margin-bottom:.45rem">
         <div style="flex:1;min-width:0">
