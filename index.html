@@ -107,6 +107,8 @@ tbody tr:hover td{background:#FAFAF8}
 .pasta-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:var(--shadow);transition:all .15s;margin-bottom:.4rem}
 .pasta-card:hover{border-color:var(--accent)}
 .btn-pasta{background:#FFF6DC;border-color:#EBD08F;color:#6B5418;text-decoration:none}
+.btn.tem-nota{background:#F6C46A;border-color:#D99A2B;box-shadow:0 0 0 2px rgba(217,154,43,.25)}
+.btn.tem-nota:hover{background:#F0B44A}
 .btn-pasta:hover{background:#FCEDC0;border-color:#DDBB66}
 .pasta-ref{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
 .pasta-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
@@ -10295,11 +10297,11 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* Pinta as etiquetas nos cartões das pastas (Pastas / clientes, Processos). */
   window.etqPintar=async()=>{await carregar();
     document.querySelectorAll('[data-etq]').forEach(el=>{const it=ITENS[el.dataset.etq];el.innerHTML=it&&it.tags.length?chipsHTML(it.tags,true):'';});
-    /* Notas da pasta: a primeira linha à vista no cartão, o botão aceso quando há nota. */
-    document.querySelectorAll('[data-nota]').forEach(el=>{const n=(ITENS[el.dataset.nota]?.nota||'').trim();
-      el.innerHTML=n?`<div style="margin-top:4px;font-size:11.5px;color:#7A5A20;background:#FFF7E6;border:1px solid #F0DDB8;border-radius:6px;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" title="${esc(n)}">📝 ${esc(n.split('\n')[0])}${n.includes('\n')?' …':''}</div>`:'';});
+    /* Notas da pasta (20/10/2026): o texto não aparece no cartão; o botão fica destacado
+       quando há nota, e passando o rato por cima vê-se a nota. */
+    document.querySelectorAll('[data-nota]').forEach(el=>{el.innerHTML='';});
     document.querySelectorAll('[data-nota-btn]').forEach(b=>{const n=(ITENS[b.dataset.notaBtn]?.nota||'').trim();
-      b.style.background=n?'#FFF7E6':'';b.style.borderColor=n?'#E8C98A':'';});};
+      b.classList.toggle('tem-nota',!!n);b.title=n?'Nota da pasta:\n'+n:'Notas da pasta';});};
 
   /* ── Editor ── */
   let ed=null;
