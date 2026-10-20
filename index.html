@@ -3553,8 +3553,15 @@ async function eliminarPasta(pastaId,nome){
 }
 
 let _finalidadeResolvida=false;
+/* As colunas opcionais (Finalidade, Procurador_Pago, Matriz_Artigo…) leem-se uma vez.
+   Correção (20/10/2026): se a leitura falhava (lista ainda por resolver, sessão a renovar,
+   SharePoint lento), ficavam todas dadas como inexistentes até recarregar o Portal — e
+   apareciam os avisos «Falta a coluna…» com as colunas criadas. Agora só se guarda o
+   resultado quando a leitura corre bem; se falhar, tenta-se outra vez na vez seguinte. */
 async function resolverColunaFinalidade(){
   if(_finalidadeResolvida)return;
+  if(!siteIdDados||!listaId){try{await resolverSiteIds();}catch(_){}}
+  if(!siteIdDados||!listaId)return;
   try{
     const c=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/columns?$select=name,displayName`);
     const cols=c.value||[];
@@ -3573,8 +3580,8 @@ async function resolverColunaFinalidade(){
     const acha=ks=>{const c=cols.find(x=>ks.some(k=>nn(x.name)===k||nn(x.displayName)===k));return(c&&c.name)?c.name:null;};
     F.matArtigo=acha(['matrizartigo','artigomatricial','artigomatriz']);
     F.matFreg=acha(['matrizfreguesia','freguesiamatriz','freguesiadamatriz']);
-  }catch(e){F.finalidade=null;F.procPago=null;F.matArtigo=null;F.matFreg=null;}
-  _finalidadeResolvida=true;
+    _finalidadeResolvida=true;
+  }catch(e){console.warn('Colunas opcionais da lista: leitura falhou, tenta-se de novo',e);}
 }
 
 /* ── LEITURA COMPLETA ──
@@ -3999,6 +4006,10 @@ function abrirPainelNovo(){
   });
   preencherProcPago('');
   preencherMatriz('','');
+  /* Aberto pelo «Registar» de uma pasta, sem ter passado pelo Registo de escrituras: as colunas
+     opcionais ainda não tinham sido lidas e apareciam os avisos «Falta a coluna…» (20/10/2026). */
+  if(!_finalidadeResolvida)resolverColunaFinalidade().then(()=>{if(painelItemId)return;
+    try{preencherProcPago(document.getElementById('p-procPago')?.value||'');preencherMatriz(matSerializar(matLer()),'');}catch(_){}});
   document.getElementById('p-estado').value='Agendado';
   document.getElementById('p-pago').value='';
   // Contactos
