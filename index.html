@@ -3369,7 +3369,7 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <button class="btn btn-sm" onclick="abrirRececao('${p.id}',true)" title="Trabalhar na pasta: abrir, carregar, criar pastas, mudar o nome, mover e apagar — sem passar pelo verificador">📂 Pasta</button>
+        <button class="btn btn-sm" onclick="pxAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Abrir a pasta: carregar ficheiros (Word incluído), criar pastas, mudar o nome, mover e apagar">📂 Pasta</button>
         <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Verificar e catalogar: os documentos passam pelo verificador (separar, nomear, matriz)">📥 Documentos</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
@@ -3388,6 +3388,208 @@ function abrirRececao(pastaId,modoPasta){
   if(!bibliotecaId||!pastaId){showToast('Biblioteca ESCRITURAS ainda não carregada.','error');return;}
   window.open(`${VERIFICADOR_URL}?pasta=${encodeURIComponent(bibliotecaId+'|'+pastaId)}${modoPasta?'&modo=pasta':''}`,'_blank');
 }
+/* ═══════════ PASTA DO CLIENTE NO PORTAL (20/10/2026) ═══════════
+   Trabalho livre nas pastas, aqui no Portal (o verificador fica só para verificar e
+   catalogar): abrir, carregar qualquer ficheiro (Word incluído), criar pastas, mudar o
+   nome, mover e apagar. O nome abre o ficheiro em vista limpa (PDF e imagens) ou no
+   Office online (Word, Excel); 🛠 abre-o no visualizador do SharePoint, com as
+   ferramentas (rodar, extrair páginas…). A pasta nunca abre no SharePoint.
+   A MATRIZ_VERIFICADOR.json acompanha as mudanças de nome, de sítio e o que se apaga. */
+(function(){
+  const PX={drive:null,raiz:null,pilha:[],itens:[],lendo:false};
+  const MATRIZ='MATRIZ_VERIFICADOR.json';
+  const esc=t=>escHtml(t==null?'':t);
+  const $=id=>document.getElementById(id);
+  async function raw(url,opt={}){await renovarToken();return fetch(url,{...opt,headers:{Authorization:'Bearer '+graphToken,...(opt.headers||{})}});}
+  async function erro(r){try{const t=await r.text();try{const j=JSON.parse(t);return(j.error&&(j.error.message||j.error.code))||t.slice(0,200);}catch(_){return t.slice(0,200);}}catch(_){return'';}}
+  const limpa=t=>String(t||'').replace(/[\\/:*?"<>|#%]/g,'').replace(/\s+/g,' ').trim();
+  const vistaLimpa=u=>!u?u:/[?&]env=/.test(u)?u:u+(u.includes('?')?'&':'?')+'env=WebView';
+  const office=n=>/\.(docx?|xlsx?|pptx?)$/i.test(n);
+  const tam=n=>n==null?'':n<1024?n+' B':n<1048576?Math.round(n/1024)+' KB':(n/1048576).toFixed(1).replace('.',',')+' MB';
+  const quando=d=>d?new Date(d).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'';
+  const icone=x=>x.folder?'📁':/\.pdf$/i.test(x.name)?'📄':/\.(jpe?g|png|heic|webp)$/i.test(x.name)?'🖼':/\.docx?$/i.test(x.name)?'📝':/\.xlsx?$/i.test(x.name)?'📊':'📎';
+  const atual=()=>PX.pilha[PX.pilha.length-1];
+  const local=()=>PX.pilha.slice(1).map(p=>p.nome).join('/');
+  function montar(){
+    if($('px-ov'))return;
+    const st=document.createElement('style');st.textContent=`
+#px-ov .px-box{background:var(--surface);border-radius:12px;width:min(980px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-md)}
+#px-ov .px-cab{padding:1rem 1.2rem .6rem;border-bottom:1px solid var(--border)}
+#px-ov .px-lista{overflow:auto;padding:.2rem .4rem;min-height:180px;flex:1}
+#px-ov .px-lista.sobre{outline:2px dashed var(--accent);outline-offset:-6px;background:var(--accent-light)}
+#px-ov .px-l{display:grid;grid-template-columns:26px 1fr 80px 120px 150px;gap:.5rem;align-items:center;padding:.4rem .6rem;border-bottom:1px solid var(--border);font-size:13px}
+#px-ov .px-l:hover{background:var(--surface2,#f6f4ef)}
+#px-ov .px-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#px-ov .px-n a{color:var(--accent-dark,var(--accent));text-decoration:none}
+#px-ov .px-m{font-size:11px;color:var(--text-faint);white-space:nowrap}
+#px-ov .px-b{padding:2px 7px;font-size:12px;margin-left:2px;text-decoration:none}
+#px-ov .px-mig a{color:var(--accent);text-decoration:none;cursor:pointer}
+@media(max-width:640px){#px-ov .px-l{grid-template-columns:24px 1fr auto}#px-ov .px-m{display:none}}`;
+    document.head.appendChild(st);
+    const ov=document.createElement('div');ov.id='px-ov';ov.className='modal-overlay';
+    ov.innerHTML=`<div class="px-box">
+      <div class="px-cab">
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+          <div style="font-size:15px;font-weight:600;flex:1;min-width:200px" id="px-tit">Pasta</div>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('px-fich').click()">⬆ Carregar ficheiros</button>
+          <button class="btn btn-sm" onclick="pxNovaPasta()">＋ Nova pasta</button>
+          <button class="btn btn-sm" onclick="pxListar()" title="Voltar a ler">↻</button>
+          <button class="btn btn-sm" onclick="pxFechar()">Fechar</button>
+          <input type="file" id="px-fich" multiple style="display:none" onchange="pxCarregar(this.files);this.value=''">
+        </div>
+        <div class="px-mig" id="px-mig" style="font-size:12px;margin-top:.45rem;color:var(--text-muted)"></div>
+      </div>
+      <div class="px-lista" id="px-lista"></div>
+      <div id="px-estado" style="font-size:12px;color:var(--text-muted);padding:.5rem 1.2rem .8rem;border-top:1px solid var(--border)">Arraste ficheiros para a lista para os carregar nesta pasta.</div>
+    </div>`;
+    ov.addEventListener('click',e=>{if(e.target===ov)pxFechar();});
+    document.body.appendChild(ov);
+    const z=$('px-lista');
+    ['dragenter','dragover'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.add('sobre');}));
+    ['dragleave','drop'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.remove('sobre');}));
+    z.addEventListener('drop',ev=>pxCarregar(ev.dataTransfer.files));
+  }
+  function dialogo(titulo,corpo,botoes){
+    return new Promise(ok=>{
+      const ov=document.createElement('div');ov.className='px-dlg';
+      ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:100000';
+      ov.innerHTML=`<div style="background:var(--surface);border-radius:10px;padding:1.1rem 1.2rem;max-width:480px;width:92%;box-shadow:0 12px 40px rgba(0,0,0,.2);font-size:13px">
+        <div style="font-weight:600;margin-bottom:.6rem">${titulo}</div><div>${corpo}</div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap">${botoes.map((b,i)=>`<button class="btn btn-sm${b.primario?' btn-primary':''}" data-i="${i}">${b.t}</button>`).join('')}</div></div>`;
+      ov.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const v=botoes[+bt.dataset.i].v;const f=ov.querySelector('select,input');const val=f?f.value:'';ov.remove();ok(v?{v,val}:null);});
+      ov.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT')ov.querySelector('button.btn-primary')?.click();if(e.key==='Escape'){ov.remove();ok(null);}});
+      document.body.appendChild(ov);const f=ov.querySelector('input,select');if(f)setTimeout(()=>{f.focus();if(f.select)f.select();},30);
+    });
+  }
+  window.pxAbrir=async(pastaId,nome)=>{
+    if(!bibliotecaId){showToast('Biblioteca ESCRITURAS ainda não carregada.','error');return;}
+    montar();PX.drive=bibliotecaId;PX.raiz={id:pastaId,nome:nome||''};PX.pilha=[{id:pastaId,nome:nome||''}];
+    $('px-tit').textContent='📂 '+(nome||'Pasta');$('px-estado').textContent='Arraste ficheiros para a lista para os carregar nesta pasta.';
+    $('px-ov').classList.add('show');await pxListar();
+  };
+  window.pxFechar=()=>{$('px-ov')?.classList.remove('show');};
+  window.pxListar=async()=>{
+    const at=atual();if(!at)return;PX.lendo=true;pintar();
+    try{const r=await graphGet(`${GRAPH_BASE}/drives/${PX.drive}/items/${at.id}/children?$top=999&$select=id,name,folder,file,size,webUrl,lastModifiedDateTime`);
+      PX.itens=(r.value||[]).filter(x=>!(PX.pilha.length===1&&x.name===MATRIZ)).sort((a,b)=>(!!b.folder-!!a.folder)||a.name.localeCompare(b.name,'pt'));PX.erro='';}
+    catch(e){PX.itens=[];PX.erro='Não foi possível abrir a pasta: '+e.message;}
+    PX.lendo=false;pintar();
+  };
+  function pintar(){
+    $('px-mig').innerHTML=PX.pilha.map((p,i)=>i===PX.pilha.length-1?`<b>${esc(i?p.nome:'Pasta do cliente')}</b>`:`<a onclick="pxSubir(${i})">${esc(i?p.nome:'Pasta do cliente')}</a>`).join(' › ');
+    const el=$('px-lista');
+    if(PX.lendo){el.innerHTML='<div style="padding:1rem;font-size:12px;color:var(--text-faint)">A abrir…</div>';return;}
+    if(PX.erro){el.innerHTML=`<div style="padding:1rem;font-size:12px;color:var(--red)">${esc(PX.erro)}</div>`;return;}
+    const b=(t,ic,fn,id)=>`<button class="btn px-b" title="${t}" onclick="event.stopPropagation();${fn}('${esc(id)}')">${ic}</button>`;
+    el.innerHTML=(PX.pilha.length>1?`<div class="px-l" style="cursor:pointer" onclick="pxSubir(${PX.pilha.length-2})"><span>↩</span><span class="px-n">voltar</span></div>`:'')
+      +(PX.itens.length?PX.itens.map(x=>`<div class="px-l"${x.folder?` style="cursor:pointer" onclick="pxEntrar('${esc(x.id)}')"`:''}>
+        <span>${icone(x)}</span>
+        <span class="px-n">${x.folder?esc(x.name):`<a href="${esc(office(x.name)?x.webUrl:vistaLimpa(x.webUrl))}" target="_blank" rel="noopener">${esc(x.name)}</a>`}</span>
+        <span class="px-m">${x.folder?'':tam(x.size)}</span><span class="px-m">${quando(x.lastModifiedDateTime)}</span>
+        <span style="white-space:nowrap;text-align:right">${x.folder||!x.webUrl?'':`<a class="btn px-b" href="${esc(x.webUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir no SharePoint com as ferramentas (rodar, extrair páginas, anotar…)">🛠</a>`}${b('Mudar o nome','✏️','pxRenomear',x.id)}${b('Mover para outra pasta','↪','pxMover',x.id)}${b('Apagar','🗑','pxApagar',x.id)}</span></div>`).join('')
+        :'<div style="padding:1rem;font-size:12px;color:var(--text-faint)">Pasta vazia. Arraste ficheiros para aqui ou use «Carregar ficheiros».</div>');
+  }
+  window.pxEntrar=id=>{const x=PX.itens.find(i=>i.id===id);if(x&&x.folder){PX.pilha.push({id:x.id,nome:x.name});pxListar();}};
+  window.pxSubir=i=>{PX.pilha=PX.pilha.slice(0,i+1);pxListar();};
+  /* Matriz do verificador: só se mexe se existir e se a alteração lhe disser respeito. */
+  async function matriz(fn){
+    try{const r=await raw(`${GRAPH_BASE}/drives/${PX.drive}/items/${PX.raiz.id}:/${MATRIZ}:/content`);if(!r.ok)return;
+      const m=await r.json();if(!m||!Array.isArray(m.documentos))return;
+      if(!fn(m.documentos))return;m.atualizado=new Date().toISOString();
+      const p=await raw(`${GRAPH_BASE}/drives/${PX.drive}/items/${PX.raiz.id}:/${MATRIZ}:/content?@microsoft.graph.conflictBehavior=replace`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(m,null,1)});
+      if(!p.ok)throw new Error(await erro(p));}
+    catch(e){showToast('Feito, mas a matriz do verificador não foi atualizada: '+e.message,'error');}
+  }
+  async function enviar(pai,nome,ficheiro,substituir){
+    const cb=substituir?'replace':'fail';const base=`${GRAPH_BASE}/drives/${PX.drive}/items/${pai}:/${encodeURIComponent(nome)}:`;
+    const buf=await ficheiro.arrayBuffer(),len=buf.byteLength;
+    if(len<=4*1024*1024){const r=await raw(`${base}/content?@microsoft.graph.conflictBehavior=${cb}`,{method:'PUT',headers:{'Content-Type':ficheiro.type||'application/octet-stream'},body:buf});
+      if(!r.ok)throw new Error(r.status===409?'já existe':`erro ${r.status} — ${await erro(r)}`);return;}
+    const s=await raw(`${base}/createUploadSession`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':cb}})});
+    if(!s.ok)throw new Error(`erro ${s.status} — ${await erro(s)}`);const {uploadUrl}=await s.json();const C=320*1024*20;
+    for(let i=0;i<len;i+=C){const e=Math.min(len,i+C);const r=await fetch(uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${i}-${e-1}/${len}`},body:buf.slice(i,e)});
+      if(!r.ok)throw new Error(`erro ${r.status} no envio — ${await erro(r)}`);}
+  }
+  window.pxCarregar=async files=>{
+    files=[...(files||[])];const at=atual();if(!files.length||!at)return;
+    const ex=new Set(PX.itens.map(x=>x.name.toLowerCase()));let ok=0;const falhas=[];
+    for(const f of files){
+      let nome=limpa(f.name)||'ficheiro',subst=false;
+      if(ex.has(nome.toLowerCase())){
+        const r=await dialogo('Já existe um ficheiro com este nome',`«${esc(nome)}» já está nesta pasta.`,[{t:'Saltar'},{t:'Guardar com outro nome',v:'novo'},{t:'Substituir',v:'subst',primario:true}]);
+        if(!r)continue;
+        if(r.v==='subst')subst=true;
+        else{const ext=(nome.match(/\.[^.]+$/)||[''])[0],base=nome.slice(0,nome.length-ext.length);let k=2;while(ex.has(`${base} (${k})${ext}`.toLowerCase()))k++;nome=`${base} (${k})${ext}`;}
+      }
+      $('px-estado').textContent=`A carregar ${nome}…`;
+      try{await enviar(at.id,nome,f,subst);ex.add(nome.toLowerCase());ok++;}catch(e){falhas.push(`${nome}: ${e.message}`);}
+    }
+    $('px-estado').textContent=(ok?`${ok} ficheiro(s) carregado(s). `:'')+(falhas.length?`Não carregados — ${falhas.join('; ')}`:'');
+    await pxListar();
+  };
+  window.pxNovaPasta=async()=>{
+    const at=atual();if(!at)return;
+    const r=await dialogo('Nova pasta','<input class="form-input" style="width:100%" placeholder="Ex: DPA, Distrate, Correspondência">',[{t:'Cancelar'},{t:'Criar',v:'ok',primario:true}]);
+    const nome=r&&limpa(r.val);if(!nome)return;
+    if(PX.itens.some(x=>x.name.toLowerCase()===nome.toLowerCase())){showToast(`Já existe «${nome}» nesta pasta.`,'error');return;}
+    try{await graphPost(`${GRAPH_BASE}/drives/${PX.drive}/items/${at.id}/children`,{name:nome,folder:{},'@microsoft.graph.conflictBehavior':'fail'});
+      $('px-estado').textContent=`Pasta «${nome}» criada.`;await pxListar();}
+    catch(e){showToast('Não foi possível criar a pasta: '+e.message,'error');}
+  };
+  window.pxRenomear=async id=>{
+    const x=PX.itens.find(i=>i.id===id);if(!x)return;
+    const ext=x.folder?'':(x.name.match(/\.[^.]+$/)||[''])[0],base=x.name.slice(0,x.name.length-ext.length);
+    const r=await dialogo(x.folder?'Mudar o nome da pasta':'Mudar o nome do ficheiro',`<input class="form-input" style="width:100%" value="${esc(base)}">${ext?`<div style="font-size:11px;color:var(--text-faint);margin-top:4px">A extensão ${esc(ext)} mantém-se.</div>`:''}`,[{t:'Cancelar'},{t:'Gravar',v:'ok',primario:true}]);
+    if(!r)return;let novo=limpa(r.val);if(!novo||novo===base)return;
+    if(ext&&!novo.toLowerCase().endsWith(ext.toLowerCase()))novo+=ext;
+    const resp=await raw(`${GRAPH_BASE}/drives/${PX.drive}/items/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:novo,'@microsoft.graph.conflictBehavior':'fail'})});
+    if(resp.status===409){showToast(`Já existe «${novo}» nesta pasta.`,'error');return;}
+    if(!resp.ok){showToast(`Não foi possível mudar o nome: ${await erro(resp)}`,'error');return;}
+    const loc=local();
+    if(x.folder){const de=(loc?loc+'/':'')+x.name,para=(loc?loc+'/':'')+novo;
+      await matriz(D=>{let m=0;D.forEach(d=>{const l=d.local||'';if(l===de||l.startsWith(de+'/')){d.local=para+l.slice(de.length);m++;}});return m;});}
+    else await matriz(D=>{let m=0;D.forEach(d=>{if(d.ficheiro===x.name&&(d.local||'')===loc){d.renomeado_de=d.renomeado_de||x.name;d.ficheiro=novo;m++;}if(d.substituido_por===x.name){d.substituido_por=novo;m++;}});return m;});
+    $('px-estado').textContent=`«${x.name}» passou a «${novo}».`;await pxListar();
+  };
+  async function arvore(){
+    const out=[{id:PX.raiz.id,cam:'',rot:'Pasta do cliente (principal)'}];
+    const desce=async(id,cam,n)=>{if(n>4)return;
+      const r=await graphGet(`${GRAPH_BASE}/drives/${PX.drive}/items/${id}/children?$top=999&$select=id,name,folder`);
+      for(const f of (r.value||[]).filter(x=>x.folder).sort((a,b)=>a.name.localeCompare(b.name,'pt'))){const c=cam?cam+'/'+f.name:f.name;out.push({id:f.id,cam:c,rot:'📁 '+c});await desce(f.id,c,n+1);}};
+    await desce(PX.raiz.id,'',1);return out;
+  }
+  window.pxMover=async id=>{
+    const x=PX.itens.find(i=>i.id===id);if(!x)return;
+    let arv;try{arv=await arvore();}catch(e){showToast(e.message,'error');return;}
+    const loc=local(),eu=(loc?loc+'/':'')+x.name;
+    const dest=arv.filter(d=>d.id!==atual().id&&!(x.folder&&(d.cam===eu||d.cam.startsWith(eu+'/'))));
+    if(!dest.length){showToast('Não há outra pasta para onde mover. Crie primeiro uma pasta.','error');return;}
+    const r=await dialogo(`Mover «${esc(x.name)}»`,`<select class="form-select" style="width:100%">${dest.map(d=>`<option value="${esc(d.id)}">${esc(d.rot)}</option>`).join('')}</select>`,[{t:'Cancelar'},{t:'Mover',v:'ok',primario:true}]);
+    if(!r||!r.val)return;const d=dest.find(z=>z.id===r.val);
+    const resp=await raw(`${GRAPH_BASE}/drives/${PX.drive}/items/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({parentReference:{id:r.val},'@microsoft.graph.conflictBehavior':'fail'})});
+    if(resp.status===409){showToast(`Já existe «${x.name}» na pasta de destino.`,'error');return;}
+    if(!resp.ok){showToast(`Não foi possível mover: ${await erro(resp)}`,'error');return;}
+    if(x.folder){const para=(d.cam?d.cam+'/':'')+x.name;
+      await matriz(D=>{let m=0;D.forEach(z=>{const l=z.local||'';if(l===eu||l.startsWith(eu+'/')){z.local=para+l.slice(eu.length);m++;}});return m;});}
+    else await matriz(D=>{let m=0;D.forEach(z=>{if(z.ficheiro===x.name&&(z.local||'')===loc){if(d.cam)z.local=d.cam;else delete z.local;m++;}});return m;});
+    $('px-estado').textContent=`«${x.name}» movido para ${d.cam?'«'+d.cam+'»':'a pasta principal'}.`;await pxListar();
+  };
+  window.pxApagar=async id=>{
+    const x=PX.itens.find(i=>i.id===id);if(!x)return;
+    let aviso='';
+    if(x.folder){try{const c=await graphGet(`${GRAPH_BASE}/drives/${PX.drive}/items/${id}/children?$top=999&$select=id`);const n=(c.value||[]).length;
+      if(n)aviso=`<div style="color:var(--red);margin-top:.4rem">A pasta tem ${n} item(s), que também são apagados.</div>`;}catch(_){}}
+    const r=await dialogo(x.folder?'Apagar a pasta':'Apagar o ficheiro',`Apagar «${esc(x.name)}»?${aviso}<div style="font-size:11px;color:var(--text-faint);margin-top:.5rem">Vai para a reciclagem do SharePoint, de onde pode ser recuperado.</div>`,[{t:'Cancelar'},{t:'Apagar',v:'ok',primario:true}]);
+    if(!r)return;
+    const resp=await raw(`${GRAPH_BASE}/drives/${PX.drive}/items/${id}`,{method:'DELETE'});
+    if(!resp.ok&&resp.status!==204){showToast(`Não foi possível apagar: ${await erro(resp)}`,'error');return;}
+    const loc=local(),eu=(loc?loc+'/':'')+x.name;
+    await matriz(D=>{const saiu=[];const fica=D.filter(d=>{const l=d.local||'';const vai=x.folder?(l===eu||l.startsWith(eu+'/')):(d.ficheiro===x.name&&l===loc);if(vai)saiu.push(d.ficheiro);return!vai;});
+      D.splice(0,D.length,...fica);D.forEach(d=>{if(saiu.includes(d.substituido_por))delete d.substituido_por;});return saiu.length;});
+    $('px-estado').textContent=`«${x.name}» apagado (está na reciclagem do SharePoint).`;await pxListar();
+  };
+})();
+
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
 function limparFiltrosPastas(){document.getElementById('search-pastas').value='';filtrarPastas();setTimeout(atualizarBotoesLimparFiltros,50);}
 
