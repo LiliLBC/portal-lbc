@@ -106,6 +106,8 @@ tbody tr:hover td{background:#FAFAF8}
 .search-input:focus{outline:none;border-color:var(--accent)}
 .pasta-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:var(--shadow);transition:all .15s;margin-bottom:.4rem}
 .pasta-card:hover{border-color:var(--accent)}
+.btn-pasta{background:#FFF6DC;border-color:#EBD08F;color:#6B5418;text-decoration:none}
+.btn-pasta:hover{background:#FCEDC0;border-color:#DDBB66}
 .pasta-ref{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
 .pasta-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
 .pasta-actions{display:flex;gap:5px;flex-shrink:0}
@@ -3373,7 +3375,7 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir pasta</a>
+        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Verificador: cataloga os documentos da pasta (em «Catalogados») e alimenta a matriz">🔍 Verificador</button>
         <button class="btn btn-sm" onclick="matrizAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ver os dados que o verificador já compilou desta pasta">📋 Matriz</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
