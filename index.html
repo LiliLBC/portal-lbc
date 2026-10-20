@@ -3369,7 +3369,8 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Ver os documentos da pasta e receber novos: tudo passa pelo verificador (separar, nomear, matriz)">📥 Documentos</button>
+        <button class="btn btn-sm" onclick="abrirRececao('${p.id}',true)" title="Trabalhar na pasta: abrir, carregar, criar pastas, mudar o nome, mover e apagar — sem passar pelo verificador">📂 Pasta</button>
+        <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Verificar e catalogar: os documentos passam pelo verificador (separar, nomear, matriz)">📥 Documentos</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
     </div>`).join('');
@@ -3381,9 +3382,11 @@ function renderPastas(lista){
    renomeia os documentos, grava-os na pasta principal (originais em «_originais») e
    atualiza a MATRIZ_VERIFICADOR.json. As pastas continuam a criar-se aqui no Portal. */
 const VERIFICADOR_URL='https://lililbc.github.io/verificador-lbc/verificador.html';
-function abrirRececao(pastaId){
+/* Verificador híbrido (20/10/2026): «📥 Documentos» abre o modo de verificar e catalogar;
+   «📂 Pasta» abre o modo de trabalhar na pasta (explorador limpo, sem o ambiente do SharePoint). */
+function abrirRececao(pastaId,modoPasta){
   if(!bibliotecaId||!pastaId){showToast('Biblioteca ESCRITURAS ainda não carregada.','error');return;}
-  window.open(`${VERIFICADOR_URL}?pasta=${encodeURIComponent(bibliotecaId+'|'+pastaId)}`,'_blank');
+  window.open(`${VERIFICADOR_URL}?pasta=${encodeURIComponent(bibliotecaId+'|'+pastaId)}${modoPasta?'&modo=pasta':''}`,'_blank');
 }
 function filtrarPastas(){const q=document.getElementById('search-pastas').value.toLowerCase();renderPastas(todasPastas.filter(p=>(p.name||'').toLowerCase().includes(q)))}
 function limparFiltrosPastas(){document.getElementById('search-pastas').value='';filtrarPastas();setTimeout(atualizarBotoesLimparFiltros,50);}
