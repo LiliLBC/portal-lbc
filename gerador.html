@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-20.9</span>
+    <span class="page-sub">piloto · v2026-10-20.10</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -309,7 +309,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
       <button class="btn btn-sm" onclick="carregarPastasSP()" type="button">↺</button>
       <button class="btn btn-sm btn-primary" id="btn-carregar-rascunho" onclick="carregarRascunho()" type="button" disabled>📄 Carregar rascunho</button>
-      <button class="btn btn-sm" id="btn-docs-pasta" onclick="abrirDocumentos()" type="button" disabled title="Receber documentos para esta pasta: passam pelo verificador (separar, nomear, matriz)">📥 Documentos</button>
+      <button class="btn btn-sm" id="btn-docs-pasta" onclick="abrirDocumentos()" type="button" disabled title="Abrir o verificador nesta pasta: cataloga os documentos e alimenta a matriz">🔍 Verificador</button>
       <button class="btn btn-sm" id="btn-importar-matriz" onclick="importarMatriz()" type="button" disabled title="Preencher com os dados que o verificador leu com certeza dos documentos da pasta">📥 Importar da matriz</button>
     </div>
   </div>
@@ -6802,11 +6802,14 @@ const mzNum=s=>{const t=String(s??'').replace(/[€\s]/g,'');if(!/\d/.test(t))re
 const mzVal=n=>typeof n==='number'&&!isNaN(n)?n.toFixed(2).replace('.',','):String(n??'');
 const mzPreco=n=>typeof n==='number'&&!isNaN(n)?(Number.isInteger(n)?String(n):n.toFixed(2).replace('.',',')):String(n??'');
 const mzDataPT=iso=>{const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(iso||'');};
+/* A matriz vive na subpasta «Catalogados» (20/10/2026); as pastas antigas tinham-na na principal. */
 async function mzLer(){
   if(!pastaSeleccionada)return null;
-  const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/MATRIZ_VERIFICADOR.json:/content`);
-  if(r.status===404)return null;if(!r.ok)throw new Error('erro '+r.status);
-  return r.json();
+  for(const cam of ['Catalogados/MATRIZ_VERIFICADOR.json','MATRIZ_VERIFICADOR.json']){
+    const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${cam.split('/').map(encodeURIComponent).join('/')}:/content`);
+    if(r.status===404)continue;if(!r.ok)throw new Error('erro '+r.status);
+    return r.json();}
+  return null;
 }
 /* Documentos de que o verificador tem a certeza: lidos de texto, não substituídos, e sem dúvida assinalada. */
 function mzCerto(d){return !d.substituido_por&&d.dados&&(d.certeza?d.certeza==='texto':d.leitura==='texto');}
@@ -6933,9 +6936,17 @@ function mzEstado(atual,valor,num){return!atual?'vazio':mzIgual(atual,valor,num)
 async function importarMatriz(){
   if(!pastaSeleccionada){showToast('Escolha primeiro a pasta do cliente.','error');return;}
   let m;try{m=await mzLer();}catch(e){showToast('Não foi possível ler a matriz: '+e.message,'error');return;}
-  if(!m){showToast('Esta pasta ainda não tem matriz — os documentos têm de entrar pelo «📥 Documentos» do Portal.','');return;}
-  MZ.dados=m;const r=mzPropostas(m);Object.assign(MZ,{props:r.P,incertos:r.incertos,pessoas:r.pessoas,avisos:r.avisos});
+  if(!m){showToast('Esta pasta ainda não tem matriz — abra-a pelo «Verificador» (Portal ou botão acima) para catalogar os documentos.','');return;}
+  MZ.dados=m;MZ.setor='';mzCalcular();
   mzPintar();
+}
+/* Importa-se por setores: intervenientes, imóvel, mútuo e hipoteca (20/10/2026). Depois de
+   preencher um setor, a janela fica aberta e recalcula, para passar ao seguinte. */
+function mzCalcular(){
+  const r=mzPropostas(MZ.dados);Object.assign(MZ,{props:r.P,incertos:r.incertos,pessoas:r.pessoas,avisos:r.avisos});
+  MZ.props.forEach(p=>{p.setor=/^Mútuo|boletim/i.test(p.grupo)?'mutuo':'imovel';});
+  const tem=k=>k==='intervenientes'?MZ.pessoas.length:MZ.props.some(p=>p.setor===k);
+  if(!MZ.setor||!tem(MZ.setor))MZ.setor=['intervenientes','imovel','mutuo'].find(tem)||'intervenientes';
 }
 function mzPintar(){
   let ov=document.getElementById('mz-ov');
@@ -6948,10 +6959,13 @@ function mzPintar(){
       <td style="padding:5px 6px;vertical-align:top;color:var(--text-muted)">${atual?mzEsc(atualTxt):'<span style="color:var(--text-faint)">— vazio —</span>'}</td>
       <td style="padding:5px 6px;vertical-align:top;font-weight:600">${mzEsc(mostra||valor)}${st==='diverge'?' <span style="color:var(--red);font-weight:600;font-size:11px">diverge da matriz</span>':st==='igual'?' <span style="color:var(--green);font-size:11px">igual</span>':''}</td>
       <td style="padding:5px 6px;vertical-align:top;font-size:11px;color:var(--text-faint)">${mzEsc(origem)}</td></tr>`;};
-  const grupos=[...new Set(MZ.props.map(p=>p.grupo))];
+  const SETORES=[['intervenientes','👥 Intervenientes',MZ.pessoas.length],['imovel','🏠 Imóvel',MZ.props.filter(p=>p.setor==='imovel').length],['mutuo','🏦 Mútuo e hipoteca',MZ.props.filter(p=>p.setor==='mutuo').length]];
+  const abas=`<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 .7rem">${SETORES.map(([k,r,n])=>`<button class="btn btn-sm${MZ.setor===k?' btn-primary':''}" onclick="MZ.setor='${k}';mzPintar()" ${n?'':'disabled style="opacity:.5"'}>${r} <span style="opacity:.75">(${n})</span></button>`).join('')}</div>`;
+  const doSetor=p=>p.setor===MZ.setor;
+  const grupos=[...new Set(MZ.props.filter(doSetor).map(p=>p.grupo))];
   let h=grupos.map(g=>`<tr><td colspan="5" style="padding:10px 6px 4px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">${mzEsc(g)}</td></tr>`
-    +MZ.props.map((p,i)=>p.grupo!==g?'':lin('c'+i,p.rot,mzAtual(p.alvo),p.valor,p.mostra,p.origem,p.alvo.num,p.alvo)).join('')).join('');
-  MZ.pessoas.forEach((p,j)=>{
+    +MZ.props.map((p,i)=>p.grupo!==g||!doSetor(p)?'':lin('c'+i,p.rot,mzAtual(p.alvo),p.valor,p.mostra,p.origem,p.alvo.num,p.alvo)).join('')).join('');
+  if(MZ.setor==='intervenientes')MZ.pessoas.forEach((p,j)=>{
     const g=id=>p.bloco?document.getElementById(`${p.bloco}-${id}`)?.value?.trim()||'':'';
     h+=`<tr><td colspan="5" style="padding:10px 6px 4px;font-weight:700;font-size:12px;color:var(--text-muted)">${p.tipo==='empresa'?'SOCIEDADE':'PESSOA'} — ${mzEsc(p.nome)}
       ${p.bloco?`<span style="font-weight:400">(já está no gerador como ${p.bloco.startsWith('vend')?'vendedor':'comprador'})</span>`
@@ -6959,17 +6973,18 @@ function mzPintar(){
       +p.campos.map(([k,rot,val,data,mostra])=>lin(`p${j}-${k}`,rot,g(k),String(val),mostra||(data?mzDataPT(val):''),p.origem,false)).join('');});
   const inc=MZ.incertos;
   ov.innerHTML=`<div style="background:var(--surface,#fff);border-radius:12px;max-width:980px;width:100%;padding:1.2rem 1.4rem;box-shadow:0 8px 40px rgba(0,0,0,.3)">
-    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem"><div style="font-weight:700;font-size:15px">Importar da matriz do verificador</div>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem"><div style="font-weight:700;font-size:15px">Importar da matriz do verificador — por setor</div>
       <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('mz-ov').remove()">Fechar</button></div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:.6rem">Só entram dados de documentos com texto (lidos com certeza). Os campos vazios vêm marcados; os que já têm outro valor aparecem como <b style="color:var(--red)">diverge da matriz</b> e só mudam se os marcar.</div>
+    ${abas}
     ${MZ.avisos.length?`<div style="font-size:12px;color:var(--amber);margin-bottom:.5rem">${MZ.avisos.map(mzEsc).join('<br>')}</div>`:''}
-    ${MZ.props.length||MZ.pessoas.length?`<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="text-align:left;color:var(--text-faint);font-size:11px"><th></th><th>Campo</th><th>No gerador</th><th>Na matriz</th><th>Documento</th></tr></thead><tbody>${h}</tbody></table>`
-      :'<div style="font-size:13px">A matriz não tem dados lidos com certeza (texto) para importar.</div>'}
+    ${(MZ.setor==='intervenientes'?MZ.pessoas.length:MZ.props.some(doSetor))?`<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="text-align:left;color:var(--text-faint);font-size:11px"><th></th><th>Campo</th><th>No gerador</th><th>Na matriz</th><th>Documento</th></tr></thead><tbody>${h}</tbody></table>`
+      :'<div style="font-size:13px">Neste setor a matriz não tem dados lidos com certeza (texto) para importar.</div>'}
     ${inc.length?`<details style="margin-top:.8rem"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--amber)">${inc.length} documento(s) lidos de imagem ou classificados à mão — não importados, confirme no documento</summary>
-      <ul style="font-size:12px;margin:.4rem 0 0 1rem">${inc.map(d=>`<li>${mzEsc(d.ficheiro)}${!d.dados?' — <b>sem dados lidos</b>: abra a pasta pelo «📥 Documentos» do Portal para o verificador o voltar a ler':d.leitura==='imagem'?' (lido de imagem)':' (classificado à mão)'}</li>`).join('')}</ul></details>`:''}
+      <ul style="font-size:12px;margin:.4rem 0 0 1rem">${inc.map(d=>`<li>${mzEsc(d.ficheiro)}${!d.dados?' — <b>sem dados lidos</b>: abra a pasta pelo «Verificador» para o voltar a ler':d.leitura==='imagem'?' (lido de imagem)':' (classificado à mão)'}</li>`).join('')}</ul></details>`:''}
     <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
       <button class="btn btn-sm" onclick="document.getElementById('mz-ov').remove()">Cancelar</button>
-      <button class="btn btn-sm btn-primary" onclick="mzAplicar()">Preencher os selecionados</button></div></div>`;
+      <button class="btn btn-sm btn-primary" onclick="mzAplicar()">Preencher os selecionados — ${(SETORES.find(x=>x[0]===MZ.setor)||[0,''])[1]}</button></div></div>`;
 }
 function mzPor(id,valor,data){
   const el=document.getElementById(id);if(!el)return false;
@@ -7003,8 +7018,9 @@ function mzAplicar(){
     sel.forEach(([k,,val])=>{if(mzPor(`${id}-${k}`,String(val)))n++;});
     if(sel.some(([k])=>k==='objeto')){try{onObjetoSocial(id);}catch(_){}}
   });
-  ov.remove();try{atualizar();}catch(_){}
+  try{atualizar();}catch(_){}
   showToast(n?`${n} campo(s) preenchido(s) a partir da matriz — confira antes de gerar.`:'Nada foi preenchido.',n?'success':'');
+  mzCalcular();mzPintar();
 }
 
 
