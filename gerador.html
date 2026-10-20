@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-20.8</span>
+    <span class="page-sub">piloto · v2026-10-20.9</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6900,6 +6900,18 @@ function mzPropostas(m){
       const b=bloco(t.nif,t.nome);
       pessoas.push({chave:'p'+pessoas.length,tipo:/,?\s*(S\.?A\.?|LDA\.?|UNIPESSOAL)\s*$/i.test(t.nome)?'empresa':'singular',nome:t.nome,origem:c.ficheiro+' (titular inscrito)',bloco:b?b.id:'',papel:b?(b.classList.contains('vend-block')?'vend':'comp'):'vend',
         campos:/,?\s*(S\.?A\.?|LDA\.?|UNIPESSOAL)\s*$/i.test(t.nome)?[['denom','Firma',t.nome],['nipc','NIPC',t.nif]]:[['nome','Nome',t.nome],['nif','NIF',t.nif]]});});});
+  /* Boletim de contrato da CGD (20/10/2026): os dados do mútuo vão para o bloco 10.
+     O valor de avaliação é o «Valor Total» da garantia, no boletim. */
+  const bcs=by('BC');const bc=bcs[bcs.length-1];
+  if(bc){const x=bc.dados,o=bc.ficheiro,G='Mútuo e hipoteca — boletim da CGD';
+    if(bcs.length>1)avisos.push(`Há ${bcs.length} boletins de contrato na pasta — usei o ${o}. Confirme que é a versão final.`);
+    add(G,'Valor de avaliação (Valor Total da garantia)',{id:'f-mh-avaliacao'},x.avaliacao!=null?mzPreco(x.avaliacao):'',o);
+    add(G,'Montante do mútuo',{id:'f-mh-montante'},x.capital!=null?mzPreco(x.capital):'',o);
+    add(G,'Prazo (meses)',{id:'f-mh-prazo'},x.prazo,o);
+    add(G,'Taxa de juro até (%)',{id:'f-mh-juros'},x.juroAte||x.tan,o);
+    add(G,'Sobretaxa de mora (%)',{id:'f-mh-mora'},x.sobretaxa,o);
+    add(G,'Despesas (€)',{id:'f-mh-despesas'},x.despesas!=null?mzPreco(x.despesas):'',o);
+    add(G,'Montante máximo da hipoteca',{id:'f-mh-hipoteca'},x.maximo!=null?mzPreco(x.maximo):'',o);}
   pessoas.forEach(p=>p.campos=p.campos.filter(c=>c[2]!==undefined&&c[2]!==null&&String(c[2]).trim()!==''));
   return{P,incertos,pessoas,avisos};
 }
