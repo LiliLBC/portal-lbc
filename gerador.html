@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-21.6</span>
+    <span class="page-sub">piloto · v2026-10-21.9</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -438,6 +438,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
   <div class="section-card" id="card-b5">
     <div class="section-card-header"><div class="section-num">5</div><div><div class="section-name">Imóvel</div><div class="section-desc">Objeto da transmissão</div></div></div>
+    <div id="im-tit-um" class="outorgante-title" style="display:none;margin:0 0 .5rem">Prédio UM</div>
 
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Tipo</label>
@@ -484,6 +485,19 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div id="matrizes-container"></div>
       <button class="add-btn" type="button" onclick="addMatriz();atualizar()">+ Adicionar matriz</button>
       <div id="mat-soma" style="display:none;font-size:11.5px;margin-top:.5rem;font-family:'DM Mono',monospace"></div>
+    </div>
+    <!-- ÓNUS DO PRÉDIO PRINCIPAL · junto do prédio, como nos adicionais (21/10/2026) -->
+    <div class="cond-block" style="margin-top:.6rem" id="blk-onus">
+      <input type="checkbox" id="t-onus" style="display:none">
+      <div class="cond-block-title" style="margin-bottom:2px" id="onus-tit">Ónus deste prédio</div>
+      <div style="font-size:10.5px;color:var(--text-faint)" id="onus-hint">Sem ónus indicados, o prédio vai livre de ónus e encargos.</div>
+      <div id="g-onus" style="margin-top:.5rem">
+        <div id="onus-container"></div>
+        <button class="add-btn" type="button" onclick="addOnus();atualizar()">+ Adicionar ónus a este prédio</button>
+        <div class="form-group form-full" style="margin-top:.7rem"><label class="form-label">Outros ónus, por extenso</label>
+          <textarea class="form-input" id="f-onus-txt" rows="2" oninput="atualizar()" placeholder="Ónus que se mantêm e que a lista acima não cobre"></textarea>
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Texto livre, acrescentado à cláusula depois dos ónus listados.</div></div>
+      </div>
     </div>
     <div id="g-predios-extra" style="display:none">
       <div id="predios-extra-container"></div>
@@ -552,22 +566,6 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       </div>
     </div>
 
-    <!-- ÓNUS E ENCARGOS -->
-    <div class="cond-block" style="margin-top:.9rem" id="blk-onus">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
-        <div><div class="cond-block-title" style="margin-bottom:2px">Ónus e encargos</div>
-          <div style="font-size:10.5px;color:var(--text-faint)">O que onera o imóvel e por que via se cancela</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="t-onus" onchange="onOnus()"><span class="toggle-slider"></span></label>
-      </div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px" id="onus-hint">Desligado: o imóvel vai livre de ónus e encargos.</div>
-      <div id="g-onus" style="display:none;margin-top:.75rem">
-        <div id="onus-container"></div>
-        <button class="add-btn" type="button" onclick="addOnus();atualizar()">+ Adicionar ónus</button>
-        <div class="form-group form-full" style="margin-top:.7rem"><label class="form-label">Outros ónus, por extenso</label>
-          <textarea class="form-input" id="f-onus-txt" rows="2" oninput="atualizar()" placeholder="Ónus que se mantêm e que a lista acima não cobre"></textarea>
-          <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Texto livre, acrescentado à cláusula depois dos ónus listados.</div></div>
-      </div>
-    </div>
   </div>
 
   <!-- ══ BENS · partilhado pelos atos 2 e 3 ══ -->
@@ -3016,7 +3014,7 @@ function addOnus(dados,contentor){
   div.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem">
       <div style="font-size:11px;font-weight:600;color:var(--text-muted)">Ónus ${idx}</div>
-      ${idx>1||noPredio?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">×</button>`:''}
+      ${true?`<button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">×</button>`:''}
     </div>
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Ónus</label>
@@ -3079,19 +3077,28 @@ function lerOnusBlocos(blocos,pred){
 /* O interruptor do bloco 5 governa o prédio principal (UM). Cada prédio
    adicional tem os seus ónus dentro do próprio bloco (21/10/2026). */
 function lerOnus(){
-  const principal=chk('t-onus')?lerOnusBlocos(document.querySelectorAll('#onus-container .onus-block')):[];
+  sincOnus();
+  const principal=lerOnusBlocos(document.querySelectorAll('#onus-container .onus-block'));
   const extras=[...document.querySelectorAll('.pred-block')].flatMap((b,i)=>lerOnusBlocos(document.querySelectorAll(`#${b.id}-onus .onus-block`),String(i+2)));
   return[...principal,...extras];
 }
 /* Cada ónus mostra só os campos da via escolhida. */
+/* Já não há interruptor: há ónus no prédio principal se houver algum indicado
+   (ou texto livre). O t-onus fica escondido e acompanha, porque o resto do
+   gerador o consulta. */
+function sincOnus(){
+  const t=document.getElementById('t-onus');if(!t)return;
+  t.checked=document.querySelectorAll('#onus-container .onus-block').length>0||!!v('f-onus-txt');
+}
 function aplicarOnus(){
-  setDisp('g-onus',chk('t-onus')?'block':'none');
+  sincOnus();
   /* Vários prédios: cada ónus diz sobre qual incide (21/10/2026). */
   const ex=document.querySelectorAll('.pred-block');
   const opts=[['1','Só o prédio principal (UM)'],['todos','Todos os prédios (UM e adicionais)']];
-  setProp('onus-hint','textContent',!chk('t-onus')
-    ?(ex.length?'Desligado: o prédio principal vai livre de ónus e encargos. Os ónus dos prédios adicionais indicam-se em cada prédio.':'Desligado: o imóvel vai livre de ónus e encargos.')
-    :(ex.length?'Ligado: ónus do prédio principal (UM), ou comuns a todos. Os de cada prédio adicional indicam-se no próprio prédio.':'Ligado: enumera-se o que onera o imóvel e como se cancela.'));
+  setProp('onus-tit','textContent','Ónus deste prédio');
+  /* Vários prédios: todos numerados no formulário como no contrato. */
+  setDisp('im-tit-um',ex.length?'block':'none');
+  [...ex].forEach((b,i)=>{const t=b.querySelector('.pred-title');if(t)t.textContent=`Prédio ${CARD_PRED[i+1]||i+2}`;});
   const html=opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('');
   document.querySelectorAll('.onus-block').forEach(b=>{
     const sel=document.getElementById(`${b.id}-pred`);
@@ -3104,15 +3111,7 @@ function aplicarOnus(){
   });
 }
 /* Ligado, há ónus; desligado, o imóvel vai livre. */
-function onOnus(){
-  const ha=chk('t-onus');
-  setDisp('g-onus',ha?'block':'none');
-  setProp('onus-hint','textContent',ha
-    ?'Ligado: enumera-se o que onera o imóvel e como se cancela.'
-    :'Desligado: o imóvel vai livre de ónus e encargos.');
-  if(ha&&!document.querySelectorAll('#onus-container .onus-block').length)addOnus();
-  atualizar();
-}
+function onOnus(){sincOnus();atualizar();}
 /* ── ÓNUS · textos ──
    CONTRATO — a menção ao ónus e ao seu cancelamento.
    TERMO    — a verificação da autorização de cancelamento (art. 56.º CRP).
@@ -3236,7 +3235,7 @@ function linhaAssento(o){
 /* ── VERIFIQUEI · identificação do prédio ──
    Redação fixada pela Liliana. A ficha do SNIC e o NIC só entram nos prédios
    com componente rústica. */
-function linhaPredio(pref,dados){
+function linhaPredio(pref,dados,ord){
   const g=k=>dados?(dados[k]||''):v(`${pref}-${k}`);
   const tipo=dados?dados.tipo:v('f-im-tipo');
   const cad=g('cad-data'),cod=g('cert-cod'),val=g('cert-val');
@@ -3268,7 +3267,23 @@ function linhaPredio(pref,dados){
       ? `— Consultei Mod. 1 IMI com o código ${codMod1} e que arquivo`
       : `— A caderneta predial urbana do prédio, emitida em ${dataCad}`;
   }
+  /* Vários prédios: devolve só o troço do prédio; linhasPredios() junta-os
+     numa linha, separados por «;», e o «consultadas hoje…» vai uma vez no fim
+     (⚠ por validar, 21/10/2026). */
+  if(ord&&lerPrediosExtra().length)
+    return`${cabeca.replace(/^— /,'').replace(/ do prédio,/,',')}, ${mod1?'bem como':'e'} a certidão permanente com o código ${cod||'…'}, válida até ${val?dPT(val):'…'}, referentes ao prédio ${CARD_PRED[ord-1]||ord}`;
   return`${cabeca}, ${mod1?'bem como':'e'} certidão permanente do imóvel com o código ${cod||'…'}, consultadas hoje nos respetivos portais, sendo esta última válida até ${val?dPT(val):'…'}, com inscrições e descrições em vigor;`;
+}
+/* Verificação dos documentos de todos os prédios. Com um só prédio é a linha
+   de sempre; com vários, uma linha só: cada prédio separado por «;» e o fecho
+   uma vez no fim. */
+function linhasPredios(){
+  const ex=lerPrediosExtra();
+  if(!ex.length)return[linhaPredio('f-im',null)].filter(Boolean);
+  const fr=[linhaPredio('f-im',null,1),...ex.map((p,i)=>linhaPredio(`pred-${i+1}`,p,i+2))].filter(Boolean);
+  if(!fr.length)return[];
+  const txt=fr.map((t,i)=>i?t.charAt(0).toLowerCase()+t.slice(1):t).join('; ');
+  return[`— ${txt}; todas consultadas hoje nos respetivos portais, com inscrições e descrições em vigor;`];
 }
 /* ── VERIFIQUEI · requerimento à AT para correção de áreas no rústico ──
    Redação da Liliana, com a citação do diploma por extenso. */
@@ -3476,7 +3491,7 @@ function comporMH(variante){
   /* Também os garantes e fiadores podem outorgar por procuração. */
   const procuracoes=[...mut,...quartos].map(segmentoProcuracao).filter(Boolean);
   const assentos=mut.map(linhaAssento).filter(Boolean);
-  const predios=[linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean);
+  const predios=linhasPredios().filter(Boolean);
   const requerimentos=[linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean);
   const crcCod=v('f-mut-crc-cod')||bancoAtual().crcCod||CGD_CRC;
   const crcVal=v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(bancoAtual().crcVal||CGD_CRC_VAL);
@@ -3824,7 +3839,7 @@ function comporMH_CCAM(variante){
   mut.map(o=>linhaEmpresa(o,'PARTE MUTUÁRIA')).filter(Boolean).forEach(l=>linhas.push('— '+l));
   quartos.map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
   mut.map(linhaAssento).filter(Boolean).forEach(l=>linhas.push(l));
-  [linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean).forEach(l=>linhas.push(l));
+  linhasPredios().filter(Boolean).forEach(l=>linhas.push(l));
   [linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean).forEach(l=>linhas.push(l));
   termo.push({id:P+'t-verifiquei',T:'',X:`Verifiquei:\n${linhas.join('\n')}`});
 
@@ -5270,7 +5285,7 @@ function compor(){
                   ...comps.map(o=>linhaEmpresa(o,'PARTE COMPRADORA')),
                   ...lerQuartos().map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE'))].filter(Boolean);
   const requerimentos=[linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean);
-  const predios=[linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean);
+  const predios=linhasPredios().filter(Boolean);
   const assentos=vend.map(linhaAssento).filter(Boolean);
   const procuracoes=[...vend,...comps].map(segmentoProcuracao).filter(Boolean);
   /* ── 4.1 · CGD — verificação dos poderes ──
@@ -6273,6 +6288,7 @@ function desfazerFunilMH(){
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
 }
 function atualizar(){
+  sincOnus();
   // ── funil ──
   const ato=atoEscolhido();
   const ehCV=ato==='cv';
