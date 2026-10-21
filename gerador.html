@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-20.10</span>
+    <span class="page-sub">piloto · v2026-10-21.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2855,11 +2855,32 @@ function onusMantidoFrag(o){
 /* A frase única do imóvel nos mútuos: registo, ónus que se mantêm e matriz.
    Antes eram três frases seguidas a começar por «O imóvel ora hipotecado…» e
    «O prédio encontra-se…» (pedido da Liliana, 01/10/2026). */
+/* ── MÚTUO COM HIPOTECA SOBRE VÁRIOS PRÉDIOS (21/10/2026) ──
+   ⚠ Redação por validar. Com prédios adicionais no bloco 5, a hipoteca constitui-se
+   sobre todos, numerados (UM, DOIS…), com o valor de avaliação global do boletim, e o
+   conjunto continua a chamar-se IMÓVEL, para as cláusulas seguintes não mudarem. Sem
+   prédios adicionais, o texto é o de sempre. */
+const CARD_PRED=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+function hipSobre(corpoIm,aval){
+  const um=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}`;
+  const ex=lerPrediosExtra();
+  if(!ex.length)return`sobre ${corpoIm}, ao qual as partes atribuem o valor de ${aval}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`;
+  const DIREITOS={plena:'',superficie:'o direito de superfície sobre ',usufruto:'o usufruto sobre ',raiz:'a nua-propriedade (raiz) sobre ',dhp:'o direito real de habitação periódica sobre '};
+  const dto=DIREITOS[v('f-im-direito')]||'';
+  const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
+  const lista=[um,...ex.map(p=>`${dto}${desig(p.tipo)} composto por ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'}, freguesia de ${p.freg||'…'}`)];
+  return`sobre os seguintes prédios, aos quais as partes atribuem o valor global de ${aval}, adiante designados, em conjunto, por IMÓVEL:\n`+lista.map((t,i)=>`${CARD_PRED[i]||i+1} — ${t}`).join(';\n')+'.';
+}
+function hipRegistoExtras(sujeitoReg){
+  const ex=lerPrediosExtra();if(!ex.length)return'';
+  const mats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,false)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],false):textoMatrizG(ms[0],false)):'na respetiva matriz predial …';
+  return'\n'+ex.map((p,i)=>`O prédio identificado em ${CARD_PRED[i+1]||i+2} encontra-se registado a favor ${sujeitoReg} pela ${p.apaq||'…'} e inscrito ${mats(p.matrizes)}.`).join('\n');
+}
 function fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz){
   const mat=String(txtMatriz||'').replace(/^O prédio encontra-se inscrito\s*/,'').replace(/\.\s*$/,'');
   const on=mantidos.map(onusMantidoFrag);
   const onTxt=on.length?`, onerado com ${on.join(', e com ')},`:'';
-  return`O imóvel encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}${onTxt} e inscrito ${mat||'na respetiva matriz predial …'}.`;
+  return`${lerPrediosExtra().length?'O prédio identificado em UM':'O imóvel'} encontra-se registado a favor ${sujeitoReg} pela ${v('f-im-apaq')||'…'}${onTxt} e inscrito ${mat||'na respetiva matriz predial …'}.`;
 }
 function textoMatrizG(m,multi){
   /* A secção só existe nas matrizes rústicas e vem colada ao artigo:
@@ -3398,8 +3419,8 @@ function comporMH(variante){
   /* Também os garantes e fiadores podem outorgar por procuração. */
   const procuracoes=[...mut,...quartos].map(segmentoProcuracao).filter(Boolean);
   const assentos=mut.map(linhaAssento).filter(Boolean);
-  const predios=[linhaPredio('f-im',null)].filter(Boolean);
-  const requerimentos=[linhaRequerimento('f-im',null)].filter(Boolean);
+  const predios=[linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean);
+  const requerimentos=[linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean);
   const crcCod=v('f-mut-crc-cod')||bancoAtual().crcCod||CGD_CRC;
   const crcVal=v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(bancoAtual().crcVal||CGD_CRC_VAL);
   const linhas=[];
@@ -3515,8 +3536,8 @@ function comporMH(variante){
   if(BK.anexoI)contrato.push({id:P+'c-anexo-fecho',T:'',X:
     `O mútuo, a hipoteca${fiadores.length?' e a fiança':''} aqui exarados, bem como as responsabilidades ${muP?'dos PRIMEIROS':(femM?'da MUTUÁRIA':'do MUTUÁRIO')} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
-    `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
-  contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidosCGD,txtMatriz)});
+    `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'))}`});
+  contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidosCGD,txtMatriz)+hipRegistoExtras(sujeitoReg)});
   if(clBancoHip.length)contrato.push({id:P+'c-hip-banco',T:'',X:clBancoHip.join('\n')});
   contrato.push({id:P+'c-hip-vigencia',T:'',X:
     `A hipoteca ora constituída vigorará por tempo indeterminado, subsistindo enquanto perdurar qualquer das responsabilidades por ela garantidas, abrangendo o Imóvel, bem como todas as construções, edificações, melhoramentos, benfeitorias e acessões, presentes ou futuras, que já existam ou que nele venham a ser incorporadas.\n`
@@ -3746,8 +3767,8 @@ function comporMH_CCAM(variante){
   mut.map(o=>linhaEmpresa(o,'PARTE MUTUÁRIA')).filter(Boolean).forEach(l=>linhas.push('— '+l));
   quartos.map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
   mut.map(linhaAssento).filter(Boolean).forEach(l=>linhas.push(l));
-  [linhaPredio('f-im',null)].filter(Boolean).forEach(l=>linhas.push(l));
-  [linhaRequerimento('f-im',null)].filter(Boolean).forEach(l=>linhas.push(l));
+  [linhaPredio('f-im',null),...lerPrediosExtra().map((p,i)=>linhaPredio(`pred-${i+1}`,p))].filter(Boolean).forEach(l=>linhas.push(l));
+  [linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean).forEach(l=>linhas.push(l));
   termo.push({id:P+'t-verifiquei',T:'',X:`Verifiquei:\n${linhas.join('\n')}`});
 
   /* ── INFORMEI ── */
@@ -3790,8 +3811,8 @@ function comporMH_CCAM(variante){
   contrato.push({id:P+'c-anexo-hip',T:'',X:
     `O mútuo e a hipoteca aqui exarados, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
-    `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, sobre ${corpoIm}, ao qual as partes atribuem o valor de ${par('f-mh-avaliacao')}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`});
-  contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz)});
+    `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'))}`});
+  contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz)+hipRegistoExtras(sujeitoReg)});
   if(clOnus.length)contrato.push({id:P+'c-hip-onus',T:'',X:clOnus.join('\n')});
   /* Exceção aos ónus só quando há ónus que se mantêm. */
   const excecao=mantidos.length
@@ -6140,7 +6161,8 @@ function funilMH(){
   setDisp('g-im-letra',isFr?'flex':'none');setDisp('g-im-apph',isFr?'flex':'none');
   setDisp('g-matrizes',isFr?'none':'block');setDisp('g-condominio','none');
   ['g-im-artigo','g-im-freg-mat','g-im-vpt','g-im-vpt-ano'].forEach(x=>setDisp(x,isFr?'flex':'none'));
-  setDisp('g-predios-extra','none');
+  /* Hipoteca sobre vários prédios (21/10/2026): os prédios adicionais também servem o mútuo. */
+  setDisp('g-predios-extra','block');
   aplicarAreas();aplicarSnic();aplicarSeccao();
   const gm=document.getElementById('g-local-morada');
   if(gm)gm.style.display=v('f-local-tipo')==='outro'?'block':'none';
