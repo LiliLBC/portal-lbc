@@ -87,6 +87,20 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 .toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
 .cond-block{background:var(--surface2);border-radius:9px;padding:.8rem .9rem;margin-bottom:.6rem}
 .cond-block-title{font-size:10.5px;font-weight:600;color:var(--text-muted);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.05em}
+.pred-card{border:1px solid var(--border);border-radius:10px;margin-top:.45rem;background:var(--surface);overflow:hidden}
+.pred-head{display:flex;align-items:center;gap:.55rem;padding:.55rem .8rem;background:#E3EEFB;border-left:5px solid #3B7DD8;cursor:pointer;user-select:none}
+.pred-head .pred-tit{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1E4E8C;white-space:nowrap}
+.pred-head .pred-resumo{flex:1;min-width:0;font-size:11.5px;color:#4A6587;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pred-head .pred-chev{font-size:11px;color:#1E4E8C}
+.pred-card.aberto>.pred-head{background:#FFF4C2;border-left-color:#E0B000}
+.pred-card.aberto>.pred-head .pred-tit,.pred-card.aberto>.pred-head .pred-chev{color:#6B5200}
+.pred-card.aberto>.pred-head .pred-resumo{color:#8A7430}
+.pred-card.aberto>.pred-head .pred-chev{transform:rotate(90deg)}
+.pred-card:not(.aberto)>.pred-body{display:none}
+.pred-body{padding:.8rem .9rem}
+.pred-card.solo{border:none;background:none;margin-top:0;overflow:visible}
+.pred-card.solo>.pred-head{display:none}
+.pred-card.solo>.pred-body{display:block;padding:0}
 .outorgante-block{border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem;margin-bottom:.6rem;background:var(--surface)}
 .outorgante-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
 .outorgante-title{font-size:11px;font-weight:600;color:var(--accent-dark);text-transform:uppercase;letter-spacing:.05em}
@@ -169,7 +183,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-21.9</span>
+    <span class="page-sub">piloto · v2026-10-22.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -438,8 +452,10 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
   <div class="section-card" id="card-b5">
     <div class="section-card-header"><div class="section-num">5</div><div><div class="section-name">Imóvel</div><div class="section-desc">Objeto da transmissão</div></div></div>
-    <div id="im-tit-um" class="outorgante-title" style="display:none;margin:0 0 .5rem">Prédio UM</div>
-
+    <!-- PRÉDIO UM · o mesmo cartão dos prédios adicionais (21/10/2026) -->
+    <div id="pred-um" class="pred-card aberto solo">
+      <div class="pred-head" onclick="predToggle('pred-um')"><span class="pred-chev">▶</span><span class="pred-tit">Prédio UM</span><span class="pred-resumo" id="pred-um-resumo"></span></div>
+      <div class="pred-body">
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Tipo</label>
         <select class="form-select" id="f-im-tipo" onchange="onImTipo()">
@@ -474,6 +490,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <!-- A validade anda com o código: são o mesmo documento. -->
       <div class="form-group"><label class="form-label">Certidão permanente válida até</label>
         <input type="date" class="form-input" id="f-im-cert-val" onchange="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label">Destino deste prédio <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint)">(facultativo)</span></label>
+        <input class="form-input" id="f-destino" oninput="atualizar()" placeholder="Ex: habitação própria e permanente — em branco, o contrato não fala do destino"></div>
       <div class="form-group" id="g-im-artigo"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
       <div class="form-group" id="g-im-freg-mat"><label class="form-label">Freguesia (matriz) <span>*</span></label><input class="form-input" id="f-im-freg-mat" placeholder="Ex: União das Freguesias de Malagueira e Horta das Figueiras"></div>
       <div class="form-group" id="g-im-vpt"><label class="form-label">VPT (€) <span>*</span></label><input class="form-input" id="f-im-vpt" placeholder="Ex: 39314,90"></div>
@@ -499,15 +517,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Texto livre, acrescentado à cláusula depois dos ónus listados.</div></div>
       </div>
     </div>
-    <div id="g-predios-extra" style="display:none">
-      <div id="predios-extra-container"></div>
-      <button class="add-btn" type="button" style="margin-top:.5rem" onclick="addPredioExtra();atualizar()">+ Adicionar prédio (transação com vários prédios)</button>
-    </div>
-      <!-- 5.1 · VERIFICAÇÕES -->
-    <div class="cond-block" style="margin-top:.9rem">
-      <div class="form-group form-full" style="margin-bottom:.6rem"><label class="form-label">Destino do imóvel</label>
-        <input class="form-input" id="f-destino" oninput="atualizar()" placeholder="Ex: habitação própria e permanente"></div>
-      <div class="cond-block-title" style="margin-bottom:2px">5.1 · Verificações — prédio principal</div>
+    <div class="cond-block" style="margin-top:.6rem">
+      <div class="cond-block-title" style="margin-bottom:2px">Verificações deste prédio</div>
       <div class="form-grid form-grid-2">
         <div class="form-group"><label class="form-label"><span class="f-im-rot-cad">Caderneta predial emitida em</span></label>
           <input type="date" class="form-input" id="f-im-cad-data" onchange="atualizar()"></div>
@@ -551,6 +562,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           </div>
         </div>
       </div>
+    </div>
+      </div>
+    </div>
+    <div id="g-predios-extra" style="display:none">
+      <div id="predios-extra-container"></div>
+      <button class="add-btn" type="button" style="margin-top:.5rem" onclick="addPredioExtra();atualizar()">+ Adicionar prédio (transação com vários prédios)</button>
     </div>
     <!-- PREFERÊNCIA DOS CONFINANTES -->
     <div class="cond-block" style="margin-top:.9rem;display:none" id="g-confinantes">
@@ -2795,7 +2812,7 @@ function lerMatrizes(pid){
 function temMatrizRustica(){
   const t=v('f-im-tipo');
   if(t==='fracao')return false;
-  return lerMatrizes().some(m=>m.nat==='rustica')||lerPrediosExtra().some(p=>p.matrizes.some(m=>m.nat==='rustica')||p.tipo!=='urbano')||t==='rustico'||t==='misto';
+  return lerMatrizes().some(m=>m.nat==='rustica')||lerPrediosExtra().some(p=>p.matrizes.some(m=>m.nat==='rustica')||p.tipo==='rustico'||p.tipo==='misto')||t==='rustico'||t==='misto';
 }
 function onImTipo(){
   const t=v('f-im-tipo');
@@ -2859,6 +2876,16 @@ function onusMantidoFrag(o){
    conjunto continua a chamar-se IMÓVEL, para as cláusulas seguintes não mudarem. Sem
    prédios adicionais, o texto é o de sempre. */
 const CARD_PRED=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+/* Prédio adicional que é fração autónoma — a mesma forma do prédio UM. */
+const DIREITOS_PRED={plena:'',superficie:'o direito de superfície sobre ',usufruto:'o usufruto sobre ',raiz:'a nua-propriedade (raiz) sobre ',dhp:'o direito real de habitação periódica sobre '};
+/* Cada prédio tem o seu direito transmitido (22/10/2026). */
+function txtPredExtraCV(p,dto0,txtMats){
+  const dto=DIREITOS_PRED[p.direito]||'';
+  if(p.tipo==='fracao')
+    return`${dto}a FRAÇÃO AUTÓNOMA DESIGNADA PELA LETRA «${p.letra||'…'}», ${p.descricao||'…'}, a qual faz parte do prédio urbano constituído em regime de propriedade horizontal pela inscrição ${p.apph||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`;
+  const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
+  return`${dto}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`;
+}
 function hipSobre(corpoIm,aval){
   const um=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}`;
   const ex=lerPrediosExtra();
@@ -2866,7 +2893,10 @@ function hipSobre(corpoIm,aval){
   const DIREITOS={plena:'',superficie:'o direito de superfície sobre ',usufruto:'o usufruto sobre ',raiz:'a nua-propriedade (raiz) sobre ',dhp:'o direito real de habitação periódica sobre '};
   const dto=DIREITOS[v('f-im-direito')]||'';
   const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
-  const lista=[um,...ex.map(p=>`${dto}${desig(p.tipo)} composto por ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'}, freguesia de ${p.freg||'…'}`)];
+  const dtoP=p=>DIREITOS_PRED[p.direito]||'';
+  const lista=[um,...ex.map(p=>p.tipo==='fracao'
+    ?`${dtoP(p)}a fração autónoma designada pela letra «${p.letra||'…'}», do prédio em regime de propriedade horizontal constituída pela ${p.apph||'…'}, composta por ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'}, freguesia de ${p.freg||'…'}`
+    :`${dtoP(p)}${desig(p.tipo)} composto por ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'}, freguesia de ${p.freg||'…'}`)];
   return`sobre os seguintes prédios, aos quais as partes atribuem o valor global de ${aval}, adiante designados, em conjunto, por IMÓVEL:\n`+lista.map((t,i)=>`${CARD_PRED[i]||i+1} — ${t}`).join(';\n')+'.';
 }
 function hipRegistoExtras(sujeitoReg,mantidos){
@@ -2893,14 +2923,25 @@ function addPredioExtra(dados){
   const c=document.getElementById('predios-extra-container');
   const idx=++predCnt,id=`pred-${idx}`;
   const div=document.createElement('div');
-  div.className='outorgante-block pred-block';div.id=id;div.style.marginTop='.6rem';
+  div.className='pred-card pred-block';div.id=id;
   div.innerHTML=`
-    <div class="outorgante-header"><span class="outorgante-title pred-title">Prédio adicional</span>
-      <button class="remove-btn" type="button" onclick="document.getElementById('${id}').remove();atualizar()">×</button></div>
+    <div class="pred-head" onclick="predToggle('${id}')"><span class="pred-chev">▶</span><span class="pred-tit pred-title">Prédio adicional</span><span class="pred-resumo" id="${id}-resumo"></span>
+      <button class="remove-btn" type="button" onclick="event.stopPropagation();document.getElementById('${id}').remove();atualizar()">×</button></div>
+    <div class="pred-body">
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Tipo</label>
-        <select class="form-select" id="${id}-tipo" onchange="atualizar()"><option value="urbano">Urbano</option><option value="rustico">Rústico</option><option value="misto">Misto</option></select></div>
-      <div class="form-group form-full"><label class="form-label">Composto de <span>*</span></label><input class="form-input" id="${id}-descricao"></div>
+        <select class="form-select" id="${id}-tipo" onchange="atualizar()"><option value="fracao">Fração autónoma</option><option value="urbano" selected>Prédio urbano</option><option value="rustico">Prédio rústico</option><option value="misto">Prédio misto</option></select></div>
+      <div class="form-group"><label class="form-label">Direito transmitido</label>
+        <select class="form-select" id="${id}-direito" onchange="atualizar()">
+          <option value="plena">Propriedade plena</option>
+          <option value="superficie">Direito de superfície</option>
+          <option value="usufruto">Usufruto</option>
+          <option value="raiz">Nua-propriedade (raiz)</option>
+          <option value="dhp">Direito real de habitação periódica</option>
+        </select></div>
+      <div class="form-group ${id}-fr" style="display:none"><label class="form-label">Letra da fração</label><input class="form-input" id="${id}-letra" placeholder="Ex: E" oninput="atualizar()"></div>
+      <div class="form-group form-full"><label class="form-label"><span class="${id}-rot-desc">Composto de</span> <span>*</span></label><input class="form-input" id="${id}-descricao"></div>
+      <div class="form-group ${id}-fr" style="display:none"><label class="form-label">AP da propriedade horizontal</label><input class="form-input" id="${id}-apph" placeholder="Ex: AP. 49 de 1995/06/07" oninput="atualizar()"></div>
       <div class="form-group"><label class="form-label">Sito em</label><input class="form-input" id="${id}-sito"></div>
       <div class="form-group"><label class="form-label">Conservatória</label><input class="form-input" id="${id}-crp"></div>
       <div class="form-group"><label class="form-label">Nº de descrição</label><input class="form-input" id="${id}-num"></div>
@@ -2912,6 +2953,8 @@ function addPredioExtra(dados){
           <button type="button" class="btn btn-sm" title="Abrir o Predial Online"
             onclick="window.open('https://www.predialonline.pt/PredialOnline/FRM005RPOLCP_input.action','_blank','noopener')" style="flex-shrink:0;padding:0 .6rem">🔍</button>
         </div></div>
+      <div class="form-group form-full"><label class="form-label">Destino deste prédio <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint)">(facultativo)</span></label>
+        <input class="form-input" id="${id}-destino" oninput="atualizar()" placeholder="Ex: habitação própria e permanente — em branco, o contrato não fala do destino"></div>
     </div>
     <div class="cond-block-title" style="margin-top:.6rem">Matrizes deste prédio</div>
     <div id="${id}-mats"></div>
@@ -2965,17 +3008,44 @@ function addPredioExtra(dados){
         </div>
       </div>
       </div>
+    </div>
     </div>`;
   c.appendChild(div);
-  if(dados){['tipo','descricao','sito','crp','num','freg','apaq','cert-cod','areas','mod1-num','mod1-data','mod1-sf','req-num','req-data','req-sf','cad-data','cad-data-u','cert-val','snic-ficha','snic-nic'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));(dados.onus||[]).forEach(o=>addOnus(o,`${id}-onus`));}
-  else addMatriz(null,id);
+  if(dados){['tipo','direito','destino','letra','apph','descricao','sito','crp','num','freg','apaq','cert-cod','areas','mod1-num','mod1-data','mod1-sf','req-num','req-data','req-sf','cad-data','cad-data-u','cert-val','snic-ficha','snic-nic'].forEach(k=>{const el=document.getElementById(`${id}-${k}`);if(el)el.value=dados[k]||(k==='tipo'?'urbano':k==='direito'?'plena':'');});(dados.matrizes||[null]).forEach(m=>addMatriz(m,id));(dados.onus||[]).forEach(o=>addOnus(o,`${id}-onus`));}
+  else{addMatriz(null,id);
+    /* Prédio novo: abre-se e os outros recolhem-se. */
+    document.querySelectorAll('.pred-card').forEach(x=>x.classList.remove('aberto'));div.classList.add('aberto');}
   return id;
+}
+/* ── PRÉDIOS · abrir e recolher ──
+   Cada prédio é um cartão: recolhido, fica só a tira azul, em cascata (UM,
+   DOIS, TRÊS…); o que está aberto passa a amarelo. Abre um de cada vez. */
+function predToggle(id){
+  const c=document.getElementById(id);if(!c)return;
+  const abrir=!c.classList.contains('aberto');
+  document.querySelectorAll('.pred-card').forEach(x=>x.classList.remove('aberto'));
+  if(abrir)c.classList.add('aberto');
+}
+function aplicarPredios(){
+  const ex=[...document.querySelectorAll('.pred-block')];
+  const um=document.getElementById('pred-um');
+  if(um){um.classList.toggle('solo',!ex.length);if(!ex.length)um.classList.add('aberto');}
+  const TIPO={fracao:'Fração',urbano:'Urbano',rustico:'Rústico',misto:'Misto'};
+  const resumo=(t,l,n,d)=>[TIPO[t]?(t==='fracao'&&l?`Fração ${l}`:TIPO[t]):'',n?`n.º ${n}`:'',d].filter(Boolean).join(' · ');
+  setProp('pred-um-resumo','textContent',resumo(v('f-im-tipo'),v('f-im-letra'),v('f-im-num'),v('f-im-descricao').slice(0,70)));
+  ex.forEach((b,i)=>{
+    const id=b.id,t=v(`${id}-tipo`)||'urbano';
+    const tt=b.querySelector('.pred-title');if(tt)tt.textContent=`Prédio ${CARD_PRED[i+1]||i+2}`;
+    setProp(`${id}-resumo`,'textContent',resumo(t,v(`${id}-letra`),v(`${id}-num`),v(`${id}-descricao`).slice(0,70)));
+    b.querySelectorAll(`.${id}-fr`).forEach(e=>e.style.display=t==='fracao'?'flex':'none');
+    b.querySelectorAll(`.${id}-rot-desc`).forEach(e=>e.textContent=t==='fracao'?'Descrição / correspondência':'Composto de');
+  });
 }
 function lerPrediosExtra(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   return[...document.querySelectorAll('.pred-block')].map(b=>{
     const id=b.id;
-    return{tipo:g(`${id}-tipo`)||'urbano',descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),'cert-cod':g(`${id}-cert-cod`),
+    return{tipo:g(`${id}-tipo`)||'urbano',direito:g(`${id}-direito`)||'plena',destino:g(`${id}-destino`),letra:g(`${id}-letra`),apph:g(`${id}-apph`),descricao:g(`${id}-descricao`),sito:g(`${id}-sito`),crp:g(`${id}-crp`),num:g(`${id}-num`),freg:g(`${id}-freg`),apaq:g(`${id}-apaq`),'cert-cod':g(`${id}-cert-cod`),
       areas:g(`${id}-areas`),'mod1-num':g(`${id}-mod1-num`),'mod1-data':g(`${id}-mod1-data`),'mod1-sf':g(`${id}-mod1-sf`),
       'req-num':g(`${id}-req-num`),'req-data':g(`${id}-req-data`),'req-sf':g(`${id}-req-sf`),
       'req-carimbo':!!document.getElementById(`${id}-req-carimbo`)?.checked,
@@ -3097,8 +3167,7 @@ function aplicarOnus(){
   const opts=[['1','Só o prédio principal (UM)'],['todos','Todos os prédios (UM e adicionais)']];
   setProp('onus-tit','textContent','Ónus deste prédio');
   /* Vários prédios: todos numerados no formulário como no contrato. */
-  setDisp('im-tit-um',ex.length?'block':'none');
-  [...ex].forEach((b,i)=>{const t=b.querySelector('.pred-title');if(t)t.textContent=`Prédio ${CARD_PRED[i+1]||i+2}`;});
+  aplicarPredios();
   const html=opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('');
   document.querySelectorAll('.onus-block').forEach(b=>{
     const sel=document.getElementById(`${b.id}-pred`);
@@ -5134,7 +5203,7 @@ function compor(){
       if(!extras.length)return txtFracao+', adiante designado abreviadamente por Imóvel.';
       const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
       const txtMats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,true)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],true):textoMatrizG(ms[0],true)):'na respetiva matriz predial …';
-      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      const pxs=extras.map(p=>txtPredExtraCV(p,dtoPrefixo,txtMats));
       return[txtFracao+`, ao qual foi atribuído o valor de ${v('f-im-vimt')||'…'} Euros para efeitos de IMT`,...pxs].map((t,i)=>`${CARD_PRED[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
     })()
     :(()=>{
@@ -5146,7 +5215,7 @@ function compor(){
       const p1=`${dtoPrefixo}${desigIm} composto de ${v('f-im-descricao')||'…'}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'} ${daFreg(v('f-im-freg-crp'))}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${v('f-im-apaq')||'…'}, inscrito ${txtMats(matrizes)}`;
       if(!multiVerbas)return p1+', adiante designado abreviadamente por Imóvel.';
       const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
-      const pxs=extras.map(p=>`${dtoPrefixo}${desig(p.tipo)} composto de ${p.descricao||'…'}, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'} ${daFreg(p.freg)}, com aquisição registada a favor ${favorRegisto('da parte vendedora')} pela inscrição ${p.apaq||'…'}, inscrito ${txtMats(p.matrizes)}`);
+      const pxs=extras.map(p=>txtPredExtraCV(p,dtoPrefixo,txtMats));
       return[p1,...pxs].map((t,i)=>`${CARD[i]||i+1} — ${t}`).join(';\n')+', adiante designados abreviadamente por Imóvel.';
     })();
 
@@ -5556,7 +5625,19 @@ function compor(){
   /* Logo a seguir ao certificado energético, que é o que fecha o licenciamento. */
   if(cond.contrato)contrato.push({id:'c-condominio',T:'',X:cond.contrato});
   contrato.push({id:'c-encargos',T:clausula('Encargos'),X:`Não obstante a transmissão do referido imóvel na data de hoje, mantêm-se sobre a PARTE VENDEDORA a responsabilidade pelo pagamento de encargos ou outras despesas que sejam anteriores à celebração do presente ato, não advindo daí qualquer obrigação para a PARTE COMPRADORA.`});
-  if(v('f-destino'))contrato.push({id:'c-destino',T:clausula('Destino do Imóvel'),X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
+  /* Destino — cada prédio tem o seu, facultativo. Sem nenhum preenchido, a
+     cláusula não sai e as seguintes renumeram-se (a numeração é corrida).
+     Com um só prédio, a frase de sempre. Com vários, diz-se de cada prédio
+     cujo destino foi preenchido (⚠ por validar, 22/10/2026). */
+  {
+    const ex=lerPrediosExtra();
+    if(!ex.length){
+      if(v('f-destino'))contrato.push({id:'c-destino',T:clausula('Destino do Imóvel'),X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
+    }else{
+      const ds=[v('f-destino'),...ex.map(p=>p.destino)].map((d,i)=>d?`o prédio identificado em ${CARD_PRED[i]||i+1} a ${d}`:'').filter(Boolean);
+      if(ds.length)contrato.push({id:'c-destino',T:clausula('Destino do Imóvel'),X:`Declara a PARTE COMPRADORA que destina ${ds.length>1?ds.slice(0,-1).join('; ')+'; e '+ds[ds.length-1]:ds[0]}.`});
+    }
+  }
   contrato.push({id:'c-mediacao',T:clausula('Mediação Imobiliária'),X:chk('t-mediacao')
     ?`Declaram as partes que, na presente transmissão do imóvel, recorreram a intervenção de mediação imobiliária da ${v('f-med-nome')||'…'}, licença AMI ${v('f-med-ami')||'…'}.`
     :`Declaram as partes que, na presente transmissão do imóvel, não recorreram a intervenção de mediação imobiliária.`});
@@ -6530,7 +6611,9 @@ function pcvImovel(){
   }
   const p1=um(t,v('f-im-descricao'),v('f-im-sito'),v('f-im-crp'),v('f-im-num'),v('f-im-freg-crp'),lerMatrizes());
   /* O v2 só tinha um prédio; havendo mais no bloco 5, juntam-se na mesma forma. */
-  const ex=lerPrediosExtra().map(p=>um(p.tipo,p.descricao,p.sito,p.crp,p.num,p.freg,p.matrizes));
+  const ex=lerPrediosExtra().map(p=>p.tipo==='fracao'
+    ?`da fração autónoma designada pela letra "${p.letra||'…'}", do prédio em regime de propriedade horizontal constituído pela ${p.apph||'…'}, ${p.descricao?'composta por '+p.descricao+', ':''}${sitoDe(p.sito)}descrita na Conservatória do Registo Predial de ${p.crp||'…'}, sob o número ${p.num||'…'}, freguesia de ${p.freg||'…'}`+matsTxt(p.matrizes)
+    :um(p.tipo,p.descricao,p.sito,p.crp,p.num,p.freg,p.matrizes));
   return[p1,...ex].join('; e ');
 }
 function comporCPCV(){
