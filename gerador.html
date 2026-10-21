@@ -169,7 +169,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-21.4</span>
+    <span class="page-sub">piloto · v2026-10-21.6</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -3847,10 +3847,18 @@ function comporMH_CCAM(variante){
     negrito:quartos.map(q=>q.nome).filter(Boolean)});
 
   /* Preâmbulo · finalidade e desembolso vêm do bloco próprio da CCAM. */
-  const fin=(v('f-ccam-finalidade')||'…').replace(/[.;]\s*$/,'');
-  const des=(v('f-ccam-desembolso')||'').replace(/[.;,]\s*$/,'');
+  /* ⚠ Preâmbulo revisto (21/10/2026), por validar: é o texto da CCAM, só sem
+     repetições. «não lhe podendo ser dado outro uso ou destino» e a remissão
+     para o Anexo I saem uma vez cada. A Liliana não quis uma versão reescrita.
+     Se a finalidade ou o desembolso já trouxerem estes trechos, tiram-se aqui,
+     para não saírem em dobro. */
+  const fin=(v('f-ccam-finalidade')||'…')
+    .replace(/,?\s*não lhe podendo ser dado outro uso ou destino/gi,'').replace(/[.;,\s]+$/,'')||'…';
+  const des=(v('f-ccam-desembolso')||'')
+    .replace(/,?\s*não lhe podendo ser dado outro uso ou destino/gi,'')
+    .replace(/,?\s*e\s+nos demais termos[\s\S]*$/i,'').replace(/[.;,\s]+$/,'');
   contrato.push({id:P+'c-preambulo',T:'',X:
-    `É celebrado o presente contrato de ${nomeTermo}, que se rege pelas seguintes disposições e se destina a financiar ${fin}; não lhe podendo ser dado outro uso ou destino;${des?` ${des},`:''} e nos demais termos e condições reguladas e estabelecidas no Anexo I, que dele fica a fazer parte integrante para todos os efeitos legais.`});
+    `É celebrado o presente contrato de ${nomeTermo}, que se rege pelas seguintes disposições e se destina a financiar ${fin}, não lhe podendo ser dado outro uso ou destino,${des?` ${des},`:''} e nos demais termos e condições reguladas e estabelecidas no Anexo I, que dele fica a fazer parte integrante para todos os efeitos legais.`});
 
   /* ── MÚTUO ── */
   contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
