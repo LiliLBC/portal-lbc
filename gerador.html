@@ -183,7 +183,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-22.6</span>
+    <span class="page-sub">piloto · v2026-10-22.10</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -366,6 +366,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <select class="form-select" id="f-mh-contrato" onchange="atualizar()">
           <option value="toic">4.1 · TOIC — transferência de crédito de habitação própria permanente</option>
           <option value="uno">4.2 · UNO — mútuo com hipoteca</option>
+          <option value="acc">4.3 · Abertura de crédito em conta corrente com hipoteca (CCAM)</option>
         </select>
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">O TOIC é isento de Imposto do Selo; o UNO é sujeito. O imóvel já é do cliente — não há compra, substituem-se hipotecas.</div>
         <div class="toggle-row" id="row-mh-conexo" style="display:none;margin-top:.6rem">
@@ -1408,6 +1409,29 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <div class="form-group form-full"><label class="form-label">Imposto do Selo — verba 17.1.3 (&euro;)</label>
           <input class="form-input" id="f-mh-calculo-is" oninput="this.dataset.tocado=this.value.trim()?'1':'';atualizar()" placeholder="Calculado a 6/1000 sobre o montante">
           <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px" id="nota-is-mh"></div></div>
+        <!-- 4.3 · ABERTURA DE CRÉDITO EM CONTA CORRENTE (CCAM) -->
+        <div class="form-group form-full" id="blk-acc" style="display:none">
+          <div class="cond-block" style="margin:0">
+            <div class="cond-block-title" style="margin-bottom:2px">4.3 · Abertura de crédito em conta corrente</div>
+            <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.5rem">Finalidade, utilização, reembolso e renovação ficam no Anexo I. Não há Imposto do Selo no termo.</div>
+            <div class="form-grid form-grid-2">
+              <div class="form-group"><label class="form-label">Ata da mutuária — n.º</label><input class="form-input" id="f-acc-ata-mut-num" oninput="atualizar()"></div>
+              <div class="form-group"><label class="form-label">Ata da mutuária — data</label><input type="date" class="form-input" id="f-acc-ata-mut-data" onchange="atualizar()"></div>
+              <div class="form-group"><label class="form-label">Ata da garante — n.º</label><input class="form-input" id="f-acc-ata-gar-num" oninput="atualizar()"></div>
+              <div class="form-group"><label class="form-label">Ata da garante — data</label><input type="date" class="form-input" id="f-acc-ata-gar-data" onchange="atualizar()"></div>
+              <div class="form-group form-full"><label class="form-label">Ata da garante — reunião do(a)</label><input class="form-input" id="f-acc-ata-gar-orgao" oninput="atualizar()" placeholder="Ex: Conselho de Administração"></div>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-faint);margin-top:.6rem">Se os prédios já levarem uma primeira hipoteca a favor da CAIXA AGRÍCOLA feita no ato imediatamente anterior, escolha essa opção nos ónus de cada prédio. Por regra não há, e o contrato sai sem essa menção.</div>
+            <div id="acc-ant" style="display:none">
+            <div class="cond-block-title" style="margin:.6rem 0 2px">Primeira hipoteca constituída no ato imediatamente anterior</div>
+            <div class="form-grid form-grid-2">
+              <div class="form-group"><label class="form-label">Empréstimo concedido à</label>
+                <select class="form-select" id="f-acc-ant-quem" onchange="atualizar()"><option value="terceira">Terceira contratante (garante)</option><option value="primeira">Primeira contratante (mutuária)</option></select></div>
+              <div class="form-group"><label class="form-label">N.º do depósito eletrónico</label><input class="form-input" id="f-acc-ant-dep" oninput="atualizar()" placeholder="Em branco: «…»"></div>
+            </div>
+            </div>
+          </div>
+        </div>
         <div class="form-group form-full" id="blk-ccam-fin" style="display:none">
           <label class="form-label">Finalidade do financiamento — CCAM <span>*</span></label>
           <textarea class="form-input" id="f-ccam-finalidade" rows="2" oninput="atualizar()" placeholder="Ex: o apoio à atividade desenvolvida pela mutuária">o apoio à atividade desenvolvida pela mutuária</textarea>
@@ -1752,6 +1776,13 @@ function addOutorgante(pref,dados){
           <option value="cgd"${sel(dados.tipo,'cgd')}>CGD</option>
           <option value="municipio"${sel(dados.tipo,'municipio')}>Município</option>
         </select></div>
+      ${pref==='quarto'?`<div class="form-group form-full"><label class="form-label">Intervém como <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint)">(facultativo)</span></label>
+        <select class="form-select" id="${id}-qualidade" onchange="atualizar()">
+          <option value=""${sel(dados.qualidade||'','')}>— não indicado —</option>
+          <option value="garante"${sel(dados.qualidade,'garante')}>Garante hipotecário — dá os seus prédios de hipoteca</option>
+          <option value="fiador"${sel(dados.qualidade,'fiador')}>Fiador</option>
+          <option value="ambos"${sel(dados.qualidade,'ambos')}>Garante hipotecário e fiador</option>
+        </select></div>`:''}
     </div>
 
     <!-- 3.1 · REPRESENTAÇÃO — antes da identificação -->
@@ -2292,6 +2323,7 @@ function lerOutorgantes(pref){
       'mun-nome':g(`${id}-mun-nome`),'mun-nipc':g(`${id}-mun-nipc`),'mun-sede':g(`${id}-mun-sede`),
       'mun-mandato':g(`${id}-mun-mandato`),'mun-ata':g(`${id}-mun-ata`),
       'mun-doc':g(`${id}-mun-doc`)||'arquivo','mun-codigo':g(`${id}-mun-codigo`),
+      qualidade:g(`${id}-qualidade`),
       reps:lerRepresentantes(id)
     };
   });
@@ -2866,10 +2898,23 @@ const pluralOnus=d=>String(d||'…').split(/\s+/).map(w=>/^(de|da|do|e|a)$/i.tes
 /* «… e liquidado mediante cheque bancário emitido pela CAIXA AGRÍCOLA à ordem
    de …, no valor de … EUROS (…) com o número …» — redação da Liliana
    (22/10/2026). Só sai se algum dos campos do cheque estiver preenchido. */
+/* Quem emite o cheque: o que estiver escrito no ónus; senão, o banco mutuante. */
+function bancoMutuanteCurto(){
+  const b=BANCOS[v('f-mutuante')];
+  const temMutuo=ehMH()||(atoEscolhido()==='cv'&&chk('t-mh'));
+  return temMutuo&&b?b.curto:'';
+}
+/* «… com primeira hipoteca voluntária a favor da CAIXA AGRÍCOLA, constituída
+   por ato imediatamente anterior ao presente, celebrado nesta data, para
+   garantia do empréstimo concedido à TERCEIRA CONTRATANTE.» — 4.3 (22/10/2026). */
+function fraseHipAnterior(suj,daBanco,aQuem){
+  return`${suj} com primeira hipoteca voluntária a favor ${daBanco||'…'}, constituída por ato imediatamente anterior ao presente, celebrado nesta data, para garantia do empréstimo concedido ${aQuem||'…'}.`;
+}
 function liqChequeFrag(o,banco){
   if(!o['liq-ordem']&&!o['liq-valor']&&!o['liq-num'])return'';
+  banco=o['liq-banco']||banco||bancoMutuanteCurto();
   const val=parseValor(o['liq-valor']);
-  return` e liquidado mediante cheque bancário emitido pela ${String(banco||'…').replace(/^(a|o)\s+/i,'')} à ordem ${o['liq-ordem']?entidadeOnus(o['liq-ordem']):'de …'}, no valor de ${val?`${fmtValor(val)} EUROS (${valorExtenso(o['liq-valor']).toLowerCase()})`:'… EUROS (…)'} com o número ${o['liq-num']||'…'}`;
+  return` e liquidado mediante cheque bancário emitido ${(()=>{const b=String(banco||'').replace(/^(a|o)\s+/i,'');if(!b)return'pela …';const e=entidadeOnus(b);return e.replace(/^da /,'pela ').replace(/^do /,'pelo ').replace(/^de /,'por ');})()} à ordem ${o['liq-ordem']?entidadeOnus(o['liq-ordem']):'de …'}, no valor de ${val?`${fmtValor(val)} EUROS (${valorExtenso(o['liq-valor']).toLowerCase()})`:'… EUROS (…)'} com o número ${o['liq-num']||'…'}`;
 }
 function onusCancFrag(o){
   return onusMantidoFrag(o).replace(/, que se (mantém|mantêm)$/,', cujo cancelamento é assegurado com o presente ato');
@@ -2905,7 +2950,7 @@ function txtPredExtraCV(p,dto0,txtMats){
 }
 function hipSobre(corpoIm,aval,ctx){
   const ex=lerPrediosExtra();
-  if(!ex.length)return`sobre ${corpoIm}, ao qual as partes atribuem o valor de ${aval}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`;
+  if(!ex.length)return`sobre ${corpoIm}${(ctx&&ctx.titular)||''}, ao qual as partes atribuem o valor de ${aval}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}, adiante designado por IMÓVEL.`;
   /* Vários prédios (⚠ por validar, 22/10/2026): tudo o que há a dizer de cada
      prédio vem seguido — descrição, registo, ónus, matriz e valor atribuído —
      UM, depois DOIS, depois TRÊS. A frase do registo à parte deixa de sair. */
@@ -2937,10 +2982,11 @@ function hipSobre(corpoIm,aval,ctx){
     const desc=a.pl?pluralOnus(o.desc):(o.desc||'…');
     const fem=/^(hipoteca|penhora|servid|consigna|apreens|reserva)/i.test(String(o.desc||'').trim());
     const regT=a.pl?(fem?'registadas pelas':'registados pelas'):(fem?'registada pela':'registado pela');
+    if(o.canc==='anterior')return fraseHipAnterior(suj,ctx.daBanco,ctx.aQuemAnt);
     const fim=o.canc==='nao'?`, que se ${a.pl?'mantêm':'mantém'}`:`, cujo cancelamento é assegurado com o presente ato${liqChequeFrag(o,ctx.banco)}`;
     return`${suj} com ${desc} ${regT} ${a.txt}, a favor ${entidadeOnus(o.ent,o.nif)}, NIF ${o.nif||'…'}${fim}.`;
   };
-  const onusDe=k=>onus.filter(o=>o.pred===String(k)&&(o.canc==='nao'||(prim&&(o.canc==='fisico'||o.canc==='codigo'))));
+  const onusDe=k=>onus.filter(o=>o.pred===String(k)&&(o.canc==='nao'||o.canc==='anterior'||(prim&&(o.canc==='fisico'||o.canc==='codigo'))));
   /* UM */
   const tipoUM=v('f-im-tipo'),frUM=tipoUM==='fracao';
   const matsUM=frUM?[{nat:'urbana',artigo:v('f-im-artigo'),freg:v('f-im-freg-mat'),vpt:v('f-im-vpt'),ano:v('f-im-vpt-ano'),vimt:v('f-im-vimt')}]:lerMatrizes();
@@ -2958,9 +3004,9 @@ function hipSobre(corpoIm,aval,ctx){
     partes.push(`${CARD_PRED[i]||i+1} – ${it.corpo}, sito em ${it.sito||'…'}, ${it.fem?'descrita':'descrito'} na Conservatória do Registo Predial de ${it.crp||'…'} sob o número ${it.num||'…'}, freguesia de ${it.freg||'…'}${reg(it.apaq)}, ${inscrito(it.mats,it.freg,it.fem)}${valor(it.vh,it.mats)}${ult?'.':';'}`);
     onusDe(i+1).forEach(o=>partes.push(fraseOnus(o,`${it.fem?'A Fração':'O Prédio'} encontra-se ${it.fem?'onerada':'onerado'}`)));
   });
-  onus.filter(o=>o.pred==='todos'&&(o.canc==='nao'||(prim&&(o.canc==='fisico'||o.canc==='codigo'))))
+  onus.filter(o=>o.pred==='todos'&&(o.canc==='nao'||o.canc==='anterior'||(prim&&(o.canc==='fisico'||o.canc==='codigo'))))
     .forEach(o=>partes.push(fraseOnus(o,'Os Prédios encontram-se onerados')));
-  return`sobre os seguintes prédios, aos quais as partes atribuem o valor global de ${aval}, adiante designados, em conjunto, por IMÓVEL:\n`+partes.join('\n');
+  return`sobre os seguintes prédios${ctx.titular||''}, aos quais as partes atribuem o valor global de ${aval}, adiante designados, em conjunto, por IMÓVEL:\n`+partes.join('\n');
 }
 function hipRegistoExtras(){return'';}
 function fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz){
@@ -3169,10 +3215,13 @@ function addOnus(dados,contentor){
           <option value="fisico">Autorização de cancelamento em papel — arquivo</option>
           <option value="codigo">Autorização de cancelamento por código</option>
           <option value="renuncia">Renúncia da CAIXA à hipoteca anterior</option>
+          <option value="anterior">Hipoteca a favor do banco, constituída no ato imediatamente anterior — mantém-se</option>
         </select></div>
       <div class="form-group onus-fis" style="display:none"><label class="form-label">Emitida em</label>
         <input type="date" class="form-input" id="${id}-data" onchange="atualizar()"></div>
       <div class="form-group form-full onus-liq" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">Liquidação por cheque bancário (facultativo) — entra no contrato: «… cujo cancelamento é assegurado com o presente ato e liquidado mediante cheque bancário emitido pela [banco] à ordem de …, no valor de … EUROS (…) com o número …»</div></div>
+      <div class="form-group onus-liq" style="display:none"><label class="form-label">Cheque emitido por</label>
+        <input class="form-input" id="${id}-liq-banco" oninput="atualizar()" placeholder="Em branco: o banco mutuante"></div>
       <div class="form-group onus-liq" style="display:none"><label class="form-label">Cheque à ordem de</label>
         <input class="form-input" id="${id}-liq-ordem" oninput="atualizar()" placeholder="Ex: BANKINTER, S.A."></div>
       <div class="form-group onus-liq" style="display:none"><label class="form-label">Valor do cheque (€)</label>
@@ -3191,7 +3240,7 @@ function addOnus(dados,contentor){
   /* O prédio fica guardado no bloco: as opções só existem depois de os prédios
      adicionais estarem carregados (aplicarOnus). */
   div.dataset.pred=(dados&&dados.pred)||'1';
-  if(dados)['desc','ap','ent','nif','canc','data','codigo','liq-ordem','liq-valor','liq-num'].forEach(k=>{
+  if(dados)['desc','ap','ent','nif','canc','data','codigo','liq-banco','liq-ordem','liq-valor','liq-num'].forEach(k=>{
     const e=document.getElementById(`${id}-${k}`);if(e&&dados[k]!==undefined)e.value=dados[k];
   });
 }
@@ -3214,7 +3263,7 @@ function lerOnusBlocos(blocos,pred){
   return[...blocos].map(b=>({
     desc:g(`${b.id}-desc`),ap:g(`${b.id}-ap`),ent:g(`${b.id}-ent`),nif:g(`${b.id}-nif`),
     canc:g(`${b.id}-canc`)||'nao',data:g(`${b.id}-data`),codigo:g(`${b.id}-codigo`),
-    'liq-ordem':g(`${b.id}-liq-ordem`),'liq-valor':g(`${b.id}-liq-valor`),'liq-num':g(`${b.id}-liq-num`),
+    'liq-banco':g(`${b.id}-liq-banco`),'liq-ordem':g(`${b.id}-liq-ordem`),'liq-valor':g(`${b.id}-liq-valor`),'liq-num':g(`${b.id}-liq-num`),
     pred:pred||predOnusValido(b.dataset.pred)
   })).filter(o=>o.desc||o.ap||o.ent);
 }
@@ -3251,7 +3300,7 @@ function aplicarOnus(){
     const c=document.getElementById(`${b.id}-canc`)?.value||'nao';
     b.querySelectorAll('.onus-fis').forEach(e=>e.style.display=c==='fisico'?'block':'none');
     b.querySelectorAll('.onus-cod').forEach(e=>e.style.display=c==='codigo'?'block':'none');
-    b.querySelectorAll('.onus-liq').forEach(e=>e.style.display=(c==='fisico'||c==='codigo')&&ehMH()?'block':'none');
+    b.querySelectorAll('.onus-liq').forEach(e=>e.style.display=(c==='fisico'||c==='codigo')?'block':'none');
   });
 }
 /* Ligado, há ónus; desligado, o imóvel vai livre. */
@@ -3263,7 +3312,7 @@ function onOnus(){sincOnus();atualizar();}
    sujeito muda para «O Imóvel», por aí o imóvel não estar a ser hipotecado e o
    ónus poder não ser uma hipoteca; no mútuo fica palavra por palavra. */
 function textoOnusContrato(o,mh){
-  if(o.canc==='renuncia')return'';
+  if(o.canc==='renuncia'||o.canc==='anterior')return'';
   /* ⚠ Por validar: o ónus que se mantém também tem de ser dito. A frase é a
      mesma até ao NIF; o fecho — «que se mantém» — é proposta minha, porque a
      tua só previa o ónus que se cancela. */
@@ -3279,7 +3328,8 @@ function textoOnusContrato(o,mh){
      por palavra. Na compra e venda não está — está a ser vendido —, e o sujeito
      muda para «O Imóvel». Confirmado pela Liliana. */
   const cab=cabM||(mh?'O imóvel ora hipotecado encontra-se onerado com':'O Imóvel encontra-se onerado com');
-  return`${cab} ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, cujo cancelamento é assegurado com o presente ato.`;
+  /* Pagamento por cheque, quando indicado no ónus (22/10/2026). */
+  return`${cab} ${o.desc||'…'} registada pela ${o.ap||'…'}, a favor de ${o.ent||'…'}, NIF ${o.nif||'…'}, cujo cancelamento é assegurado com o presente ato${liqChequeFrag(o)}.`;
 }
 function textoOnusTermo(o){
   /* Vários prédios: diz-se sobre que prédio incide. ⚠ Por validar. */
@@ -3424,6 +3474,21 @@ function linhaPredio(pref,dados,ord){
 function linhasPredios(){
   const ex=lerPrediosExtra();
   if(!ex.length)return[linhaPredio('f-im',null)].filter(Boolean);
+  /* Todos urbanos, sem Modelo 1, com a caderneta e a certidão de cada um, e as
+     mesmas datas: a forma agrupada da Liliana (22/10/2026) — «As cadernetas
+     prediais urbanas, todas emitidas em …, e as certidões permanentes, todas
+     válidas até …, referentes aos prédios, com os seguintes códigos de acesso:
+     prédio UM, …; prédio DOIS, …; e prédio TRÊS, …; todas consultadas hoje…». */
+  {
+    const it=[{tipo:v('f-im-tipo'),cad:v('f-im-cad-data'),cod:v('f-im-cert-cod'),val:v('f-im-cert-val'),mats:v('f-im-tipo')==='fracao'?[]:lerMatrizes(),mod1:v('f-im-areas')==='nao'&&!!v('f-im-mod1-num')},
+      ...ex.map(p=>({tipo:p.tipo,cad:p['cad-data'],cod:p['cert-cod'],val:p['cert-val'],mats:p.matrizes||[],mod1:p.areas==='nao'&&!!p['mod1-num']}))];
+    const urb=x=>(x.tipo==='urbano'||x.tipo==='fracao')&&!x.mats.some(m=>m.nat==='rustica')&&!x.mod1;
+    if(it.every(x=>urb(x)&&x.cad&&x.cod&&x.val)&&new Set(it.map(x=>x.cad)).size===1&&new Set(it.map(x=>x.val)).size===1){
+      const cods=it.map((x,i)=>`prédio ${CARD_PRED[i]||i+1}, ${x.cod}`);
+      const lista=cods.slice(0,-1).join('; ')+'; e '+cods[cods.length-1];
+      return[`— As cadernetas prediais urbanas, todas emitidas em ${dPT(it[0].cad)}, e as certidões permanentes, todas válidas até ${dPT(it[0].val)}, referentes aos prédios, com os seguintes códigos de acesso: ${lista}; todas consultadas hoje nos respetivos portais, com inscrições e descrições em vigor;`];
+    }
+  }
   const fr=[linhaPredio('f-im',null,1),...ex.map((p,i)=>linhaPredio(`pred-${i+1}`,p,i+2))].filter(Boolean);
   if(!fr.length)return[];
   const txt=fr.map((t,i)=>i?t.charAt(0).toLowerCase()+t.slice(1):t).join('; ');
@@ -3905,9 +3970,10 @@ function comporMH_CCAM(variante){
     if(!quartos.length)return'';
     const TC=tercPl?(femQ?'TERCEIRAS CONTRATANTES':'TERCEIROS CONTRATANTES'):(femQ?'TERCEIRA CONTRATANTE':'TERCEIRO CONTRATANTE');
     const FI=fiadores.length>1?(femQ?'FIADORAS':'FIADORES'):(femQ?'FIADORA':'FIADOR');
-    const GA=garantes.length>1?'GARANTES HIPOTECÁRIOS':'GARANTE HIPOTECÁRIO';
-    if(fiadores.length&&!garantes.length)return`${TC} ou ${FI}`;
-    if(garantes.length&&!fiadores.length)return`${TC} ou ${GA}`;
+    const GA=garantes.length>1?(femQ?'GARANTES HIPOTECÁRIAS':'GARANTES HIPOTECÁRIOS'):(femQ?'GARANTE HIPOTECÁRIA':'GARANTE HIPOTECÁRIO');
+    const OU=variante==='acc'?'e/ou':'ou';   /* na abertura de crédito, «e/ou», como no contrato da CCAM */
+    if(fiadores.length&&!garantes.length)return`${TC} ${OU} ${FI}`;
+    if(garantes.length&&!fiadores.length)return`${TC} ${OU} ${GA}`;
     return`${TC}, ${GA} e ${FI}`;
   })();
   const txtTerceiros=quartos.length?quartos.map(textoOutorgante).join(';\n')+'.':'';
@@ -3916,8 +3982,14 @@ function comporMH_CCAM(variante){
     :'';
 
   /* ── nome do contrato ── */
-  const nomeTermo=`MÚTUO COM HIPOTECA com ANEXO I${fiadores.length?' e FIANÇA':''}`;
-  const titulo=`MÚTUO COM HIPOTECA${fiadores.length?' COM FIANÇA':''}`;
+  /* 4.3 · Abertura de crédito em conta corrente com hipoteca — contrato da CCAM
+     enviado pela Liliana (22/10/2026). Mesmo tronco do mútuo; mudam o nome, o
+     preâmbulo, a cláusula do crédito, as alíneas a) e d) da garantia, a
+     amplitude, e não há Imposto do Selo no termo. */
+  const ACC=variante==='acc';
+  const baseNome=ACC?'ABERTURA DE CRÉDITO EM CONTA CORRENTE COM HIPOTECA':'MÚTUO COM HIPOTECA';
+  const nomeTermo=`${baseNome} com ANEXO I${fiadores.length?' e FIANÇA':''}`;
+  const titulo=`${baseNome}${fiadores.length?' COM FIANÇA':''}`;
 
   /* ── ónus ── */
   const onusLista=lerOnus();
@@ -3967,10 +4039,10 @@ function comporMH_CCAM(variante){
       if(ehCasado(o.ec)&&o['conj-nome']&&(o['conj-out']||'ambos')!=='nao')r.push(o['conj-nome']);return r;})});
   termo.push({id:P+'t-segunda',T:pf?'SEGUNDA':'SEGUNDO',X:txtSegundo,
     negrito:[procBanco?(v('f-mut-p-nome')||'').toUpperCase():(solMut?solMut.nome:''),BK.denom].filter(Boolean)});
-  if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?'TERCEIROS':'TERCEIRO',X:txtTerceiros,
+  if(quartos.length)termo.push({id:P+'t-terceiros',T:tercPl?(femQ?'TERCEIRAS':'TERCEIROS'):(femQ?'TERCEIRA':'TERCEIRO'),X:txtTerceiros,
     negrito:quartos.map(q=>q.nome).filter(Boolean)});
   termo.push({id:P+'t-apresentaram',T:'',X:`Os signatários apresentaram o documento de contrato de ${nomeTermo}, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
-  {const dG=declaracaoGarante(quartos,garantes,'terceir',true);
+  if(!ACC){const dG=declaracaoGarante(quartos,garantes,'terceir',true);
    if(dG)termo.push({id:P+'t-garante-decl',T:'',X:dG});}
 
   /* ── VERIFIQUEI ── */
@@ -3984,18 +4056,32 @@ function comporMH_CCAM(variante){
   linhas.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde ${CX} se encontra registada sob o n.º ${BK.bdp};`);
   linhas.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes ${procBanco&&!pf?'do':'da'} outorgante em representação ${daCX} pela procuração${procBanco?'':', conjugada com a consulta do substabelecimento,'} depositada${procBanco?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${codProc}${procuracoes.length?`; e ainda ${procuracoes.join('; e ainda ')}`:''};`);
   linhas.push(`— Os poderes de representação da ${BK.denom} através da Certidão de Registo Comercial com o número de acesso ${crcCod}, disponível em www.eportugal.gov.pt, válida até ${crcVal}, bem como o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt, nos termos da Lei n.º 89/2017, de 21 de agosto;`);
-  mut.map(o=>linhaEmpresa(o,'PARTE MUTUÁRIA')).filter(Boolean).forEach(l=>linhas.push('— '+l));
-  quartos.map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
+  if(ACC){
+    /* Redação da Liliana para a abertura de crédito: certidão e ata de cada
+       sociedade; na garante, a ata contém a deliberação da garantia e o
+       justificado interesse próprio (art. 6.º, n.º 3, do CSC). */
+    const rcbe=' Verifiquei ainda o cumprimento das obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo (RCBE), mediante consulta em rcbe.justica.gov.pt, nos termos do Regime Jurídico do Registo Central do Beneficiário Efetivo, aprovado pela Lei n.º 89/2017, de 21 de agosto.';
+    mut.filter(o=>o.tipo==='empresa').forEach(o=>linhas.push(`— A qualidade e os poderes de representação da PARTE MUTUÁRIA através da certidão permanente do registo comercial, em vigor, com o código de acesso ${o['crc-cod']||'…'}, consultada em www.eportugal.gov.pt, e da ata n.º ${v('f-acc-ata-mut-num')||'…'} de ${v('f-acc-ata-mut-data')?dPT(v('f-acc-ata-mut-data')):'…'}, cuja cópia certificada arquivo.${rcbe}`));
+    garantes.filter(o=>o.tipo==='empresa').forEach(o=>linhas.push(`— A qualidade e os poderes de representação da GARANTE HIPOTECÁRIA através da certidão permanente do registo comercial, em vigor, com o código de acesso ${o['crc-cod']||'…'}, consultada em www.eportugal.gov.pt, e da ata n.º ${v('f-acc-ata-gar-num')||'…'} da reunião do ${v('f-acc-ata-gar-orgao')||'…'} de ${v('f-acc-ata-gar-data')?dPT(v('f-acc-ata-gar-data')):'…'}, que contém a deliberação de prestação da presente garantia e o reconhecimento do justificado interesse próprio da sociedade, nos termos do n.º 3 do artigo 6.º do Código das Sociedades Comerciais, cuja cópia certificada arquivo.${rcbe}`));
+    quartos.filter(o=>o.qualidade!=='garante'&&o.qualidade!=='ambos').map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
+  }else{
+    mut.map(o=>linhaEmpresa(o,'PARTE MUTUÁRIA')).filter(Boolean).forEach(l=>linhas.push('— '+l));
+    quartos.map(o=>linhaEmpresa(o,'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>linhas.push('— '+l));
+  }
   mut.map(linhaAssento).filter(Boolean).forEach(l=>linhas.push(l));
   linhasPredios().filter(Boolean).forEach(l=>linhas.push(l));
+  /* Primeira hipoteca constituída no ato imediatamente anterior. */
+  if(onusLista.some(o=>o.canc==='anterior'))
+    linhas.push(`— Que a primeira hipoteca a favor ${daCX} que onera ${lerPrediosExtra().length?'os prédios identificados':'o imóvel identificado'} no contrato foi constituída por documento particular autenticado por mim nesta data, imediatamente antes do presente, com o número de depósito eletrónico ${v('f-acc-ant-dep')||'…'};`);
   [linhaRequerimento('f-im',null),...lerPrediosExtra().map((p,i)=>linhaRequerimento(`pred-${i+1}`,p))].filter(Boolean).forEach(l=>linhas.push(l));
   /* Autorizações de cancelamento (art. 56.º CRP) — faltavam no termo da CCAM. */
   if(primeiroCCAM)onusLista.map(textoOnusTermo).filter(Boolean).forEach(l=>linhas.push(l));
   termo.push({id:P+'t-verifiquei',T:'',X:`Verifiquei:\n${linhas.join('\n')}`});
 
   /* ── INFORMEI ── */
-  termo.push({id:P+'t-informei',T:'',X:`Informei:\n— O contrato que aqui se autentica está sujeito a Imposto de Selo da verba 17.1.3, da TGIS, por força do artigo 7.º do Código do Imposto de Selo, no valor de ${isVal};`});
-  termo.push({id:P+'t-rgpd',T:'',X:`Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
+  if(!ACC)termo.push({id:P+'t-informei',T:'',X:`Informei:\n— O contrato que aqui se autentica está sujeito a Imposto de Selo da verba 17.1.3, da TGIS, por força do artigo 7.º do Código do Imposto de Selo, no valor de ${isVal};`});
+  /* Na abertura de crédito não há Imposto do Selo no termo: o «Informei:» abre no RGPD. */
+  termo.push({id:P+'t-rgpd',T:'',X:`${ACC?'Informei:\n':''}Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
   const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
   if(arq)termo.push({id:P+'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   /* Fecho da CCAM: «que será efetuado» e dispensa só do Anexo I. */
@@ -4028,38 +4114,66 @@ function comporMH_CCAM(variante){
     .replace(/,?\s*não lhe podendo ser dado outro uso ou destino/gi,'')
     .replace(/,?\s*e?\s*nos demais termos[\s\S]*$/i,'')
     .replace(/^\s*a\s+disponibilizar\s+(por\s+)?/i,'').replace(/[.;,\s]+$/,'');
-  contrato.push({id:P+'c-preambulo',T:'',X:
+  if(ACC)contrato.push({id:P+'c-preambulo',T:'',X:
+    `É celebrado o presente contrato de ${nomeTermo}, que se rege pelas seguintes disposições e pelas condições, designadamente de finalidade, utilização, reembolso e renovação, reguladas e estabelecidas no Anexo I, que dele fica a fazer parte integrante para todos os efeitos legais.`});
+  else contrato.push({id:P+'c-preambulo',T:'',X:
     `É celebrado o presente contrato de ${nomeTermo}, que se rege pelas seguintes disposições e que se destina a financiar ${fin}, não lhe podendo ser dado outro uso ou destino,${des?` a disponibilizar por ${des},`:''} nos demais termos e condições reguladas e estabelecidas no Anexo I, que dele fica a fazer parte integrante para todos os efeitos legais.`});
 
   /* ── MÚTUO ── */
-  contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
+  const CXs=CX.replace(/^a\s+/,'');                    /* «CAIXA AGRÍCOLA» */
+  const daPRIM=muP?'dos PRIMEIROS':(femM?'da PRIMEIRA':'do PRIMEIRO');
+  if(ACC)contrato.push({id:P+'c-mutuo',T:'ABERTURA DE CRÉDITO',X:
+    `Pelo presente contrato, ${CX} abre, a pedido e a favor ${daPRIM}, um crédito até ao montante de ${par(`${F}-montante`)}, pelo prazo de ${prazo}, a contar da presente data, a utilizar através de conta corrente processada pela ${CXs}, nos termos deste Contrato, bem como pelas cláusulas constantes do Anexo I, que fica anexo e dele faz parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.\n`
+    +`${muP?'Os PRIMEIROS confessam-se devedores':(femM?'A PRIMEIRA confessa-se devedora':'O PRIMEIRO confessa-se devedor')} à ${CXs} das quantias que ${muP?'lhes':'lhe'} venham a ser disponibilizadas ao abrigo da presente abertura de crédito, obrigando-se a reembolsá-las e a pagar os respetivos juros e demais encargos, nas condições estabelecidas neste Contrato e no Anexo I, o que ${CX} aceita.`});
+  else contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
     `Pelo presente contrato, ${CX} concede ${aPRIM} um empréstimo no montante de ${par(`${F}-montante`)}, pelo prazo de ${prazo}, a contar da presente data, de que ${muP?'estes se confessam devedores':(femM?'esta se confessa devedora':'este se confessa devedor')}, o que ${CX} aceita, nos termos deste Contrato, bem como pelas cláusulas constantes do Anexo I, que fica anexo e dele faz parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
 
   /* ── HIPOTECA ── */
   contrato.push({id:P+'c-hip-garantia',T:'HIPOTECA',X:
     `Para garantia:\n`
-    +`a) do capital mutuado de ${par(`${F}-montante`)};\n`
+    +(ACC?`a) do capital da abertura de crédito, até ao montante de ${par(`${F}-montante`)};\n`:`a) do capital mutuado de ${par(`${F}-montante`)};\n`)
     +`b) dos juros remuneratórios, fixados em até ${pct(`${F}-juros`)} ao ano;\n`
     +`c) dos juros moratórios, correspondentes aos juros remuneratórios acrescidos de uma sobretaxa até ${pct(`${F}-mora`)} ao ano, nos termos e dentro do limite máximo previsto no artigo 8.º do Decreto-Lei n.º 58/2013, de 8 de maio;\n`
-    +`d) das comissões, despesas e demais encargos contratuais emergentes do contrato de empréstimo, que em conjunto se fixam no montante de ${par(`${F}-despesas`)}.`});
+    +(ACC?`d) das despesas, incluindo as despesas com honorários de advogados ou outros mandatários, feitas ou a fazer pela ${CXs} para assegurar ou haver os seus créditos, e demais encargos contratuais emergentes da presente abertura de crédito, que em conjunto se fixam no montante de ${par(`${F}-despesas`)}.`
+      :`d) das comissões, despesas e demais encargos contratuais emergentes do contrato de empréstimo, que em conjunto se fixam no montante de ${par(`${F}-despesas`)}.`)});
   contrato.push({id:P+'c-hip-maximo',T:'',X:
     `Fica estabelecido que o montante máximo garantido por hipoteca se fixa em ${par(`${F}-hipoteca`)} para todos os efeitos legais e de registo.`});
   contrato.push({id:P+'c-anexo-hip',T:'',X:
-    `O mútuo e a hipoteca aqui exarados, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
+    ACC?`A abertura de crédito, a conta corrente e a hipoteca aqui exaradas, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`
+       :`O mútuo e a hipoteca aqui exarados, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
+  /* Na abertura de crédito, a garante identifica-se pela qualidade e diz-se
+     titular dos prédios: «A TERCEIRA, na qualidade de garante hipotecária,
+     constitui hipoteca … sobre os seguintes prédios, de que é titular, …». */
+  const plG=garantes.length>1;
+  const sujACC=garantes.length
+    ?`${plG?'Os TERCEIROS':(femT?'A TERCEIRA':'O TERCEIRO')}, na qualidade de ${plG?'garantes hipotecários':(femT?'garante hipotecária':'garante hipotecário')}, ${plG?'constituem':'constitui'}`
+    :sujeitoHip;
+  const titularACC=ACC?`, de que ${(garantes.length?plG:muP)?'são titulares':'é titular'}`:'';
+  const aQuemAnt=v('f-acc-ant-quem')==='primeira'
+    ?(muP?'aos PRIMEIROS CONTRATANTES':(femM?'à PRIMEIRA CONTRATANTE':'ao PRIMEIRO CONTRATANTE'))
+    :(plG?'aos TERCEIROS CONTRATANTES':(femT?'à TERCEIRA CONTRATANTE':'ao TERCEIRO CONTRATANTE'));
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
-    `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'),{sujeitoReg,txtMatriz,onus:onusLista,primeiro:primeiroCCAM,banco:CX})}`});
+    `${ACC?sujACC:sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'),{sujeitoReg,txtMatriz,onus:onusLista,primeiro:primeiroCCAM,banco:CX,daBanco:daCX,aQuemAnt,titular:titularACC})}`});
   if(!lerPrediosExtra().length){
     contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz)});
     /* Ónus que se cancelam — a frase do mh.html, como na CGD. Faltava na CCAM. */
-    const canc=primeiroCCAM?onusLista.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(o=>{const t=textoOnusContrato(o,true);const l=liqChequeFrag(o,CX);return t&&l?t.replace(/\.$/,l+'.'):t;}).filter(Boolean):[];
+    const canc=primeiroCCAM?onusLista.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(o=>textoOnusContrato(o,true)).filter(Boolean):[];
     if(canc.length)contrato.push({id:P+'c-hip-banco',T:'',X:canc.join('\n')});
+    const ant=onusLista.filter(o=>o.canc==='anterior').map(()=>fraseHipAnterior(isFr?'A Fração encontra-se onerada':'O Prédio encontra-se onerado',daCX,aQuemAnt));
+    if(ant.length)contrato.push({id:P+'c-hip-anterior',T:'',X:ant.join('\n')});
   }
   if(clOnus.length)contrato.push({id:P+'c-hip-onus',T:'',X:clOnus.join('\n')});
   /* Exceção aos ónus só quando há ónus que se mantêm. */
   const excecao=mantidos.length
     ?`, excetuando ${mantidos.length>1?'os ónus acima mencionados':(/hipoteca/i.test(mantidos[0].desc||'')?'a hipoteca acima mencionada':'o ónus acima mencionado')}`:'';
-  contrato.push({id:P+'c-hip-amplitude',T:'',X:
+  const temAnt=onusLista.some(o=>o.canc==='anterior');
+  if(ACC)contrato.push({id:P+'c-hip-amplitude',T:'',X:
+    `A presente hipoteca é constituída com a máxima amplitude legal e permanecerá válida e eficaz até integral cumprimento de toda e qualquer obrigação e/ou responsabilidade ${daMUT} para com a MUTUANTE emergente da presente abertura de crédito em conta corrente, e incide sobre o IMÓVEL acima identificado, livre de quaisquer ${temAnt?'outros ':''}ónus, encargos ou limitações${temAnt?` para além da primeira hipoteca a favor ${daCX} acima referida`:excecao}, e abrange a totalidade do mesmo, incluindo todas as respetivas partes componentes, com todas as construções, beneficiações e acessões, presentes e futuras, bem como as indemnizações devidas por sinistro, expropriação e quaisquer outras, que a MUTUANTE poderá receber de quem entender, abrangendo ainda as renovações, prorrogações de prazo e demais alterações da presente abertura de crédito.`});
+  else contrato.push({id:P+'c-hip-amplitude',T:'',X:
     `A presente hipoteca é constituída com a máxima amplitude legal e permanecerá válida e eficaz até integral cumprimento de toda e qualquer obrigação e/ou responsabilidade ${daMUT} para com a MUTUANTE emergente do presente empréstimo e incide sobre o imóvel acima identificado, livre de quaisquer ónus, encargos ou limitações${excecao}, e abrange a totalidade do mesmo, incluindo todas as respetivas partes componentes, com todas as construções, beneficiações e acessões, presentes e futuras, bem como as indemnizações devidas por sinistro, expropriação e quaisquer outras, que a MUTUANTE poderá receber de quem entender.`});
+  /* Garante sociedade: justificado interesse próprio (art. 6.º, n.º 3, CSC). */
+  if(ACC&&garantes.some(o=>o.tipo==='empresa'))contrato.push({id:P+'c-interesse-proprio',T:'',X:
+    `${plG?'Os TERCEIROS declaram':(femT?'A TERCEIRA declara':'O TERCEIRO declara')} que existe justificado interesse próprio na prestação da presente garantia hipotecária em favor de dívida ${daPRIM}, nos termos e para os efeitos do n.º 3 do artigo 6.º do Código das Sociedades Comerciais, conforme deliberação constante da ata n.º ${v('f-acc-ata-gar-num')||'…'} de ${v('f-acc-ata-gar-data')?dPT(v('f-acc-ata-gar-data')):'…'}.`});
   contrato.push({id:P+'c-hip-execucao',T:'',X:
     `A presente hipoteca é suscetível de execução logo que o crédito por ela garantido se torne vencido e exigível nos termos da lei, do presente contrato e do respetivo Anexo I.`});
 
@@ -4080,7 +4194,7 @@ function comporMH_CCAM(variante){
       `O mútuo, a hipoteca e a fiança aqui exarados, bem como as responsabilidades ${soc?'da sociedade MUTUÁRIA':daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`
     ].join('\n')});
   }
-  if(garantes.length)contrato.push({id:P+'c-terceiros-hip',T:'',X:
+  if(garantes.length&&!ACC)contrato.push({id:P+'c-terceiros-hip',T:'',X:
     `${garantes.length>1?'Os Terceiros Garantes declaram':'O Terceiro Garante declara'} conhecer integralmente os termos e condições do presente contrato de mútuo, designadamente o montante mutuado, prazo, taxa de juro, plano de reembolso e demais cláusulas, e expressamente ${garantes.length>1?'os aceitam':'os aceita'}, reconhecendo que a presente hipoteca subsistirá até à integral extinção das obrigações garantidas.`});
 
   /* O período de reflexão do DL 74-A/2017 é regime do consumidor: com uma
@@ -4092,7 +4206,7 @@ function comporMH_CCAM(variante){
     .forEach((t,i)=>contrato.push({id:`${P}c-renuncia-${i}`,T:'',X:t}));
   contrato.push({id:P+'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
-  return{variante,cod:'MH_UNO'+(fiadores.length?'_F':''),rot:titulo,termo,contrato,anexo:[]};
+  return{variante,cod:(ACC?'MH_ACC':'MH_UNO')+(fiadores.length?'_F':''),rot:titulo,termo,contrato,anexo:[]};
 }
 
 /* ═══════════ CALCULADORA DO MONTANTE MÁXIMO DA HIPOTECA · CCAM ═══════════
@@ -4107,7 +4221,11 @@ const ANOS_JUROS_HIP=3, DESPESAS_CCAM=0.10;
 function calcHipotecaCCAM(){
   const ccam=v('f-mutuante')==='ccam_ac';
   const bloco=document.getElementById('blk-ccam-fin');
-  if(bloco)bloco.style.display=ccam&&(ehMH()||(atoEscolhido()==='cv'&&chk('t-mh')))?'block':'none';
+  const acc=ehMH()&&contratoMH()==='acc';
+  if(bloco)bloco.style.display=ccam&&!acc&&(ehMH()||(atoEscolhido()==='cv'&&chk('t-mh')))?'block':'none';
+  setDisp('blk-acc',acc?'block':'none');
+  /* A primeira hipoteca do ato anterior é a exceção: os campos só aparecem quando algum ónus a indica. */
+  setDisp('acc-ant',acc&&lerOnus().some(o=>o.canc==='anterior')?'block':'none');
   ['f-mh','f-uno'].forEach(F=>{
     const eH=document.getElementById(`${F}-hipoteca`),eD=document.getElementById(`${F}-despesas`);
     const nota=document.getElementById(`nota-hip-${F.slice(2)}`);
@@ -6013,9 +6131,9 @@ function ehMH(){return atoEscolhido()==='mh';}
 function contratoMH(){return v('f-mh-contrato')||'toic';}
 function temConexo(){return ehMH()&&contratoMH()==='toic'&&chk('t-mh-conexo');}
 function ehTOIC(){return ehMH()&&contratoMH()==='toic';}
-function docsMH(){return!ehMH()?[]:(contratoMH()==='toic'?(temConexo()?['toic','uno']:['toic']):['uno']);}
+function docsMH(){return!ehMH()?[]:(contratoMH()==='toic'?(temConexo()?['toic','uno']:['toic']):contratoMH()==='acc'?['acc']:['uno']);}
 function nomeContratoMH(variante){
-  const base=variante==='toic'?'MÚTUO (TRANSFERÊNCIA) COM HIPOTECA':'MÚTUO COM HIPOTECA';
+  const base=variante==='toic'?'MÚTUO (TRANSFERÊNCIA) COM HIPOTECA':variante==='acc'?'ABERTURA DE CRÉDITO EM CONTA CORRENTE COM HIPOTECA':'MÚTUO COM HIPOTECA';
   return fiadoresMH().length?`${base} E FIANÇA`:base;
 }
 function fiadoresMH(){return lerQuartos().filter(q=>q.qualidade==='fiador'||q.qualidade==='ambos');}
@@ -6026,7 +6144,7 @@ function tipoDeduzido(){
     const ds=docsMH();
     const rot=ds.length>1
       ?'Mútuo com Hipoteca — 4.1 TOIC + 4.2 UNO conexo'
-      :(ds[0]==='toic'?'Mútuo com Hipoteca — 4.1 · TOIC':'Mútuo com Hipoteca — 4.2 · UNO');
+      :(ds[0]==='toic'?'Mútuo com Hipoteca — 4.1 · TOIC':ds[0]==='acc'?'Mútuo com Hipoteca — 4.3 · Abertura de crédito':'Mútuo com Hipoteca — 4.2 · UNO');
     const fi=fiadoresMH().length?'_F':'';
     return{cod:`MH_${ds.map(x=>x.toUpperCase()).join('_')}${fi}`,
            rot:rot+(fiadoresMH().length?' e Fiança':''),
@@ -6359,7 +6477,7 @@ function funilMH(){
   setDisp('blk-uno',conexo?'block':'none');
   /* Sozinho, o UNO usa o 10.2; sendo conexo, o 10.2 é do TOIC e o UNO tem o 10.6. */
   setProp('ttl-mh-financeiro','textContent',
-    toic?'10.2 · Mútuo e Hipoteca — 4.1 · TOIC':'10.2 · Mútuo e Hipoteca — 4.2 · UNO');
+    toic?'10.2 · Mútuo e Hipoteca — 4.1 · TOIC':contratoMH()==='acc'?'10.2 · Abertura de crédito e Hipoteca — 4.3':'10.2 · Mútuo e Hipoteca — 4.2 · UNO');
   nomearBloco('card-b3','Mutuários','Primeiros Outorgantes — quem contrai o empréstimo');
   nomearBloco('card-b4','Mutuante','Segunda Outorgante — a CAIXA');
   nomearBloco('card-b5','Imóvel','Objeto da hipoteca');
@@ -6414,6 +6532,7 @@ function funilMH(){
       :(m?'Calculado a 6/1000 sobre o montante do mútuo.':'Preenche o montante para o valor ser calculado.');
   };
   encheSelo('f-mh-calculo-is','nota-is-mh','f-mh',toic);
+  {const gIS=document.getElementById('f-mh-calculo-is')?.closest('.form-group');if(gIS)gIS.style.display=contratoMH()==='acc'?'none':'';}
   if(conexo)encheSelo('f-uno-calculo-is','nota-is-uno','f-uno',false);
   setDisp('blk-oic',toic?'block':'none');
   const fo=v('f-oic-forma');
@@ -8767,7 +8886,8 @@ function calcularAlertas(){
     if(!v('f-mh-montante'))push('mh-mont','bloqueio','Mútuo com Hipoteca','Falta o montante do mútuo.');
     if(!v('f-mh-prazo'))push('mh-prazo','bloqueio','Mútuo com Hipoteca','Falta o prazo do mútuo.');
     if(!v('f-mh-hipoteca'))push('mh-hip','bloqueio','Mútuo com Hipoteca','Falta o montante máximo assegurado pela hipoteca.');
-    if(ehMH()&&v('f-mutuante')==='ccam_ac'&&!v('f-ccam-finalidade'))push('ccam-fin','bloqueio','Mútuo com Hipoteca','Falta a finalidade do financiamento (CCAM).');
+    if(ehMH()&&contratoMH()==='acc'&&v('f-mutuante')!=='ccam_ac')push('acc-ccam','bloqueio','Mútuo com Hipoteca','A abertura de crédito em conta corrente (4.3) está montada sobre o contrato da CCAM — escolha a CCAM como mutuante.');
+    if(ehMH()&&v('f-mutuante')==='ccam_ac'&&contratoMH()!=='acc'&&!v('f-ccam-finalidade'))push('ccam-fin','bloqueio','Mútuo com Hipoteca','Falta a finalidade do financiamento (CCAM).');
     /* No tronco 4 a representação vem do texto da procuradora; só falta mesmo
        quando o mutuante não é uma das solicitadoras nem tem texto próprio. */
     if(!v('f-mut-repr')&&!(ehMH()&&SOLICITADORAS[v('f-mut-quem')||'liliana']))
@@ -8840,7 +8960,7 @@ function calcularAlertas(){
     os.forEach((o,i)=>{
       const q=`Ónus ${i+1}`;
       if(!o.ap)push(`onus${i}-ap`,'aviso','Ónus e encargos',`${q}: sem a inscrição indicada.`);
-      if(o.canc!=='nao'&&!o.ent)push(`onus${i}-ent`,'bloqueio','Ónus e encargos',`${q}: cancelamento sem o titular indicado — a cláusula não sai.`);
+      if(o.canc!=='nao'&&o.canc!=='anterior'&&!o.ent)push(`onus${i}-ent`,'bloqueio','Ónus e encargos',`${q}: cancelamento sem o titular indicado — a cláusula não sai.`);
       if(o.canc==='fisico'&&!o.data)push(`onus${i}-data`,'bloqueio','Ónus e encargos',`${q}: autorização em papel sem data de emissão.`);
       if(o.canc==='codigo'&&!o.codigo)push(`onus${i}-cod`,'bloqueio','Ónus e encargos',`${q}: autorização sem código.`);
       if(o.canc==='renuncia'){
