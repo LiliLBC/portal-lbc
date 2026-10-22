@@ -183,7 +183,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-22.4</span>
+    <span class="page-sub">piloto · v2026-10-22.6</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2863,6 +2863,14 @@ const pluralOnus=d=>String(d||'…').split(/\s+/).map(w=>/^(de|da|do|e|a)$/i.tes
 /* Fragmento do ónus que se mantém, para entrar na frase única do imóvel:
    «onerado com hipoteca voluntária registada pela AP. …, a favor da …, NIF …,
    que se mantém». */
+/* «… e liquidado mediante cheque bancário emitido pela CAIXA AGRÍCOLA à ordem
+   de …, no valor de … EUROS (…) com o número …» — redação da Liliana
+   (22/10/2026). Só sai se algum dos campos do cheque estiver preenchido. */
+function liqChequeFrag(o,banco){
+  if(!o['liq-ordem']&&!o['liq-valor']&&!o['liq-num'])return'';
+  const val=parseValor(o['liq-valor']);
+  return` e liquidado mediante cheque bancário emitido pela ${String(banco||'…').replace(/^(a|o)\s+/i,'')} à ordem ${o['liq-ordem']?entidadeOnus(o['liq-ordem']):'de …'}, no valor de ${val?`${fmtValor(val)} EUROS (${valorExtenso(o['liq-valor']).toLowerCase()})`:'… EUROS (…)'} com o número ${o['liq-num']||'…'}`;
+}
 function onusCancFrag(o){
   return onusMantidoFrag(o).replace(/, que se (mantém|mantêm)$/,', cujo cancelamento é assegurado com o presente ato');
 }
@@ -2902,25 +2910,57 @@ function hipSobre(corpoIm,aval,ctx){
      prédio vem seguido — descrição, registo, ónus, matriz e valor atribuído —
      UM, depois DOIS, depois TRÊS. A frase do registo à parte deixa de sair. */
   ctx=ctx||{};
+  /* Modelo da Liliana (22/10/2026), por prédio:
+     «UM – prédio urbano composto por …, sito em …, descrito na Conservatória do
+     Registo Predial de … sob o número …, freguesia de …, registado a favor da
+     PRIMEIRA CONTRATANTE pela AP. …, inscrito na matriz predial urbana sob o
+     artigo …, da já mencionada freguesia, com o valor patrimonial de … Euros,
+     determinado no ano de … e ao qual as partes atribuem o valor de … EUROS (…);»
+     e logo a seguir, em parágrafo próprio, os ónus desse prédio:
+     «O Prédio encontra-se onerado com … cujo cancelamento é assegurado com o
+     presente ato [e liquidado mediante cheque …].» */
   const onus=ctx.onus||[],prim=ctx.primeiro!==false;
-  const frOnus=k=>{
-    const l=onusDoPredio(onus,k);
-    const fr=[...l.filter(o=>o.canc==='nao').map(onusMantidoFrag),
-      ...(prim?l.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(onusCancFrag):[])];
-    return fr.length?`, onerado com ${fr.join(', e com ')}`:'';
+  const nrmF=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/^(uniao das freguesias de|freguesia de|freguesia d[aoe]s?)\s+/,'').replace(/\s+/g,' ').trim();
+  const eur=x=>{const n=parseValor(x);return n?`${fmtValor(n)} EUROS (${valorExtenso(x).toLowerCase()})`:'… EUROS (…)';};
+  const vptE=x=>{const n=parseValor(x);return n?`${fmtValor(n)} Euros`:'… Euros';};
+  const matTxt=(m,fregCRP,fem)=>{
+    const fr=m.freg&&nrmF(m.freg)===nrmF(fregCRP)?'da já mencionada freguesia':daFreg(m.freg);
+    return`na matriz predial ${m.nat==='rustica'?'rústica':'urbana'} sob o artigo ${m.artigo||'…'}${m.seccao?`, Secção ${m.seccao}`:''}, ${fr}, com o valor patrimonial de ${vptE(m.vpt)}${m.ano?`, determinado no ano de ${m.ano}`:''}`;
   };
+  const inscrito=(ms,fregCRP,fem)=>`${fem?'inscrita':'inscrito'} `+(ms.length?ms.map(m=>matTxt(m,fregCRP)).reduce((a,t,i,arr)=>a+(i?(i===arr.length-1?' e ':', '):'')+t,''):'na respetiva matriz predial …');
+  const valor=(vh,ms)=>{const n=parseValor(vh)||ms.reduce((t,m)=>t+parseValor(m.vimt),0);return n?` e ao qual as partes atribuem o valor de ${eur(String(n).replace('.',','))}`:` e ao qual as partes atribuem o valor de … EUROS (…)`;};
   const reg=ap=>ctx.sujeitoReg?`, registado a favor ${ctx.sujeitoReg} pela ${ap||'…'}`:'';
-  const valHip=x=>parseValor(x)?`, ao qual as partes atribuem o valor de ${fmtValor(parseValor(x))} EUROS (${valorExtenso(x).toLowerCase()})`:'';
-  const mats=ms=>ms.length?(ms.length>1?ms.slice(0,-1).map(m=>textoMatrizG(m,false)).join(', ')+' e '+textoMatrizG(ms[ms.length-1],false):textoMatrizG(ms[0],false)):'na respetiva matriz predial …';
-  const matUM=String(ctx.txtMatriz||'').replace(/^O prédio encontra-se inscrito\s*/,'').replace(/\.\s*$/,'')||'na respetiva matriz predial …';
-  const desig=t=>t==='misto'?'o prédio misto':t==='rustico'?'o prédio rústico':'o prédio urbano';
-  const dtoP=p=>DIREITOS_PRED[p.direito]||'';
-  const um=`${corpoIm}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'} sob o número ${v('f-im-num')||'…'}, freguesia de ${v('f-im-freg-crp')||'…'}${reg(v('f-im-apaq'))}${frOnus(1)}, inscrito ${matUM}${valHip(v('f-im-valor-hip'))}`;
-  const lista=[um,...ex.map((p,i)=>(p.tipo==='fracao'
-    ?`${dtoP(p)}a fração autónoma designada pela letra «${p.letra||'…'}», do prédio em regime de propriedade horizontal constituída pela ${p.apph||'…'}, composta por ${p.descricao||'…'}`
-    :`${dtoP(p)}${desig(p.tipo)} composto por ${p.descricao||'…'}`)
-    +`, sito em ${p.sito||'…'}, descrito na Conservatória do Registo Predial de ${p.crp||'…'} sob o número ${p.num||'…'}, freguesia de ${p.freg||'…'}${reg(p.apaq)}${frOnus(i+2)}, inscrito ${mats(p.matrizes)}${valHip(p['valor-hip'])}`)];
-  return`sobre os seguintes prédios, aos quais as partes atribuem o valor global de ${aval}, adiante designados, em conjunto, por IMÓVEL:\n`+lista.map((t,i)=>`${CARD_PRED[i]||i+1} — ${t}`).join(';\n')+'.';
+  const desig=t=>t==='misto'?'prédio misto':t==='rustico'?'prédio rústico':'prédio urbano';
+  const dtoP=d=>DIREITOS_PRED[d]||'';
+  const fraseOnus=(o,suj)=>{
+    const a=apsAgrupadas(o.ap);
+    const desc=a.pl?pluralOnus(o.desc):(o.desc||'…');
+    const fem=/^(hipoteca|penhora|servid|consigna|apreens|reserva)/i.test(String(o.desc||'').trim());
+    const regT=a.pl?(fem?'registadas pelas':'registados pelas'):(fem?'registada pela':'registado pela');
+    const fim=o.canc==='nao'?`, que se ${a.pl?'mantêm':'mantém'}`:`, cujo cancelamento é assegurado com o presente ato${liqChequeFrag(o,ctx.banco)}`;
+    return`${suj} com ${desc} ${regT} ${a.txt}, a favor ${entidadeOnus(o.ent,o.nif)}, NIF ${o.nif||'…'}${fim}.`;
+  };
+  const onusDe=k=>onus.filter(o=>o.pred===String(k)&&(o.canc==='nao'||(prim&&(o.canc==='fisico'||o.canc==='codigo'))));
+  /* UM */
+  const tipoUM=v('f-im-tipo'),frUM=tipoUM==='fracao';
+  const matsUM=frUM?[{nat:'urbana',artigo:v('f-im-artigo'),freg:v('f-im-freg-mat'),vpt:v('f-im-vpt'),ano:v('f-im-vpt-ano'),vimt:v('f-im-vimt')}]:lerMatrizes();
+  const corpoUM=frUM
+    ?`${dtoP(v('f-im-direito'))}fração autónoma designada pela letra «${v('f-im-letra')||'…'}», do prédio em regime de propriedade horizontal constituída pela ${v('f-im-apph')||'…'}, composta por ${semComposto(v('f-im-descricao'))||'…'}`
+    :`${dtoP(v('f-im-direito'))}${desig(tipoUM)} composto por ${semComposto(v('f-im-descricao'))||'…'}`;
+  const itens=[{corpo:corpoUM,sito:v('f-im-sito'),crp:v('f-im-crp'),num:v('f-im-num'),freg:v('f-im-freg-crp'),apaq:v('f-im-apaq'),mats:matsUM,vh:v('f-im-valor-hip'),fem:frUM},
+    ...lerPrediosExtra().map(p=>({corpo:p.tipo==='fracao'
+        ?`${dtoP(p.direito)}fração autónoma designada pela letra «${p.letra||'…'}», do prédio em regime de propriedade horizontal constituída pela ${p.apph||'…'}, composta por ${p.descricao||'…'}`
+        :`${dtoP(p.direito)}${desig(p.tipo)} composto por ${p.descricao||'…'}`,
+      sito:p.sito,crp:p.crp,num:p.num,freg:p.freg,apaq:p.apaq,mats:p.matrizes,vh:p['valor-hip'],fem:p.tipo==='fracao'}))];
+  const partes=[];
+  itens.forEach((it,i)=>{
+    const ult=i===itens.length-1;
+    partes.push(`${CARD_PRED[i]||i+1} – ${it.corpo}, sito em ${it.sito||'…'}, ${it.fem?'descrita':'descrito'} na Conservatória do Registo Predial de ${it.crp||'…'} sob o número ${it.num||'…'}, freguesia de ${it.freg||'…'}${reg(it.apaq)}, ${inscrito(it.mats,it.freg,it.fem)}${valor(it.vh,it.mats)}${ult?'.':';'}`);
+    onusDe(i+1).forEach(o=>partes.push(fraseOnus(o,`${it.fem?'A Fração':'O Prédio'} encontra-se ${it.fem?'onerada':'onerado'}`)));
+  });
+  onus.filter(o=>o.pred==='todos'&&(o.canc==='nao'||(prim&&(o.canc==='fisico'||o.canc==='codigo'))))
+    .forEach(o=>partes.push(fraseOnus(o,'Os Prédios encontram-se onerados')));
+  return`sobre os seguintes prédios, aos quais as partes atribuem o valor global de ${aval}, adiante designados, em conjunto, por IMÓVEL:\n`+partes.join('\n');
 }
 function hipRegistoExtras(){return'';}
 function fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz){
@@ -3050,6 +3090,11 @@ function aplicarPredios(){
   const ex=[...document.querySelectorAll('.pred-block')];
   const um=document.getElementById('pred-um');
   document.querySelectorAll('.valhip').forEach(e=>e.style.display=(ehMH()&&ex.length)?'flex':'none');
+  /* Valor p/ IMT: em qualquer ato, aparece quando há mais de uma matriz ou mais de um prédio. */
+  const nM1=document.querySelectorAll('#matrizes-container .mat-block').length;
+  document.querySelectorAll('#matrizes-container .mat-vimt').forEach(e=>e.style.display=(nM1>1||ex.length)?'flex':'none');
+  ex.forEach(b=>{const nm=b.querySelectorAll('.mat-block').length;b.querySelectorAll('.mat-vimt').forEach(e=>e.style.display=(nm>1||ex.length)?'flex':'none');});
+  setDisp('g-im-vimt',(v('f-im-tipo')==='fracao'&&ex.length)?'flex':'none');
   if(um){um.classList.toggle('solo',!ex.length);if(!ex.length)um.classList.add('aberto');}
   const TIPO={fracao:'Fração',urbano:'Urbano',rustico:'Rústico',misto:'Misto'};
   const resumo=(t,l,n,d)=>[TIPO[t]?(t==='fracao'&&l?`Fração ${l}`:TIPO[t]):'',n?`n.º ${n}`:'',d].filter(Boolean).join(' · ');
@@ -3127,6 +3172,13 @@ function addOnus(dados,contentor){
         </select></div>
       <div class="form-group onus-fis" style="display:none"><label class="form-label">Emitida em</label>
         <input type="date" class="form-input" id="${id}-data" onchange="atualizar()"></div>
+      <div class="form-group form-full onus-liq" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">Liquidação por cheque bancário (facultativo) — entra no contrato: «… cujo cancelamento é assegurado com o presente ato e liquidado mediante cheque bancário emitido pela [banco] à ordem de …, no valor de … EUROS (…) com o número …»</div></div>
+      <div class="form-group onus-liq" style="display:none"><label class="form-label">Cheque à ordem de</label>
+        <input class="form-input" id="${id}-liq-ordem" oninput="atualizar()" placeholder="Ex: BANKINTER, S.A."></div>
+      <div class="form-group onus-liq" style="display:none"><label class="form-label">Valor do cheque (€)</label>
+        <input class="form-input" id="${id}-liq-valor" oninput="atualizar()" placeholder="Ex: 120000"></div>
+      <div class="form-group onus-liq" style="display:none"><label class="form-label">N.º do cheque</label>
+        <input class="form-input" id="${id}-liq-num" oninput="atualizar()"></div>
       <div class="form-group onus-cod" style="display:none"><label class="form-label">Código</label>
         <div style="display:flex;gap:.35rem;align-items:stretch">
           <input class="form-input" id="${id}-codigo" oninput="atualizar()" style="flex:1;min-width:0">
@@ -3139,7 +3191,7 @@ function addOnus(dados,contentor){
   /* O prédio fica guardado no bloco: as opções só existem depois de os prédios
      adicionais estarem carregados (aplicarOnus). */
   div.dataset.pred=(dados&&dados.pred)||'1';
-  if(dados)['desc','ap','ent','nif','canc','data','codigo'].forEach(k=>{
+  if(dados)['desc','ap','ent','nif','canc','data','codigo','liq-ordem','liq-valor','liq-num'].forEach(k=>{
     const e=document.getElementById(`${id}-${k}`);if(e&&dados[k]!==undefined)e.value=dados[k];
   });
 }
@@ -3162,6 +3214,7 @@ function lerOnusBlocos(blocos,pred){
   return[...blocos].map(b=>({
     desc:g(`${b.id}-desc`),ap:g(`${b.id}-ap`),ent:g(`${b.id}-ent`),nif:g(`${b.id}-nif`),
     canc:g(`${b.id}-canc`)||'nao',data:g(`${b.id}-data`),codigo:g(`${b.id}-codigo`),
+    'liq-ordem':g(`${b.id}-liq-ordem`),'liq-valor':g(`${b.id}-liq-valor`),'liq-num':g(`${b.id}-liq-num`),
     pred:pred||predOnusValido(b.dataset.pred)
   })).filter(o=>o.desc||o.ap||o.ent);
 }
@@ -3198,6 +3251,7 @@ function aplicarOnus(){
     const c=document.getElementById(`${b.id}-canc`)?.value||'nao';
     b.querySelectorAll('.onus-fis').forEach(e=>e.style.display=c==='fisico'?'block':'none');
     b.querySelectorAll('.onus-cod').forEach(e=>e.style.display=c==='codigo'?'block':'none');
+    b.querySelectorAll('.onus-liq').forEach(e=>e.style.display=(c==='fisico'||c==='codigo')&&ehMH()?'block':'none');
   });
 }
 /* Ligado, há ónus; desligado, o imóvel vai livre. */
@@ -3701,7 +3755,7 @@ function comporMH(variante){
   if(BK.anexoI)contrato.push({id:P+'c-anexo-fecho',T:'',X:
     `O mútuo, a hipoteca${fiadores.length?' e a fiança':''} aqui exarados, bem como as responsabilidades ${muP?'dos PRIMEIROS':(femM?'da MUTUÁRIA':'do MUTUÁRIO')} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
-    `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'),{sujeitoReg,txtMatriz,onus:onusLista,primeiro})}`});
+    `${sujeitoHip} hipoteca a favor da CAIXA, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'),{sujeitoReg,txtMatriz,onus:onusLista,primeiro,banco:'CAIXA'})}`});
   if(!lerPrediosExtra().length)contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidosCGD,txtMatriz)});
   if(clBancoHip.length)contrato.push({id:P+'c-hip-banco',T:'',X:clBancoHip.join('\n')});
   contrato.push({id:P+'c-hip-vigencia',T:'',X:
@@ -3993,11 +4047,11 @@ function comporMH_CCAM(variante){
   contrato.push({id:P+'c-anexo-hip',T:'',X:
     `O mútuo e a hipoteca aqui exarados, bem como as responsabilidades ${daMUT} perante a MUTUANTE, também se regem pelo clausulado constante do referido Anexo I.`});
   contrato.push({id:P+'c-hip-constituicao',T:'',X:
-    `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'),{sujeitoReg,txtMatriz,onus:onusLista,primeiro:primeiroCCAM})}`});
+    `${sujeitoHip} hipoteca a favor ${daCX}, que esta aceita, ${hipSobre(corpoIm,par('f-mh-avaliacao'),{sujeitoReg,txtMatriz,onus:onusLista,primeiro:primeiroCCAM,banco:CX})}`});
   if(!lerPrediosExtra().length){
     contrato.push({id:P+'c-hip-registo',T:'',X:fraseImovelMutuo(sujeitoReg,mantidos,txtMatriz)});
     /* Ónus que se cancelam — a frase do mh.html, como na CGD. Faltava na CCAM. */
-    const canc=primeiroCCAM?onusLista.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(o=>textoOnusContrato(o,true)).filter(Boolean):[];
+    const canc=primeiroCCAM?onusLista.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(o=>{const t=textoOnusContrato(o,true);const l=liqChequeFrag(o,CX);return t&&l?t.replace(/\.$/,l+'.'):t;}).filter(Boolean):[];
     if(canc.length)contrato.push({id:P+'c-hip-banco',T:'',X:canc.join('\n')});
   }
   if(clOnus.length)contrato.push({id:P+'c-hip-onus',T:'',X:clOnus.join('\n')});
