@@ -154,6 +154,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 .alerta-item.aviso{background:var(--amber-light);border:1px solid #E8D5B5}
 .alerta-item.resolvido{background:var(--surface2);border:1px solid var(--border);color:var(--text-faint);text-decoration:line-through}
 .alerta-onde{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:600}
+.bloq-manual{background:repeating-linear-gradient(135deg,#F6F1E7 0 6px,#EFE7D6 6px 12px)!important;cursor:not-allowed!important;color:#6B6455!important}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.show{opacity:1;pointer-events:all}
 .modal{background:var(--surface);border-radius:14px;padding:1.75rem;max-width:480px;width:90%;box-shadow:var(--shadow-md);transform:translateY(8px);transition:transform .2s}
@@ -183,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-24.4</span>
+    <span class="page-sub">piloto · v2026-10-24.5</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6006,7 +6007,7 @@ function manualHTML(id){
   return typeof m==='string'?esc(m):sanitizarHTML(m.html||'');
 }
 function render(){
-  const R=compor();
+  const R=gmGuardar();
   /* O tronco 4 pode produzir dois documentos — o TOIC e o UNO conexo. Cada um
      leva o seu termo, a sua assinatura e o seu contrato, separados por quebra. */
   const docs=R.docs&&R.docs.length?R.docs:[{termo:R.termo,contrato:R.contrato,anexo:R.anexo||[]}];
@@ -6020,7 +6021,8 @@ function render(){
     const nota=notas[b.id];
     const titMan=titulos[b.id]!==undefined;
     return`<div class="bloco${manual||titMan?' manual':''}${nota!==undefined?' com-nota':''}" data-id="${b.id}">
-      <div class="b-ferr">${manual||titMan?`<span class="b-badge" title="Este bloco deixou de acompanhar o formulário">redação manual</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Descartar a redação manual e voltar a acompanhar o formulário">↺ repor</button>`:''}${marcas[b.id]?`<button class="b-repor" onclick="limparMarcas('${b.id}')" title="Remover as marcas deste bloco">🧹 marcas</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}<button class="b-repor" onclick="inserirBloco('${b.id}')" title="Inserir bloco novo por baixo deste">+ bloco</button></div>
+      ${manual&&GM.avisos[b.id]?`<div class="b-validar" style="background:#FDECEA;color:#8A2A1E" title="O texto gerado pelo formulário já não é o que estava quando o bloco foi editado">⚠ o formulário mudou depois desta edição à mão — confirme o texto ou use ↺ repor</div>`:''}
+      <div class="b-ferr">${manual||titMan?`<span class="b-badge" title="Este bloco deixou de acompanhar o formulário; os campos que o alimentam ficam bloqueados">redação manual${(()=>{const m=manuais[b.id];return m&&m.por?' · '+esc(String(m.por).split(' ')[0])+(m.quando?' · '+gmQuando(m.quando):''):'';})()}</span><button class="b-repor" onclick="reporBloco('${b.id}')" title="Descartar a redação manual e voltar a acompanhar o formulário">↺ repor</button>`:''}${marcas[b.id]?`<button class="b-repor" onclick="limparMarcas('${b.id}')" title="Remover as marcas deste bloco">🧹 marcas</button>`:''}${nota===undefined?`<button class="b-repor" onclick="criarNota('${b.id}')" title="Nota de validação">📌 nota</button>`:''}<button class="b-repor" onclick="inserirBloco('${b.id}')" title="Inserir bloco novo por baixo deste">+ bloco</button></div>
       ${b.validar?`<div class="b-validar" title="Redação nova — fica marcada até ser validada">⚠ redação por validar</div>`:''}
       ${b.T?`<div class="b-titulo${b.clausula?' b-tit-clausula':''}" contenteditable="true" data-tit="${b.id}">${esc(titMan?titulos[b.id]:b.T)}</div>`:''}
       ${nota!==undefined?`<div class="nota-bloco"><button class="nota-remover" onclick="removerNota('${b.id}')" title="Remover nota">✕</button><div class="nota-texto" contenteditable="plaintext-only" data-nota="${b.id}">${esc(nota)}</div></div>`:''}
@@ -6072,15 +6074,81 @@ function render(){
     el.addEventListener('input',()=>{notas[el.dataset.nota]=el.innerText;});
   });
 }
+
+/* ═══════════ BLOCOS EDITADOS À MÃO · PROTEÇÃO (24/10/2026) ═══════════
+   Um bloco editado à mão deixa de acompanhar o formulário. Para ninguém mudar no
+   formulário uma coisa que o texto já não mostra (nem a perder ao voltar ao rascunho):
+   – ao editar, guarda-se o texto que o gerador produzia nesse momento (base), quem e quando;
+   – se um campo do formulário mudar esse texto, a alteração é desfeita, o campo fica
+     bloqueado e aparece a mensagem; o bloqueio fica guardado no rascunho;
+   – ↺ repor pede confirmação e desbloqueia os campos.
+   Mudanças que não se podem desfazer (um outorgante novo, por exemplo) deixam o bloco
+   assinalado: «o formulário mudou depois desta edição». */
+const GM={snap:null,pausa:false,avisos:{},ultimo:{}};
+const gmCampos=()=>[...document.querySelectorAll('input[id],select[id],textarea[id]')].filter(e=>!e.closest('#folha,.modal-overlay,#mz-ov,#sel-toolbar')&&e.type!=='file'&&e.type!=='button');
+const gmVal=e=>e.type==='checkbox'||e.type==='radio'?(e.checked?'1':'0'):e.value;
+const gmPor=(e,val)=>{if(e.type==='checkbox'||e.type==='radio')e.checked=val==='1';else e.value=val;};
+function gmFoto(R){const o={};gmCampos().forEach(e=>{o[e.id]=gmVal(e);});GM.snap=o;
+  const t=gmTextos(R||compor());GM.ultimo={};Object.keys(manuais).forEach(id=>{GM.ultimo[id]=t[id]??'∅';});}
+/* Blocos manuais cujo texto gerado mudou desde o último desenho (= o formulário mexeu-lhes). */
+function gmMexidos(R){const t=gmTextos(R);return Object.keys(manuais).filter(id=>{const m=manuais[id];return m&&typeof m==='object'&&id in GM.ultimo&&(t[id]??'∅')!==GM.ultimo[id];});}
+function gmTextos(R){const m={};const docs=R.docs&&R.docs.length?R.docs:[R];
+  docs.forEach(d=>[...(d.termo||[]),...(d.contrato||[]),...(d.anexo||[])].forEach(b=>{m[b.id]=b.X;}));return m;}
+function gmConflitos(R){const t=gmTextos(R);
+  return Object.keys(manuais).filter(id=>{const m=manuais[id];return m&&typeof m==='object'&&m.base!==undefined&&(t[id]===undefined?'∅':t[id])!==m.base;});}
+const gmNomeBloco=id=>{const el=document.querySelector(`#folha .bloco[data-id="${id}"]`);const t=el?.querySelector('.b-titulo')?.innerText||el?.querySelector('.b-texto')?.innerText||'';return t.replace(/\s+/g,' ').trim().slice(0,50)+(t.length>50?'…':'');};
+const gmQuem=()=>{try{return localStorage.getItem('lbc_conta')||'';}catch(_){return'';}};
+const gmQuando=iso=>{try{return new Date(iso).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(_){return'';}};
+function gmRotulo(e){const g=e.closest('.form-group');return(g?.querySelector('.form-label')?.innerText||e.placeholder||e.id).replace(/\*/g,'').trim();}
+function gmBloquear(e,id){
+  e.dataset.bloqManual=id;
+  if(e.tagName==='SELECT'||e.type==='checkbox'||e.type==='radio')e.disabled=true;else e.readOnly=true;
+  e.classList.add('bloq-manual');
+  const m=manuais[id];e.title=`Bloqueado: alimenta um bloco editado à mão${m&&m.por?' por '+m.por:''}${m&&m.quando?' ('+gmQuando(m.quando)+')':''}. Para mudar, edite o texto no documento ou use ↺ repor nesse bloco.`;
+}
+function gmDesbloquear(id){
+  document.querySelectorAll(`[data-bloq-manual="${id}"]`).forEach(e=>{delete e.dataset.bloqManual;e.disabled=false;e.readOnly=false;e.classList.remove('bloq-manual');e.title='';});
+}
+function gmAplicarBloqueios(){
+  Object.entries(manuais).forEach(([id,m])=>{if(m&&typeof m==='object')(m.campos||[]).forEach(c=>{const e=document.getElementById(c);if(e)gmBloquear(e,id);});});
+}
+/* Chamado no início de cada desenho da folha: devolve o compor() já com as alterações desfeitas. */
+function gmGuardar(){
+  let R=compor();
+  if(GM.pausa||!GM.snap){if(!GM.pausa)gmFoto(R);return R;}
+  let conf=gmMexidos(R);
+  if(conf.length){
+    const mudados=gmCampos().filter(e=>e.id in GM.snap&&GM.snap[e.id]!==gmVal(e));
+    const desfeitos=[];
+    for(const e of mudados){const novo=gmVal(e);gmPor(e,GM.snap[e.id]);
+      const c2=gmMexidos(compor());
+      if(c2.length<conf.length){desfeitos.push({e,bloco:conf.find(x=>!c2.includes(x))});conf=c2;}else gmPor(e,novo);
+      if(!conf.length)break;}
+    if(desfeitos.length){
+      desfeitos.forEach(({e,bloco})=>{gmBloquear(e,bloco);const m=manuais[bloco];if(m&&typeof m==='object'){m.campos=[...new Set([...(m.campos||[]),e.id])];}});
+      const d=desfeitos[0],m=manuais[d.bloco]||{};
+      showToast(`«${gmRotulo(d.e)}» não foi alterado: alimenta o bloco «${gmNomeBloco(d.bloco)||'…'}», editado à mão${m.por?' por '+m.por:''}${m.quando?' ('+gmQuando(m.quando)+')':''}. Para mudar, edite o texto no documento ou use ↺ repor nesse bloco.`,'error');
+      setTimeout(()=>{GM.pausa=true;try{atualizar();}finally{GM.pausa=false;}},0);
+      R=compor();}
+  }
+  GM.avisos={};gmConflitos(R).forEach(id=>{GM.avisos[id]=true;});
+  gmFoto(R);
+  return R;
+}
 function marcarManual(el){
   const id=el.dataset.id;
-  manuais[id]={html:el.innerHTML};
+  const ant=manuais[id];
+  if(ant&&typeof ant==='object'&&ant.base!==undefined)ant.html=el.innerHTML;
+  else{const base=gmTextos(compor())[id]??'';manuais[id]={html:el.innerHTML,base,por:gmQuem(),quando:new Date().toISOString(),campos:(ant&&ant.campos)||[]};GM.ultimo[id]=base;}
   const bloco=el.closest('.bloco');
   bloco.classList.add('manual');
   const f=bloco.querySelector('.b-ferr');
   if(f&&!f.querySelector('.b-badge'))f.insertAdjacentHTML('afterbegin',`<span class="b-badge">redação manual</span><button class="b-repor" onclick="reporBloco('${id}')">↺ repor</button>`);
 }
-function reporBloco(id){delete manuais[id];delete titulos[id];render();}
+function reporBloco(id){
+  const m=manuais[id];
+  if(m&&!confirm(`Voltar a pôr este bloco a acompanhar o formulário?\n\nA redação manual${m.por?' feita por '+m.por:''}${m.quando?' em '+gmQuando(m.quando):''} perde-se.`))return;
+  gmDesbloquear(id);delete manuais[id];delete titulos[id];render();}
 /* nota: reporBloco NÃO apaga as marcas — usa-se 🧹 marcas para isso */
 function acharIns(id){
   for(const k in inseridos){const x=inseridos[k].find(y=>y.id===id);if(x)return x;}
@@ -7503,6 +7571,7 @@ function mzPintar(){
 }
 function mzPor(id,valor,data){
   const el=document.getElementById(id);if(!el)return false;
+  if(el.dataset.bloqManual){MZ.bloqueados=(MZ.bloqueados||0)+1;return false;}
   el.value=valor;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));return true;
 }
 function mzAplicar(){
@@ -7535,7 +7604,8 @@ function mzAplicar(){
   });
   try{atualizar();}catch(_){}
   if(n)MZ.aplicou=true;
-  showToast(n?`${n} campo(s) preenchido(s) a partir da matriz — confira antes de gerar.`:'Nada foi preenchido.',n?'success':'');
+  const nb=MZ.bloqueados||0;MZ.bloqueados=0;
+  showToast((n?`${n} campo(s) preenchido(s) a partir da matriz — confira antes de gerar.`:'Nada foi preenchido.')+(nb?` ${nb} campo(s) ficaram por preencher porque alimentam blocos editados à mão.`:''),n?'success':'');
   mzCalcular();mzPintar();
 }
 
@@ -7603,7 +7673,17 @@ function restaurarEstado(d){
   alertasHistorico=d.alertasHistorico||{};
   insCnt=d.insCnt||0;
   window._atoAnt=atoEscolhido();
-  atualizar();
+  /* Ao abrir o rascunho não se desfaz nada: a fotografia do formulário tira-se depois. Edições
+     manuais de rascunhos antigos (sem base) ficam com a base de agora. */
+  GM.pausa=true;
+  try{atualizar();
+    const t=gmTextos(compor());
+    Object.keys(manuais).forEach(id=>{const m=manuais[id];
+      if(typeof m==='string')manuais[id]={html:esc(m),base:t[id]??'',por:'',quando:'',campos:[]};
+      else if(m&&m.base===undefined)Object.assign(m,{base:t[id]??'',campos:m.campos||[]});});
+    gmAplicarBloqueios();gmFoto();
+  }finally{GM.pausa=false;}
+  render();
 }
 /* ── RASCUNHO NO BROWSER · uma gaveta por pasta ──
    A chave era uma só para tudo. Falhando a gravação no SharePoint, o rascunho
