@@ -183,7 +183,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-24.1</span>
+    <span class="page-sub">piloto · v2026-10-24.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -7218,7 +7218,18 @@ document.addEventListener('click',e=>{if(!e.target.closest('#pasta-search'))setD
    nunca se importa — fica listado à parte, para confirmar no documento.
    Nada é preenchido sem confirmação: campo vazio vem marcado; campo já preenchido com outro
    valor aparece como «diverge da matriz» e só muda se o marcar. */
-const MZ={dados:null,props:[],incertos:[],pessoas:[]};
+const MZ={dados:null,props:[],incertos:[],pessoas:[],filtro:'tudo',novos:[],vistos:null,vistosRascunho:null,aplicou:false};
+/* Só o que entrou de novo (24/10/2026): guarda-se que documentos da matriz já foram vistos numa
+   importação (no rascunho e neste navegador). Na seguinte, abre filtrado nos documentos novos;
+   os campos já preenchidos continuam a não mudar sem os marcar. */
+const mzDocsAtuais=()=>((MZ.dados&&MZ.dados.documentos)||[]).filter(d=>!d.substituido_por).map(d=>d.ficheiro).filter(Boolean);
+const mzChaveVistos=()=>pastaSeleccionada?'lbc_mz_vistos_'+pastaSeleccionada.id:'';
+function mzLerVistos(){if(MZ.vistosRascunho)return MZ.vistosRascunho;try{const k=mzChaveVistos();return k?JSON.parse(localStorage.getItem(k)||'null'):null;}catch(_){return null;}}
+function mzFechar(){
+  if(MZ.aplicou&&MZ.dados){const v={quando:new Date().toISOString(),docs:mzDocsAtuais()};MZ.vistosRascunho=v;try{const k=mzChaveVistos();if(k)localStorage.setItem(k,JSON.stringify(v));}catch(_){}}
+  document.getElementById('mz-ov')?.remove();
+}
+const mzEhNovo=origem=>MZ.vistos&&MZ.novos.some(f=>String(origem||'').startsWith(f));
 const mzEsc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const mzNorm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const mzNum=s=>{const t=String(s??'').replace(/[€\s]/g,'');if(!/\d/.test(t))return NaN;return parseFloat(/,\d{1,2}$/.test(t)?t.replace(/\./g,'').replace(',','.'):t.replace(/[.,](?=\d{3}\b)/g,''));};
@@ -7360,7 +7371,11 @@ async function importarMatriz(){
   if(!pastaSeleccionada){showToast('Escolha primeiro a pasta do cliente.','error');return;}
   let m;try{m=await mzLer();}catch(e){showToast('Não foi possível ler a matriz: '+e.message,'error');return;}
   if(!m){showToast('Esta pasta ainda não tem matriz — abra-a pelo «Verificador» (Portal ou botão acima) para catalogar os documentos.','');return;}
-  MZ.dados=m;MZ.setor='';mzCalcular();
+  MZ.dados=m;MZ.setor='';MZ.aplicou=false;
+  MZ.vistos=mzLerVistos();const vis=new Set((MZ.vistos&&MZ.vistos.docs)||[]);
+  MZ.novos=MZ.vistos?mzDocsAtuais().filter(f=>!vis.has(f)):[];
+  MZ.filtro=MZ.vistos&&MZ.novos.length?'novos':'tudo';
+  mzCalcular();
   mzPintar();
 }
 /* Importa-se por setores: intervenientes, imóvel, mútuo e hipoteca (20/10/2026). Depois de
@@ -7374,11 +7389,12 @@ function mzCalcular(){
 function mzPintar(){
   let ov=document.getElementById('mz-ov');
   if(!ov){ov=document.createElement('div');ov.id='mz-ov';ov.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(20,20,20,.55);display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow:auto';document.body.appendChild(ov);}
-  const lin=(k,rot,atual,valor,mostra,origem,num,alvo)=>{const st=mzEstado(atual,valor,num);
+  const lin=(k,rot,atual,valor,mostra,origem,num,alvo)=>{const st=mzEstado(atual,valor,num);const novo=mzEhNovo(origem);
+    if(MZ.filtro==='novos'&&!novo)return'';if(MZ.filtro==='vazios'&&st!=='vazio')return'';if(MZ.filtro==='diverge'&&st!=='diverge')return'';
     const el=alvo&&alvo.id?document.getElementById(alvo.id):null;const atualTxt=el&&el.tagName==='SELECT'&&el.selectedOptions[0]?el.selectedOptions[0].textContent.trim():/^\d{4}-\d{2}-\d{2}$/.test(atual)?mzDataPT(atual):atual;
     return`<tr style="border-top:1px solid var(--border)">
       <td style="padding:5px 6px;vertical-align:top">${st==='igual'?'<span style="color:var(--green)">✓</span>':`<input type="checkbox" data-mz="${k}" ${st==='vazio'?'checked':''}>`}</td>
-      <td style="padding:5px 6px;vertical-align:top">${mzEsc(rot)}</td>
+      <td style="padding:5px 6px;vertical-align:top">${mzEsc(rot)}${novo?' <span style="background:#E3F2E9;color:#1F5E3A;border-radius:999px;padding:0 6px;font-size:10px;font-weight:700">novo</span>':''}</td>
       <td style="padding:5px 6px;vertical-align:top;color:var(--text-muted)">${atual?mzEsc(atualTxt):'<span style="color:var(--text-faint)">— vazio —</span>'}</td>
       <td style="padding:5px 6px;vertical-align:top;font-weight:600">${mzEsc(mostra||valor)}${st==='diverge'?' <span style="color:var(--red);font-weight:600;font-size:11px">diverge da matriz</span>':st==='igual'?' <span style="color:var(--green);font-size:11px">igual</span>':''}</td>
       <td style="padding:5px 6px;vertical-align:top;font-size:11px;color:var(--text-faint)">${mzEsc(origem)}</td></tr>`;};
@@ -7386,27 +7402,33 @@ function mzPintar(){
   const abas=`<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 .7rem">${SETORES.map(([k,r,n])=>`<button class="btn btn-sm${MZ.setor===k?' btn-primary':''}" onclick="MZ.setor='${k}';mzPintar()" ${n?'':'disabled style="opacity:.5"'}>${r} <span style="opacity:.75">(${n})</span></button>`).join('')}</div>`;
   const doSetor=p=>p.setor===MZ.setor;
   const grupos=[...new Set(MZ.props.filter(doSetor).map(p=>p.grupo))];
-  let h=grupos.map(g=>`<tr><td colspan="5" style="padding:10px 6px 4px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">${mzEsc(g)}</td></tr>`
-    +MZ.props.map((p,i)=>p.grupo!==g||!doSetor(p)?'':lin('c'+i,p.rot,mzAtual(p.alvo),p.valor,p.mostra,p.origem,p.alvo.num,p.alvo)).join('')).join('');
+  let h=grupos.map(g=>{const linhas=MZ.props.map((p,i)=>p.grupo!==g||!doSetor(p)?'':lin('c'+i,p.rot,mzAtual(p.alvo),p.valor,p.mostra,p.origem,p.alvo.num,p.alvo)).join('');
+    return linhas?`<tr><td colspan="5" style="padding:10px 6px 4px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">${mzEsc(g)}</td></tr>`+linhas:'';}).join('');
   if(MZ.setor==='intervenientes')MZ.pessoas.forEach((p,j)=>{
     const g=id=>p.bloco?document.getElementById(`${p.bloco}-${id}`)?.value?.trim()||'':'';
+    const linhasP=p.campos.map(([k,rot,val,data,mostra])=>lin(`p${j}-${k}`,rot,g(k),String(val),mostra||(data?mzDataPT(val):''),p.origem,false)).join('');
+    if(!linhasP)return;
     h+=`<tr><td colspan="5" style="padding:10px 6px 4px;font-weight:700;font-size:12px;color:var(--text-muted)">${p.tipo==='empresa'?'SOCIEDADE':'PESSOA'} — ${mzEsc(p.nome)}
       ${p.bloco?`<span style="font-weight:400">(já está no gerador como ${p.bloco.startsWith('vend')?'vendedor':'comprador'})</span>`
         :`<select data-papel="${j}" style="margin-left:.5rem;font-size:12px"><option value="">— não importar —</option><option value="vend"${p.papel==='vend'?' selected':''}>Vendedor</option><option value="comp"${p.papel==='comp'?' selected':''}>Comprador</option></select>${p.papel?' <span style="font-weight:400;font-size:11px">(papel deduzido dos documentos — confirme)</span>':''}`}</td></tr>`
-      +p.campos.map(([k,rot,val,data,mostra])=>lin(`p${j}-${k}`,rot,g(k),String(val),mostra||(data?mzDataPT(val):''),p.origem,false)).join('');});
+      +linhasP;});
   const inc=MZ.incertos;
   ov.innerHTML=`<div style="background:var(--surface,#fff);border-radius:12px;max-width:980px;width:100%;padding:1.2rem 1.4rem;box-shadow:0 8px 40px rgba(0,0,0,.3)">
     <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem"><div style="font-weight:700;font-size:15px">Importar da matriz do verificador — por setor</div>
-      <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('mz-ov').remove()">Fechar</button></div>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="mzFechar()">Fechar</button></div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:.6rem">Só entram dados de documentos com texto (lidos com certeza). Os campos vazios vêm marcados; os que já têm outro valor aparecem como <b style="color:var(--red)">diverge da matriz</b> e só mudam se os marcar.</div>
+    ${MZ.vistos?`<div style="font-size:12px;margin-bottom:.5rem;padding:7px 10px;border-radius:8px;background:${MZ.novos.length?'#E3F2E9':'var(--surface2,#F2F1EE)'}">${MZ.novos.length?`Desde a última importação (${new Date(MZ.vistos.quando).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}) entraram <b>${MZ.novos.length} documento(s) novo(s)</b>: ${MZ.novos.map(mzEsc).join(' · ')}.`:`Não entrou nenhum documento novo desde a última importação (${new Date(MZ.vistos.quando).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}).`}</div>`:''}
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin-bottom:.4rem;font-size:12px"><span style="color:var(--text-muted)">Mostrar:</span>
+      ${[['novos','Só de documentos novos',!!(MZ.vistos&&MZ.novos.length)],['vazios','Só campos vazios',true],['diverge','Só divergências',true],['tudo','Tudo',true]].map(([k,r,ok])=>`<button class="btn btn-sm${MZ.filtro===k?' btn-primary':''}" ${ok?`onclick="MZ.filtro='${k}';mzPintar()"`:'disabled style="opacity:.45"'}>${r}</button>`).join('')}</div>
     ${abas}
     ${MZ.avisos.length?`<div style="font-size:12px;color:var(--amber);margin-bottom:.5rem">${MZ.avisos.map(mzEsc).join('<br>')}</div>`:''}
     ${(MZ.setor==='intervenientes'?MZ.pessoas.length:MZ.props.some(doSetor))?`<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="text-align:left;color:var(--text-faint);font-size:11px"><th></th><th>Campo</th><th>No gerador</th><th>Na matriz</th><th>Documento</th></tr></thead><tbody>${h}</tbody></table>`
       :'<div style="font-size:13px">Neste setor a matriz não tem dados lidos com certeza (texto) para importar.</div>'}
+    ${h?'':((MZ.setor==='intervenientes'?MZ.pessoas.length:MZ.props.some(doSetor))?`<div style="font-size:12.5px;color:var(--text-muted);margin-top:.4rem">Nada a mostrar com este filtro neste setor.</div>`:'')}
     ${inc.length?`<details style="margin-top:.8rem"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--amber)">${inc.length} documento(s) lidos de imagem ou classificados à mão — não importados, confirme no documento</summary>
       <ul style="font-size:12px;margin:.4rem 0 0 1rem">${inc.map(d=>`<li>${mzEsc(d.ficheiro)}${!d.dados?' — <b>sem dados lidos</b>: abra a pasta pelo «Verificador» para o voltar a ler':d.leitura==='imagem'?' (lido de imagem)':' (classificado à mão)'}</li>`).join('')}</ul></details>`:''}
     <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
-      <button class="btn btn-sm" onclick="document.getElementById('mz-ov').remove()">Cancelar</button>
+      <button class="btn btn-sm" onclick="mzFechar()">Cancelar</button>
       <button class="btn btn-sm btn-primary" onclick="mzAplicar()">Preencher os selecionados — ${(SETORES.find(x=>x[0]===MZ.setor)||[0,''])[1]}</button></div></div>`;
 }
 function mzPor(id,valor,data){
@@ -7442,6 +7464,7 @@ function mzAplicar(){
     if(sel.some(([k])=>k==='objeto')){try{onObjetoSocial(id);}catch(_){}}
   });
   try{atualizar();}catch(_){}
+  if(n)MZ.aplicou=true;
   showToast(n?`${n} campo(s) preenchido(s) a partir da matriz — confira antes de gerar.`:'Nada foi preenchido.',n?'success':'');
   mzCalcular();mzPintar();
 }
@@ -7455,9 +7478,10 @@ function estadoCompleto(){
   });
   /* As verbas do ato 3 são bloco repetível e têm de ser guardadas à parte, como
      os restantes: os campos avulsos não as apanham. */
-  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),bens:lerBensBruto(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico};
+  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),bens:lerBensBruto(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico,mzVistos:MZ.vistosRascunho||mzLerVistos()};
 }
 function restaurarEstado(d){
+  if(d&&d.mzVistos)MZ.vistosRascunho=d.mzVistos;
 
   /* Rascunhos anteriores ao seletor eram todos compra e venda. */
   if(d.campos&&d.campos['f-tipo-ato']===undefined)d.campos['f-tipo-ato']=d.ato||'cv';
