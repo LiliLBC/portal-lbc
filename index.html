@@ -109,6 +109,24 @@ tbody tr:hover td{background:#FAFAF8}
 .btn-pasta{background:#FFF6DC;border-color:#EBD08F;color:#6B5418;text-decoration:none}
 .btn.tem-nota{background:#F6C46A;border-color:#D99A2B;box-shadow:0 0 0 2px rgba(217,154,43,.25)}
 .btn.tem-nota:hover{background:#F0B44A}
+/* Visto da Liliana na capa da pasta (24/10/2026) */
+.btn.visto-ok{background:#2E7D4F;border-color:#2E7D4F;color:#fff}
+.btn.visto-ok:hover{background:#256A42}
+.btn.visto-alt{background:#DCEFE3;border-color:#2E7D4F;color:#1F5E3A;box-shadow:0 0 0 2px rgba(201,138,27,.35)}
+.btn.visto-falta{background:#FBEFD5;border-color:#C98A1B;color:#7A4F0C;font-weight:600}
+.btn.visto-falta:hover{background:#F6E2B5}
+.btn.visto-velha{color:var(--text-faint)}
+/* Pastas ligadas (24/10/2026) */
+.btn.tem-lig{background:#DCE8F7;border-color:#3B7DD8;color:#1E4E8C;font-weight:600}
+.btn.tem-lig:hover{background:#C9DBF3}
+.lig-box{margin-top:.35rem}
+.lig-toggle{border:none;background:#E8F0FB;color:#1E4E8C;border-radius:6px;padding:3px 9px;font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.lig-toggle:hover{background:#D6E4F7}
+.lig-rows{display:none;margin-top:.4rem;border-left:3px solid #3B7DD8;padding-left:.6rem;flex-direction:column;gap:.3rem}
+.lig-box.aberto .lig-rows{display:flex}
+.lig-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-size:11.5px}
+.lig-row .lig-lib{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);min-width:64px}
+.lig-row .lig-nome{font-family:'DM Mono',monospace;flex:1;min-width:160px}
 .btn-pasta:hover{background:#FCEDC0;border-color:#DDBB66}
 .pasta-ref{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
 .pasta-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
@@ -3367,17 +3385,19 @@ async function carregarPastas(){
 function renderPastas(lista){
   document.getElementById('pastas-loading').style.display='none';
   const el=document.getElementById('pastas-list'),count=document.getElementById('pastas-count');
-  count.textContent=`${lista.length} pastas encontradas`;count.style.display='block';
+  count.innerHTML=`${lista.length} pastas encontradas <button class="btn btn-sm" id="btn-por-rever" onclick="vistoFiltrar()" style="margin-left:.5rem;padding:2px 10px;font-size:11px;display:none"></button>`;count.style.display='block';
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
   el.innerHTML=lista.map(p=>`
     <div class="pasta-card">
-      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
+      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div><div data-lig-lista="ESCRITURAS|${p.id}"></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
       <div class="pasta-actions">
+        <button class="btn btn-sm visto-velha" data-visto-btn="ESCRITURAS|${p.id}" data-mod="${escHtml(p.lastModifiedDateTime||'')}" onclick="vistoAlternar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Visto da Liliana" style="padding:4px 8px">✓</button>
+        <button class="btn btn-sm" data-lig-btn="ESCRITURAS|${p.id}" onclick="ligAbrir('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Pastas ligadas" style="padding:4px 8px">🔗</button>
         <button class="btn btn-sm" data-nota-btn="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Notas da pasta" style="padding:4px 8px">📝</button>
         <button class="btn btn-sm" onclick="etqEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),'pasta','')" title="Etiquetas" style="padding:4px 8px">🏷</button>
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
+        <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Verificador: cataloga os documentos da pasta (em «Catalogados») e alimenta a matriz">🔍 Verificador</button>
         <button class="btn btn-sm" onclick="matrizAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ver os dados que o verificador já compilou desta pasta">📋 Matriz</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
@@ -6352,13 +6372,16 @@ function renderProcessos(lista){
       <div style="flex:1;min-width:0">
         <div class="pasta-ref">${escHtml(p.nome||'—')}</div>
         <div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="PROCESSOS|${p.id}"></span></div>
+        <div data-lig-lista="PROCESSOS|${p.id}"></div>
       </div>
       <div class="pasta-actions">
+        <button class="btn btn-sm visto-velha" data-visto-btn="PROCESSOS|${p.id}" data-mod="${escHtml(p.lastModifiedDateTime||'')}" onclick="vistoAlternar('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Visto da Liliana">✓</button>
+        <button class="btn btn-sm" data-lig-btn="PROCESSOS|${p.id}" onclick="ligAbrir('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Pastas ligadas">🔗</button>
         <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),'pasta','')" title="Etiquetas">🏷</button>
         <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
         <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
         <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
-        <a href="${embedSP(p.webUrl)}" target="_blank" class="btn btn-sm">Abrir</a>
+        <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm">Abrir</a>
         <button class="btn btn-primary btn-sm" onclick="iniciarSubpasta('${escHtml(p.nome||'')}','${escHtml(p.id||'')}')">+ Processo</button>
       </div>
     </div>
@@ -6447,6 +6470,8 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
         return `<div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .55rem;margin-bottom:.3rem;background:var(--surface);border-radius:6px;border:1px solid var(--border)">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--accent-dark)" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
           <a href="${escHtml(embedSP(s.webUrl)||'#')}" target="_blank" style="flex:1;font-size:11px;font-family:'DM Mono',monospace;color:inherit;text-decoration:none">${escHtml(s.name)} <span data-etq="PROCESSOS|${s.id}"></span></a>
+          <button class="btn btn-sm visto-velha" data-visto-btn="PROCESSOS|${s.id}" data-mod="${escHtml(s.lastModifiedDateTime||'')}" onclick="vistoAlternar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Visto da Liliana" style="padding:2px 6px;font-size:10px">✓</button>
+          <button class="btn btn-sm" data-lig-btn="PROCESSOS|${s.id}" onclick="ligAbrir('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),decodeURIComponent('${encodeURIComponent(s.webUrl||'')}'))" title="Pastas ligadas" style="padding:2px 6px;font-size:10px">🔗</button>
           <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),'pasta',decodeURIComponent('${encodeURIComponent(nomeCliente||'')}'))" title="Etiquetas" style="padding:2px 6px;font-size:10px">🏷</button>
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
@@ -10255,7 +10280,11 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   const $=id=>document.getElementById(id);
   const esc=t=>escHtml(t==null?'':t);
   const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-  const LIBS={ESCRITURAS:{nome:'Escrituras',drive:()=>bibliotecaId},PROCESSOS:{nome:'Processos',drive:()=>bibliotecaProcessosId}};
+  const LIBS={ESCRITURAS:{nome:'Escrituras',drive:()=>bibliotecaId},PROCESSOS:{nome:'Processos',drive:()=>bibliotecaProcessosId},AVENCAS:{nome:'Avenças',drive:()=>driveIdAvencas}};
+  /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
+     parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
+  const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length);
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 
@@ -10301,7 +10330,170 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
        quando há nota, e passando o rato por cima vê-se a nota. */
     document.querySelectorAll('[data-nota]').forEach(el=>{el.innerHTML='';});
     document.querySelectorAll('[data-nota-btn]').forEach(b=>{const n=(ITENS[b.dataset.notaBtn]?.nota||'').trim();
-      b.classList.toggle('tem-nota',!!n);b.title=n?'Nota da pasta:\n'+n:'Notas da pasta';});};
+      b.classList.toggle('tem-nota',!!n);b.title=n?'Nota da pasta:\n'+n:'Notas da pasta';});
+    vistoPintar();ligPintar();};
+
+  /* ── VISTO DA LILIANA (24/10/2026) ──
+     Um visto por pasta, na capa, que só a Liliana marca ou desmarca. Fica no mesmo
+     registo da lista «Etiquetas» (visto, vistoData, vistoPor), pelo id da pasta.
+       ✓ Visto          — verde: verificada por ela.
+       ✓ Visto · alterada — a pasta mudou depois do visto (documentos novos): rever.
+       Por rever        — âmbar: sem visto e com movimento desde VISTO_DESDE.
+       ✓ (apagado)      — sem visto, pasta antiga: não chama a atenção.
+     Os outros utilizadores veem o estado mas não o mudam. */
+  const VISTO_EMAIL='liliana.cardoso@lbc-solicitadora.pt';
+  const VISTO_DESDE='2026-10-21';
+  const souLiliana=()=>{try{return String((contaAtual&&(contaAtual.username||''))||'').toLowerCase()===VISTO_EMAIL;}catch(_){return false;}};
+  const dataHora=iso=>iso?new Date(iso).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'';
+  let soPorRever=false;
+  function estadoVisto(k,mod){
+    const it=ITENS[k];
+    if(it&&it.visto){
+      const alt=mod&&it.vistoData&&new Date(mod).getTime()>new Date(it.vistoData).getTime()+60000;
+      return alt?'alt':'ok';
+    }
+    return mod&&mod.slice(0,10)>=VISTO_DESDE?'falta':'velha';
+  }
+  function vistoPintar(){
+    let nFalta=0;
+    document.querySelectorAll('[data-visto-btn]').forEach(b=>{
+      const k=b.dataset.vistoBtn,it=ITENS[k],st=estadoVisto(k,b.dataset.mod||'');
+      b.classList.remove('visto-ok','visto-alt','visto-falta','visto-velha');b.classList.add('visto-'+st);
+      const peq=b.style.fontSize==='10px';
+      b.textContent=st==='ok'?'✓ Visto':st==='alt'?'✓ Visto · alterada':st==='falta'?'Por rever':'✓';
+      if(peq&&st!=='velha')b.textContent=st==='ok'?'✓':st==='alt'?'✓!':'!';
+      const quem=it&&it.visto?`Visto por ${it.vistoPor||'Liliana Cardoso'} em ${dataHora(it.vistoData)}`:'Ainda sem o visto da Liliana';
+      b.title=quem+(st==='alt'?`\nA pasta foi alterada depois do visto (${dataHora(b.dataset.mod)}) — rever.`:'')
+        +(souLiliana()?'\n\nClique para '+(it&&it.visto?(st==='alt'?'renovar ou retirar o visto':'retirar o visto'):'marcar como visto por si'):'\n\nSó a Liliana Cardoso pode marcar ou retirar o visto.');
+      if(st==='falta'||st==='alt')nFalta++;
+      const card=b.closest('.pasta-card');
+      if(card&&card.closest('#pastas-list'))card.style.display=(soPorRever&&!(st==='falta'||st==='alt'))?'none':'';
+    });
+    const f=document.getElementById('btn-por-rever');
+    if(f){f.style.display=(nFalta||soPorRever)?'':'none';
+      f.textContent=soPorRever?'Mostrar todas':`Por rever (${document.querySelectorAll('#pastas-list [data-visto-btn].visto-falta,#pastas-list [data-visto-btn].visto-alt').length})`;
+      f.classList.toggle('visto-falta',!soPorRever);}
+  }
+  window.vistoFiltrar=()=>{soPorRever=!soPorRever;vistoPintar();};
+
+  /* ── PASTAS LIGADAS (24/10/2026) ──
+     Liga pastas do mesmo assunto, em qualquer biblioteca (Escrituras, Processos,
+     Avenças): p. ex. o CPCV da REMAX e as cartas aos confinantes. A ligação grava-se
+     nos dois registos, para se ver de um lado e do outro. */
+  async function gravarReg(lib,itemId,nome,d){
+    const k=chave(lib,itemId),it=ITENS[k];
+    if(vazio(d)){
+      if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+        if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
+      return;
+    }
+    const body={Title:nome||it?.nome||'',[COLD]:JSON.stringify(d)};
+    if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={spId:it.spId,nome:body.Title,...d};}
+    else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:body.Title,...d};}
+  }
+  async function ligarPar(a,b,juntar){
+    for(const [x,y] of [[a,b],[b,a]]){
+      const it=ITENS[chave(x.lib,x.itemId)];
+      const d={...extra(it),lib:x.lib,itemId:x.itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};
+      const l=(d.ligacoes||[]).filter(z=>!(z.lib===y.lib&&z.itemId===y.itemId));
+      if(juntar)l.push({lib:y.lib,itemId:y.itemId,nome:y.nome,url:y.url||''});
+      if(l.length)d.ligacoes=l;else delete d.ligacoes;
+      await gravarReg(x.lib,x.itemId,x.nome,d);
+    }
+  }
+  let ligEd=null,ligRes=[],ligT=null;
+  function pintarLig(){
+    const it=ITENS[chave(ligEd.lib,ligEd.itemId)],l=it?.ligacoes||[];
+    abrir(`<div class="modal-box-title">🔗 Pastas ligadas · ${esc(ligEd.nome)}</div>
+      <div style="font-size:11px;color:var(--text-faint);margin:-.4rem 0 .8rem">${esc(LIBS[ligEd.lib]?.nome||ligEd.lib)}. Ligue as pastas do mesmo assunto, em qualquer biblioteca (por exemplo, o CPCV da REMAX e as cartas aos confinantes). A ligação vê-se nas duas pastas.</div>
+      <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">${l.length?l.map((x,i)=>`
+        <div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);min-width:72px">${esc(LIBS[x.lib]?.nome||x.lib)}</span>
+          <span style="flex:1;min-width:0;font-family:'DM Mono',monospace;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.nome)}">${esc(x.nome)}</span>
+          ${x.url?`<a class="btn btn-sm btn-pasta" href="${embedSP(x.url)}" target="lbc-pasta">📂 Abrir pasta</a>`:''}
+          <button class="btn btn-sm" onclick="ligDesligar(${i})" title="Retirar a ligação (as pastas não são apagadas)">Desligar</button>
+        </div>`).join(''):'<div style="font-size:12px;color:var(--text-faint)">Ainda sem pastas ligadas.</div>'}</div>
+      <div class="field-label">Ligar a outra pasta</div>
+      <input class="form-input" id="lig-q" placeholder="Escreva parte do nome da pasta ou do cliente (mín. 3 letras)" style="width:100%" oninput="ligProcurar()">
+      <div id="lig-res" style="margin-top:.5rem;max-height:260px;overflow:auto"></div>
+      <div class="modal-actions" style="margin-top:1rem"><button class="btn" onclick="etqFechar()" style="flex:1">Fechar</button></div>`);
+    setTimeout(()=>$('lig-q')?.focus(),50);
+  }
+  window.ligAbrir=async(lib,itemId,nome,url)=>{
+    await carregar();
+    if(!LID){showToast('Falta criar a lista Etiquetas no SharePoint','error');return;}
+    ligEd={lib,itemId,nome,url};pintarLig();
+  };
+  window.ligProcurar=()=>{clearTimeout(ligT);ligT=setTimeout(async()=>{
+    const q=($('lig-q')?.value||'').trim(),box=$('lig-res');if(!box)return;
+    if(q.length<3){box.innerHTML='';ligRes=[];return;}
+    box.innerHTML='<div style="font-size:12px;color:var(--text-faint)">A procurar…</div>';
+    const ja=new Set((ITENS[chave(ligEd.lib,ligEd.itemId)]?.ligacoes||[]).map(x=>x.lib+'|'+x.itemId));
+    const res=[];
+    for(const [lib,L] of Object.entries(LIBS)){const drive=L.drive();if(!drive)continue;
+      try{const r=await graphGet(`${GRAPH_BASE}/drives/${drive}/root/search(q='${encodeURIComponent(q.replace(/'/g,"''"))}')?$select=id,name,folder,webUrl,parentReference&$top=40`);
+        (r.value||[]).filter(x=>x.folder&&x.id!==ligEd.itemId&&!ja.has(lib+'|'+x.id)).forEach(x=>{
+          const em=decodeURIComponent(((x.parentReference&&x.parentReference.path)||'').split('root:')[1]||'').replace(/^\//,'');
+          res.push({lib,itemId:x.id,nome:x.name,url:x.webUrl,em});});
+      }catch(_){}
+    }
+    ligRes=res.slice(0,30);
+    box.innerHTML=ligRes.length?ligRes.map((x,i)=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);min-width:72px">${esc(LIBS[x.lib].nome)}</span>
+        <span style="flex:1;min-width:0"><span style="display:block;font-family:'DM Mono',monospace;font-size:12px">${esc(x.nome)}</span>${x.em?`<span style="font-size:10.5px;color:var(--text-faint)">em ${esc(x.em)}</span>`:''}</span>
+        <button class="btn btn-sm btn-primary" onclick="ligLigar(${i})">Ligar</button></div>`).join('')
+      :'<div style="font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada com esse nome.</div>';
+  },350);};
+  window.ligLigar=async i=>{const x=ligRes[i];if(!x)return;
+    try{await ligarPar(ligEd,x,true);showToast('Pastas ligadas','success');pintarLig();}catch(e){showToast('Erro: '+e.message,'error');}};
+  window.ligDesligar=async i=>{const l=ITENS[chave(ligEd.lib,ligEd.itemId)]?.ligacoes||[];const x=l[i];if(!x)return;
+    if(!confirm(`Retirar a ligação a «${x.nome}»? As pastas não são apagadas.`))return;
+    try{await ligarPar(ligEd,x,false);showToast('Ligação retirada','success');pintarLig();}catch(e){showToast('Erro: '+e.message,'error');}};
+  const ligAbertos=new Set();
+  window.ligToggle=(k,el)=>{const box=el.closest('.lig-box');box.classList.toggle('aberto');
+    if(box.classList.contains('aberto'))ligAbertos.add(k);else ligAbertos.delete(k);
+    el.textContent=(box.classList.contains('aberto')?'▾ ':'▸ ')+el.dataset.rot;};
+  function ligPintar(){
+    /* Pastas interligadas à vista no próprio cartão (24/10/2026): abre-se a lista e
+       cada pasta abre na mesma janela «lbc-pasta», que vai alternando entre elas. */
+    document.querySelectorAll('[data-lig-lista]').forEach(el=>{const k=el.dataset.ligLista,l=ITENS[k]?.ligacoes||[];
+      if(!l.length){el.innerHTML='';return;}
+      const ab=ligAbertos.has(k),rot=`${l.length} ${l.length>1?'pastas interligadas':'pasta interligada'}`;
+      el.innerHTML=`<div class="lig-box${ab?' aberto':''}"><button type="button" class="lig-toggle" data-rot="${esc(rot)}" onclick="event.stopPropagation();ligToggle('${k}',this)">${ab?'▾':'▸'} ${esc(rot)}</button>
+        <div class="lig-rows">${l.map(x=>`<div class="lig-row"><span class="lig-lib">${esc(LIBS[x.lib]?.nome||x.lib)}</span><span class="lig-nome">${esc(x.nome)}</span>
+          ${x.url?`<a class="btn btn-sm btn-pasta" href="${embedSP(x.url)}" target="lbc-pasta" onclick="event.stopPropagation()" style="padding:2px 8px;font-size:11px">📂 Abrir pasta</a>`:''}</div>`).join('')}</div></div>`;});
+    document.querySelectorAll('[data-lig-btn]').forEach(b=>{const l=ITENS[b.dataset.ligBtn]?.ligacoes||[];
+      b.classList.toggle('tem-lig',l.length>0);b.textContent=l.length?`🔗 ${l.length}`:'🔗';
+      b.title=l.length?'Pastas ligadas:\n'+l.map(x=>`· ${x.nome} (${LIBS[x.lib]?.nome||x.lib})`).join('\n'):'Ligar a pastas do mesmo assunto';});
+  }
+  window.vistoAlternar=async(lib,itemId,nome)=>{
+    await carregar();
+    if(!LID){showToast('Falta criar a lista Etiquetas no SharePoint','error');return;}
+    if(!souLiliana()){showToast('Só a Liliana Cardoso pode marcar ou retirar o visto.','error');return;}
+    const k=chave(lib,itemId),it=ITENS[k];
+    const btn=document.querySelector(`[data-visto-btn="${k}"]`);
+    const st=estadoVisto(k,btn?.dataset.mod||'');
+    let marcar=!(it&&it.visto);
+    if(st==='alt'){
+      if(confirm(`«${nome}» foi alterada depois do seu visto.\n\nOK — renovar o visto agora (revi as alterações)\nCancelar — retirar o visto`))marcar=true;else marcar=false;
+    }else if(!marcar&&!confirm(`Retirar o seu visto de «${nome}»?`))return;
+    try{
+      const d={...extra(it),lib,itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};
+      delete d.visto;delete d.vistoData;delete d.vistoPor;
+      if(marcar){d.visto=true;d.vistoData=new Date().toISOString();d.vistoPor=(contaAtual&&contaAtual.name)||'Liliana Cardoso';}
+      if(vazio(d)){
+        if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+          if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
+      }else{
+        const body={Title:nome,[COLD]:JSON.stringify(d)};
+        if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);
+          ITENS[k]={spId:it.spId,nome,...d};}
+        else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome,...d};}
+      }
+      showToast(marcar?'Visto registado':'Visto retirado','success');
+      vistoPintar();ligPintar();
+    }catch(e){showToast('Erro: '+e.message,'error');}
+  };
 
   /* ── Editor ── */
   let ed=null;
@@ -10355,12 +10547,11 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     const k=chave(ed.lib,ed.itemId),it=ITENS[k];
     const pend=($('etq-ed-in')?.value||'').trim();if(pend)etqAdd(pend);
     try{
-      if(!ed.tags.length&&!(it&&it.nota)){
+      if(vazio({...extra(it),tags:ed.tags})){
         if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
           if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
       }else{
-        const d={lib:ed.lib,itemId:ed.itemId,tipo:ed.tipo,pasta:ed.pasta,tags:ed.tags};
-        if(it&&it.nota){d.nota=it.nota;d.notaData=it.notaData||'';d.notaPor=it.notaPor||'';}
+        const d={...extra(it),lib:ed.lib,itemId:ed.itemId,tipo:ed.tipo,pasta:ed.pasta,tags:ed.tags};
         const body={Title:ed.nome,[COLD]:JSON.stringify(d)};
         if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={...it,nome:ed.nome,...d};}
         else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:ed.nome,...d};}
@@ -10396,14 +10587,16 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     const txt=apagar?'':String($('nota-ed-txt')?.value||'').replace(/\s+$/,'');
     if(apagar&&!confirm('Apagar a nota desta pasta?'))return;
     try{
-      if(!txt&&!(it&&it.tags&&it.tags.length)){
+      const d0={...extra(it)};if(txt)d0.nota=txt;else{delete d0.nota;}
+      if(vazio({...d0,tags:it?.tags||[]})){
         if(it){await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
           if(!r.ok&&r.status!==204)throw new Error('HTTP '+r.status);delete ITENS[k];}
       }else{
-        const d={lib:notaEd.lib,itemId:notaEd.itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};
+        const d={...extra(it),lib:notaEd.lib,itemId:notaEd.itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};
+        if(!txt){delete d.nota;delete d.notaData;delete d.notaPor;}
         if(txt){d.nota=txt;d.notaData=new Date().toISOString();try{d.notaPor=(typeof contaAtual!=='undefined'&&contaAtual&&(contaAtual.name||contaAtual.username))||'';}catch(_){}}
         const body={Title:notaEd.nome,[COLD]:JSON.stringify(d)};
-        if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={...it,nome:notaEd.nome,...d};if(!txt){delete ITENS[k].nota;delete ITENS[k].notaData;delete ITENS[k].notaPor;}}
+        if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={spId:it.spId,nome:notaEd.nome,...d};}
         else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:notaEd.nome,...d};}
       }
       showToast(apagar?'Nota apagada':'Nota gravada','success');
@@ -11682,7 +11875,7 @@ async function avCarregarPastas(){
       if(!res.ok)continue;
       const data=await res.json();
       (data.value||[]).filter(i=>i.folder).forEach(i=>{
-        avPastasCache.push({nome:i.name,fornecedor:f,url:i.webUrl,modificado:i.lastModifiedDateTime});
+        avPastasCache.push({id:i.id,nome:i.name,fornecedor:f,url:i.webUrl,modificado:i.lastModifiedDateTime});
       });
     }
     avRenderPastas(avPastasCache);
@@ -11706,17 +11899,24 @@ function avRenderPastas(lista){
     <div style="margin-bottom:1.25rem">
       <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;padding:.3rem 0;border-bottom:1px solid var(--border);margin-bottom:.5rem">${forn} — ${pastas.length} pasta(s)</div>
       ${pastas.map(p=>`
-        <div class="reg-list-item" onclick="window.open('${p.url}','_blank')" style="cursor:pointer">
+        <div class="reg-list-item" onclick="window.open(embedSP('${p.url}'),'lbc-pasta')" style="cursor:pointer">
           <div class="reg-list-main">
             <div class="reg-list-nome" style="font-family:'DM Mono',monospace;font-size:12px">${escHtml(p.nome)}</div>
             <div class="reg-list-meta">${forn} · Modificado ${fmtData(p.modificado)}</div>
+            ${p.id?`<div data-lig-lista="AVENCAS|${p.id}" onclick="event.stopPropagation()"></div>`:''}
           </div>
-          <div class="reg-list-right">
+          <div class="reg-list-right" style="gap:.35rem">
+            ${p.id?`<span onclick="event.stopPropagation()" style="display:inline-flex;gap:.3rem">
+              <button class="btn btn-sm visto-velha" data-visto-btn="AVENCAS|${p.id}" data-mod="${escHtml(p.modificado||'')}" onclick="vistoAlternar('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Visto da Liliana" style="padding:2px 8px;font-size:11px">✓</button>
+              <button class="btn btn-sm" data-nota-btn="AVENCAS|${p.id}" onclick="notaEditar('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Notas da pasta" style="padding:2px 8px;font-size:11px">📝</button>
+              <button class="btn btn-sm" data-lig-btn="AVENCAS|${p.id}" onclick="ligAbrir('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),decodeURIComponent('${encodeURIComponent(p.url||'')}'))" title="Pastas ligadas" style="padding:2px 8px;font-size:11px">🔗</button>
+            </span>`:''}
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M6 4l4 4-4 4"/></svg>
           </div>
         </div>`).join('')}
     </div>`).join('');
+  if(window.etqPintar)etqPintar();
 }
 
 function avLimpar(){
