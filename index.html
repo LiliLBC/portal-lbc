@@ -2130,6 +2130,15 @@ tbody tr:hover td{background:#FAFAF8}
                   <option value="">Selecionar fornecedor primeiro...</option>
                 </select>
               </div>
+              <div class="field-group field-full" id="av-p-loja-wrap" style="display:none">
+                <div class="field-label">Loja REMAX *</div>
+                <select class="form-select" id="av-p-loja">
+                  <option value="">Selecionar loja...</option>
+                  <option>Beja</option>
+                  <option>Montemor</option>
+                  <option>Grândola</option>
+                </select>
+              </div>
               <div class="field-group field-full" id="av-p-servico-outro-wrap" style="display:none">
                 <div class="field-label">Descrição do serviço (Outros) *</div>
                 <input class="form-input" id="av-p-servico-outro" placeholder="Descreve o serviço">
@@ -2137,6 +2146,10 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-group">
                 <div class="field-label">Data início</div>
                 <input class="form-input" id="av-p-inicio" type="date">
+              </div>
+              <div class="field-group" id="av-p-hora-wrap">
+                <div class="field-label">Hora de entrada do e-mail</div>
+                <input class="form-input" id="av-p-hora" type="time" placeholder="15:42">
               </div>
               <div class="field-group">
                 <div class="field-label">Data conclusão / prazo</div>
@@ -3446,6 +3459,24 @@ function abrirAnalisador(lib,itemId,nome){
   const drive=lib==='PROCESSOS'?bibliotecaProcessosId:lib==='AVENCAS'?driveIdAvencas:bibliotecaId;
   if(!drive||!itemId){showToast('Biblioteca ainda não carregada.','error');return;}
   window.open(`${ANALISADOR_URL}?pasta=${encodeURIComponent(drive+'|'+itemId)}&nome=${encodeURIComponent(nome||'')}`,'_blank');
+}
+/* Processo REMAX de análise → Analisador com o painel «Relatório para a REMAX»
+   (loja, linha da lista e título seguem no endereço; os documentos continuam a ser lidos só no navegador). */
+async function abrirAnalisadorAv(itemId){
+  const i=todosProcessosAv.find(r=>r.id===itemId);if(!i)return;
+  if(!i[AP.pasta]){showToast('Este processo não tem pasta associada','error');return;}
+  if(!i[AP.loja]){showToast('Indique a loja REMAX no processo antes de analisar','error');return;}
+  const w=window.open('about:blank','_blank');
+  try{
+    await renovarToken();
+    const nomePasta=decodeURIComponent(i[AP.pasta].split('/').pop()||'');
+    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nomePasta)}?$select=id,name`,{headers:{'Authorization':'Bearer '+graphToken}});
+    if(!r.ok)throw new Error(`não encontrei a pasta ${i[AP.fornecedor]}/${i[AP.loja]}/${nomePasta} (${r.status})`);
+    const it=await r.json();
+    const ent=avInicioMs(i);
+    const q=new URLSearchParams({pasta:driveIdAvencas+'|'+it.id,nome:it.name,loja:i[AP.loja],av:i.id,site:siteIdDados,lista:listaIdAvencasProc,titulo:i[AP.titulo]||'',entrada:ent!=null?new Date(ent).toISOString():''});
+    w.location=`${ANALISADOR_URL}?${q.toString()}`;
+  }catch(e){try{w.close();}catch(_){}showToast('Erro: '+e.message,'error');}
 }
 /* «🔍 Verificador» (20/10/2026): abre o verificador já na pasta do cliente; cataloga os
    documentos na subpasta «Catalogados» e alimenta a matriz. A pasta abre-se em «Abrir pasta». */
@@ -10415,6 +10446,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   window.vistoFiltrar=()=>{soPorRever=!soPorRever;vistoPintar();};
   /* Para o dashboard: estado do visto de uma pasta (ok | alt | falta | velha). */
   window.vistoCarregar=()=>carregar();
+  window.ligPintar=()=>ligPintar();
   window.vistoEstado=(lib,id,mod)=>estadoVisto(chave(lib,id),mod||'');
 
   /* ── AVISO DE VISTO EM FALTA · 4 DIAS ANTES DA ESCRITURA (24/10/2026) ──
@@ -11470,7 +11502,17 @@ async function dashCarregarPastasVisto(){
     (d.value||[]).filter(i=>i.folder&&(i.createdDateTime||'')>=PV_DESDE).forEach(i=>out.push({cat:'ESCRITURAS',lib:'ESCRITURAS',id:i.id,nome:i.name,criado:i.createdDateTime,mod:i.lastModifiedDateTime}));}
   if(driveIdAvencas)for(const f of Object.keys(AVENCAS_ENTIDADES)){
     try{const d=await graphGetAll(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(f)}:/children?$top=500&$select=id,name,folder,createdDateTime,lastModifiedDateTime`);
-      (d.value||[]).filter(i=>i.folder&&(i.createdDateTime||'')>=PV_DESDE).forEach(i=>out.push({cat:f,lib:'AVENCAS',id:i.id,nome:i.name,criado:i.createdDateTime,mod:i.lastModifiedDateTime}));}catch(_){}
+      const filhos=(d.value||[]).filter(i=>i.folder);
+      for(const i of filhos){
+        // REMAX: as pastas das lojas e a «Anterior a…» são contentores, não processos
+        if(f==='REMAX'&&REMAX_LOJAS.includes(i.name)){
+          try{const dl=await graphGetAll(`${GRAPH_BASE}/drives/${driveIdAvencas}/items/${i.id}/children?$top=500&$select=id,name,folder,createdDateTime,lastModifiedDateTime`);
+            (dl.value||[]).filter(x=>x.folder&&(x.createdDateTime||'')>=PV_DESDE).forEach(x=>out.push({cat:f,loja:i.name,lib:'AVENCAS',id:x.id,nome:x.name,criado:x.createdDateTime,mod:x.lastModifiedDateTime}));}catch(_){}
+          continue;
+        }
+        if(f==='REMAX'&&/^anterior/i.test(i.name))continue;
+        if((i.createdDateTime||'')>=PV_DESDE)out.push({cat:f,lib:'AVENCAS',id:i.id,nome:i.name,criado:i.createdDateTime,mod:i.lastModifiedDateTime});
+      }}catch(_){}
   }
   if(window.vistoCarregar)await window.vistoCarregar();
   DASH_PASTAS=out;
@@ -11563,7 +11605,11 @@ function avInitEntidades(){
     selS.innerHTML='<option value="">Tipo de serviço...</option>'+servicos.map(s=>`<option>${s}</option>`).join('');
   }
 }
-const AP={titulo:'Title',fornecedor:'Fornecedor',servico:'Servico',inicio:'Data_Inicio',conclusao:'Data_Conclusao',estado:'Estado',urgente:'Urgente',responsavel:'Responsavel',notas:'Notas',pasta:'Ligacao_Pasta'};
+const AP={titulo:'Title',fornecedor:'Fornecedor',servico:'Servico',inicio:'Data_Inicio',conclusao:'Data_Conclusao',estado:'Estado',urgente:'Urgente',responsavel:'Responsavel',notas:'Notas',pasta:'Ligacao_Pasta',loja:'Loja',hora:'Hora_Entrada'};
+// Lojas REMAX (desde 24/10/2026): subpastas em AVENCAS/REMAX/<Loja>
+const REMAX_LOJAS=['Beja','Montemor','Grândola'];
+const REMAX_LOJAS_DESDE='2026-10-24';
+function avSubPath(forn,loja){return encodeURIComponent(forn)+(loja?'/'+encodeURIComponent(loja):'');}
 let todosProcessosAv=[],filtroEstadoAv='activos',avPainelItemId=null;
 
 async function carregarAvencas(){
@@ -11625,6 +11671,37 @@ function avFiltrarEstado(estado,el){
   avFiltrar();
 }
 
+/* Cronómetro das análises REMAX: conta desde a data + hora de entrada do e-mail
+   até à conclusão (Data_Conclusao) ou até agora. Verde ≤24 h, âmbar ≤3 dias, vermelho depois. */
+function avDuracaoTxt(ms){
+  const h=Math.max(0,Math.floor(ms/3600000)),d=Math.floor(h/24),r=h%24;
+  if(d===0)return `${h} h`;
+  return r?`${d} d ${r} h`:`${d} d`;
+}
+function avInicioMs(i){
+  if(!i[AP.inicio])return null;
+  const dia=String(i[AP.inicio]).substring(0,10);
+  const hora=/^\d{1,2}:\d{2}$/.test(i[AP.hora]||'')?i[AP.hora].padStart(5,'0'):'00:00';
+  const t=new Date(`${dia}T${hora}:00`).getTime();
+  return isNaN(t)?null:t;
+}
+function avCronometro(i){
+  if(i[AP.fornecedor]!=='REMAX'||!i[AP.loja])return '';
+  if(!/^AN[AÁ]LISE$/i.test(i[AP.servico]||''))return '';
+  const ini=avInicioMs(i);if(ini==null)return '';
+  const estado=i[AP.estado]||'Em curso';
+  if(estado==='Cancelado')return '';
+  const parado=estado==='Concluído';
+  let fim=Date.now();
+  if(parado){
+    if(!i[AP.conclusao])return '';
+    fim=new Date(String(i[AP.conclusao]).substring(0,10)+'T12:00:00').getTime();
+  }
+  const ms=fim-ini,h=ms/3600000;
+  const cor=parado?'background:var(--surface2);color:var(--text-muted)':h<=24?'background:#E3F2E9;color:#1F5E3A':h<=72?'background:#FBEFD5;color:#7A4F0C':'background:#FBE3E1;color:#8E2A22';
+  const tit=parado?'Tempo até à conclusão':'A contar desde a entrada do e-mail';
+  return `<span title="${tit}" style="border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;${cor}">⏱ ${avDuracaoTxt(ms)}${parado?' ✓':''}</span>`;
+}
 function avRenderLista(lista){
   document.getElementById('av-loading').style.display='none';
   const el=document.getElementById('av-list');
@@ -11644,6 +11721,8 @@ function avRenderLista(lista){
     const dataI=i[AP.inicio]?fmtData(i[AP.inicio]):'—';
     const dataC=i[AP.conclusao]?fmtData(i[AP.conclusao]):'—';
     const iniciais=(i[AP.fornecedor]||'?').substring(0,2);
+    const lojaTxt=i[AP.loja]?' · '+escHtml(i[AP.loja]):'';
+    const cron=avCronometro(i);
     const cor=corForn[i[AP.fornecedor]]||'var(--text-muted)';
     const pastaBtn=i[AP.pasta]
       ?`<button onclick="event.stopPropagation();window.open(embedSP('${escHtml(i[AP.pasta])}'),'_blank')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-light);color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Abrir pasta">
@@ -11663,9 +11742,13 @@ function avRenderLista(lista){
       <div style="width:34px;height:34px;border-radius:8px;background:${cor}22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:${cor};flex-shrink:0">${iniciais}</div>
       <div class="reg-list-main" style="flex:1;min-width:0">
         <div class="reg-list-nome">${escHtml(i[AP.titulo]||'—')} ${urgente}</div>
-        <div class="reg-list-meta">${escHtml(i[AP.fornecedor]||'')} · ${escHtml(i[AP.servico]||'')} · ${escHtml(i[AP.responsavel]||'')} · ${dataI}${dataC!=='—'?' → '+dataC:''}</div>
+        ${i[AP.pasta]?`<div data-av-ligl="${i.id}" onclick="event.stopPropagation()"></div>`:''}
+        <div class="reg-list-meta">${escHtml(i[AP.fornecedor]||'')}${lojaTxt} · ${escHtml(i[AP.servico]||'')} · ${escHtml(i[AP.responsavel]||'')} · ${dataI}${dataC!=='—'?' → '+dataC:''}</div>
       </div>
       <div class="reg-list-right" style="display:flex;align-items:center;gap:.5rem">
+        ${cron}
+        ${i[AP.pasta]?`<span data-av-lig="${i.id}" onclick="event.stopPropagation()"></span>`:''}
+        ${(i[AP.fornecedor]==='REMAX'&&/^AN[AÁ]LISE$/i.test(i[AP.servico]||'')&&i[AP.pasta])?`<button onclick="event.stopPropagation();abrirAnalisadorAv('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Analisador predial — com relatório para a REMAX">🔎 Analisar</button>`:''}
         ${cpcvBtn}
         ${pastaBtn}
         <span style="border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;${badgeStyle}">${escHtml(estado)}</span>
@@ -11676,6 +11759,32 @@ function avRenderLista(lista){
       </div>
     </div>`;
   }).join('');
+  avLigResolver(lista);
+}
+/* Pastas interligadas nos processos de avença (24/10/2026): uma análise REMAX dá muitas
+   vezes origem a um CPCV e, mais tarde, a uma escritura. A lista guarda só o endereço da
+   pasta; o id da pasta resolve-se em lotes ($batch) e guarda-se em memória. */
+const AV_PASTA_ID={};
+async function avLigResolver(lista){
+  if(!driveIdAvencas)return;
+  const nomeDe=i=>decodeURIComponent((i[AP.pasta]||'').split('/').pop()||'');
+  const falta=lista.filter(i=>i[AP.pasta]&&!AV_PASTA_ID[i.id]);
+  try{
+    await renovarToken();
+    for(let k=0;k<falta.length;k+=20){
+      const lote=falta.slice(k,k+20);
+      const requests=lote.map((i,n)=>({id:String(n),method:'GET',url:`/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nomeDe(i))}?$select=id,name,webUrl`}));
+      const r=await fetch(`${GRAPH_BASE}/$batch`,{method:'POST',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify({requests})});
+      if(!r.ok)continue;
+      const j=await r.json();
+      (j.responses||[]).forEach(x=>{if(x.status===200&&x.body&&x.body.id)AV_PASTA_ID[lote[+x.id].id]=x.body;});
+    }
+    if(window.vistoCarregar)await window.vistoCarregar();
+  }catch(e){console.warn('[Avenças] ligações:',e);}
+  document.querySelectorAll('[data-av-lig]').forEach(sp=>{const p=AV_PASTA_ID[sp.dataset.avLig];if(!p)return;
+    sp.innerHTML=`<button class="btn btn-sm" data-lig-btn="AVENCAS|${p.id}" onclick="event.stopPropagation();ligAbrir('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Ligar a pastas do mesmo assunto" style="padding:2px 8px;font-size:11px">🔗</button>`;
+    const l=document.querySelector(`[data-av-ligl="${sp.dataset.avLig}"]`);if(l)l.setAttribute('data-lig-lista','AVENCAS|'+p.id);});
+  if(window.ligPintar)window.ligPintar();
 }
 
 let listaIdAvencasProc=null;
@@ -11688,6 +11797,7 @@ function avPainelFornecedorChange(){
     AVENCAS_FORNECEDORES[forn].forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
     sel.disabled=false;
   }else{sel.disabled=true;}
+  const lw=document.getElementById('av-p-loja-wrap');if(lw)lw.style.display=forn==='REMAX'?'':'none';
   avPainelServicoChange();
 }
 
@@ -11721,7 +11831,10 @@ function abrirPainelAvencaNovo(){
   ['av-p-fornecedor','av-p-servico','av-p-estado','av-p-responsavel'].forEach(id=>document.getElementById(id).selectedIndex=0);
   document.getElementById('av-p-servico').disabled=true;
   {const ow=document.getElementById('av-p-servico-outro-wrap');if(ow){ow.style.display='none';document.getElementById('av-p-servico-outro').value='';}}
-  document.getElementById('av-p-inicio').value='';
+  {const _d=new Date();document.getElementById('av-p-inicio').value=`${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;}
+  document.getElementById('av-p-hora').value='';
+  document.getElementById('av-p-loja').value='';
+  document.getElementById('av-p-loja-wrap').style.display='none';
   document.getElementById('av-p-conclusao').value='';
   document.getElementById('av-p-urgente').checked=false;
   document.getElementById('av-p-pasta-wrap').style.display='none';
@@ -11758,6 +11871,8 @@ function abrirPainelAvenca(itemId){
   document.getElementById('av-p-inicio').value=i[AP.inicio]?i[AP.inicio].substring(0,10):'';
   document.getElementById('av-p-conclusao').value=i[AP.conclusao]?i[AP.conclusao].substring(0,10):'';
   document.getElementById('av-p-estado').value=i[AP.estado]||'Em curso';
+  document.getElementById('av-p-hora').value=i[AP.hora]||'';
+  document.getElementById('av-p-loja').value=i[AP.loja]||'';
   document.getElementById('av-p-responsavel').value=i[AP.responsavel]||'';
   document.getElementById('av-p-urgente').checked=!!i[AP.urgente];
   document.getElementById('av-p-notas').value=i[AP.notas]||'';
@@ -11777,6 +11892,7 @@ function abrirPainelAvenca(itemId){
   btnCPCV._dados={
     webUrl:i[AP.pasta]||'',
     fornecedor:i[AP.fornecedor]||'',
+    loja:i[AP.loja]||'',
     titulo:i[AP.titulo]||'',
     nomePasta:i[AP.pasta]?decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' '):''
   };
@@ -11799,6 +11915,7 @@ async function gerarCPCVDaListagem(itemId){
   const dados={
     webUrl:i[AP.pasta],
     fornecedor:i[AP.fornecedor]||'',
+    loja:i[AP.loja]||'',
     titulo:i[AP.titulo]||'',
     nomePasta:decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' ')
   };
@@ -11812,10 +11929,10 @@ async function abrirCPCVRemax(dados,btn){
   try{
     if(!driveIdAvencas)throw new Error('Biblioteca AVENCAS não disponível');
     await renovarToken();
-    const resolveRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(dados.fornecedor)}/${encodeURIComponent(dados.nomePasta)}`,{
+    const resolveRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${avSubPath(dados.fornecedor,dados.loja)}/${encodeURIComponent(dados.nomePasta)}`,{
       headers:{'Authorization':'Bearer '+graphToken}
     });
-    if(!resolveRes.ok)throw new Error(`Não consegui localizar pasta ${dados.fornecedor}/${dados.nomePasta} (${resolveRes.status})`);
+    if(!resolveRes.ok)throw new Error(`Não consegui localizar pasta ${dados.fornecedor}${dados.loja?'/'+dados.loja:''}/${dados.nomePasta} (${resolveRes.status})`);
     const item=await resolveRes.json();
     if(graphToken)localStorage.setItem('lbc_graph_token',graphToken);
     const params=new URLSearchParams({
@@ -11857,6 +11974,10 @@ async function guardarProcessoAvenca(){
     if(!serv){showToast('Escolhe o tipo de serviço','error');return;}
   }
   if(/^outr/i.test(serv)&&!servLivre){showToast('Descreve o serviço no campo "Outros"','error');return;}
+  const loja=forn==='REMAX'?(document.getElementById('av-p-loja').value||''):'';
+  if(!avPainelItemId&&forn==='REMAX'&&!loja){showToast('Escolhe a loja REMAX','error');return;}
+  const hora=(document.getElementById('av-p-hora').value||'').trim();
+  if(hora&&!/^([01]?\d|2[0-3]):[0-5]\d$/.test(hora)){showToast('Hora inválida — usa o formato 15:42','error');return;}
   const btn=document.getElementById('av-btn-guardar');
   btn.disabled=true;btn.textContent='A guardar...';
   const body={};
@@ -11869,6 +11990,8 @@ async function guardarProcessoAvenca(){
   const resp=document.getElementById('av-p-responsavel').value;if(resp)body[AP.responsavel]=resp;
   body[AP.urgente]=document.getElementById('av-p-urgente').checked;
   const notas=document.getElementById('av-p-notas').value;if(notas)body[AP.notas]=notas;
+  if(loja)body[AP.loja]=loja;
+  if(hora)body[AP.hora]=hora;else if(avPainelItemId)body[AP.hora]=null;
   try{
     if(avPainelItemId){
       // Editar processo existente
@@ -11882,7 +12005,7 @@ async function guardarProcessoAvenca(){
       // Nome da pasta: AAAAMMDD TITULO SERVICO (em maiúsculas)
       const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
       const nomePasta=sanitizarNomePasta(`${dataStr} ${titulo.substring(0,40).trim()}${servEfetivo?' '+servEfetivo:''}`.toUpperCase());
-      const fornPath=encodeURIComponent(forn);
+      const fornPath=avSubPath(forn,loja);
       const pastaRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
         method:'POST',
         headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
@@ -11891,13 +12014,14 @@ async function guardarProcessoAvenca(){
       if(!pastaRes.ok){
         const err=await pastaRes.text();
         console.error('[Avenças] Falha ao criar pasta:',pastaRes.status,err);
-        throw new Error(`Não consegui criar pasta em AVENCAS/${forn}/. Verifica que a pasta "${forn}" existe na biblioteca AVENCAS. (erro ${pastaRes.status})`);
+        const onde=loja?`${forn}/${loja}`:forn;
+        throw new Error(`Não consegui criar pasta em AVENCAS/${onde}/. Verifica que a pasta "${onde}" existe na biblioteca AVENCAS. (erro ${pastaRes.status})`);
       }
       const pasta=await pastaRes.json();
       body[AP.pasta]=pasta.webUrl;
       // Só agora cria o registo na lista — se a pasta falhou, não cria registo órfão
       await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
-      showToast(`Processo criado em ${forn}/${nomePasta}`,'success');
+      showToast(`Processo criado em ${forn}${loja?'/'+loja:''}/${nomePasta}`,'success');
       await carregarAvencas();
     }
     fecharPainelAvenca();
