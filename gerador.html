@@ -183,7 +183,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-24.3</span>
+    <span class="page-sub">piloto · v2026-10-24.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1085,8 +1085,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
     <div id="preco-apuramento" style="margin-top:.7rem"></div>
 
-    <!-- 6.3 · APB -->
-    <div class="cond-block" style="margin-top:.7rem">
+    <!-- 6.3 · APB — passou para cada ónus (24/10/2026); fica só para rascunhos antigos -->
+    <div class="cond-block" style="margin-top:.7rem;display:none" id="bloco-apb-antigo">
+      <div style="font-size:10.5px;color:var(--amber);margin-bottom:.4rem">O APB passou para cada ónus (Ónus → Cancelamento → Liquidação no ato). Este rascunho ainda usa o bloco antigo: desligue-o depois de passar os dados para o ónus.</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
         <div><div class="cond-block-title" style="margin-bottom:2px">6.3 · Pagamento APB</div>
           <div style="font-size:10.5px;color:var(--text-faint)">Liquidação do capital em dívida da parte vendedora, ao abrigo do protocolo</div></div>
@@ -2945,8 +2946,17 @@ function bancoMutuanteCurto(){
 function fraseHipAnterior(suj,daBanco,aQuem){
   return`${suj} com primeira hipoteca voluntária a favor ${daBanco||'…'}, constituída por ato imediatamente anterior ao presente, celebrado nesta data, para garantia do empréstimo concedido ${aQuem||'…'}.`;
 }
+/* APB por ónus (24/10/2026): cada ónus que se cancela pode ser liquidado por transferência
+   APB; cada um dá uma alínea na cláusula do preço. O antigo 6.3 (um só APB) continua a
+   valer para rascunhos antigos que o tenham ligado. */
+function apbLista(){
+  const l=lerOnus().filter(o=>o.liq==='apb'&&(o.canc==='fisico'||o.canc==='codigo'))
+    .map(o=>({valor:o['apb-valor'],origem:o['apb-origem'],iban:o['apb-iban'],banco:o['apb-banco']||o.ent,ap:o.ap}));
+  if(chk('t-apb'))l.push({valor:v('f-apb-valor'),origem:v('f-apb-origem'),iban:v('f-apb-iban'),banco:v('f-apb-banco')||bancoACancelar(),ap:'',antigo:true});
+  return l;
+}
 function liqChequeFrag(o,banco){
-  if(!o['liq-ordem']&&!o['liq-valor']&&!o['liq-num'])return'';
+  if(o.liq!=='cheque')return'';
   banco=o['liq-banco']||banco||bancoMutuanteCurto();
   const val=parseValor(o['liq-valor']);
   return` e liquidado mediante cheque bancário emitido ${(()=>{const b=String(banco||'').replace(/^(a|o)\s+/i,'');if(!b)return'pela …';const e=entidadeOnus(b);return e.replace(/^da /,'pela ').replace(/^do /,'pelo ').replace(/^de /,'por ');})()} à ordem ${o['liq-ordem']?entidadeOnus(o['liq-ordem']):'de …'}, no valor de ${val?`${fmtValor(val)} EUROS (${valorExtenso(o['liq-valor']).toLowerCase()})`:'… EUROS (…)'} com o número ${o['liq-num']||'…'}`;
@@ -3254,7 +3264,22 @@ function addOnus(dados,contentor){
         </select></div>
       <div class="form-group onus-fis" style="display:none"><label class="form-label">Emitida em</label>
         <input type="date" class="form-input" id="${id}-data" onchange="atualizar()"></div>
-      <div class="form-group form-full onus-liq" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">Liquidação por cheque bancário (facultativo) — entra no contrato: «… cujo cancelamento é assegurado com o presente ato e liquidado mediante cheque bancário emitido pela [banco] à ordem de …, no valor de … EUROS (…) com o número …»</div></div>
+      <div class="form-group form-full onus-liqsel" style="display:none"><label class="form-label">Liquidação no ato</label>
+        <select class="form-select" id="${id}-liq" onchange="atualizar()">
+          <option value="">— nenhuma —</option>
+          <option value="apb">Transferência ao abrigo do protocolo APB</option>
+          <option value="cheque">Cheque bancário</option>
+        </select></div>
+      <div class="form-group form-full onus-apb" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">Entra na cláusula do preço, como alínea: «Na presente data e ao abrigo do protocolo APB, a CAIXA transfere o montante de … da conta dos mutuários com o número …, para a conta com o IBAN …, titulada pelo banco …»</div></div>
+      <div class="form-group onus-apb" style="display:none"><label class="form-label">Montante (€)</label>
+        <input class="form-input" id="${id}-apb-valor" oninput="atualizar()" placeholder="Ex: 142350,22"></div>
+      <div class="form-group onus-apb" style="display:none"><label class="form-label">Conta dos mutuários</label>
+        <input class="form-input" id="${id}-apb-origem" oninput="atualizar()" placeholder="N.º da conta na CAIXA"></div>
+      <div class="form-group onus-apb" style="display:none"><label class="form-label">IBAN de destino — OIC</label>
+        <input class="form-input" id="${id}-apb-iban" oninput="atualizar()" placeholder="PT50 …"></div>
+      <div class="form-group onus-apb" style="display:none"><label class="form-label">Banco titular da conta de destino</label>
+        <input class="form-input" id="${id}-apb-banco" oninput="atualizar()" placeholder="Em branco: o «A favor de» deste ónus"></div>
+      <div class="form-group form-full onus-liq" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">Entra no contrato: «… cujo cancelamento é assegurado com o presente ato e liquidado mediante cheque bancário emitido pela [banco] à ordem de …, no valor de … EUROS (…) com o número …»</div></div>
       <div class="form-group onus-liq" style="display:none"><label class="form-label">Cheque emitido por</label>
         <input class="form-input" id="${id}-liq-banco" oninput="atualizar()" placeholder="Em branco: o banco mutuante"></div>
       <div class="form-group onus-liq" style="display:none"><label class="form-label">Cheque à ordem de</label>
@@ -3275,9 +3300,11 @@ function addOnus(dados,contentor){
   /* O prédio fica guardado no bloco: as opções só existem depois de os prédios
      adicionais estarem carregados (aplicarOnus). */
   div.dataset.pred=(dados&&dados.pred)||'1';
-  if(dados)['desc','ap','ent','nif','canc','data','codigo','liq-banco','liq-ordem','liq-valor','liq-num'].forEach(k=>{
+  if(dados)['desc','ap','ent','nif','canc','data','codigo','liq','apb-valor','apb-origem','apb-iban','apb-banco','liq-banco','liq-ordem','liq-valor','liq-num'].forEach(k=>{
     const e=document.getElementById(`${id}-${k}`);if(e&&dados[k]!==undefined)e.value=dados[k];
   });
+  /* Rascunhos de antes da escolha (24/10/2026): com dados do cheque, a liquidação é por cheque. */
+  if(dados&&dados.liq===undefined&&(dados['liq-ordem']||dados['liq-valor']||dados['liq-num']))setProp(`${id}-liq`,'value','cheque');
 }
 /* Prédio sobre que incide o ónus: '1' é o prédio principal (UM), '2'… os
    adicionais, 'todos' todos. Sem prédios adicionais é sempre o UM. */
@@ -3299,6 +3326,7 @@ function lerOnusBlocos(blocos,pred){
     desc:g(`${b.id}-desc`),ap:g(`${b.id}-ap`),ent:g(`${b.id}-ent`),nif:g(`${b.id}-nif`),
     canc:g(`${b.id}-canc`)||'nao',data:g(`${b.id}-data`),codigo:g(`${b.id}-codigo`),
     'liq-banco':g(`${b.id}-liq-banco`),'liq-ordem':g(`${b.id}-liq-ordem`),'liq-valor':g(`${b.id}-liq-valor`),'liq-num':g(`${b.id}-liq-num`),
+    liq:g(`${b.id}-liq`),'apb-valor':g(`${b.id}-apb-valor`),'apb-origem':g(`${b.id}-apb-origem`),'apb-iban':g(`${b.id}-apb-iban`),'apb-banco':g(`${b.id}-apb-banco`),
     pred:pred||predOnusValido(b.dataset.pred)
   })).filter(o=>o.desc||o.ap||o.ent);
 }
@@ -3335,7 +3363,10 @@ function aplicarOnus(){
     const c=document.getElementById(`${b.id}-canc`)?.value||'nao';
     b.querySelectorAll('.onus-fis').forEach(e=>e.style.display=c==='fisico'?'block':'none');
     b.querySelectorAll('.onus-cod').forEach(e=>e.style.display=c==='codigo'?'block':'none');
-    b.querySelectorAll('.onus-liq').forEach(e=>e.style.display=(c==='fisico'||c==='codigo')?'block':'none');
+    const cancela=c==='fisico'||c==='codigo',lq=document.getElementById(`${b.id}-liq`)?.value||'';
+    b.querySelectorAll('.onus-liqsel').forEach(e=>e.style.display=cancela?'block':'none');
+    b.querySelectorAll('.onus-liq').forEach(e=>e.style.display=cancela&&lq==='cheque'?'block':'none');
+    b.querySelectorAll('.onus-apb').forEach(e=>e.style.display=cancela&&lq==='apb'?'block':'none');
   });
 }
 /* Ligado, há ónus; desligado, o imóvel vai livre. */
@@ -5486,18 +5517,18 @@ function compor(){
      depois o APB, e o remanescente a fechar. A letra do APB e a do remanescente
      continuam a contagem dos pagamentos anteriores. */
   let nAlinea=alineas.length;
-  const letraAPB=chk('t-apb')?letras[nAlinea++]||'?':'';
+  const apbs=apbLista();
+  const letrasAPB=apbs.map(()=>letras[nAlinea++]||'?');
   const letraRem=letras[nAlinea]||'?';
-  const txtRem=textoRemanescente(rem,alineas.length||chk('t-apb')?letraRem:'');
+  const txtRem=textoRemanescente(rem,alineas.length||apbs.length?letraRem:'');
   const txtUnica=textoViaUnica(rem,generosOutorgantes(vend).length);
   /* ── 6.3 · APB ──
      Redação da Liliana. Forma adicional de pagamento: a CAIXA transfere da
      conta dos mutuários para o banco que detém o ónus, liquidando o capital em
      dívida da parte vendedora. Fecha a cláusula do preço, depois das restantes
      formas. O banco vem do ónus que se cancela, salvo indicação em contrário. */
-  const txtAPB=chk('t-apb')
-    ? `${letraAPB?letraAPB+') ':''}Na presente data e ao abrigo do protocolo APB, a CAIXA transfere o montante de ${v('f-apb-valor')?`${fmtValor(parseValor(v('f-apb-valor')))} EUROS (${valorExtenso(v('f-apb-valor')).toLowerCase()})`:'…'}, da conta dos mutuários com o número ${v('f-apb-origem')||'…'}, para a conta com o IBAN ${v('f-apb-iban')||'…'}, titulada pelo banco ${v('f-apb-banco')||bancoACancelar()||'…'}, para efeitos de liquidação do capital em dívida da PARTE VENDEDORA referente à aquisição deste imóvel.`
-    : '';
+  const txtAPB=apbs.map((a,i)=>
+      `${letrasAPB[i]?letrasAPB[i]+') ':''}Na presente data e ao abrigo do protocolo APB, a CAIXA transfere o montante de ${a.valor?`${fmtValor(parseValor(a.valor))} EUROS (${valorExtenso(a.valor).toLowerCase()})`:'…'}, da conta dos mutuários com o número ${a.origem||'…'}, para a conta com o IBAN ${a.iban||'…'}, titulada pelo banco ${a.banco||'…'}, para efeitos de liquidação do capital em dívida da PARTE VENDEDORA referente à aquisição deste imóvel.`).join('\n');
 
   /* Com sinal, o preço reparte-se em alíneas; sem sinal, paga-se de uma vez
      com a outorga e o meio entra logo na primeira frase. */
@@ -5505,7 +5536,7 @@ function compor(){
   /* Havendo APB, o preço reparte-se mesmo sem sinal: parte vai ao banco, o
      resto à parte vendedora. Sem isto, a frase de abertura dizia que o preço
      todo era pago por um meio só, e logo a seguir vinha a alínea do APB. */
-  const repartido=rem&&rem.integral&&(alineas.length||chk('t-apb'));
+  const repartido=rem&&rem.integral&&(alineas.length||apbs.length);
   const txtPreco=(rem&&rem.integral
       ?(repartido
         ?`${base} com a outorga do presente contrato, da seguinte forma:`
@@ -8127,6 +8158,7 @@ function onRemMeio(){
     :selo.origem==='calculado'?'Calculado a 6/1000 sobre o montante do mútuo.'
     :'Preenche o montante do mútuo para o valor ser calculado.');
   setDisp('g-apb',chk('t-apb')?'block':'none');
+  setDisp('bloco-apb-antigo',chk('t-apb')?'block':'none');
   const bancoOnus=bancoACancelar();
   setProp('apb-nota-banco','textContent',bancoOnus
     ?`Vazio, usa «${bancoOnus}», do ónus que se cancela.`
@@ -8149,7 +8181,7 @@ function onRemMeio(){
   mostra('.rem-quem',(v('f-rem-quitacao')||'simples')==='unica','flex');
   /* Sugestão do valor: preço menos o que já foi imputado nas alíneas e no APB. */
   const jaImputado=lerPagamentos().reduce((s,p)=>s+parseValor(p.valor),0)
-    +(chk('t-apb')?parseValor(v('f-apb-valor')):0);
+    +apbLista().reduce((s,a)=>s+parseValor(a.valor),0);
   const falta=parseValor(v('f-preco'))-jaImputado;
   const el=document.getElementById('rem-sugestao');
   if(el)el.textContent=falta>0?`Diferença para o preço: ${fmtValor(falta)} €`
@@ -8173,10 +8205,10 @@ function desenharApuramentoPreco(){
     const val=parseValor(p.valor); soma+=val;
     linhas.push([`${letras[i]}) ${p.recetor||(chk('t-sinal')?'sinal':'pagamento')}`,val,preco-soma]);
   });
-  if(chk('t-apb')){
-    const val=parseValor(v('f-apb-valor')); soma+=val;
-    linhas.push(['APB — liquidação do capital em dívida',val,preco-soma]);
-  }
+  apbLista().forEach(a=>{
+    const val=parseValor(a.valor); soma+=val;
+    linhas.push([`APB — liquidação${a.banco?' · '+a.banco:''}`,val,preco-soma]);
+  });
   const rem=parseValor(v('f-rem-valor'));
   if(rem){soma+=rem;linhas.push(['Remanescente',rem,preco-soma]);}
   const falta=preco-soma;
@@ -9027,11 +9059,16 @@ function calcularAlertas(){
     if(!v('f-apb-iban'))push('apb-iban','bloqueio','Preço','Pagamento APB sem o IBAN de destino.');
     if(!v('f-apb-banco')&&!bancoACancelar())
       push('apb-banco','bloqueio','Preço','Pagamento APB sem o banco de destino — não há ónus a cancelar de onde o ir buscar.');
-    const soma=parseValor(v('f-apb-valor'));
-    const preco=parseValor(v('f-preco'));
-    if(soma&&preco&&soma>preco)
-      push('apb-excede','aviso','Preço','O montante do APB excede o preço — confirma os valores.');
   }
+  apbLista().filter(a=>!a.antigo).forEach((a,i)=>{
+    const q=`APB${a.ap?' ('+a.ap+')':''}`;
+    if(!a.valor)push(`apb${i}-valor`,'bloqueio','Ónus',`${q}: falta o montante.`);
+    if(!a.origem)push(`apb${i}-origem`,'bloqueio','Ónus',`${q}: falta a conta dos mutuários.`);
+    if(!a.iban)push(`apb${i}-iban`,'bloqueio','Ónus',`${q}: falta o IBAN de destino.`);
+    if(!a.banco)push(`apb${i}-banco`,'bloqueio','Ónus',`${q}: falta o banco de destino.`);
+  });
+  {const soma=apbLista().reduce((t,a)=>t+parseValor(a.valor),0);const preco=parseValor(v('f-preco'));
+   if(soma&&preco&&soma>preco)push('apb-excede','aviso','Preço','O montante do APB excede o preço — confirma os valores.');}
 
   /* ── Ónus e encargos · secção do imóvel, comum aos dois troncos ── */
   if(chk('t-onus')||lerOnus().length){
