@@ -183,7 +183,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-24.2</span>
+    <span class="page-sub">piloto · v2026-10-24.3</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -259,6 +259,26 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <button class="btn btn-sm" onclick="exportarBiblioteca()" title="Guardar a biblioteca num ficheiro">⬇ Exportar</button>
       <button class="btn btn-sm" onclick="document.getElementById('bib-import').click()" title="Carregar de um ficheiro">⬆ Importar</button>
       <input type="file" id="bib-import" accept="application/json" style="display:none" onchange="importarBiblioteca(this)">
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR CLÁUSULA -->
+<div class="modal-overlay" id="modal-clausula">
+  <div class="modal" style="max-width:700px;width:96%">
+    <div class="modal-title" id="cl-modal-titulo">Nova cláusula</div>
+    <div class="form-group" style="margin-bottom:.6rem"><label class="form-label">Título (só para a encontrar)</label>
+      <input class="form-input" id="cl-titulo" placeholder="Ex: Ónus de inalienabilidade"></div>
+    <div class="form-group" style="margin-bottom:.6rem"><label class="form-label">Categoria</label>
+      <input class="form-input" id="cl-categoria" placeholder="Ex: Mútuo"></div>
+    <div class="form-group" style="margin-bottom:.4rem"><label class="form-label">Texto — cada linha é um parágrafo</label>
+      <textarea class="form-input" id="cl-texto" rows="9" style="resize:vertical;font-family:inherit;font-size:13px;line-height:1.5"></textarea></div>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.6rem">Pode usar {{mutuarios}} (os MUTUÁRIOS / o MUTUÁRIO / a MUTUÁRIA), {{poderao}} (poderão / poderá), {{data}}, {{primeiro}}, {{segunda}}. O resto fica como escrito.</div>
+    <label style="display:flex;gap:.45rem;align-items:center;font-size:12px;margin-bottom:.9rem"><input type="checkbox" id="cl-fim">
+      Mostrar em «Cláusulas especiais» (fim do contrato, antes do período de reflexão)</label>
+    <div class="modal-actions">
+      <button class="btn" onclick="fecharModalClausula()" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" onclick="gravarModalClausula()" style="flex:2">Guardar</button>
     </div>
   </div>
 </div>
@@ -1453,6 +1473,21 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <label class="toggle-switch"><input type="checkbox" id="t-reflexao" onchange="atualizar()" checked><span class="toggle-slider"></span></label>
       </div>
       <div style="font-size:10.5px;color:var(--text-faint);margin-top:4px">Cláusula única, no fecho do contrato. Havendo dois contratos, cada um leva a sua.</div>
+    </div>
+
+    <!-- CLÁUSULAS ESPECIAIS (fim do contrato, antes do período de reflexão) -->
+    <div class="cond-block" style="margin-top:.7rem" id="bloco-especiais">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
+        <div><div class="cond-block-title" style="margin-bottom:2px">Cláusulas especiais</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">Vão para o fim do contrato, antes do período de reflexão. Nada vai ao termo.</div></div>
+        <button type="button" class="btn btn-sm" onclick="novaClausula('fim')">+ Nova</button>
+      </div>
+      <div id="esp-lista" style="margin-top:.5rem"></div>
+      <div id="esp-onde-wrap" style="display:none;margin-top:.5rem;font-size:11.5px">
+        <label style="color:var(--text-faint)">Havendo dois contratos, vão</label>
+        <select class="form-select" id="esp-onde" onchange="atualizar()" style="font-size:11.5px;padding:3px 8px;margin-left:.3rem">
+          <option value="todos">nos dois</option><option value="1">só no primeiro</option><option value="2">só no segundo</option></select>
+      </div>
     </div>
 
     <div class="cond-block" style="margin-top:.7rem">
@@ -3847,6 +3882,7 @@ function comporMH(variante){
   contrato.push({id:P+'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
   contrato.push({id:P+'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
+  comEspeciais(contrato,{P,pl:muP,fem:femM,n:docsMH().indexOf(variante)+1});
   return{variante,cod:(variante==='toic'?'MH_TOIC':'MH_UNO')+(fiadores.length?'_F':''),
          rot:tipoNome,termo,contrato,anexo:[]};
 }
@@ -4206,6 +4242,7 @@ function comporMH_CCAM(variante){
     .forEach((t,i)=>contrato.push({id:`${P}c-renuncia-${i}`,T:'',X:t}));
   contrato.push({id:P+'c-data',T:'',X:`Celebrado em ${dataExtenso(v('f-data-ato'))}.`});
 
+  comEspeciais(contrato,{P,pl:muP,fem:femM,n:docsMH().indexOf(variante)+1});
   return{variante,cod:(ACC?'MH_ACC':'MH_UNO')+(fiadores.length?'_F':''),rot:titulo,termo,contrato,anexo:[]};
 }
 
@@ -5877,6 +5914,7 @@ function compor(){
     .forEach((t,i)=>contrato.push({id:`c-renuncia-${i}`,T:'',X:t}));
   contrato.push({id:'c-aceitacao',T:'',X:`As partes declaram que aceitam o presente contrato nos termos em que foi exarado.`});
   contrato.push({id:'c-data',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}`});
+  if(ehCVMH){const g=generosOutorgantes(comps);comEspeciais(contrato,{pl:g.length>1,fem:g.length>0&&g.every(x=>x==='F')});}
 
   /* ── FOLHA AUTÓNOMA · Reconhecimento de assinaturas (só locação financeira) ──
      Não faz parte da escritura de compra e venda: é acessório do contrato de locação
@@ -6581,6 +6619,7 @@ function desfazerFunilMH(){
 }
 function atualizar(){
   sincOnus();
+  {const w=document.getElementById('esp-onde-wrap');if(w)w.style.display=(typeof docsMH==='function'&&docsMH().length>1)?'':'none';}
   // ── funil ──
   const ato=atoEscolhido();
   const ehCV=ato==='cv';
@@ -7478,7 +7517,7 @@ function estadoCompleto(){
   });
   /* As verbas do ato 3 são bloco repetível e têm de ser guardadas à parte, como
      os restantes: os campos avulsos não as apanham. */
-  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),bens:lerBensBruto(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico,mzVistos:MZ.vistosRascunho||mzLerVistos()};
+  return{tipo:tipoDeduzido().cod,ato:atoEscolhido(),campos,vendedores:lerVendedores(),compradores:lerCompradores(),quartos:lerQuartos(),onus:lerOnus(),falecidos:lerFalecidos(),cheques:lerCheques(),matrizes:lerMatrizes(),prediosExtra:lerPrediosExtra(),pagamentos:lerPagamentos(),remanescente:lerRemanescente(),bens:lerBensBruto(),manuais,notas,inseridos,titulos,marcas,insCnt,alertasHistorico,especiais,espOnde:v('esp-onde')||'todos',mzVistos:MZ.vistosRascunho||mzLerVistos()};
 }
 function restaurarEstado(d){
   if(d&&d.mzVistos)MZ.vistosRascunho=d.mzVistos;
@@ -7527,6 +7566,7 @@ function restaurarEstado(d){
   manuais=d.manuais||{};
   notas=d.notas||{};
   inseridos=d.inseridos||{};
+  especiais=d.especiais||{};setProp('esp-onde','value',d.espOnde||'todos');setTimeout(renderEspeciais,0);
   titulos=d.titulos||{};
   marcas=d.marcas||{};
   alertasHistorico=d.alertasHistorico||{};
@@ -9233,17 +9273,68 @@ const BIBLIOTECA_SEMENTE=[
    zona:'termo',porValidar:true,
    texto:'Ato de {{dataCurta}} — por extenso: {{data}}.\nEntidade autenticadora: {{solicitadora}}, com domicílio profissional na {{escritorio}}.\nParte vendedora: {{primeiro}}.\nParte compradora: {{segunda}}.'}
 ];
+/* Cláusulas da Liliana que entram na biblioteca de todos os browsers (uma vez:
+   se forem apagadas, não voltam). Redação dela (24/10/2026); só a concordância
+   de número/género ({{mutuarios}}, {{poderao}}) é automática. */
+const CLAUSULAS_LBC=[
+  {id:'lbc-inalienabilidade',categoria:'Mútuo',titulo:'Ónus de inalienabilidade (crédito bonificado)',
+   zona:'fim',porValidar:false,
+   texto:'Ao abrigo do regime contratual convencionado, {{mutuarios}} não {{poderao}} alienar o IMÓVEL atrás hipotecado durante o prazo de cinco anos após a data da celebração do presente contrato de empréstimo, que se destinou à sua aquisição, salvo nos casos previstos no número 4 do art.º 10º da Lei nº 64/2014, de 26 de agosto.\nSe vier a verificar-se a alienação antes de decorrido o prazo referido no número anterior, fora dos casos ali mencionados, o Segundo Contratante terá de reembolsar a credora do montante das bonificações entretanto usufruídas, acrescido de dez por cento.'}
+];
 let biblioteca=[];
 function carregarBiblioteca(){
   try{const g=localStorage.getItem('lbc_clausulas_dpa');biblioteca=g?JSON.parse(g):BIBLIOTECA_SEMENTE.slice();}
   catch(e){biblioteca=BIBLIOTECA_SEMENTE.slice();}
+  let vistas=[];try{vistas=JSON.parse(localStorage.getItem('lbc_clausulas_lbc_vistas')||'[]');}catch(_){}
+  const novas=CLAUSULAS_LBC.filter(c=>!vistas.includes(c.id)&&!biblioteca.some(b=>b.id===c.id));
+  if(novas.length||CLAUSULAS_LBC.some(c=>!vistas.includes(c.id))){
+    biblioteca.push(...novas.map(c=>({...c})));
+    try{localStorage.setItem('lbc_clausulas_lbc_vistas',JSON.stringify(CLAUSULAS_LBC.map(c=>c.id)));}catch(_){}
+    gravarBiblioteca();}
+}
+/* ── CLÁUSULAS ESPECIAIS ──
+   As da biblioteca com zona 'fim' aparecem no bloco do formulário; as marcadas
+   entram no CONTRATO antes do período de reflexão (sem ele, antes das renúncias /
+   aceitação / data). O texto fica guardado no rascunho no momento em que se marca,
+   para o contrato não mudar se a biblioteca mudar depois. */
+let especiais={};   /* id → {titulo, texto} */
+function renderEspeciais(){
+  const cont=document.getElementById('esp-lista');if(!cont)return;
+  if(!biblioteca.length)carregarBiblioteca();
+  const lst=biblioteca.filter(c=>c.zona==='fim');
+  Object.keys(especiais).forEach(id=>{if(!lst.some(c=>c.id===id))lst.push({id,titulo:especiais[id].titulo,texto:especiais[id].texto,soRascunho:true});});
+  cont.innerHTML=lst.length?lst.map(c=>`<label style="display:flex;gap:.5rem;align-items:flex-start;font-size:12px;padding:.35rem 0;border-top:1px solid var(--border)">
+      <input type="checkbox" ${especiais[c.id]?'checked':''} onchange="marcarEspecial('${c.id}',this.checked)" style="margin-top:2px">
+      <span style="flex:1"><b style="font-weight:600">${esc(c.titulo)}</b>${c.porValidar?' <span style="font-size:9.5px;background:#E8C440;color:#4A3A00;padding:1px 5px;border-radius:3px">POR VALIDAR</span>':''}${c.soRascunho?' <span style="font-size:10px;color:var(--text-faint)">(do rascunho)</span>':''}
+        <span style="display:block;color:var(--text-faint);font-size:11px;max-height:2.8em;overflow:hidden">${esc(c.texto)}</span></span>
+      ${c.soRascunho?'':`<button type="button" class="btn btn-sm" style="font-size:10px;padding:1px 7px" onclick="event.preventDefault();editarClausula('${c.id}')">Editar</button>`}</label>`).join('')
+    :'<div style="font-size:11.5px;color:var(--text-faint)">Sem cláusulas especiais. Use «+ Nova».</div>';
+  const dois=typeof docsMH==='function'&&docsMH().length>1;
+  const w=document.getElementById('esp-onde-wrap');if(w)w.style.display=dois?'':'none';
+}
+function marcarEspecial(id,on){
+  const c=acharClausula(id)||(especiais[id]&&{titulo:especiais[id].titulo,texto:especiais[id].texto});
+  if(on&&c)especiais[id]={titulo:c.titulo,texto:c.texto};else delete especiais[id];
+  atualizar();renderEspeciais();
+}
+/* Mete as especiais marcadas no contrato. ctx = {pl, fem, n (1.º/2.º contrato)} */
+function comEspeciais(contrato,ctx){
+  const ids=Object.keys(especiais);if(!ids.length)return contrato;
+  const onde=document.getElementById('esp-onde')?.value||'todos';
+  if(ctx.n&&onde!=='todos'&&String(ctx.n)!==onde)return contrato;
+  const extra={'{{mutuarios}}':ctx.pl?'os MUTUÁRIOS':(ctx.fem?'a MUTUÁRIA':'o MUTUÁRIO'),'{{poderao}}':ctx.pl?'poderão':'poderá'};
+  const blocos=ids.map((id,i)=>({id:`${ctx.P||''}c-esp-${id}`,T:'',X:resolverVariaveis(especiais[id].texto,extra)}));
+  let k=contrato.findIndex(b=>/c-(mh-)?reflexao$/.test(b.id));
+  if(k<0)k=contrato.findIndex(b=>/c-(renuncia-\d+|aceitacao|data)$/.test(b.id));
+  if(k<0)k=contrato.length;
+  contrato.splice(k,0,...blocos);return contrato;
 }
 function gravarBiblioteca(){
   try{localStorage.setItem('lbc_clausulas_dpa',JSON.stringify(biblioteca));}
   catch(e){showToast('Não consegui gravar a biblioteca: '+e.message,'error');}
 }
 /* Substitui as variáveis pelos dados do formulário no momento da inserção. */
-function resolverVariaveis(txt){
+function resolverVariaveis(txt,extra){
   const sol=SOLICITADORAS[v('f-solicitadora')];
   const nomes=arr=>arr.map(o=>o.tipo==='empresa'?(o.denom||''):(o.nome||'')).filter(Boolean).join(', ')||'…';
   const cgd=compradoraCGD();
@@ -9253,7 +9344,8 @@ function resolverVariaveis(txt){
     '{{solicitadora}}':sol?(sol.assinNome||sol.nome):'…',
     '{{escritorio}}':sol?sol.domicilio:'…',
     '{{primeiro}}':nomes(lerVendedores()),
-    '{{segunda}}':cgd?'CAIXA GERAL DE DEPÓSITOS, S.A.':nomes(lerCompradores())
+    '{{segunda}}':cgd?'CAIXA GERAL DE DEPÓSITOS, S.A.':nomes(lerCompradores()),
+    '{{mutuarios}}':'os MUTUÁRIOS','{{poderao}}':'poderão',...(extra||{})
   };
   return Object.keys(mapa).reduce((s,k)=>s.split(k).join(mapa[k]),txt);
 }
@@ -9306,27 +9398,36 @@ function inserirClausula(id){
   fecharBiblioteca();
   showToast('Cláusula inserida — edita na folha','success');
 }
-function novaClausula(){
-  const titulo=prompt('Título da cláusula:');if(!titulo)return;
-  const categoria=prompt('Categoria (ex: Intervenção de terceiros):','Geral')||'Geral';
-  const texto=prompt('Texto da cláusula (podes usar {{data}}, {{primeiro}}, {{segunda}}…):');if(texto===null)return;
-  biblioteca.push({id:'cl-'+Date.now().toString(36),categoria,titulo,zona:'contrato',porValidar:false,texto});
-  gravarBiblioteca();renderBiblioteca();
-  showToast('Cláusula adicionada','success');
+let clEditar=null;
+function abrirModalClausula(c,fim){
+  clEditar=c?c.id:null;
+  document.getElementById('cl-modal-titulo').textContent=c?'Editar cláusula':'Nova cláusula';
+  setProp('cl-titulo','value',c?c.titulo:'');setProp('cl-categoria','value',c?(c.categoria||''):(fim?'Mútuo':'Geral'));
+  setProp('cl-texto','value',c?c.texto:'');setProp('cl-fim','checked',c?c.zona==='fim':!!fim);
+  document.getElementById('modal-clausula').classList.add('show');
+  setTimeout(()=>document.getElementById(c?'cl-texto':'cl-titulo')?.focus(),50);
 }
-function editarClausula(id){
-  const c=acharClausula(id);if(!c)return;
-  const titulo=prompt('Título:',c.titulo);if(titulo===null)return;
-  const categoria=prompt('Categoria:',c.categoria)||c.categoria;
-  const texto=prompt('Texto:',c.texto);if(texto===null)return;
-  Object.assign(c,{titulo,categoria,texto,porValidar:false});
-  gravarBiblioteca();renderBiblioteca();
+function fecharModalClausula(){document.getElementById('modal-clausula').classList.remove('show');clEditar=null;}
+function gravarModalClausula(){
+  const titulo=v('cl-titulo').trim(),texto=(document.getElementById('cl-texto').value||'').replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(Boolean).join('\n');
+  if(!titulo||!texto){showToast('Falta o título ou o texto','error');return;}
+  const categoria=v('cl-categoria').trim()||'Geral',zona=chk('cl-fim')?'fim':'contrato';
+  carregarBiblioteca();
+  const c=clEditar&&acharClausula(clEditar);
+  if(c){Object.assign(c,{titulo,categoria,texto,zona,porValidar:false});
+    /* já marcada neste contrato: o contrato passa a usar o texto novo */
+    if(especiais[c.id])especiais[c.id]={titulo,texto};}
+  else biblioteca.push({id:'cl-'+Date.now().toString(36),categoria,titulo,zona,porValidar:false,texto});
+  gravarBiblioteca();fecharModalClausula();renderBiblioteca();renderEspeciais();atualizar();
+  showToast(c?'Cláusula atualizada':'Cláusula adicionada','success');
 }
+function novaClausula(fim){abrirModalClausula(null,fim==='fim');}
+function editarClausula(id){carregarBiblioteca();const c=acharClausula(id);if(c)abrirModalClausula(c);}
 function apagarClausula(id){
   const c=acharClausula(id);if(!c)return;
   if(!confirm(`Apagar «${c.titulo}»?`))return;
   biblioteca=biblioteca.filter(x=>x.id!==id);
-  gravarBiblioteca();renderBiblioteca();
+  gravarBiblioteca();renderBiblioteca();renderEspeciais();
 }
 function exportarBiblioteca(){
   const b=new Blob([JSON.stringify(biblioteca,null,2)],{type:'application/json'});
@@ -9342,13 +9443,15 @@ function importarBiblioteca(input){
       const d=JSON.parse(r.result);
       if(!Array.isArray(d))throw new Error('formato inesperado');
       if(confirm(`Importar ${d.length} cláusula(s)? As atuais são substituídas.`)){
-        biblioteca=d;gravarBiblioteca();renderBiblioteca();showToast('Biblioteca importada','success');
+        biblioteca=d;gravarBiblioteca();renderBiblioteca();renderEspeciais();showToast('Biblioteca importada','success');
       }
     }catch(e){showToast('Ficheiro inválido: '+e.message,'error');}
     input.value='';
   };
   r.readAsText(f);
 }
+document.addEventListener('DOMContentLoaded',()=>{try{carregarBiblioteca();renderEspeciais();}catch(e){console.warn('especiais',e);}});
+document.getElementById('modal-clausula')?.addEventListener('click',e=>{if(e.target.id==='modal-clausula')fecharModalClausula();});
 document.getElementById('modal-biblioteca')?.addEventListener('click',e=>{
   if(e.target.id==='modal-biblioteca')fecharBiblioteca();
 });
