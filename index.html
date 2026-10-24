@@ -2690,6 +2690,8 @@ async function mostrarApp(){
      desbloquear se mostra, para não convidar a tentar. */
   if(financeiroDesbloqueado())mostrarMenuFinanceiro();
   setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
+  /* Escrituras dos próximos 4 dias sem o visto da Liliana → e-mail (24/10/2026). */
+  setTimeout(()=>{if(window.vistoAvisos)window.vistoAvisos();},4000);
 }
 
 /* ── LEITURA DE LISTAS · TODAS AS PÁGINAS ──
@@ -3399,6 +3401,7 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Verificador: cataloga os documentos da pasta (em «Catalogados») e alimenta a matriz">🔍 Verificador</button>
+        <button class="btn btn-sm" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Analisador predial: certidões × cadernetas, com relatório na pasta">🔎 Analisar</button>
         <button class="btn btn-sm" onclick="matrizAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ver os dados que o verificador já compilou desta pasta">📋 Matriz</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
@@ -3411,6 +3414,14 @@ function renderPastas(lista){
    renomeia os documentos, grava-os na pasta principal (originais em «_originais») e
    atualiza a MATRIZ_VERIFICADOR.json. As pastas continuam a criar-se aqui no Portal. */
 const VERIFICADOR_URL='https://lililbc.github.io/verificador-lbc/verificador.html';
+/* Analisador predial (24/10/2026): certidões permanentes × cadernetas, com relatório
+   gravado na subpasta «Análises». Serve escrituras, processos e avenças. */
+const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html';
+function abrirAnalisador(lib,itemId,nome){
+  const drive=lib==='PROCESSOS'?bibliotecaProcessosId:lib==='AVENCAS'?driveIdAvencas:bibliotecaId;
+  if(!drive||!itemId){showToast('Biblioteca ainda não carregada.','error');return;}
+  window.open(`${ANALISADOR_URL}?pasta=${encodeURIComponent(drive+'|'+itemId)}&nome=${encodeURIComponent(nome||'')}`,'_blank');
+}
 /* «🔍 Verificador» (20/10/2026): abre o verificador já na pasta do cliente; cataloga os
    documentos na subpasta «Catalogados» e alimenta a matriz. A pasta abre-se em «Abrir pasta». */
 function abrirRececao(pastaId){
@@ -6379,6 +6390,7 @@ function renderProcessos(lista){
         <button class="btn btn-sm" data-lig-btn="PROCESSOS|${p.id}" onclick="ligAbrir('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Pastas ligadas">🔗</button>
         <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),'pasta','')" title="Etiquetas">🏷</button>
         <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
+        <button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Analisador predial">🔎</button>
         <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
         <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm">Abrir</a>
@@ -6473,6 +6485,7 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
           <button class="btn btn-sm visto-velha" data-visto-btn="PROCESSOS|${s.id}" data-mod="${escHtml(s.lastModifiedDateTime||'')}" onclick="vistoAlternar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Visto da Liliana" style="padding:2px 6px;font-size:10px">✓</button>
           <button class="btn btn-sm" data-lig-btn="PROCESSOS|${s.id}" onclick="ligAbrir('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),decodeURIComponent('${encodeURIComponent(s.webUrl||'')}'))" title="Pastas ligadas" style="padding:2px 6px;font-size:10px">🔗</button>
           <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),'pasta',decodeURIComponent('${encodeURIComponent(nomeCliente||'')}'))" title="Etiquetas" style="padding:2px 6px;font-size:10px">🏷</button>
+          <button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Analisador predial" style="padding:2px 6px;font-size:10px">🔎</button>
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
         </div>`;
@@ -10284,7 +10297,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
      parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
   const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
-  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length);
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto;
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 
@@ -10375,6 +10388,49 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
       f.classList.toggle('visto-falta',!soPorRever);}
   }
   window.vistoFiltrar=()=>{soPorRever=!soPorRever;vistoPintar();};
+
+  /* ── AVISO DE VISTO EM FALTA · 4 DIAS ANTES DA ESCRITURA (24/10/2026) ──
+     A data da escritura é a do início do nome da pasta (AAAAMMDD). Ao abrir o
+     Portal (seja quem for), procuram-se as escrituras dos próximos 4 dias sem o
+     visto da Liliana — ou com visto mas pasta alterada depois — e envia-se um
+     e-mail à Liliana. Cada aviso vai uma só vez por pasta e por data, e fica
+     registado no próprio registo da pasta (avisoVisto). */
+  const AVISO_DIAS=4;
+  window.vistoAvisos=async()=>{
+    try{
+      if(!bibliotecaId)return;
+      await carregar();if(!LID)return;
+      const pastas=(todasPastas&&todasPastas.length)?todasPastas
+        :((await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$orderby=lastModifiedDateTime desc`)).value||[]).filter(i=>i.folder);
+      const hoje=new Date();hoje.setHours(0,0,0,0);
+      const emFalta=[];
+      for(const p of pastas){
+        const m=String(p.name||'').match(/^(\d{4})(\d{2})(\d{2})\b/);if(!m)continue;
+        const dEsc=new Date(+m[1],+m[2]-1,+m[3]);const dias=Math.round((dEsc-hoje)/864e5);
+        if(dias<0||dias>AVISO_DIAS)continue;
+        const k=chave('ESCRITURAS',p.id),it=ITENS[k];
+        const st=estadoVisto(k,p.lastModifiedDateTime||'');
+        if(st==='ok')continue;
+        emFalta.push({p,dias,dataEsc:`${m[3]}/${m[2]}/${m[1]}`,st,ja:it&&it.avisoVisto===`${m[1]}${m[2]}${m[3]}`});
+      }
+      if(!emFalta.length)return;
+      if(souLiliana())showToast(`${emFalta.length} escritura(s) nos próximos ${AVISO_DIAS} dias sem o seu visto — filtro «Por rever» em Pastas / clientes.`,'error');
+      const novos=emFalta.filter(x=>!x.ja);if(!novos.length)return;
+      const linhas=novos.sort((a,b)=>a.dias-b.dias).map(x=>`<li><b>${esc(x.p.name)}</b> — escritura a ${x.dataEsc} (${x.dias===0?'hoje':x.dias===1?'amanhã':'daqui a '+x.dias+' dias'})${x.st==='alt'?' · <i>pasta alterada depois do visto</i>':''}</li>`).join('');
+      const message={subject:`Visto em falta — ${novos.length} escritura(s) nos próximos ${AVISO_DIAS} dias`,
+        body:{contentType:'HTML',content:`<p>Liliana,</p><p>As seguintes escrituras ainda não têm o seu visto no Portal LBC:</p><ul>${linhas}</ul><p>Abra o Portal › Pastas / clientes › «Por rever» para as rever e dar o visto.</p><p style="color:#888;font-size:12px">Aviso automático do Portal LBC.</p>`},
+        toRecipients:[{emailAddress:{address:VISTO_EMAIL}}]};
+      await renovarToken();
+      const r=await fetch(`${GRAPH_BASE}/me/sendMail`,{method:'POST',headers:{Authorization:'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify({message,saveToSentItems:false})});
+      if(!r.ok&&r.status!==202)throw new Error('envio do e-mail: HTTP '+r.status);
+      for(const x of novos){const k=chave('ESCRITURAS',x.p.id),it=ITENS[k];
+        const d={...extra(it),lib:'ESCRITURAS',itemId:x.p.id,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[],avisoVisto:x.p.name.slice(0,8)};
+        const body={Title:x.p.name,[COLD]:JSON.stringify(d)};
+        if(it){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${it.spId}/fields`,body);ITENS[k]={spId:it.spId,nome:x.p.name,...d};}
+        else{const rr=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:rr.id,nome:x.p.name,...d};}
+      }
+    }catch(e){console.warn('Aviso de visto:',e);}
+  };
 
   /* ── PASTAS LIGADAS (24/10/2026) ──
      Liga pastas do mesmo assunto, em qualquer biblioteca (Escrituras, Processos,
@@ -11909,6 +11965,7 @@ function avRenderPastas(lista){
             ${p.id?`<span onclick="event.stopPropagation()" style="display:inline-flex;gap:.3rem">
               <button class="btn btn-sm visto-velha" data-visto-btn="AVENCAS|${p.id}" data-mod="${escHtml(p.modificado||'')}" onclick="vistoAlternar('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Visto da Liliana" style="padding:2px 8px;font-size:11px">✓</button>
               <button class="btn btn-sm" data-nota-btn="AVENCAS|${p.id}" onclick="notaEditar('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Notas da pasta" style="padding:2px 8px;font-size:11px">📝</button>
+ <button class="btn btn-sm" onclick="abrirAnalisador('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Analisador predial" style="padding:2px 8px;font-size:11px">🔎</button>
               <button class="btn btn-sm" data-lig-btn="AVENCAS|${p.id}" onclick="ligAbrir('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),decodeURIComponent('${encodeURIComponent(p.url||'')}'))" title="Pastas ligadas" style="padding:2px 8px;font-size:11px">🔗</button>
             </span>`:''}
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
