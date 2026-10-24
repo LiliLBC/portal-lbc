@@ -2537,6 +2537,31 @@ tbody tr:hover td{background:#FAFAF8}
         <!-- LINHA 2: AVENÇAS POR ENTIDADE — cards gerados a partir de AVENCAS_ENTIDADES -->
         <div id="dash-avencas-cards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:.75rem"></div>
 
+        <!-- PASTAS NOVAS E VISTO DA LILIANA (desde 24/10/2026) -->
+        <div class="metric-card" style="padding:.9rem;margin-bottom:.75rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;gap:.5rem;flex-wrap:wrap">
+            <div><div class="metric-label" style="margin:0;font-size:11px">Pastas novas e visto</div>
+              <div style="font-size:10px;color:var(--text-faint)">Pastas criadas a partir de 24/10/2026 · com e sem o visto da Liliana</div></div>
+            <div style="display:flex;gap:.2rem">
+              <select class="form-select" id="dash-pv-ano" onchange="dashRenderPastasVisto()" style="font-size:10px;padding:2px 4px;width:60px"></select>
+              <select class="form-select" id="dash-pv-mes" onchange="dashRenderPastasVisto()" style="font-size:10px;padding:2px 4px;width:74px">
+                <option value="">Ano todo</option>
+                <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:.4rem">
+            <div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Entradas</div><div class="metric-value" id="dash-pv-total" style="font-size:22px;color:var(--accent);line-height:1">—</div></div>
+            <div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Com visto</div><div class="metric-value" id="dash-pv-com" style="font-size:22px;color:#2E7D4F;line-height:1">—</div></div>
+            <div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em">Sem visto</div><div class="metric-value" id="dash-pv-sem" style="font-size:22px;color:#C98A1B;line-height:1">—</div></div>
+          </div>
+          <canvas id="dash-pv-chart" style="width:100%;height:140px;display:block"></canvas>
+          <div id="dash-pv-breakdown" style="margin-top:.5rem;font-size:10.5px"></div>
+        </div>
+
         <!-- RUBRICA: AVENÇAS MENSAIS (receita recorrente) -->
         <div class="metric-card" style="padding:1rem;margin-bottom:.75rem">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.7rem;flex-wrap:wrap;gap:.6rem">
@@ -10388,6 +10413,9 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
       f.classList.toggle('visto-falta',!soPorRever);}
   }
   window.vistoFiltrar=()=>{soPorRever=!soPorRever;vistoPintar();};
+  /* Para o dashboard: estado do visto de uma pasta (ok | alt | falta | velha). */
+  window.vistoCarregar=()=>carregar();
+  window.vistoEstado=(lib,id,mod)=>estadoVisto(chave(lib,id),mod||'');
 
   /* ── AVISO DE VISTO EM FALTA · 4 DIAS ANTES DA ESCRITURA (24/10/2026) ──
      A data da escritura é a do início do nome da pasta (AAAAMMDD). Ao abrir o
@@ -11431,6 +11459,53 @@ async function avmEliminar(){
   }catch(e){ showToast('Erro ao eliminar: '+e.message,'error'); }
 }
 
+/* ── PASTAS NOVAS E VISTO (24/10/2026) ──
+   Conta as pastas criadas a partir de 24/10/2026 nas Escrituras e nas Avenças
+   (por entidade: REMAX, CM Monforte, Motevora…), e quantas têm o visto da Liliana.
+   «Com visto» é o visto válido; visto com a pasta alterada depois conta como sem. */
+const PV_DESDE='2026-10-24';let DASH_PASTAS=null;
+async function dashCarregarPastasVisto(){
+  const out=[];
+  if(bibliotecaId){const d=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$select=id,name,folder,createdDateTime,lastModifiedDateTime`);
+    (d.value||[]).filter(i=>i.folder&&(i.createdDateTime||'')>=PV_DESDE).forEach(i=>out.push({cat:'ESCRITURAS',lib:'ESCRITURAS',id:i.id,nome:i.name,criado:i.createdDateTime,mod:i.lastModifiedDateTime}));}
+  if(driveIdAvencas)for(const f of Object.keys(AVENCAS_ENTIDADES)){
+    try{const d=await graphGetAll(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(f)}:/children?$top=500&$select=id,name,folder,createdDateTime,lastModifiedDateTime`);
+      (d.value||[]).filter(i=>i.folder&&(i.createdDateTime||'')>=PV_DESDE).forEach(i=>out.push({cat:f,lib:'AVENCAS',id:i.id,nome:i.name,criado:i.createdDateTime,mod:i.lastModifiedDateTime}));}catch(_){}
+  }
+  if(window.vistoCarregar)await window.vistoCarregar();
+  DASH_PASTAS=out;
+}
+function dashRenderPastasVisto(){
+  if(!DASH_PASTAS)return;
+  const selA=document.getElementById('dash-pv-ano'),selM=document.getElementById('dash-pv-mes');
+  if(selA&&!selA.options.length){const a0=2026,a1=new Date().getFullYear();for(let a=a1;a>=a0;a--)selA.add(new Option(a,a));selA.value=a1;selM.value=String(new Date().getMonth());}
+  const ano=selA.value,mes=selM.value;
+  const lista=DASH_PASTAS.filter(p=>{const d=new Date(p.criado);return String(d.getFullYear())===ano&&(mes===''||String(d.getMonth())===mes);});
+  const cats=['ESCRITURAS',...Object.keys(AVENCAS_ENTIDADES)];
+  const com={},sem={};cats.forEach(c=>{com[c]=0;sem[c]=0;});
+  lista.forEach(p=>{const st=window.vistoEstado?window.vistoEstado(p.lib,p.id,p.mod):'falta';if(st==='ok')com[p.cat]++;else sem[p.cat]++;});
+  const nCom=cats.reduce((s,c)=>s+com[c],0),nSem=cats.reduce((s,c)=>s+sem[c],0);
+  document.getElementById('dash-pv-total').textContent=lista.length;
+  document.getElementById('dash-pv-com').textContent=nCom;
+  document.getElementById('dash-pv-sem').textContent=nSem;
+  /* barras empilhadas: verde com visto, âmbar sem visto */
+  const cv=document.getElementById('dash-pv-chart');if(!cv)return;
+  const dpr=window.devicePixelRatio||1,W=cv.offsetWidth||600,H=140;cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  const x=cv.getContext('2d');x.scale(dpr,dpr);x.clearRect(0,0,W,H);
+  const max=Math.max(1,...cats.map(c=>com[c]+sem[c]));
+  if(!lista.length){x.fillStyle='#9ca3af';x.font='11px DM Sans';x.textAlign='center';x.fillText('Sem pastas novas neste período',W/2,H/2);}
+  else{const padT=16,padB=24,gap=(W-16)/cats.length,bw=Math.min(70,gap*0.5),alt=H-padT-padB;
+    cats.forEach((c,i)=>{const bx=8+gap*i+(gap-bw)/2;const hC=com[c]/max*alt,hS=sem[c]/max*alt;
+      x.fillStyle='#2E7D4F';x.fillRect(bx,H-padB-hC,bw,hC);
+      x.fillStyle='#E0A93B';x.fillRect(bx,H-padB-hC-hS,bw,hS);
+      const t=com[c]+sem[c];if(t){x.fillStyle='#1f2937';x.font='bold 10px DM Sans';x.textAlign='center';x.fillText(`${com[c]}/${t}`,bx+bw/2,H-padB-hC-hS-4);}
+      x.fillStyle='#6b7280';x.font='9.5px DM Sans';x.textAlign='center';x.fillText(c.length>12?c.slice(0,11)+'…':c,bx+bw/2,H-padB+12);});}
+  const pct=c=>{const t=com[c]+sem[c];return t?Math.round(com[c]/t*100)+'%':'—';};
+  document.getElementById('dash-pv-breakdown').innerHTML=`<div style="display:flex;gap:.9rem;flex-wrap:wrap;margin-bottom:.35rem">
+      <span><span style="display:inline-block;width:9px;height:9px;background:#2E7D4F;border-radius:2px"></span> com visto</span>
+      <span><span style="display:inline-block;width:9px;height:9px;background:#E0A93B;border-radius:2px"></span> sem visto (ou alterada depois do visto)</span></div>`
+    +cats.map(c=>`<div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding:2px 0"><span>${escHtml(c)}</span><span>${com[c]+sem[c]} entradas · ${com[c]} com visto · ${sem[c]} sem · ${pct(c)}</span></div>`).join('');
+}
 async function dashRenderTudo(){
   if(!todosRegistos||!todosRegistos.length)return;
   // Carregar avenças se ainda não carregadas
@@ -11444,6 +11519,7 @@ async function dashRenderTudo(){
   dashRenderCard3();
   dashRenderCard4();
   dashRenderCardsAvencas();
+  try{await dashCarregarPastasVisto();dashRenderPastasVisto();}catch(e){console.warn('Pastas e visto:',e);}
 }
 
 // ─── AVENÇAS ──────────────────────────────────────────────────────────────────
