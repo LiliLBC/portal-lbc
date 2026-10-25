@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-24.5</span>
+    <span class="page-sub">piloto · v2026-10-25.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -335,7 +335,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
   <div class="section-card" style="border-color:var(--accent)">
     <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap">
       <div style="flex:1;min-width:180px">
-        <div class="form-label" style="margin-bottom:3px">Pasta do cliente (ESCRITURAS)</div>
+        <div class="form-label" style="margin-bottom:3px">Pasta do cliente (Escrituras · Avenças)</div>
         <div style="position:relative">
           <input class="form-input" id="pasta-search" placeholder="A carregar pastas..." oninput="pesquisarPastas()" autocomplete="off" disabled>
           <div class="pasta-dd" id="pasta-dropdown"></div>
@@ -7311,16 +7311,34 @@ async function carregarPastasSP(){
     if(!d)throw new Error('biblioteca ESCRITURAS não encontrada');
     const pr=await graphFetch(`${GRAPH_BASE}/drives/${d.id}/root/children?$top=500&$orderby=lastModifiedDateTime desc`);
     const pastas=await pr.json();
-    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:d.id}));
+    pastasSP=(pastas.value||[]).filter(p=>p.folder).map(p=>({id:p.id,nome:p.name,driveId:d.id,origem:'Escrituras'}));
     input.placeholder=`Pesquisar entre ${pastasSP.length} pastas...`;input.disabled=false;
+    /* (25/10/2026) Também as pastas das avenças — os CPCV REMAX vivem em AVENCAS › REMAX › <loja>.
+       Um só gerador de CPCV: o daqui. */
+    carregarPastasAvencas().then(n=>{if(n)input.placeholder=`Pesquisar entre ${pastasSP.length} pastas (escrituras e avenças)...`;}).catch(e=>console.warn('[avenças]',e));
   }catch(e){input.placeholder='Sem ligação ao SharePoint';showToast('Pastas: '+e.message,'error');}
+}
+async function carregarPastasAvencas(){
+  const dr=await graphFetch(`${GRAPH_BASE}/sites/lbcsolicitadorapt.sharepoint.com:/sites/lbcsolicitadora2:/drives`);
+  if(!dr.ok)return 0;
+  const d=((await dr.json()).value||[]).find(x=>x.name==='AVENCAS');if(!d)return 0;
+  const filhos=async id=>{const r=await graphFetch(`${GRAPH_BASE}/drives/${d.id}/items/${id}/children?$top=500&$select=id,name,folder,lastModifiedDateTime`);return r.ok?((await r.json()).value||[]).filter(x=>x.folder):[];};
+  const raiz=await filhos('root');let n=0;
+  for(const ent of raiz){
+    /* REMAX tem um nível de lojas (Beja, Montemor, Grândola, Anterior…); as outras entidades não. */
+    const nivel=await filhos(ent.id);
+    const ehLojas=/remax/i.test(ent.name);
+    const lista=ehLojas?(await Promise.all(nivel.map(async l=>(await filhos(l.id)).map(x=>({x,orig:`${ent.name} · ${l.name}`}))))).flat():nivel.map(x=>({x,orig:ent.name}));
+    lista.forEach(({x,orig})=>{if(!pastasSP.some(p=>p.id===x.id)){pastasSP.push({id:x.id,nome:x.name,driveId:d.id,origem:`Avenças · ${orig}`});n++;}});
+  }
+  return n;
 }
 function pesquisarPastas(){
   const q=document.getElementById('pasta-search')?.value.toLowerCase().trim();
   const dd=document.getElementById('pasta-dropdown');
   if(!q){dd.style.display='none';return;}
   const res=pastasSP.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,8);
-  dd.innerHTML=res.length?res.map((p,i)=>`<div onclick="selecionarPasta(${i},'${q.replace(/'/g,"\\'")}')">${esc(p.nome)}</div>`).join(''):'<div style="cursor:default;color:var(--text-faint)">Sem resultados</div>';
+  dd.innerHTML=res.length?res.map((p,i)=>`<div onclick="selecionarPasta(${i},'${q.replace(/'/g,"\\'")}')">${esc(p.nome)}${p.origem&&p.origem!=='Escrituras'?` <span style="font-size:10.5px;color:var(--text-faint)">· ${esc(p.origem)}</span>`:''}</div>`).join(''):'<div style="cursor:default;color:var(--text-faint)">Sem resultados</div>';
   dd.style.display='block';
 }
 function selecionarPasta(i,q){
@@ -7782,7 +7800,7 @@ async function carregarRascunho(){
       const r=await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}/children?$top=200`);
       if(r.ok){
         const d=await r.json();
-        const rasc=(d.value||[]).filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name))
+        const rasc=(d.value||[]).filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name)&&!/^RASCUNHO_CPCV\.json$/i.test(x.name))   /* o do CPCV antigo tem outro formato */
           .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
         if(rasc.length===1){await abrirRascunho(rasc[0].name);return;}
         if(rasc.length>1){mostrarRascunhos(rasc);return;}
@@ -9780,6 +9798,9 @@ window.addEventListener('load',()=>{
   atualizar();
   carregarConfig();
   carregarPastasSP().then(lbcPastaDoEndereco).catch(lbcPastaDoEndereco);
+  /* ?ato=cpcv — o Portal abre o gerador já no ato (25/10/2026). */
+  {const a=new URLSearchParams(location.search).get('ato'),sel=document.getElementById('f-tipo-ato');
+   if(a&&sel&&[...sel.options].some(o=>o.value===a)&&sel.value!==a){sel.value=a;sel.dispatchEvent(new Event('change'));}}
 });
 </script>
 <script>
