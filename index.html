@@ -2134,6 +2134,7 @@ tbody tr:hover td{background:#FAFAF8}
                   <option>Beja</option>
                   <option>Montemor</option>
                   <option>Grândola</option>
+                  <option>Évora</option>
                 </select>
               </div>
               <div class="field-group field-full" id="av-p-servico-outro-wrap" style="display:none">
@@ -11642,7 +11643,7 @@ function avInitEntidades(){
 }
 const AP={titulo:'Title',fornecedor:'Fornecedor',servico:'Servico',inicio:'Data_Inicio',conclusao:'Data_Conclusao',estado:'Estado',urgente:'Urgente',responsavel:'Responsavel',notas:'Notas',pasta:'Ligacao_Pasta',loja:'Loja',hora:'Hora_Entrada'};
 // Lojas REMAX (desde 24/10/2026): subpastas em AVENCAS/REMAX/<Loja>
-const REMAX_LOJAS=['Beja','Montemor','Grândola'];
+const REMAX_LOJAS=['Beja','Montemor','Grândola','Évora'];
 const REMAX_LOJAS_DESDE='2026-10-24';
 function avSubPath(forn,loja){return encodeURIComponent(forn)+(loja?'/'+encodeURIComponent(loja):'');}
 let todosProcessosAv=[],filtroEstadoAv='activos',avPainelItemId=null;
@@ -12037,6 +12038,9 @@ async function guardarProcessoAvenca(){
       const dataStr=ini?ini.replace(/-/g,''):(new Date().toISOString().substring(0,10).replace(/-/g,''));
       const nomePasta=sanitizarNomePasta(`${dataStr} ${titulo.substring(0,40).trim()}${servEfetivo?' '+servEfetivo:''}`.toUpperCase());
       const fornPath=avSubPath(forn,loja);
+      /* A pasta da loja (ex.: REMAX/Évora) cria-se se ainda não existir (25/10/2026). */
+      if(loja){try{await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(forn)}:/children`,{method:'POST',
+        headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify({name:loja,folder:{},['@microsoft.graph.conflictBehavior']:'fail'})});}catch(_){}}
       const pastaRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${fornPath}:/children`,{
         method:'POST',
         headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
@@ -17104,6 +17108,7 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
 
 
 
+
 /* ═══════════ CPCV REMAX — lado da LBC (24/10/2026) ═══════════
    A pasta do cliente é o arquivo oficial do CPCV; o site REMAX-Partilha serve só para
    trocar versões com a loja (via página dos coordenadores, quando montada, ou por e-mail).
@@ -17117,7 +17122,8 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
   const PARTILHA_SITE='lbcsolicitadorapt.sharepoint.com:/sites/REMAXPartilha';
   const COORD={Beja:[{n:'Tânia Freitas',e:'taniafreitas@remax.pt'},{n:'Hugo Relíquias',e:'hreliquias@remax.pt'}],
     Montemor:[{n:'Luísa Nunes',e:'idealmor@remax.pt'},{n:'Damião Arranja',e:'darranja@remax.pt'}],
-    'Grândola':[{n:'Francisco Nunes',e:'fdnunes@remax.pt'}]};
+    'Grândola':[{n:'Francisco Nunes',e:'fdnunes@remax.pt'}],
+    'Évora':[]};   // Évora (25/10/2026): coordenadores por indicar
   const DOCX='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   const H=()=>({'Authorization':'Bearer '+graphToken});
   const enc=p=>p.split('/').map(encodeURIComponent).join('/');
