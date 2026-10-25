@@ -11973,7 +11973,7 @@ async function abrirCPCVRemax(dados,btn){
     const item=await resolveRes.json();
     /* (25/10/2026) O CPCV faz-se no gerador (ato 9), já com a pasta da avença. */
     lbcGuardarSessao();
-    lbcAbrir(`lbc-gerador-${item.id}`,`gerador.html?pasta=${encodeURIComponent(driveIdAvencas+'|'+item.id)}&nome=${encodeURIComponent(item.name||dados.nomePasta)}&ato=cpcv`);
+    lbcAbrir(`lbc-gerador-${item.id}`,`gerador.html?pasta=${encodeURIComponent(driveIdAvencas+'|'+item.id)}&nome=${encodeURIComponent(item.name||dados.nomePasta)}&ato=cpcv&titulo=${encodeURIComponent(dados.titulo||'')}`);
   }catch(e){
     showToast('Erro: '+e.message,'error');
     console.error('[CPCV from avença]',e);

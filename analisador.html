@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analisador predial — LBC Solicitadora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F3EE;--surface:#fff;--surface2:#F2F1EE;--border:#E4E0D8;--border-strong:#C8C5BC;--text:#24212B;--muted:#5F5A68;--faint:#8A8590;
+  --accent:#5B4C9A;--accent-dark:#3E3270;--accent-light:#EDEAF5;--red:#B83A3A;--red-bg:#FBE3E1;--red-t:#8E2A22;--amber:#C98A1B;--amber-bg:#FBEFD5;--amber-t:#7A4F0C;
+  --green:#2E7D4F;--green-bg:#E3F2E9;--green-t:#1F5E3A;--rose:#C9A38B}
+*{box-sizing:border-box}
+body{margin:0;font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:.7rem 1.5rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between}
+.tt{font-family:'Source Serif 4',Georgia,serif;font-size:18px;font-weight:700}.sub{font-size:11.5px;color:var(--faint);margin-left:.5rem}
+.wrap{max-width:1100px;margin:0 auto;padding:1.4rem 1.2rem 4rem;display:flex;flex-direction:column;gap:1rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.2rem}
+.card h2{margin:0 0 .6rem;font-size:15px}
+.drop{border:2px dashed #B9B1D6;border-radius:12px;background:#FBFAFE;padding:1.4rem;text-align:center;cursor:pointer;color:var(--accent-dark)}
+.drop.over{background:var(--accent-light)}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--border-strong);background:#fff;font:500 13px 'DM Sans',sans-serif;cursor:pointer;color:var(--text);text-decoration:none}
+.btn:hover{background:var(--surface2)}.btn:disabled{opacity:.45;cursor:default}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-dark)}
+.docs{display:flex;flex-direction:column;gap:4px;margin-top:.7rem;font-size:13px}
+.doc{display:flex;gap:.6rem;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:8px;flex-wrap:wrap}
+.doc .n{flex:1;min-width:200px;font-family:'DM Mono',monospace;font-size:12px}
+.chip{font-size:11px;padding:2px 9px;border-radius:999px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--green-bg);color:var(--green-t)}.chip.conf{background:var(--amber-bg);color:var(--amber-t)}.chip.grave{background:var(--red-bg);color:var(--red-t)}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+label.l{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+input.inp,textarea.inp,select.inp{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff}
+.nota{font-size:12px;color:var(--muted)}
+/* ── relatório ── */
+.rel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:2rem 2.2rem;display:flex;flex-direction:column;gap:1.2rem}
+.rel h1{margin:0;font-family:'Source Serif 4',Georgia,serif;font-size:24px}
+.rel h2{margin:0 0 .5rem;font-family:'Source Serif 4',Georgia,serif;font-size:17px;font-weight:600}
+.rel .cab{border-bottom:1px solid var(--rose);padding-bottom:.8rem;display:flex;flex-direction:column;gap:4px}
+.rel .marca{font-family:'Source Serif 4',Georgia,serif;font-size:12px;letter-spacing:.12em;color:var(--muted)}
+.rel .ident{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 24px;font-size:12.5px}
+.rel .ident span{color:var(--muted)}
+.concl{padding:12px 14px;border-radius:8px;font-size:14px}
+.concl.grave{background:#FFF7F6;border:1px solid #F1C9C5}.concl.conf{background:#FFFBF1;border:1px solid #EBD9A9}.concl.ok{background:#F2FAF5;border:1px solid #C8E6D3}
+.grupo{margin:0 0 12px}.grupo h3{margin:0 0 4px;font-size:13px;font-weight:700;color:var(--muted)}
+.al{border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:6px;padding:6px 10px;display:flex;flex-direction:column;gap:3px;margin-bottom:4px;break-inside:avoid;font-size:13px}
+.al.grave{border-left-color:var(--red)}
+.al .t{font-weight:700}
+.al .prova{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:pre-line}
+.al .dec{font-size:12px;color:var(--muted)}
+.al .ctl{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}.al .ctl .inp{padding:3px 8px;font-size:12px;min-height:0}
+.tab{width:100%;border-collapse:collapse;font-size:12px}
+.tab th{text-align:left;color:var(--muted);font-weight:600;padding:6px;border-bottom:1px solid var(--rose)}
+.tab td{padding:6px;border-bottom:1px solid #EFECE6;vertical-align:top}
+.est{font-size:11px}
+.visto{border:1px solid var(--rose);border-radius:8px;padding:12px 14px}
+.rod{border-top:1px solid var(--rose);padding-top:8px;font-size:10.5px;color:var(--muted)}
+.so-ecra{}
+@media print{body{background:#fff}.topbar,.nao-imprimir,.so-ecra{display:none!important}.wrap{padding:0;max-width:none}.rel{border:none;padding:0}}
+@media(max-width:700px){.rel{padding:1.1rem}.rel .ident{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div><span class="tt">Analisador predial</span><span class="sub">piloto · v2026-10-25.1</span></div>
+  <div class="row"><span id="pasta-info" class="nota"></span></div>
+</div>
+<div class="wrap">
+  <section class="card nao-imprimir">
+    <h2>1 · Documentos</h2>
+    <label class="drop" id="drop" for="fich">
+      <div style="font-weight:600">Arraste para aqui as certidões permanentes e as cadernetas (PDF)</div>
+      <div class="nota">ou clique para escolher · nada sai do computador</div>
+      <input id="fich" type="file" multiple accept=".pdf,.PDF,application/pdf" style="display:none">
+    </label>
+    <div class="row" id="pasta-acoes" style="margin-top:.7rem;display:none">
+      <button class="btn" onclick="carregarDaPasta()">📂 Ler os PDF da pasta do cliente</button>
+      <span class="nota" id="pasta-nota"></span>
+    </div>
+    <div class="docs" id="docs"></div>
+    <div class="row" style="margin-top:.8rem">
+      <div id="campo-ato"><label class="l" for="data-ato">Data da escritura</label><br><input class="inp" type="date" id="data-ato"></div>
+      <div><label class="l" for="quem">Analisado por</label><br><input class="inp" id="quem" placeholder="Nome de quem verifica"></div>
+      <div style="flex:1"></div>
+      <button class="btn btn-p" id="btn-analisar" onclick="correr()" disabled>Analisar</button>
+    </div>
+  </section>
+  <div id="resultado"></div>
+</div>
+<script>
+/* ═══════════ ANALISADOR PREDIAL · núcleo (24/10/2026) ═══════════
+   Lê certidões permanentes do registo predial e cadernetas prediais (urbanas e
+   rústicas) a partir das linhas de texto do PDF, e cruza tudo: natureza, artigos,
+   áreas, composição, titulares no registo e na matriz, ónus em vigor, registos
+   provisórios por converter, pendentes e validade.
+   Tudo por regras, no navegador; nada sai do computador. Os resultados são de
+   apoio: cada alerta traz a prova (AP, página, excerto) para quem confirma. */
+const ANL=(()=>{
+
+/* ── utilitários ── */
+const semAc=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const norm=s=>semAc(s).toUpperCase().replace(/[^A-Z0-9/]+/g,' ').replace(/\s+/g,' ').trim();
+const num=s=>{if(s==null)return NaN;let t=String(s).trim().replace(/\s/g,'');
+  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t))t=t.replace(/\./g,'').replace(',','.');
+  else t=t.replace(',','.');return parseFloat(t);};
+const fmt=(n,d=2)=>isFinite(n)?n.toLocaleString('pt-PT',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+const dataISO=s=>{let m=String(s||'').match(/(\d{4})[\/-](\d{2})[\/-](\d{2})/);if(m)return`${m[1]}-${m[2]}-${m[3]}`;
+  m=String(s||'').match(/(\d{2})[\/-](\d{2})[\/-](\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:'';};
+const dPT=iso=>iso?iso.split('-').reverse().join('/'):'—';
+const dias=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const CARD=['UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ'];
+
+/* Primeiro e último nome, para comparar pessoas com grafias diferentes
+   («HANS JÜRGER LÄSER» / «HANS JURGEN LASER»). */
+const tokensNome=n=>norm(n).replace(/\bE MULHER\b|\bE MARIDO\b/g,'').split(' ').filter(t=>t.length>1&&!/^(DA|DE|DO|DAS|DOS|E)$/.test(t));
+function mesmaPessoa(a,b){
+  if(a.nif&&b.nif)return a.nif===b.nif;
+  const x=tokensNome(a.nome),y=tokensNome(b.nome);if(!x.length||!y.length)return false;
+  if(x[0]!==y[0])return false;
+  const lx=x[x.length-1],ly=y[y.length-1];
+  if(lx===ly)return true;
+  /* tolera uma letra trocada no apelido (JURGEN/JURGER) e apelidos em falta */
+  const lev=(p,q)=>{const m=p.length,n=q.length;let d=Array.from({length:n+1},(_,j)=>j);
+    for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(d[j]+1,c[j-1]+1,d[j-1]+(p[i-1]===q[j-1]?0:1));d=c;}return d[n];};
+  return lev(lx,ly)<=1||x.length===1||y.length===1;
+}
+
+/* ── classificação ── */
+function tipoDoc(linhas){
+  const t=linhas.slice(0,40).join('\n');
+  /* Conservatórias só prediais e as de Registo Civil, Predial, Comercial e Automóveis (24/10/2026). */
+  if(/Certid[ãa]o Permanente/i.test(t)&&(/Registo Predial|Predial,\s*Comercial|DESCRI[ÇC]/i.test(t)))return'certidao';
+  if(/CADERNETA PREDIAL URBANA/i.test(t))return'urbana';
+  if(/CADERNETA PREDIAL R[ÚU]STICA/i.test(t))return'rustica';
+  return'outro';
+}
+
+/* ══════════ CERTIDÃO PERMANENTE ══════════ */
+function lerCertidao(linhas){
+  const L=linhas.map(l=>l.replace(/\s+$/,''));
+  const c={tipo:'certidao',matrizes:[],inscricoes:[],pendentes:[],avisos:[]};
+  /* Cabeçalho = linhas antes de «Certidão Permanente». Dois formatos: «Conservatória do Registo
+     Predial de X · Freguesia Y» e «Conservatória do Registo Civil, Predial, Comercial e Automóveis
+     de X · Freguesia Y». O n.º da descrição vem como «877/19930310» ou, na fração, «877/19970121 - F». */
+  let iCP=L.findIndex(l=>/Certid[ãa]o Permanente/i.test(l));if(iCP<0)iCP=Math.min(8,L.length);
+  const cabL=L.slice(0,iCP).map(l=>l.trim()).filter(Boolean);
+  const cabT=cabL.join('  ');
+  const mF=cabT.match(/Freguesia\s+(.+?)(?:\s{2,}|$)/);c.freguesia=mF?mF[1].trim():'';
+  for(const l of cabL){const m=l.match(/(\d+)\/(\d{8})(?:\s*-\s*([A-Z]{1,3}))?\s*$/);if(m){c.descricao=m[1];c.dataDescricao=m[2];c.fracaoLetra=m[3]||'';break;}}
+  c.numero=c.descricao?(c.descricao+(c.fracaoLetra?'-'+c.fracaoLetra:'')):'';
+  c.crp=cabL.map(l=>l.replace(/Freguesia\s+.+$/,'').replace(/\d+\/\d{8}(?:\s*-\s*[A-Z]{1,3})?\s*$/,'').trim()).filter(Boolean).join(' ').replace(/\s+/g,' ').replace(/,\s*$/,'');
+  const cabSet=new Set(cabL);
+  const tudo=L.join('\n');
+  c.codigo=(tudo.match(/C[óo]digo de acesso:\s*(P[A-Z]-[\d-]+)/)||[])[1]||'';
+  c.validade=dataISO((tudo.match(/v[áa]lida at[ée]\s+(\d{2}-\d{2}-\d{4})/)||[])[1]);
+  c.disponibilizada=dataISO((tudo.match(/disponibilizada em\s+(\d{2}-\d{2}-\d{4})/)||[])[1]);
+  /* Limpa cabeçalhos e rodapés que se repetem em cada página, e as assinaturas. */
+  const lixo=l=>/^(Conservat[óo]ria do Registo Predial de\s+Freguesia|C\.R\.P\.|www\.|Informa[çc][ãa]o em Vigor)/.test(l.trim())
+    ||/P[áa]gina\s*-\s*\d+\s*-/.test(l)||/^-{10,}$/.test(l.trim())||cabSet.has(l.trim())
+    ||(c.descricao&&new RegExp('^'+c.descricao+'\\/'+c.dataDescricao+'(\\s*-\\s*[A-Z]{1,3})?$').test(l.trim()));
+  const limpas=[];let saltar=0;
+  for(const l of L){const t=l.trim();
+    if(saltar){saltar--;continue;}
+    if(!t||lixo(l))continue;
+    if(/^O\(A\)\s/.test(t)){saltar=1;continue;}        /* assinatura: cargo + nome */
+    limpas.push(t);}
+  const iDesc=limpas.findIndex(l=>/^DESCRI[ÇC][ÕO]ES\s*-\s*AVERBAMENTOS|^DESCRI[ÇC][ÃA]O\s+FRAC?[ÇC][ÃA]O/.test(l));
+  const iIns=limpas.findIndex(l=>/^INSCRI[ÇC][ÕO]ES\s*-\s*AVERBAMENTOS/.test(l));
+  const iPend=limpas.findIndex(l=>/^REGISTOS PENDENTES/.test(l));
+  const iFim=limpas.findIndex(l=>/Certid[ãa]o permanente disponibilizada/.test(l));
+  const desc=limpas.slice(iDesc+1,iIns>0?iIns:undefined);
+  const insc=limpas.slice(iIns+1,iPend>0?iPend:undefined).filter(l=>!/^INSCRI[ÇC][ÕO]ES\s*-\s*AVERBAMENTOS/.test(l));
+  const pend=iPend>0?limpas.slice(iPend+1,iFim>0?iFim:undefined):[];
+
+  /* ── descrição ── */
+  const descTxt=desc.join('\n');
+  const nat=desc.find(l=>/^(MISTO|R[ÚU]STICO|URBANO)$/i.test(l));
+  c.natureza=nat?norm(nat).toLowerCase().replace('rustico','rústico'):'';
+  c.fracao=!!c.fracaoLetra||/^DESCRI[ÇC][ÃA]O\s+FRAC?[ÇC][ÃA]O/i.test(limpas[iDesc]||'');
+  /* Prédio-mãe em propriedade horizontal: lista das frações e permilagens (da AP da constituição). */
+  {const i=desc.findIndex(l=>/^FRA[ÇC][ÕO]ES AUT[ÓO]NOMAS:?/i.test(l));
+   c.fracoes=i>=0?(desc[i].replace(/^FRA[ÇC][ÕO]ES AUT[ÓO]NOMAS:?\s*/i,'')+' '+(desc[i+1]||'')).split(/[,\s]+/).filter(x=>/^[A-Z]{1,3}$/.test(x)):[];}
+  c.ph=c.fracoes.length>0;
+  c.denominacao=((descTxt.match(/DENOMINA[ÇC][ÃA]O:\s*(.+)/)||[])[1]||'').trim();
+  c.situado=((descTxt.match(/SITUADO EM:\s*(.+)/)||[])[1]||'').trim();
+  const area=k=>{const m=descTxt.match(new RegExp(k+':\\s*([\\d.,]+)\\s*M2','i'));return m?num(m[1]):NaN;};
+  c.areaTotal=area('[ÁA]REA TOTAL');c.areaDescoberta=area('[ÁA]REA DESCOBERTA');c.areaCoberta=area('[ÁA]REA COBERTA');
+  for(let i=0;i<desc.length;i++){
+    const m=desc[i].match(/^MATRIZ n[ºo°]\s*:?\s*(\d+)(?:\s+NATUREZA:\s*(\S+))?/i);
+    if(m){const mz={artigo:m[1],natureza:m[2]?(/r[úu]st/i.test(m[2])?'rústica':/urb/i.test(m[2])?'urbana':m[2].toLowerCase()):''};
+      const s=(desc[i+1]||'').match(/^SEC[ÇC][ÃA]O N[ºo°]\s*:?\s*(\S+)/i);if(s){mz.seccao=s[1];i++;}
+      c.matrizes.push(mz);}
+  }
+  /* Natureza da matriz em falta: com secção é rústica; sem secção, num misto, urbana. */
+  c.matrizes.forEach(m=>{if(!m.natureza)m.natureza=m.seccao?'rústica':(c.natureza==='rústico'?'rústica':'urbana');m.inferida=true;});
+  const iComp=desc.findIndex(l=>/^COMPOSI[ÇC][ÃA]O(\s+E CONFRONTA|:)/i.test(l));
+  c.composicao=iComp>=0?desc.slice(iComp).join(' ').replace(/^COMPOSI[ÇC][ÃA]O(?: E CONFRONTA[ÇC][ÕO]ES)?:\s*/i,'').replace(/Reprodu[çc][ãa]o.*$/i,'').replace(/FRA[ÇC][ÕO]ES AUT[ÓO]NOMAS:.*$/i,'').replace(/Valor Tribut[áa]vel:.*$/i,'').trim():'';
+  c.afetacao=((c.composicao.match(/destinad[oa]s?\s+a\s+([^.;,]+)/i)||[])[1]||'').trim();
+  const comp=c.composicao;
+  let m=comp.match(/parte r[úu]stica[^;]*?[áa]rea\s*:?\s*([\d.,]+)\s*ha/i)||comp.match(/[áa]rea\s*:?\s*([\d.,]+)\s*ha/i);
+  c.areaRusticaHa=m?num(m[1]):NaN;
+  if(!isFinite(c.areaRusticaHa)&&c.natureza==='rústico'&&isFinite(c.areaTotal))c.areaRusticaHa=c.areaTotal/10000;
+  m=comp.match(/(?:S\.\s?C\.|Sup\.?\s?cob\.?|superf[íi]cie coberta)\s*:?\s*([\d.,]+)\s*m2/i);
+  c.areaUrbanaM2=m?num(m[1]):(c.natureza==='urbano'&&isFinite(c.areaCoberta)?c.areaCoberta:NaN);
+  m=comp.match(/\b(\d+|um|uma|dois|duas|tr[êe]s|quatro)\s+pisos?\b/i);
+  const PISOS={um:1,uma:1,dois:2,duas:2,'três':3,tres:3,quatro:4};
+  c.pisos=m?(PISOS[semAc(m[1]).toLowerCase()]||PISOS[m[1].toLowerCase()]||parseInt(m[1])):NaN;
+
+  /* ── inscrições e averbamentos ── */
+  const reIni=/^(AVERB\.\s*-\s*)?AP\.\s*(\d+)\s+de\s+(\d{4}\/\d{2}\/\d{2})(?:\s+[\d:]+\s*UTC)?\s*-\s*(.+)$/i;
+  let cur=null;
+  const fechar=()=>{if(cur){c.inscricoes.push(cur);cur=null;}};
+  for(const l of insc){
+    const mi=l.match(reIni);
+    if(mi){fechar();cur={averb:!!mi[1],ap:mi[2],data:mi[3],tipo:mi[4].trim(),linhas:[]};continue;}
+    if(/^(\d+\s*[ªº]\s+)?Conservat[óo]ria do Registo Predial de\s+\S/.test(l)&&!/Freguesia/.test(l)){fechar();continue;}
+    if(/^Registado no Sistema em:/i.test(l))continue;
+    if(cur)cur.linhas.push(l);
+  }
+  fechar();
+  c.inscricoes.forEach(lerInscricao);
+  /* Permilagens da constituição da propriedade horizontal: «FRAÇÃO: F PERMILAGEM: 170». */
+  c.permilagens={};c.inscricoes.filter(r=>/PROPRIEDADE HORIZONTAL/i.test(r.tipo)).forEach(r=>r.linhas.forEach(l=>{const m=l.match(/FRA[ÇC][ÃA]O:\s*([A-Z]{1,3})\s+PERMILAGEM:\s*([\d.,]+)/i);if(m)c.permilagens[m[1]]=num(m[2]);}));
+  /* ── pendentes ── */
+  c.semPendentes=pend.some(l=>/N[ãa]o existem registos pendentes/i.test(l));
+  c.pendentes=c.semPendentes?[]:pend.filter(l=>/AP\.|Apresenta/i.test(l));
+  if(iPend<0)c.avisos.push('Não encontrei a secção «Registos pendentes».');
+  return c;
+}
+function lerInscricao(r){
+  const T=r.linhas.join('\n');
+  r.texto=[`${r.averb?'AVERB. - ':''}AP. ${r.ap} de ${r.data} - ${r.tipo}`,...r.linhas].join('\n');
+  const ref=T.match(/DA APRESENT\.?\s*(\d+)\s+de\s+(\d{4}\/\d{2}\/\d{2})/i);if(ref)r.ref={ap:ref[1],data:ref[2]};
+  r.abrange=parseInt((T.match(/ABRANGE\s+(\d+)\s+PR[ÉE]DIOS/i)||[])[1])||0;
+  r.causa=((T.match(/CAUSA\s*:\s*(.+)/i)||[])[1]||'').trim();
+  r.provisoria=/provis[óo]ri/i.test(r.tipo+' '+T)&&!/convers/i.test(r.tipo);
+  r.modo=/PARTES IGUAIS/i.test(T)?'iguais':/SEM DETERMINA[ÇC][ÃA]O DE PARTE/i.test(T)?'indeterminado':'';
+  r.quota=((T.match(/QUOTA\s*:?\s*(\d+\s*\/\s*\d+)/i)||[])[1]||'').replace(/\s/g,'');
+  const blocos=(rot)=>{const out=[];const i=r.linhas.findIndex(l=>new RegExp('^SUJEITO\\(S\\)\\s*'+rot,'i').test(l));if(i<0)return out;
+    let p=null;for(const l of r.linhas.slice(i+1)){
+      if(/^SUJEITO\(S\)/i.test(l)||/^Reprodu[çc][ãa]o/i.test(l)||/^Registado no Sistema/i.test(l))break;
+      const mm=l.match(/^\*\*\s*(.+)$/);
+      if(mm){p={nome:mm[1].trim(),nif:'',estado:'',conjuge:'',regime:'',quota:''};out.push(p);continue;}
+      if(!p)continue;
+      let x;
+      if((x=l.match(/^NIF\s*(\d{9})/i)))p.nif=x[1];
+      else if((x=l.match(/^Casad[oa]\/?a?\s+com\s+(.+?)\s+no regime de\s+(.+)$/i))){p.estado='casado';p.conjuge=x[1].trim();p.regime=x[2].trim();}
+      else if(/^Divorciad/i.test(l))p.estado='divorciado';
+      else if(/^Solteir/i.test(l))p.estado='solteiro';
+      else if(/^Vi[úu]v/i.test(l))p.estado='viúvo';
+      else if((x=l.match(/QUOTA\s*:?\s*(\d+\s*\/\s*\d+)/i)))p.quota=x[1].replace(/\s/g,'');
+    }return out;};
+  r.ativos=blocos('ATIVO');r.passivos=blocos('PASSIVO');
+  const t=norm(r.tipo);
+  r.classe=/ACTUALIZ|ATUALIZ|RECTIF|RETIF/.test(t)?'atualizacao':/CANCEL/.test(t)?'cancelamento':/CONVERS/.test(t)?'conversao':/CADUC/.test(t)?'caducidade'
+    :/AQUISI/.test(t)?'aquisicao':/HIPOTECA|PENHORA|ARRESTO|ARROLAMENTO|USUFRUTO|SERVID|\bACAO\b|\bACCAO\b|INSOLV|APREENS|LOCACAO FINANCEIRA|RESERVA|DIREITO DE HABITA|\bONUS\b/.test(t)?'onus':'outro';
+}
+
+/* ══════════ CADERNETAS ══════════ */
+function cabFreguesia(T){const m=T.match(/FREGUESIA:\s*(\d+)\s*-\s*([^\n]+?)(?:\s{2,}|\n|$)/);return m?{cod:m[1],nome:m[2].trim()}:{cod:'',nome:''};}
+function titularesCad(T){const out=[];const re=/Identifica[çc][ãa]o fiscal:\s*(\d{9})\s+Nome:\s*([^\n]+?)\s*\n[\s\S]*?Parte:\s*(\d+\s*\/\s*\d+)/g;let m;
+  while((m=re.exec(T)))out.push({nif:m[1],nome:m[2].trim(),quota:m[3].replace(/\s/g,'')});return out;}
+function emitida(T){const m=T.match(/Emitido (?:via internet|no Servi[çc]o de Finan[çc]as de [^\n]+?) em\s+(\d{4}-\d{2}-\d{2})/i);return m?m[1]:'';}
+function lerUrbana(linhas){
+  const T=linhas.join('\n'),U=linhas.join(' ').replace(/\s+/g,' ');
+  const d={tipo:'urbana',freguesia:cabFreguesia(T),emitida:emitida(T)};
+  d.artigo=(T.match(/ARTIGO MATRICIAL:\s*(\d+)/)||[])[1]||'';
+  d.fracao=((T.match(/FRAC?[ÇC][ÃA]O(?:\s+AUT[ÓO]NOMA)?:\s*([A-Z]{1,3})\b/)||[])[1])||'';
+  d.descricaoCRP=((U.match(/sob o registo n[ºo°]:\s*(\d+)/i)||[])[1])||'';
+  d.ph=/Prop\.?\s*Horiz|Propriedade Horizontal/i.test(U);
+  const o=U.match(/TEVE ORIGEM NOS ARTIGOS.*?Tipo:\s*(R[ÚU]STICO|URBANO)\s*(?:Sec[çc][ãa]o:\s*(\S+)\s*)?Artigo:\s*(\d+)/i);
+  d.origem=o?{tipo:/R/.test(semAc(o[1]).toUpperCase()[0])?'rústico':'urbano',seccao:o[2]||'',artigo:o[3]}:null;
+  const a=k=>{const m=U.match(new RegExp(k+':\\s*([\\d.,]+)\\s*m','i'));return m?num(m[1]):NaN;};
+  d.areaTerreno=a('[ÁA]rea total do terreno');d.areaImplantacao=a('[ÁA]rea de implanta[çc][ãa]o do edif[íi]cio');
+  d.areaBrutaConstrucao=a('[ÁA]rea bruta de constru[çc][ãa]o');d.areaBrutaPrivativa=a('[ÁA]rea bruta privativa');
+  let m=U.match(/Afe[c]?ta[çc][ãa]o:\s*(.+?)\s+(?:N[ºo°] de pisos|Tipologia)/i);if(m)d.afetacao=m[1].trim();
+  m=U.match(/Tipologia\/Divis[õo]es:\s*(\S+)/i);if(m)d.tipologia=m[1];
+  m=U.match(/N[ºo°] de pisos da frac?[çc][ãa]o:\s*(\d+)/i)||U.match(/N[ºo°] de pisos:\s*(\d+)/i);if(m)d.pisos=parseInt(m[1]);
+  m=U.match(/Permilagem:\s*([\d.,]+)/i);d.permilagem=m?num(m[1]):NaN;
+  d.areaBrutaDependente=(U.match(/[ÁA]rea bruta dependente:\s*([\d.,]+)/i)||[])[1];d.areaBrutaDependente=d.areaBrutaDependente?num(d.areaBrutaDependente):NaN;
+  m=U.match(/Valor patrimonial actual \(CIMI\):\s*€\s*([\d.,]+)\s*Determinado no ano:\s*(\d{4})/i);
+  if(m){d.vpt=num(m[1]);d.vptAno=m[2];}
+  d.titulares=titularesCad(T);
+  return d;
+}
+function lerRustica(linhas){
+  const T=linhas.join('\n'),U=linhas.join(' ').replace(/\s+/g,' ');
+  const d={tipo:'rustica',freguesia:cabFreguesia(T),emitida:emitida(T)};
+  const m=U.match(/SEC[ÇC][ÃA]O:\s*(\S+)\s+ARTIGO MATRICIAL N[ºo°]:\s*(\d+)/i);
+  d.seccao=m?m[1]:'';d.artigo=m?m[2]:'';
+  let x=U.match(/Valor Patrimonial Actual:\s*€\s*([\d.,]+)\s*Determinado no ano:\s*(\d{4})/i);if(x){d.vpt=num(x[1]);d.vptAno=x[2];}
+  x=U.match(/[ÁA]rea Total \(ha\):\s*([\d.,]+)/i);d.areaHa=x?num(x[1]):NaN;
+  d.habitacaoHa=0;const re=/HAB\s*-\s*HABITA[ÇC][ÃA]O[^Á]*?[ÁA]rea:\s*([\d.,]+)\s*ha/gi;while((x=re.exec(U)))d.habitacaoHa+=num(x[1]);
+  const iObs=linhas.findIndex(l=>/^\s*OBSERVA[ÇC][ÕO]ES/.test(l));
+  d.observacoes=iObs>=0?linhas.slice(iObs+1).join(' ').split(/\d{6}\s*-\s*[A-Z]/)[0].replace(/\s+/g,' ').trim():'';
+  d.urbanosReferidos=[...d.observacoes.matchAll(/urbano[^0-9]{0,40}?(\d{2,6})/gi)].map(z=>z[1]);
+  d.titulares=titularesCad(T);
+  return d;
+}
+
+/* ══════════ TITULARES EM VIGOR NO REGISTO ══════════ */
+/* Atualizações de identificação que valem para a mesma AP noutras certidões
+   (uma aquisição que «abrange vários prédios» só é atualizada numa delas). */
+function atualizacoesDe(certs){
+  const out=[];certs.forEach(c=>c.inscricoes.filter(r=>r.classe==='atualizacao'&&r.ref).forEach(r=>r.ativos.forEach(a=>
+    out.push({chave:`${c.crp}|${r.ref.ap}|${r.ref.data}`,pessoa:a,ap:`AP. ${r.ap} de ${r.data}`,numero:c.numero}))));return out;
+}
+function titularesRegisto(c,atualExt){
+  let atuais=[];const hist=[];
+  const ordem=[...c.inscricoes].sort((a,b)=>a.data.localeCompare(b.data)||(+a.ap)-(+b.ap));
+  for(const r of ordem){
+    if(r.classe==='aquisicao'&&!r.averb){
+      const passivos=r.passivos;
+      const tira=atuais.filter(t=>passivos.some(p=>mesmaPessoa(p,t)));
+      if(!atuais.length||tira.length===atuais.length||!passivos.length)atuais=[];
+      else atuais=atuais.filter(t=>!tira.includes(t));
+      const n=r.ativos.length;
+      r.ativos.forEach(a=>atuais.push({...a,quota:a.quota||r.quota||(r.modo==='iguais'&&n>1?`1/${n}`:r.modo==='indeterminado'?'em comum, sem determinação de parte':''),
+        ap:`AP. ${r.ap} de ${r.data}`,causa:r.causa,abrange:r.abrange,apChave:`${r.ap}|${r.data}`}));
+      hist.push(r);
+    }
+  }
+  /* Atualização de identificação: muda nome/estado/NIF de quem já lá está; não transmite.
+     Vale a da própria certidão e a de outra certidão com a mesma AP de aquisição. */
+  const prim=n=>tokensNome(n)[0]||'';
+  (atualExt||[]).forEach(u=>{
+    const t=atuais.find(x=>`${c.crp}|${x.apChave}`===u.chave&&prim(x.nome)===prim(u.pessoa.nome)&&!x.atualizadoPor);
+    if(t){t.nomeAnterior=t.nome;Object.assign(t,{nome:u.pessoa.nome,nif:u.pessoa.nif||t.nif,estado:u.pessoa.estado||t.estado,
+      atualizadoPor:u.ap+(u.numero!==c.numero?` (na certidão ${u.numero})`:'')});}
+  });
+  return atuais;
+}
+/* Ónus vivos: inscrições de ónus sem averbamento de cancelamento que lhes faça referência. */
+function onusVivos(c){
+  const canc=c.inscricoes.filter(r=>r.classe==='cancelamento'||(r.averb&&/CANCEL/i.test(r.tipo)));
+  return c.inscricoes.filter(r=>r.classe==='onus'&&!r.averb&&!canc.some(x=>x.ref&&x.ref.ap===r.ap&&x.ref.data===r.data));
+}
+function provisoriasAbertas(c){
+  return c.inscricoes.filter(r=>r.provisoria&&!r.averb).filter(r=>!c.inscricoes.some(x=>x.averb&&x.ref&&x.ref.ap===r.ap&&x.ref.data===r.data&&/CONVERS|CADUC|CANCEL/i.test(norm(x.tipo))));
+}
+
+/* ══════════ ANÁLISE ══════════ */
+function analisar(docs,opc){
+  opc=opc||{};
+  const hoje=opc.hoje||new Date().toISOString().slice(0,10);
+  const dataAto=opc.dataAto||hoje;
+  /* O mesmo documento duas vezes (o original na pasta principal e a cópia em «Catalogados»):
+     conta uma vez só (24/10/2026). */
+  const duplicados=[];const unico=(lista,chave)=>{const m=new Map();return lista.filter(d=>{const k=chave(d.dados);
+    if(k&&m.has(k)){duplicados.push({nome:d.nome,de:m.get(k).nome});return false;}if(k)m.set(k,d);return true;});};
+  const certs=unico(docs.filter(d=>d.dados&&d.dados.tipo==='certidao'),c=>c.numero||c.codigo?[c.numero,c.freguesia,c.codigo,c.validade].join('|'):'');
+  const cads=unico(docs.filter(d=>d.dados&&(d.dados.tipo==='urbana'||d.dados.tipo==='rustica')),x=>x.artigo?[x.tipo,x.artigo,x.seccao||'',x.fracao||'',(x.freguesia&&x.freguesia.cod)||'',x.emitida||''].join('|'):'');
+  const alertas=[];const usados=new Set();
+  const A=(grau,titulo,texto,prova,predio)=>alertas.push({grau,titulo,texto,prova:prova||'',predio:predio||''});
+  const fregIgual=(a,b)=>{const x=norm(a).replace(/^(UNIAO DAS FREGUESIAS DE|FREGUESIA DE)\s+/,''),y=norm(b).replace(/^(UNIAO DAS FREGUESIAS DE|FREGUESIA DE)\s+/,'');return !x||!y||x===y||x.includes(y)||y.includes(x);};
+
+  const atualExt=atualizacoesDe(certs.map(x=>x.dados));
+  const naoLidos=docs.filter(d=>!d.dados||d.dados.tipo==='outro');
+  /* Propriedade horizontal (24/10/2026): a certidão do prédio-mãe (sem letra, com a lista de frações)
+     é só de apoio quando há a certidão da fração com a mesma descrição — dá o artigo, as frações e as
+     permilagens. Quem é dono, que ónus há: lê-se na certidão da fração. */
+  const mesmaDesc=(a,b)=>a.descricao&&a.descricao===b.descricao&&fregIgual(a.freguesia,b.freguesia);
+  const ehMae=d=>!d.dados.fracaoLetra&&certs.some(o=>o!==d&&o.dados.fracaoLetra&&mesmaDesc(o.dados,d.dados));
+  const maes=certs.filter(ehMae);
+  const unidades=certs.filter(d=>!ehMae(d));
+  const predios=unidades.map((d,i)=>{
+    const c=d.dados;const p={id:`${c.numero||'?'}#${i+1}`,ord:CARD[i]||String(i+1),doc:d.nome,c,ver:[]};
+    const maeD=c.fracaoLetra?maes.find(m=>mesmaDesc(m.dados,c)):null;const mae=maeD?maeD.dados:null;p.mae=mae;
+    const V=(rot,estado,texto)=>p.ver.push({rot,estado,texto});
+    const nomeP=`Prédio ${c.numero||'?'}/${c.freguesia||'?'}`;
+    p.nome=nomeP;
+    /* fração: o artigo vem do prédio-mãe; sem ele, da caderneta que diz «descrito sob o n.º …» */
+    let mats=c.matrizes;
+    if(c.fracao){
+      mats=(mae?mae.matrizes:[]).map(m=>({...m,natureza:'urbana',fracao:c.fracaoLetra}));
+      if(!mats.length){const cx=cads.find(x=>x.dados.tipo==='urbana'&&x.dados.fracao===c.fracaoLetra&&x.dados.descricaoCRP===c.descricao&&fregIgual(x.dados.freguesia.nome,c.freguesia));
+        if(cx)mats=[{artigo:cx.dados.artigo,natureza:'urbana',fracao:c.fracaoLetra,daCaderneta:true}];}
+      if(!mae)A('confirmar',`${nomeP} — sem a certidão do prédio-mãe`,`A certidão da fração não indica o artigo, as frações nem as permilagens.${mats.length&&mats[0].daCaderneta?` O artigo ${mats[0].artigo} foi tirado da caderneta (descrito sob o n.º ${c.descricao}).`:''} Junte a certidão do prédio ${c.descricao} (sem letra) para confirmar.`,`Certidão ${c.numero}`,p.id);
+    }
+    p.cads=[];
+    mats.forEach(mz=>{
+      const cd=cads.find(x=>x.dados.artigo===mz.artigo&&(mz.natureza==='rústica'?x.dados.tipo==='rustica'&&(!mz.seccao||!x.dados.seccao||norm(x.dados.seccao)===norm(mz.seccao)):x.dados.tipo==='urbana')&&fregIgual(x.dados.freguesia.nome,c.freguesia)&&(mz.fracao?x.dados.fracao===mz.fracao:!x.dados.fracao||!c.ph));
+      if(cd){usados.add(cd);p.cads.push({mz,cd});}
+      else if(naoLidos.length){p.cads.push({mz,cd:null});A('confirmar',`${nomeP} — caderneta do artigo ${mz.artigo}${mz.seccao?'-'+mz.seccao:''} não lida`,
+        `Não há caderneta lida para este artigo, mas há ${naoLidos.length} documento(s) por ler (${naoLidos.map(x=>x.nome).join(', ')}). Confirmar se é a caderneta e verificar no documento os titulares, a área e o valor.`,`Certidão ${c.numero}: MATRIZ nº ${mz.artigo}`,p.id);}
+      else{p.cads.push({mz,cd:null});A('grave',`${nomeP} — falta a caderneta do artigo ${mz.natureza==='rústica'?'rústico':'urbano'} ${mz.artigo}${mz.seccao?'-'+mz.seccao:''}`,
+        `A certidão indica o artigo ${mz.artigo}${mz.seccao?', secção '+mz.seccao:''} (${mz.natureza}), mas não há caderneta correspondente entre os documentos.`,`Certidão ${c.numero}: MATRIZ nº ${mz.artigo}`,p.id);}
+    });
+    V('Artigos (certidão / cadernetas)',p.cads.length&&p.cads.every(x=>x.cd)?'ok':naoLidos.length||!p.cads.length?'confirmar':'grave',p.cads.map(x=>`${x.mz.artigo}${x.mz.fracao?'-'+x.mz.fracao:''}${x.mz.seccao?'-'+x.mz.seccao:''} ${x.mz.natureza==='rústica'?'R':'U'}${x.cd?'':' (sem caderneta)'}`).join(' + ')||'sem artigos');
+    /* natureza */
+    const temR=p.cads.some(x=>x.mz.natureza==='rústica'),temU=p.cads.some(x=>x.mz.natureza==='urbana');
+    const natOK=c.fracao?(temU&&!temR)||!p.cads.length:c.natureza==='misto'?(temR&&temU):c.natureza==='rústico'?(temR&&!temU):c.natureza==='urbano'?(temU&&!temR):true;
+    V('Natureza',natOK?'ok':'grave',`${c.fracao?'fração autónoma '+c.fracaoLetra:c.natureza||'?'}${c.ph?' (em propriedade horizontal)':''} = ${[temR?'R':'',temU?'U':''].filter(Boolean).join(' + ')||'—'}`);
+    /* propriedade horizontal: fração no prédio-mãe, permilagem, afetação, áreas da caderneta */
+    if(c.fracao){
+      const cdF=(p.cads.find(x=>x.cd)||{}).cd;const fd=cdF&&cdF.dados;
+      if(mae){const consta=!mae.fracoes.length||mae.fracoes.includes(c.fracaoLetra);
+        V('Prédio-mãe',consta?'ok':'grave',`${mae.numero} · frações ${mae.fracoes.join(', ')||'?'}`);
+        if(!consta)A('grave',`${nomeP} — a fração ${c.fracaoLetra} não consta da propriedade horizontal`,`O prédio-mãe ${mae.numero} indica as frações ${mae.fracoes.join(', ')}.`,`Certidão ${mae.numero}: FRAÇÕES AUTÓNOMAS`,p.id);
+        const pm=mae.permilagens[c.fracaoLetra];
+        if(isFinite(pm)&&fd&&isFinite(fd.permilagem)){const ok=Math.abs(pm-fd.permilagem)<0.01;
+          V('Permilagem',ok?'ok':'confirmar',`${fmt(pm,0)} / ${fmt(fd.permilagem,0)}`);
+          if(!ok)A('confirmar',`${nomeP} — permilagem diferente`,`Constituição da PH (certidão ${mae.numero}): ${fmt(pm,0)}‰. Caderneta ${fd.artigo}-${fd.fracao}: ${fmt(fd.permilagem,0)}‰.`,'',p.id);}
+        if(isFinite(mae.areaTotal)&&fd&&isFinite(fd.areaTerreno)){const dif=(fd.areaTerreno-mae.areaTotal)/mae.areaTotal*100;const g=Math.abs(dif)<=1?'ok':'confirmar';
+          V('Área do terreno (prédio-mãe)',g,`${fmt(mae.areaTotal)} / ${fmt(fd.areaTerreno)} m² · ${fmt(dif,1)} %`);
+          if(g!=='ok')A('confirmar',`${nomeP} — área do terreno diferente (${fmt(dif,1)} %)`,`Prédio-mãe ${mae.numero}: ${fmt(mae.areaTotal)} m². Caderneta ${fd.artigo}: ${fmt(fd.areaTerreno)} m².`,'',p.id);}
+        /* ónus inscritos no prédio-mãe que não aparecem na fração */
+        onusVivos(mae).filter(r=>!c.inscricoes.some(x=>x.ap===r.ap&&x.data===r.data)).forEach(r=>A('confirmar',`${nomeP} — ${r.tipo.toLowerCase()} no prédio-mãe`,`AP. ${r.ap} de ${r.data}, na certidão ${mae.numero}, não aparece na certidão da fração. Confirmar se abrange a fração.`,r.texto.split('\n').slice(0,3).join('\n'),p.id));
+      }
+      if(c.afetacao&&fd&&fd.afetacao){const ok=norm(fd.afetacao).includes(norm(c.afetacao).split(' ')[0])||norm(c.afetacao).includes(norm(fd.afetacao).split(' ')[0]);
+        V('Afetação',ok?'ok':'confirmar',`${c.afetacao} / ${fd.afetacao}`);
+        if(!ok)A('confirmar',`${nomeP} — afetação diferente`,`Certidão: «${c.composicao}». Caderneta: ${fd.afetacao}.`,'',p.id);}
+      if(fd&&isFinite(fd.areaBrutaPrivativa))V('Áreas da fração (caderneta)','ok',`privativa ${fmt(fd.areaBrutaPrivativa)} m²${isFinite(fd.areaBrutaDependente)?` · dependente ${fmt(fd.areaBrutaDependente)} m²`:''}${fd.tipologia?' · T'+fd.tipologia:''}`);
+    }
+    if(!natOK)A('grave',`${nomeP} — natureza do prédio não bate com os artigos`,`A certidão descreve um prédio ${c.natureza}, mas os artigos indicados são ${[temR?'rústico':'',temU?'urbano':''].filter(Boolean).join(' e ')}.`,`Certidão ${c.numero}`,p.id);
+    /* áreas */
+    const rus=p.cads.find(x=>x.mz.natureza==='rústica'&&x.cd);
+    if(rus&&isFinite(c.areaRusticaHa)&&isFinite(rus.cd.dados.areaHa)){
+      const dif=(rus.cd.dados.areaHa-c.areaRusticaHa)/c.areaRusticaHa*100;const g=Math.abs(dif)<=0.5?'ok':Math.abs(dif)<=10?'confirmar':'grave';
+      V('Área rústica',g,`${fmt(c.areaRusticaHa,4)} / ${fmt(rus.cd.dados.areaHa,4)} ha · ${fmt(dif,1)} %`);
+      if(g!=='ok')A(g,`${nomeP} — área rústica diferente (${fmt(dif,1)} %)`,`Certidão: ${fmt(c.areaRusticaHa,4)} ha. Caderneta ${rus.cd.dados.artigo}-${rus.cd.dados.seccao}: ${fmt(rus.cd.dados.areaHa,4)} ha.`,'',p.id);
+    }else if(rus)V('Área rústica','confirmar','não consegui ler a área num dos documentos');
+    const urb=p.cads.find(x=>x.mz.natureza==='urbana'&&x.cd);
+    if(urb&&isFinite(c.areaUrbanaM2)&&!(c.fracao&&!isFinite(urb.cd.dados.areaBrutaPrivativa))){
+      /* fração: compara-se com a área bruta privativa da fração, não com a implantação do edifício */
+      const cu=urb.cd.dados;const ref=c.fracao?cu.areaBrutaPrivativa:isFinite(cu.areaImplantacao)?cu.areaImplantacao:cu.areaBrutaConstrucao;
+      const dif=(ref-c.areaUrbanaM2)/c.areaUrbanaM2*100;const g=Math.abs(dif)<=1?'ok':Math.abs(dif)<=10?'confirmar':'grave';
+      V('Área urbana',g,`${fmt(c.areaUrbanaM2)} / ${fmt(ref)} m² · ${fmt(dif,1)} %`);
+      if(g!=='ok')A(g,`${nomeP} — área urbana diferente (${fmt(dif,1)} %)`,`Certidão (superfície coberta): ${fmt(c.areaUrbanaM2)} m². Caderneta ${cu.artigo}${c.fracao?'-'+(cu.fracao||'')+' (área bruta privativa)':' (implantação)'}: ${fmt(ref)} m².`,'',p.id);
+    }else if(urb&&!c.fracao)V('Área urbana','confirmar','a certidão não indica a superfície coberta');
+    /* composição */
+    if(urb&&isFinite(c.pisos)&&isFinite(urb.cd.dados.pisos)){
+      const ok=c.pisos===urb.cd.dados.pisos;
+      V('Composição',ok?'ok':'confirmar',`${c.pisos} piso(s) / ${urb.cd.dados.pisos} piso(s)${urb.cd.dados.tipologia?', '+urb.cd.dados.tipologia:''}`);
+      if(!ok)A('confirmar',`${nomeP} — número de pisos diferente`,`Certidão: ${c.pisos} piso(s). Caderneta ${urb.cd.dados.artigo}: ${urb.cd.dados.pisos} piso(s).`,'',p.id);
+    }
+    /* origem do urbano */
+    p.cads.filter(x=>x.cd&&x.cd.dados.tipo==='urbana'&&x.cd.dados.origem&&x.cd.dados.origem.tipo==='rústico').forEach(x=>{
+      const o=x.cd.dados.origem;const rusArts=p.cads.filter(y=>y.mz.natureza==='rústica').map(y=>y.mz.artigo);
+      if(rusArts.length&&!rusArts.includes(o.artigo)){
+        const outro=certs.find(z=>z!==d&&z.dados.matrizes.some(mm=>mm.artigo===o.artigo&&mm.natureza==='rústica'));
+        A('confirmar',`${nomeP} — artigo urbano ${x.mz.artigo} com origem noutro rústico`,`Na certidão, o urbano ${x.mz.artigo} está com o rústico ${rusArts.join(', ')}. A caderneta do ${x.mz.artigo} diz que teve origem no rústico ${o.artigo}${o.seccao?'-'+o.seccao:''}${outro?`, que pertence ao prédio ${outro.dados.numero}`:''}.`
+          +(p.cads.some(y=>y.cd&&y.cd.dados.tipo==='rustica'&&y.cd.dados.urbanosReferidos.includes(x.mz.artigo))?` A caderneta rústica deste prédio refere o urbano ${x.mz.artigo}.`:''),`Caderneta urbana ${x.mz.artigo}: «Teve origem nos artigos»`,p.id);
+        V('Origem do urbano '+x.mz.artigo,'confirmar',`teve origem no rústico ${o.artigo}`);
+      }
+    });
+    /* titulares */
+    p.titReg=titularesRegisto(c,atualExt);
+    /* Cônjuges entre si: um diz «casado com X» e X também é titular (pelo nome
+       que tinha na inscrição, antes de qualquer atualização). */
+    const nomeOrig=t=>t.nomeAnterior||t.nome;
+    const parDe=t=>t.conjuge?p.titReg.find(o=>o!==t&&(mesmaPessoa({nome:t.conjuge},{nome:nomeOrig(o)})||tokensNome(t.conjuge)[0]===tokensNome(nomeOrig(o))[0]&&tokensNome(t.conjuge).length<=2)):null;
+    const casalEx=p.titReg.filter(t=>{const o=parDe(t);return o&&(t.estado==='divorciado'||o.estado==='divorciado');});
+    p.exCasal=casalEx.length>=2;
+    p.emComum=!p.exCasal&&p.titReg.length>1&&p.titReg.every(t=>!t.quota);
+    if(p.titReg.some(t=>/sem determina/.test(t.quota||'')))A('confirmar',`${nomeP} — titulares em comum e sem determinação de parte`,`${p.titReg.map(t=>t.nome).join(' · ')}. Típico de herança por partilhar: confirmar habilitação e se todos intervêm.`,`Certidão ${c.numero}: ${p.titReg[0].ap}`,p.id);
+    const regTxt=p.titReg.map(t=>`${t.nome}${t.quota?' '+t.quota:''}`).join(' · ')||'—';
+    V('Titulares no registo',p.exCasal?'grave':p.titReg.length?'ok':'confirmar',regTxt);
+    if(p.emComum)A('confirmar',`${nomeP} — ${p.titReg.length} titulares sem quotas indicadas`,`${regTxt}. Confirmar a quota de cada um e quem tem de intervir no ato.`,`Certidão ${c.numero}: ${p.titReg[0].ap}`,p.id);
+    if(p.exCasal){
+      const ap=casalEx[0].ap,abr=casalEx[0].abrange;
+      const partOutros=abr?certs.filter(z=>z!==d&&z.dados.inscricoes.some(r=>r.classe==='aquisicao'&&/PARTILHA/i.test(r.causa))):[];
+      A('grave',`${nomeP} — bem comum do ex-casal, sem partilha registada`,
+        `Registado a favor de ${casalEx.map(t=>t.nomeAnterior?`${t.nomeAnterior} (hoje ${t.nome}, ${t.estado==='divorciado'?'divorciado(a)':t.estado})`:t.nome).join(' e ')}, casados em ${(casalEx[0].regime||'comunhão').toLowerCase()}. `
+        +(casalEx.some(t=>t.atualizadoPor)?`O averbamento ${casalEx.find(t=>t.atualizadoPor).atualizadoPor} só atualiza a identificação; não transmite a parte do outro cônjuge. `:'')
+        +(partOutros.length?`A ${ap} abrange ${abr} prédios; a partilha por divórcio está registada só no(s) prédio(s) ${partOutros.map(z=>z.dados.numero).join(', ')}. `:'')
+        +`Para vender: intervenção de ambos ou registo prévio da partilha.`,`Certidão ${c.numero}: ${ap}${casalEx.find(t=>t.atualizadoPor)?' · '+casalEx.find(t=>t.atualizadoPor).atualizadoPor:''}`,p.id);
+    }
+    /* titulares da matriz */
+    const titM=[];p.cads.forEach(x=>{if(x.cd)x.cd.dados.titulares.forEach(t=>titM.push({...t,artigo:x.mz.artigo}));});
+    const resumoM=[...new Set(p.cads.filter(x=>x.cd).map(x=>`${x.mz.artigo}: ${x.cd.dados.titulares.map(t=>`${t.nome} ${t.quota}`).join(' + ')||'—'}`))].join(' · ');
+    const difMat=p.cads.filter(x=>x.cd).some(x=>{const tm=x.cd.dados.titulares;
+      if(tm.length!==p.titReg.length)return true;return !tm.every(t=>p.titReg.some(r=>mesmaPessoa(t,r)));});
+    V('Titulares na matriz',!p.cads.some(x=>x.cd)?'confirmar':difMat?(p.exCasal?'grave':'confirmar'):'ok',resumoM||'sem caderneta lida');
+    if(difMat&&!p.exCasal)A('confirmar',`${nomeP} — titulares da matriz diferentes do registo`,`Registo: ${regTxt}. Matriz: ${resumoM}.`,'',p.id);
+    /* ónus, provisórias, pendentes */
+    const on=onusVivos(c);
+    V('Ónus em vigor',on.length?'confirmar':'ok',on.length?on.map(r=>`${r.tipo} (AP. ${r.ap} de ${r.data})`).join('; '):'nenhum');
+    on.forEach(r=>A('confirmar',`${nomeP} — ${r.tipo.toLowerCase()} em vigor`,`AP. ${r.ap} de ${r.data}${r.ativos.length?', a favor de '+r.ativos.map(a=>a.nome).join(', '):''}. Confirmar se se cancela no ato ou se se mantém.`,r.texto.split('\n').slice(0,4).join('\n'),p.id));
+    const pv=provisoriasAbertas(c);
+    V('Provisórias por converter',pv.length?'grave':'ok',pv.length?pv.map(r=>`AP. ${r.ap} de ${r.data}`).join('; '):'não');
+    pv.forEach(r=>A('grave',`${nomeP} — registo provisório por converter`,`AP. ${r.ap} de ${r.data} — ${r.tipo}. Não há averbamento de conversão, caducidade ou cancelamento.`,r.texto.split('\n').slice(0,4).join('\n'),p.id));
+    V('Registos pendentes',c.pendentes.length?'grave':c.semPendentes?'ok':'confirmar',c.pendentes.length?c.pendentes.join('; '):c.semPendentes?'não':'não consegui confirmar');
+    if(c.pendentes.length)A('grave',`${nomeP} — registos pendentes`,c.pendentes.join('; '),'Registos pendentes',p.id);
+    /* validade */
+    const valOK=c.validade&&c.validade>=dataAto;
+    V('Certidão válida até',valOK?'ok':'grave',dPT(c.validade));
+    if(!valOK)A('grave',opc.semAto?`${nomeP} — certidão caducada`:`${nomeP} — certidão caducada na data do ato`,opc.semAto?`Válida até ${dPT(c.validade)}. Tirar certidão atualizada.`:`Válida até ${dPT(c.validade)}; ato a ${dPT(dataAto)}.`,'',p.id);
+    p.estado=p.ver.some(v=>v.estado==='grave')?'grave':p.ver.some(v=>v.estado==='confirmar')?'confirmar':'ok';
+    return p;
+  });
+
+  /* cadernetas que não correspondem a nenhuma certidão */
+  cads.filter(x=>!usados.has(x)).forEach(x=>{const t=x.dados;
+    const origemEm=t.origem?certs.find(z=>z.dados.matrizes.some(m=>m.artigo===t.origem.artigo&&m.natureza==='rústica')):null;
+    if(t.tipo==='urbana'&&origemEm&&origemEm.dados.natureza==='rústico')
+      A('grave',`Caderneta urbana ${t.artigo} — o prédio ${origemEm.dados.numero} está descrito como rústico`,`A caderneta urbana ${t.artigo} teve origem no rústico ${t.origem.artigo}, que pertence ao prédio ${origemEm.dados.numero}, descrito no registo como rústico. A descrição pode estar desatualizada (prédio misto). Confirmar antes do ato.`,'',origemEm.dados.numero);
+    else A('confirmar',`Caderneta ${t.tipo==='urbana'?'urbana':'rústica'} ${t.artigo}${t.seccao?'-'+t.seccao:''} sem certidão`,`Não encontrei certidão que indique este artigo.`,'','');
+  });
+  /* cadernetas antigas */
+  const velhas=cads.filter(x=>x.dados.emitida&&dias(x.dados.emitida,hoje)>60);
+  if(velhas.length)A('confirmar','Cadernetas com mais de 60 dias',velhas.map(x=>`${x.dados.tipo==='urbana'?'urbana':'rústica'} ${x.dados.artigo}: ${dPT(x.dados.emitida)}`).join(' · ')+'. Tirar cadernetas atuais para o ato.','','');
+  /* documentos não lidos */
+  // documentos por ler: um só alerta por tipo, com a lista dos ficheiros
+  const semTxt=docs.filter(d=>(!d.dados||d.dados.tipo==='outro')&&d.semTexto),naoRec=docs.filter(d=>(!d.dados||d.dados.tipo==='outro')&&!d.semTexto);
+  if(semTxt.length)A('confirmar',`Digitalizações sem texto (${semTxt.length})`,`${semTxt.map(d=>d.nome).join(' · ')}. Verificar no documento ou ler por OCR.`,'','');
+  if(naoRec.length)A('confirmar',`Documentos não reconhecidos (${naoRec.length})`,`${naoRec.map(d=>d.nome).join(' · ')}.`,'','');
+  {const oc=docs.filter(d=>d.ocr);if(oc.length)A('confirmar',`Lidos por OCR (${oc.length})`,`${oc.map(d=>d.nome).join(' · ')}. Confirmar titulares, áreas e valores no original.`,'','');}
+
+  const ordem={grave:0,confirmar:1,ok:2};
+  alertas.sort((a,b)=>ordem[a.grau]-ordem[b.grau]);
+  const nG=alertas.filter(a=>a.grau==='grave').length,nC=alertas.filter(a=>a.grau==='confirmar').length;
+  const nOk=predios.reduce((s,p)=>s+p.ver.filter(v=>v.estado==='ok').length,0);
+  return{predios,maes:maes.map(m=>m.dados),duplicados,alertas,nG,nC,nOk,hoje,dataAto,
+    conclusao:nG?'Não está em condições de escritura.':nC?'Em condições, depois de confirmados os pontos assinalados.':'Sem desconformidades detetadas nos documentos analisados.'};
+}
+
+return{tipoDoc,lerCertidao,lerUrbana,lerRustica,analisar,titularesRegisto,onusVivos,provisoriasAbertas,norm,fmt,dPT,dataISO};
+})();
+if(typeof module!=='undefined')module.exports=ANL;
+
+/* ═══════════ ANALISADOR PREDIAL · página (24/10/2026) ═══════════ */
+const $=id=>document.getElementById(id);
+const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const GRAPH='https://graph.microsoft.com/v1.0';
+/* Versão «legacy» do PDF.js: traz os polyfills para navegadores menos recentes. */
+const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.min.mjs';
+const TESS_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let PDFJS=null;const DOCS=[];let R=null;const DEC={};let seq=0;
+
+/* ── sessão do Portal (quando aberto a partir dele) ── */
+const qs=new URLSearchParams(location.search);
+const PASTA=(()=>{const p=qs.get('pasta');if(!p)return null;const [drive,item]=p.split('|');return drive&&item?{drive,item,nome:qs.get('nome')||''}:null;})();
+const tokPortal=()=>{try{const t=window.opener&&window.opener.graphToken;if(t)return t;}catch(_){}try{return localStorage.getItem('lbc_graph_token')||'';}catch(_){return'';}};
+async function tok(){try{if(window.opener&&typeof window.opener.renovarToken==='function')await window.opener.renovarToken();}catch(_){}return tokPortal();}
+async function gq(url,opt={}){const t=await tok();if(!t)throw new Error('sem sessão do Portal — abra o Analisador a partir do Portal');
+  const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+t,...(opt.headers||{})}});
+  if(!r.ok&&r.status!==204)throw new Error(`Erro ${r.status}: ${(await r.text()).slice(0,160)}`);return r;}
+/* Nome de quem analisa = quem tem a sessão aberta no Portal (fica no relatório e no e-mail). */
+const NOMES_LBC={'liliana.cardoso@lbc-solicitadora.pt':'Liliana Burrica Cardoso'};
+/* Barra LBC */
+try{Object.defineProperty(window,'graphToken',{get:()=>tokPortal(),configurable:true});}catch(_){}
+window.renovarToken=async()=>{try{if(window.opener&&typeof window.opener.renovarToken==='function')await window.opener.renovarToken();}catch(_){}};
+window.LBC_FERRAMENTA='analisador';
+window.lbcPastaAtual=()=>PASTA?{driveId:PASTA.drive,id:PASTA.item,nome:PASTA.nome}:null;
+window.lbcToken=async()=>{await tok();return tokPortal();};
+function nomeConta(){try{let c=window.opener&&window.opener.contaAtual;if(!c){try{c=JSON.parse(localStorage.getItem('lbc_conta')||'null');}catch(_){}}if(!c)return'';
+  const u=String(c.username||'').toLowerCase(),n=String(c.name||'');
+  if(NOMES_LBC[u])return NOMES_LBC[u];
+  if(/andreia/i.test(u)||/andreia/i.test(n))return'Andreia Cabanas';
+  return n||u;}catch(_){return'';}}
+
+/* ── PDF → linhas de texto ── */
+async function pdfjs(){if(!PDFJS){PDFJS=await import(PDFJS_URL);PDFJS.GlobalWorkerOptions.workerSrc=PDFJS_URL.replace('pdf.min.mjs','pdf.worker.min.mjs');}return PDFJS;}
+async function linhasPDF(buf){
+  const P=await pdfjs();
+  const doc=await P.getDocument({data:new Uint8Array(buf),verbosity:0}).promise;
+  const linhas=[];let nTxt=0;
+  for(let p=1;p<=doc.numPages;p++){
+    const pg=await doc.getPage(p);const tc=await pg.getTextContent();
+    const its=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str,x:i.transform[4],y:i.transform[5],w:i.width,h:Math.abs(i.transform[3])||8}));
+    nTxt+=its.length;its.sort((a,b)=>b.y-a.y||a.x-b.x);
+    const grupos=[];
+    for(const it of its){const g=grupos.find(g=>Math.abs(g.y-it.y)<=Math.max(2,it.h*0.35));if(g)g.its.push(it);else grupos.push({y:it.y,its:[it]});}
+    grupos.sort((a,b)=>b.y-a.y);
+    for(const g of grupos){g.its.sort((a,b)=>a.x-b.x);let t='',fim=null;
+      for(const it of g.its){if(fim!==null){const gap=it.x-fim;t+=gap>it.h*1.2?'   ':gap>it.h*0.15?' ':'';}t+=it.s;fim=it.x+it.w;}
+      linhas.push(t.replace(/\s+$/,''));}
+  }
+  return{linhas,semTexto:nTxt<10,doc};
+}
+function interpretar(d){
+  const t=ANL.tipoDoc(d.linhas);
+  d.dados=t==='certidao'?ANL.lerCertidao(d.linhas):t==='urbana'?ANL.lerUrbana(d.linhas):t==='rustica'?ANL.lerRustica(d.linhas):{tipo:'outro'};
+}
+async function lerFicheiro(nome,buf){
+  const d={id:++seq,nome,buf,linhas:[],semTexto:false,dados:null,estado:'a ler…'};DOCS.push(d);pintarDocs();
+  try{const r=await linhasPDF(buf);d.linhas=r.linhas;d.semTexto=r.semTexto;d.pdf=r.doc;interpretar(d);d.estado='';}
+  catch(e){d.estado='erro: '+e.message;d.dados={tipo:'outro'};}
+  pintarDocs();
+}
+const ROT={certidao:'Certidão permanente',urbana:'Caderneta urbana',rustica:'Caderneta rústica',outro:'Não reconhecido'};
+function pintarDocs(){
+  $('docs').innerHTML=DOCS.map(d=>{const x=d.dados;
+    const det=!x?'':x.tipo==='certidao'?`n.º ${esc(x.numero||'?')} · ${esc(x.freguesia)} · ${esc(x.fracao?'fração':x.ph?'prédio-mãe (PH)':x.natureza)}`:x.tipo==='urbana'?`artigo ${esc(x.artigo)}${x.fracao?'-'+esc(x.fracao):''} · ${esc(x.freguesia.nome)}`:x.tipo==='rustica'?`artigo ${esc(x.artigo)}-${esc(x.seccao)} · ${esc(x.freguesia.nome)}`:(d.semTexto?'digitalização sem texto':'');
+    return`<div class="doc"><span class="n">${esc(d.nome)}</span>
+      <span class="chip ${x&&x.tipo!=='outro'?'ok':'conf'}">${d.estado?esc(d.estado):esc(ROT[x?x.tipo:'outro'])}${d.ocr?' · OCR':''}</span><span class="nota">${det}</span>
+      ${d.semTexto&&!d.ocr?`<button class="btn" onclick="ocr(${d.id})" title="Ler a digitalização por reconhecimento ótico (no computador)">Ler por OCR</button>`:''}
+      <button class="btn" onclick="tirar(${d.id})" title="Retirar da análise">×</button></div>`;}).join('');
+  $('btn-analisar').disabled=!DOCS.some(d=>d.dados&&d.dados.tipo!=='outro');
+}
+window.tirar=id=>{const i=DOCS.findIndex(d=>d.id===id);if(i>=0)DOCS.splice(i,1);pintarDocs();};
+
+/* ── OCR das digitalizações (Tesseract, no computador) ── */
+let TESS=null;
+async function tesseract(){if(!TESS){await new Promise((res,rej)=>{const s=document.createElement('script');s.src=TESS_URL;s.onload=res;s.onerror=()=>rej(new Error('não consegui carregar o OCR'));document.head.appendChild(s);});
+  TESS=await window.Tesseract.createWorker('por');}return TESS;}
+window.ocr=async id=>{const d=DOCS.find(x=>x.id===id);if(!d)return;
+  d.estado='OCR… (pode demorar)';pintarDocs();
+  try{const w=await tesseract();const linhas=[];
+    for(let p=1;p<=d.pdf.numPages;p++){const pg=await d.pdf.getPage(p);const vp=pg.getViewport({scale:2.5});
+      const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+      const r=await w.recognize(cv);linhas.push(...r.data.text.split('\n'));}
+    d.linhas=linhas;d.ocr=true;d.semTexto=false;interpretar(d);d.estado='';
+  }catch(e){d.estado='OCR falhou: '+e.message;}
+  pintarDocs();};
+
+/* ── entrada de ficheiros ── */
+$('fich').addEventListener('change',async e=>{for(const f of e.target.files)await lerFicheiro(f.name,await f.arrayBuffer());e.target.value='';});
+const dr=$('drop');
+['dragenter','dragover'].forEach(ev=>dr.addEventListener(ev,e=>{e.preventDefault();dr.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>dr.addEventListener(ev,e=>{e.preventDefault();dr.classList.remove('over');}));
+dr.addEventListener('drop',async e=>{for(const f of e.dataTransfer.files)if(/\.pdf$/i.test(f.name))await lerFicheiro(f.name,await f.arrayBuffer());});
+$('data-ato').value=new Date().toISOString().slice(0,10);
+$('quem').value=nomeConta();if($('quem').value){$('quem').readOnly=true;$('quem').title='Preenchido pela sessão do Portal';$('quem').style.background='#F2F1EE';}
+
+/* ── pasta do cliente ── */
+if(PASTA){$('pasta-acoes').style.display='flex';$('pasta-info').textContent=PASTA.nome?`Pasta: ${PASTA.nome}`:'Pasta do cliente';
+  const m=String(PASTA.nome||'').match(/^(\d{4})(\d{2})(\d{2})\b/);if(m&&!qs.get('loja'))$('data-ato').value=`${m[1]}-${m[2]}-${m[3]}`;}
+/* Aberto já com a pasta (Portal, barra LBC): lê logo os PDF da pasta principal e de «Catalogados». */
+if(PASTA)setTimeout(()=>{if(tokPortal()&&!DOCS.length)window.carregarDaPasta();},400);
+/* Análises REMAX: não há escritura marcada — os prazos contam a partir de hoje. */
+if(qs.get('loja'))$('campo-ato').style.display='none';
+window.carregarDaPasta=async()=>{
+  const n=$('pasta-nota');n.textContent='A ler a pasta…';
+  try{
+    const lista=async id=>((await (await gq(`${GRAPH}/drives/${PASTA.drive}/items/${id}/children?$top=500&$select=id,name,file,folder`)).json()).value||[]);
+    const raiz=await lista(PASTA.item);const cat=raiz.find(x=>x.folder&&/^catalogados$/i.test(x.name));
+    const fichs=[...raiz,...(cat?await lista(cat.id):[])].filter(x=>x.file&&/\.pdf$/i.test(x.name)&&!/relat[óo]rio|matriz/i.test(x.name));
+    const ja=new Set(DOCS.map(d=>d.nome));let k=0;
+    for(const f of fichs){if(ja.has(f.name))continue;n.textContent=`A ler ${++k}/${fichs.length}: ${f.name}`;
+      const b=await (await gq(`${GRAPH}/drives/${PASTA.drive}/items/${f.id}/content`)).arrayBuffer();await lerFicheiro(f.name,b);}
+    n.textContent=`${fichs.length} PDF lido(s). Os que não forem certidões ou cadernetas ficam como «não reconhecido» e podem ser retirados.`;
+  }catch(e){n.textContent='Erro: '+e.message;}
+};
+
+/* ── análise e relatório ── */
+window.correr=()=>{R=ANL.analisar(DOCS.filter(d=>d.dados),{dataAto:qs.get('loja')?new Date().toISOString().slice(0,10):$('data-ato').value,semAto:!!qs.get('loja')});R.quando=new Date();R.por=$('quem').value.trim();if(RX)rxPreencher();pintarRel();};
+const GRAU={grave:'🔴',confirmar:'🟡',ok:'🟢'};
+const chipE=(e,rot)=>`<span class="chip ${e==='ok'?'ok':e==='grave'?'grave':'conf'}">${rot}</span>`;
+function relatorioHTML(paraFicheiro){
+  const q=R.quando,dh=q.toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});
+  const nRel=`${q.toISOString().slice(0,10)}/${String(q.getHours()).padStart(2,'0')}${String(q.getMinutes()).padStart(2,'0')}`;
+  const rotulos=[];R.predios.forEach(p=>p.ver.forEach(v=>{if(!rotulos.includes(v.rot))rotulos.push(v.rot);}));
+  const cls=R.nG?'grave':R.nC?'conf':'ok';
+  /* Alertas agrupados por prédio (o nome do prédio sai do título) e, no fim, os gerais. */
+  const linha=(a,i,titulo)=>{const d=DEC[a.titulo];
+    return`<article class="al ${a.grau}"><div><span class="t">${GRAU[a.grau]} ${esc(titulo)}</span> — ${esc(a.texto)}${a.prova?` <span class="prova">(${esc(a.prova.split('\n')[0])})</span>`:''}</div>
+      ${paraFicheiro?(d&&d.decisao?`<div class="dec">Decisão: <b>${esc(d.decisao)}</b>${d.nota?' — '+esc(d.nota):''} · ${esc(d.por||'')} · ${esc(d.quando||'')}</div>`:''):`<div class="ctl so-ecra">
+        <select class="inp" onchange="decidir(${i},this.value)"><option value="">— decisão —</option>${['confirmado — está correto','corrigido','aguarda documento ou ato'].map(o=>`<option${d&&d.decisao===o?' selected':''}>${o}</option>`).join('')}</select>
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Nota (facultativo)" value="${esc(d?d.nota:'')}" onchange="notaDec(${i},this.value)">${d&&d.decisao?`<span class="dec">${esc(d.por||'')} · ${esc(d.quando||'')}</span>`:''}</div>`}
+    </article>`;};
+  const grupos=[];
+  R.predios.forEach(p=>{const nomeP=`Prédio ${p.c.numero||'?'}/${p.c.freguesia||'?'}`;
+    const its=R.alertas.map((a,i)=>({a,i})).filter(x=>x.a.predio===p.id);
+    if(its.length)grupos.push({tit:nomeP,html:its.map(x=>linha(x.a,x.i,x.a.titulo.startsWith(nomeP+' — ')?x.a.titulo.slice(nomeP.length+3):x.a.titulo)).join('')});});
+  const gerais=R.alertas.map((a,i)=>({a,i})).filter(x=>!x.a.predio||!R.predios.some(p=>p.id===x.a.predio));
+  if(gerais.length)grupos.push({tit:'Geral',html:gerais.map(x=>linha(x.a,x.i,x.a.titulo)).join('')});
+  const alertas=grupos.map(g=>`<div class="grupo"><h3>${esc(g.tit)}</h3>${g.html}</div>`).join('')||'<p class="nota">Sem alertas.</p>';
+  const tabela=R.predios.length?`<div style="overflow-x:auto"><table class="tab"><thead><tr><th>Verificação</th>${R.predios.map(p=>`<th>${esc(p.c.numero||'?')} · ${esc(p.c.fracao?'fração '+p.c.fracaoLetra:p.c.natureza||'')}${p.c.freguesia?`<br><span style="font-weight:400">${esc(p.c.freguesia)}</span>`:''}</th>`).join('')}</tr></thead>
+    <tbody>${rotulos.map(r=>`<tr><td>${esc(r)}</td>${R.predios.map(p=>{const v=p.ver.find(x=>x.rot===r);return`<td>${v?`${esc(v.texto)} <span class="est">${GRAU[v.estado]}</span>`:'—'}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="nota">Nenhuma certidão permanente lida.</p>';
+  const docs=DOCS.filter(d=>d.dados).map(d=>{const x=d.dados;
+    return`<div>${esc(ROT[x.tipo])}${x.tipo==='certidao'?` ${esc(x.numero)}${x.ph?' (prédio-mãe, PH)':x.fracao?' (fração)':''} · ${esc(x.codigo)} · válida até ${ANL.dPT(x.validade)}`:x.tipo==='urbana'?` ${esc(x.artigo)}${x.fracao?'-'+esc(x.fracao):''} · emitida ${ANL.dPT(x.emitida)}`:x.tipo==='rustica'?` ${esc(x.artigo)}-${esc(x.seccao)} · emitida ${ANL.dPT(x.emitida)}`:` — ${esc(d.nome)}`}${d.ocr?' (OCR)':''}</div>`;}).join('');
+  return`<div class="cab"><div class="marca">LBC — SOLICITADORA, SP, RL</div>
+      <h1>Relatório de análise predial</h1>
+      <div class="nota">${PASTA&&PASTA.nome?`Pasta: <b style="color:var(--text)">${esc(PASTA.nome)}</b> · `:''}${R.predios.length} prédio(s) · ${DOCS.filter(d=>d.dados).length} documento(s) · relatório ${esc(nRel)}</div></div>
+    <div class="ident"><div><span>Análise feita em</span><br>${esc(dh)}</div><div><span>Analisado por</span><br>${esc(R.por||'—')}</div>
+      ${qs.get('loja')?'':`<div><span>Data da escritura</span><br>${ANL.dPT(R.dataAto)}</div>`}<div><span>Visto da Liliana</span><br>dá-se no Portal, na capa da pasta</div></div>
+    <section><h2>1. Síntese</h2><div class="row" style="margin-bottom:8px">${chipE('grave',R.nG+' grave'+(R.nG===1?'':'s'))} ${chipE('confirmar',R.nC+' a confirmar')} ${chipE('ok',R.nOk+' em ordem')}</div>
+      <div class="concl ${cls}"><b>${esc(R.conclusao)}</b>${R.nG?' '+esc(R.alertas.filter(a=>a.grau==='grave').map(a=>a.titulo).join(' · ')):''}</div></section>
+    <section><h2>2. Alertas</h2>${alertas}</section>
+    <section><h2>3. Prédios</h2>${tabela}</section>
+    <section><h2>4. Documentos analisados</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:3px 24px;font-size:12.5px">${docs}</div>
+      ${(R.duplicados||[]).length?`<p class="nota" style="margin:.5rem 0 0">Repetidos, contados uma só vez: ${[...new Set(R.duplicados.map(x=>x.nome===x.de?esc(x.nome):`${esc(x.nome)} (= ${esc(x.de)})`))].join(' · ')}.</p>`:''}</section>
+    <div class="rod">Análise automática de apoio à verificação, feita por regras sobre o texto dos documentos. Não substitui a apreciação da solicitadora.</div>`;
+}
+function pintarRel(){
+  $('resultado').innerHTML=`<div class="row nao-imprimir" style="margin-bottom:.6rem">
+      <button class="btn" onclick="window.print()">🖨 Imprimir / guardar PDF</button>
+      ${PASTA?`<button class="btn btn-p" onclick="gravar()">💾 Gravar na pasta («Análises»)</button>`:`<button class="btn" onclick="descarregar()">⬇ Descarregar relatório</button>`}
+      <span class="nota" id="grav-nota"></span></div>
+    ${RX?rxCard():''}
+    <div class="rel">${relatorioHTML(false)}</div>`;
+}
+window.decidir=(i,v)=>{const a=R.alertas[i];const d=DEC[a.titulo]||(DEC[a.titulo]={});d.decisao=v;d.por=$('quem').value.trim();d.quando=new Date().toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});pintarRel();};
+window.notaDec=(i,v)=>{const a=R.alertas[i];const d=DEC[a.titulo]||(DEC[a.titulo]={});d.nota=v;if(!d.por){d.por=$('quem').value.trim();d.quando=new Date().toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});}};
+function ficheiroHTML(){
+  const css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  return`<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Relatório de análise predial</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet"><style>${css}</style></head>
+<body><div class="wrap"><div class="rel">${relatorioHTML(true)}</div></div></body></html>`;
+}
+function dadosJSON(){return JSON.stringify({versao:1,feito:R.quando.toISOString(),por:R.por,dataAto:R.dataAto,conclusao:R.conclusao,nG:R.nG,nC:R.nC,
+  alertas:R.alertas.map(a=>({...a,decisao:DEC[a.titulo]||null})),
+  predios:R.predios.map(p=>({numero:p.c.numero,freguesia:p.c.freguesia,crp:p.c.crp,codigo:p.c.codigo,natureza:p.c.natureza,matrizes:p.c.matrizes,estado:p.estado,
+    titulares:p.titReg.map(t=>({nome:t.nome,nif:t.nif,quota:t.quota,ap:t.ap})),verificacoes:p.ver})),
+  documentos:DOCS.filter(d=>d.dados).map(d=>({nome:d.nome,tipo:d.dados.tipo,ocr:!!d.ocr}))},null,2);}
+const carimbo=()=>{const q=R.quando;return`${q.toISOString().slice(0,10)}_${String(q.getHours()).padStart(2,'0')}${String(q.getMinutes()).padStart(2,'0')}`;};
+window.gravar=async()=>{const n=$('grav-nota');n.textContent='A gravar…';
+  try{for(const [nome,tipo,conteudo] of [[`${carimbo()}_Relatorio_analise.html`,'text/html',ficheiroHTML()],[`${carimbo()}_analise.json`,'application/json',dadosJSON()]])
+      await gq(`${GRAPH}/drives/${PASTA.drive}/items/${PASTA.item}:/${encodeURIComponent('Análises')}/${encodeURIComponent(nome)}:/content`,{method:'PUT',headers:{'Content-Type':tipo},body:conteudo});
+    n.textContent='Gravado na subpasta «Análises» da pasta do cliente. Para PDF, use também «Imprimir / guardar PDF».';
+  }catch(e){n.textContent='Erro: '+e.message;}};
+window.descarregar=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ficheiroHTML()],{type:'text/html'}));a.download=`${carimbo()}_Relatorio_analise.html`;a.click();};
+
+/* ═══════════ RELATÓRIO PARA A REMAX (24/10/2026) ═══════════
+   Só aparece quando o Analisador é aberto a partir de um processo REMAX do Portal
+   (parâmetros loja, av, site, lista). A LBC escreve em cada campo:
+     ✕ Impeditivo de escritura  · ⚠ Complemento de documentação · Recomendações
+   e o resultado sai sozinho (impeditivo > complemento > OK).
+   «Lançar relatório e enviar por e-mail»:
+     1. gera o PDF para a REMAX (sem NIF, sem nomes dos titulares, sem documentos);
+     2. grava o PDF e o relatório interno na subpasta «Análises» da pasta do cliente;
+     3. envia o PDF por e-mail, a partir da conta da LBC, aos coordenadores marcados;
+     4. regista o evento em «_remax.json» na pasta (o assunto passa para o lado da REMAX
+        — é aqui que o relógio da LBC para);
+     5. fecha o processo em Avencas_Processos (Concluído + nota). Só reabre se entrarem
+        novos documentos na pasta. */
+const REMAX_COORD={
+  'Beja':[{n:'Tânia Freitas',e:'taniafreitas@remax.pt'},{n:'Hugo Relíquias',e:'hreliquias@remax.pt'}],
+  'Montemor':[{n:'Luísa Nunes',e:'idealmor@remax.pt'},{n:'Damião Arranja',e:'darranja@remax.pt'}],
+  'Grândola':[{n:'Francisco Nunes',e:'fdnunes@remax.pt'}]
+};
+const RX=(()=>{const loja=qs.get('loja');if(!PASTA||!loja)return null;
+  const tit=(qs.get('titulo')||'').trim();const k=tit.lastIndexOf(',');
+  return{loja,av:qs.get('av')||'',site:qs.get('site')||'',lista:qs.get('lista')||'',entrada:qs.get('entrada')||'',
+    imovel:k>0?tit.slice(0,k).trim():tit,cidade:k>0?tit.slice(k+1).trim():'',
+    imp:'',comp:'',rec:'',sujo:{imp:false,comp:false},para:new Set((REMAX_COORD[loja]||[]).slice(0,1).map(c=>c.e)),enviado:null};})();
+const RES={ok:{s:'✓',t:'OK — tudo em conformidade',c:'ok'},complemento:{s:'⚠',t:'Complemento de documentação',c:'conf'},impeditivo:{s:'✕',t:'Impeditivo de escritura',c:'grave'}};
+const linhasDe=t=>String(t||'').split('\n').map(x=>x.replace(/^[\s•\-–*]+/,'').trim()).filter(Boolean);
+function rxResultado(){return linhasDe(RX.imp).length?'impeditivo':linhasDe(RX.comp).length?'complemento':'ok';}
+/* Pré-preenche a partir dos alertas (só enquanto ninguém escreveu no campo). */
+function rxPreencher(){if(!RX||!R)return;
+  const ls=g=>R.alertas.filter(a=>a.grau===g&&!/não lid|ocr|digitaliza|não reconhecid/i.test(a.titulo)).map(a=>a.titulo).join('\n'); // documentos não lidos são assunto interno
+  if(!RX.sujo.imp)RX.imp=ls('grave');if(!RX.sujo.comp)RX.comp=ls('confirmar');}
+function rxCard(){
+  const r=RES[rxResultado()];const coords=REMAX_COORD[RX.loja]||[];
+  return`<section class="card nao-imprimir" id="rx-card" style="margin-bottom:1rem;border-color:#B9B1D6">
+    <h2>Relatório para a REMAX · Loja de ${esc(RX.loja)}</h2>
+    <div class="row" style="align-items:flex-end">
+      <div style="flex:1;min-width:200px"><label class="l" for="rx-imovel">Imóvel (morada)</label><br><input class="inp" style="width:100%" id="rx-imovel" value="${esc(RX.imovel)}" oninput="RX.imovel=this.value"></div>
+      <div style="flex:1;min-width:160px"><label class="l" for="rx-cidade">Cidade</label><br><input class="inp" style="width:100%" id="rx-cidade" value="${esc(RX.cidade)}" oninput="RX.cidade=this.value"></div>
+      <div><label class="l">Resultado</label><br><span id="rx-res" class="chip ${r.c}" style="font-size:13px;padding:6px 12px;font-weight:700">${r.s} ${esc(r.t)}</span></div>
+    </div>
+    <div style="margin-top:.7rem"><label class="l" for="rx-imp" style="color:var(--red-t)">✕ Impeditivo de escritura</label> <span class="nota">— partilhas, procuração, penhora… (uma linha por ponto)</span>
+      <textarea class="inp" id="rx-imp" rows="3" style="width:100%;border-color:#E8B4AF" oninput="rxCampo('imp',this.value)">${esc(RX.imp)}</textarea></div>
+    <div style="margin-top:.5rem"><label class="l" for="rx-comp" style="color:var(--amber-t)">⚠ Complemento de documentação</label> <span class="nota">— cadernetas atualizadas, licença de utilização…</span>
+      <textarea class="inp" id="rx-comp" rows="3" style="width:100%;border-color:#EBCB8F" oninput="rxCampo('comp',this.value)">${esc(RX.comp)}</textarea></div>
+    <div style="margin-top:.5rem"><label class="l" for="rx-rec">Recomendações (opcional)</label>
+      <textarea class="inp" id="rx-rec" rows="2" style="width:100%" oninput="RX.rec=this.value">${esc(RX.rec)}</textarea></div>
+    <p class="nota" style="margin:.4rem 0 0">Os campos vêm pré-preenchidos com os títulos dos alertas 🔴 e 🟡 — reescreva em linguagem para a agência. Se houver algum impeditivo, o resultado é ✕; senão, se houver complemento, é ⚠; com os dois vazios, ✓. O PDF não leva NIF, nomes dos titulares nem cópias dos documentos.</p>
+    <div style="margin-top:.7rem"><label class="l">Enviar a</label>
+      <div class="row" style="margin-top:4px;flex-wrap:wrap">${coords.map(c=>`<label style="display:inline-flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" ${RX.para.has(c.e)?'checked':''} onchange="rxPara('${c.e}',this.checked)"> ${esc(c.n)} <span class="nota">&lt;${esc(c.e)}&gt;</span></label>`).join('')}
+        <input class="inp" style="flex:1;min-width:220px" placeholder="Outro e-mail (opcional — ex.: o seu, para testar)" value="${esc(RX.extra||'')}" oninput="RX.extra=this.value"></div></div>
+    <div class="row" style="margin-top:.8rem">
+      <button class="btn" onclick="rxPrever()">👁 Pré-visualizar PDF</button>
+      <button class="btn btn-p" id="rx-btn" onclick="rxLancar()">📤 Lançar relatório e enviar por e-mail</button>
+      <span class="nota" id="rx-nota">${RX.enviado?esc(RX.enviado):''}</span>
+    </div>
+  </section>`;
+}
+window.rxCampo=(k,v)=>{RX[k]=v;RX.sujo[k]=true;const r=RES[rxResultado()];const el=$('rx-res');if(el){el.className='chip '+r.c;el.textContent=r.s+' '+r.t;}};
+window.rxPara=(e,on)=>{on?RX.para.add(e):RX.para.delete(e);};
+
+/* ── PDF (pdf-lib, Helvetica — só carateres WinAnsi) ── */
+const PDFLIB_URL='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+async function pdfLib(){if(!window.PDFLib)await new Promise((res,rej)=>{const s=document.createElement('script');s.src=PDFLIB_URL;s.onload=res;s.onerror=()=>rej(new Error('não consegui carregar o gerador de PDF'));document.head.appendChild(s);});return window.PDFLib;}
+const TROCA={'→':'->','≤':'<=','≥':'>=','✓':'','✕':'x','⚠':'!','🔴':'','🟡':'','🟢':'','\u00A0':' '};
+
+/* ═══ PDF do relatório para a REMAX (partilhado: Analisador e página dos coordenadores) ═══
+   dados = {imovel, cidade, loja, quando (ISO), por, resultado, impeditivo[], complemento[],
+            recomendacoes[], documentos:{certidoes, cadernetas}} */
+function agruparLinhas(linhas){
+  // «Prédio 1572/Vila Viçosa (Conceição) — registo provisório…» → grupo «Prédio 1572 · Vila Viçosa (Conceição)»
+  const g=new Map();
+  for(const l of linhas||[]){const m=String(l).match(/^Prédio\s+([^/—]+)\/([^—]+?)\s+—\s+(.+)$/);
+    const k=m?`Prédio ${m[1].trim()} · ${m[2].trim()}`:'';const t=m?m[3]:String(l);
+    if(!g.has(k))g.set(k,[]);g.get(k).push(t.charAt(0).toUpperCase()+t.slice(1));}
+  const out=[...g.entries()].map(([grupo,itens])=>({grupo,itens}));
+  return out.sort((a,b)=>(a.grupo===''?1:0)-(b.grupo===''?1:0));
+}
+function frasesResumo(d){
+  const nI=(d.impeditivo||[]).length,nC=(d.complemento||[]).length;
+  const pl=(n,s,p)=>n===1?s:p;
+  if(d.resultado==='impeditivo')return`${nI} ${pl(nI,'ponto impede','pontos impedem')} a escritura${nC?` e ${pl(nC,'falta','faltam')} ${nC} ${pl(nC,'elemento','elementos')} de documentação`:''}.`;
+  if(d.resultado==='complemento')return`Sem impedimentos. ${pl(nC,'Falta','Faltam')} ${nC} ${pl(nC,'elemento','elementos')} de documentação para a escritura.`;
+  return'Os documentos analisados estão em conformidade para a escritura.';
+}
+async function pdfRelatorioREMAX(PDFLib,d){
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;
+  const doc=await PDFDocument.create();doc.setTitle(`Análise — ${d.imovel}${d.cidade?', '+d.cidade:''}`);doc.setAuthor('LBC — Solicitadora, SP, RL');
+  const F=await doc.embedFont(StandardFonts.Helvetica),FB=await doc.embedFont(StandardFonts.HelveticaBold);
+  const TROCA={'→':'->','≤':'<=','≥':'>=','✓':'','✕':'x','⚠':'!',' ':' '};
+  const limpa=(s,f)=>[...String(s||'')].map(ch=>{if(ch in TROCA)return TROCA[ch];try{f.widthOfTextAtSize(ch,10);return ch;}catch(_){return'';}}).join('');
+  const W=595.28,H=841.89,M=54,LW=W-2*M;
+  const C={txt:rgb(.14,.13,.17),mut:rgb(.42,.40,.46),linha:rgb(.89,.87,.84),roxo:rgb(.36,.30,.60),roxoBg:rgb(.93,.92,.96),
+    red:rgb(.70,.15,.12),redT:rgb(.56,.16,.13),redBg:rgb(.99,.93,.92),amb:rgb(.79,.54,.07),ambT:rgb(.48,.31,.05),ambBg:rgb(1,.97,.90),
+    grn:rgb(.18,.49,.31),grnT:rgb(.12,.37,.23),grnBg:rgb(.93,.97,.94)};
+  let pg,y;
+  const nova=()=>{pg=doc.addPage([W,H]);pg.drawRectangle({x:0,y:H-6,width:W,height:6,color:C.roxo});y=H-M;};
+  const parte=(t,f,sz,larg)=>{const out=[];for(const par of limpa(t,f).split('\n')){let l='';for(const w of par.split(/\s+/)){const x=l?l+' '+w:w;if(f.widthOfTextAtSize(x,sz)>larg&&l){out.push(l);l=w;}else l=x;}out.push(l);}return out;};
+  const precisa=h=>{if(y-h<M+30)nova();};
+  const simbolo=(tipo,cx,cy,r)=>{const cor=tipo==='impeditivo'?C.red:tipo==='complemento'?C.amb:C.grn;
+    pg.drawCircle({x:cx,y:cy,size:r,color:cor});const w=rgb(1,1,1),k=r*.42;
+    if(tipo==='impeditivo'){pg.drawLine({start:{x:cx-k,y:cy-k},end:{x:cx+k,y:cy+k},thickness:r*.2,color:w});pg.drawLine({start:{x:cx-k,y:cy+k},end:{x:cx+k,y:cy-k},thickness:r*.2,color:w});}
+    else if(tipo==='complemento'){pg.drawLine({start:{x:cx,y:cy+r*.5},end:{x:cx,y:cy-r*.1},thickness:r*.22,color:w});pg.drawCircle({x:cx,y:cy-r*.45,size:r*.13,color:w});}
+    else{pg.drawLine({start:{x:cx-r*.45,y:cy},end:{x:cx-r*.1,y:cy-r*.38},thickness:r*.2,color:w});pg.drawLine({start:{x:cx-r*.1,y:cy-r*.38},end:{x:cx+r*.48,y:cy+r*.4},thickness:r*.2,color:w});}};
+  const txt=(s,x,yy,f,sz,cor)=>pg.drawText(limpa(s,f),{x,y:yy,size:sz,font:f,color:cor});
+  nova();
+  // cabeçalho
+  txt('RELATÓRIO DE ANÁLISE PREDIAL',M,y-8,FB,8,C.roxo);y-=34;
+  for(const l of parte(`${d.imovel}${d.cidade?', '+d.cidade:''}`,FB,22,LW)){txt(l,M,y-22,FB,22,C.txt);y-=27;}
+  const quando=new Date(d.quando).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});
+  txt(`REMAX · Loja de ${d.loja}   ·   Análise de ${quando}${d.por?`   ·   ${d.por}`:''}`,M,y-10,F,9.5,C.mut);y-=24;
+  pg.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.8,color:C.roxoBg});y-=22;
+  // secções
+  const seccao=(tipo,titulo,linhas,cor)=>{
+    if(!linhas||!linhas.length)return;
+    precisa(60);
+    if(tipo)simbolo(tipo,M+6,y-5,6);
+    txt(`${titulo.toUpperCase()}  (${linhas.length})`,tipo?M+18:M,y-9,FB,9.5,cor);y-=16;
+    pg.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:C.linha});y-=10;
+    for(const g of agruparLinhas(linhas)){
+      if(g.grupo){precisa(30);txt(g.grupo,M,y-9,FB,9.5,C.mut);y-=17;}
+      for(const it of g.itens){const ls=parte(it,F,10.5,LW-22);precisa(ls.length*14+6);
+        pg.drawRectangle({x:M+4,y:y-8.5,width:4,height:4,color:cor});
+        for(const l of ls){txt(l,M+18,y-10.5,F,10.5,C.txt);y-=14.5;}y-=4;}
+      y-=4;}
+    y-=12;};
+  seccao('impeditivo','O que impede a escritura',d.impeditivo,C.red);
+  seccao('complemento','Documentação a completar',d.complemento,C.amb);
+  if(d.resultado==='ok'){ // nada a apontar: uma secção verde, no mesmo desenho das outras
+    simbolo('ok',M+6,y-5,6);txt('EM CONFORMIDADE',M+18,y-9,FB,9.5,C.grnT);y-=16;
+    pg.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:C.linha});y-=10;
+    for(const l of parte(frasesResumo(d),F,10.5,LW-18)){txt(l,M+18,y-10.5,F,10.5,C.txt);y-=14.5;}y-=16;}
+  seccao(null,'Recomendações',d.recomendacoes,C.roxo);
+  if(d.documentos){precisa(30);pg.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:C.linha});y-=14;
+    const nc=d.documentos.certidoes,nk=d.documentos.cadernetas;
+    txt(`Documentos analisados: ${nc} ${nc===1?'certidão permanente':'certidões permanentes'} do registo predial e ${nk} ${nk===1?'caderneta predial':'cadernetas prediais'}.`,M,y-9,F,9,C.mut);y-=16;}
+  const pags=doc.getPages();pags.forEach((p,i)=>{
+    p.drawLine({start:{x:M,y:M-6},end:{x:W-M,y:M-6},thickness:.5,color:C.linha});
+    p.drawText(limpa('LBC — SOLICITADORA, SP, RL',FB),{x:M,y:M-19,size:8,font:FB,color:C.roxo});
+    p.drawText(limpa('Relatório informativo, feito sobre os documentos enviados. Não dispensa a verificação final da LBC no ato.',F),{x:M,y:M-31,size:7.5,font:F,color:C.mut});
+    const n=`${i+1}/${pags.length}`;p.drawText(n,{x:W-M-F.widthOfTextAtSize(n,7.5),y:M-19,size:7.5,font:F,color:C.mut});});
+  return doc.save();
+}
+async function rxPDF(){
+  const nCert=DOCS.filter(d=>d.dados&&d.dados.tipo==='certidao').length,nCad=DOCS.filter(d=>d.dados&&/urbana|rustica/.test(d.dados.tipo)).length;
+  return pdfRelatorioREMAX(await pdfLib(),{imovel:RX.imovel.trim(),cidade:RX.cidade.trim(),loja:RX.loja,quando:new Date().toISOString(),por:(R&&R.por)||nomeConta(),
+    resultado:rxResultado(),impeditivo:linhasDe(RX.imp),complemento:linhasDe(RX.comp),recomendacoes:linhasDe(RX.rec),documentos:{certidoes:nCert,cadernetas:nCad}});
+}
+const b64=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);};
+/* Nome pelo imóvel — rua, número e localidade, como a pasta (25/10/2026). */
+const nomePDF=()=>`${`${RX.imovel||'Imóvel'}${RX.cidade?', '+RX.cidade:''}`.replace(/[\\/:*?"<>|#%]/g,'').replace(/\s+/g,' ').trim().slice(0,90)} – Análise ${carimbo().slice(0,10)}.pdf`;
+window.rxPrever=async()=>{const n=$('rx-nota');n.textContent='A gerar o PDF…';
+  try{const u8=await rxPDF();window.open(URL.createObjectURL(new Blob([u8],{type:'application/pdf'})),'_blank');n.textContent='';}catch(e){n.textContent='Erro: '+e.message;}};
+
+function rxEmailHTML(){
+  const h=new Date().getHours(),sauda=h<13?'Bom dia':h<20?'Boa tarde':'Boa noite';
+  const r=RES[rxResultado()],cor=r.c==='grave'?'#8E2A22':r.c==='conf'?'#7A4F0C':'#1F5E3A';
+  const lista=(tit,ls,c)=>ls.length?`<p style="margin:16px 0 6px;color:${c};font-weight:bold;font-size:13px;letter-spacing:.03em">${tit.toUpperCase()} (${ls.length})</p>${agruparLinhas(ls).map(g=>`${g.grupo?`<p style="margin:6px 0 2px;color:#5F5A68;font-weight:bold;font-size:13px">${esc(g.grupo)}</p>`:''}<ul style="margin:0 0 6px;padding-left:20px">${g.itens.map(l=>`<li style="margin:2px 0">${esc(l)}</li>`).join('')}</ul>`).join('')}`:'';
+  return`<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#24212B;line-height:1.5">
+<p>${sauda},</p>
+<p>Segue em anexo o relatório da análise do imóvel <b>${esc(RX.imovel)}${RX.cidade?', '+esc(RX.cidade):''}</b>.</p>
+<div style="padding:10px 14px;border-radius:6px;border-left:4px solid ${cor};background:${r.c==='grave'?'#FDEEEC':r.c==='conf'?'#FFF7E6':'#EEF7F1'}"><b style="color:${cor}">${r.s} ${esc(r.t)}</b><br><span>${esc(frasesResumo({resultado:rxResultado(),impeditivo:linhasDe(RX.imp),complemento:linhasDe(RX.comp)}))}</span></div>
+${lista('✕ O que impede a escritura',linhasDe(RX.imp),'#8E2A22')}
+${lista('⚠ Documentação a completar',linhasDe(RX.comp),'#7A4F0C')}
+${lista('Recomendações',linhasDe(RX.rec),'#24212B')}
+<p style="margin-top:16px">Com os melhores cumprimentos,<br>${esc((R&&R.por)||nomeConta()||'LBC')}<br>LBC — Solicitadora, SP, RL</p></div>`;
+}
+/* Área REMAX: publica só os dados do relatório no site REMAX-Partilha (o porteiro lê-os
+   daí e a página dos coordenadores gera o PDF). Nada dos clientes sai para lá. */
+const PARTILHA_SITE='lbcsolicitadorapt.sharepoint.com:/sites/REMAXPartilha';
+const slug=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'imovel';
+async function rxPublicar(quando,para){
+  const dr=await (await gq(`${GRAPH}/sites/${PARTILHA_SITE}:/drive?$select=id`)).json();
+  const id=`${quando.toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/^(\d{8})/,'$1-')}-${slug(RX.imovel)}`;
+  const nCert=DOCS.filter(d=>d.dados&&d.dados.tipo==='certidao').length,nCad=DOCS.filter(d=>d.dados&&/urbana|rustica/.test(d.dados.tipo)).length;
+  const dados={versao:1,id,loja:RX.loja,imovel:RX.imovel.trim(),cidade:RX.cidade.trim(),resultado:rxResultado(),
+    impeditivo:linhasDe(RX.imp),complemento:linhasDe(RX.comp),recomendacoes:linhasDe(RX.rec),
+    documentos:{certidoes:nCert,cadernetas:nCad},entrada:RX.entrada||null,enviado:quando.toISOString(),porLBC:(R&&R.por)||nomeConta()||'',para};
+  await gq(`${GRAPH}/drives/${dr.id}/root:/${encodeURIComponent(RX.loja)}/Analises/${id}.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(dados,null,2)});
+  return id;
+}
+async function lerJSON(caminho){try{const r=await fetch(`${GRAPH}/drives/${PASTA.drive}/items/${PASTA.item}:/${caminho}:/content`,{headers:{Authorization:'Bearer '+await tok()}});return r.ok?await r.json():null;}catch(_){return null;}}
+
+window.rxLancar=async()=>{
+  const n=$('rx-nota'),btn=$('rx-btn');
+  const extra=String(RX.extra||'').split(/[;,\s]+/).filter(Boolean);
+  if(extra.some(e=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))){n.textContent='Verifique o «Outro e-mail».';return;}
+  const para=[...new Set([...RX.para,...extra.map(e=>e.toLowerCase())])];
+  if(!RX.imovel.trim()){n.textContent='Indique o imóvel (morada).';return;}
+  if(!para.length){n.textContent='Marque pelo menos um coordenador ou indique um e-mail.';return;}
+  const r=RES[rxResultado()];
+  if(!confirm(`Lançar o relatório «${r.s} ${r.t}» e enviar por e-mail a:\n${para.join('\n')}\n\nO processo fica concluído e o relógio da LBC para neste momento.`))return;
+  btn.disabled=true;const passo=t=>n.textContent=t;let mailOK=false;
+  try{
+    passo('A gerar o PDF…');const u8=await rxPDF();const nome=nomePDF();const quando=new Date();
+    passo('A gravar na pasta do cliente…');
+    await gq(`${GRAPH}/drives/${PASTA.drive}/items/${PASTA.item}:/${encodeURIComponent('Análises')}/${encodeURIComponent(nome)}:/content`,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:u8});
+    for(const [nm,tipo,conteudo] of [[`${carimbo()}_Relatorio_analise.html`,'text/html',ficheiroHTML()],[`${carimbo()}_analise.json`,'application/json',dadosJSON()]])
+      await gq(`${GRAPH}/drives/${PASTA.drive}/items/${PASTA.item}:/${encodeURIComponent('Análises')}/${encodeURIComponent(nm)}:/content`,{method:'PUT',headers:{'Content-Type':tipo},body:conteudo});
+    passo('A enviar o e-mail…');
+    await gq(`${GRAPH}/me/sendMail`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:{
+      subject:`Análise — ${RX.imovel}${RX.cidade?', '+RX.cidade:''} · ${r.s} ${r.t}`,
+      body:{contentType:'HTML',content:rxEmailHTML()},
+      toRecipients:para.map(e=>({emailAddress:{address:e}})),
+      attachments:[{'@odata.type':'#microsoft.graph.fileAttachment',name:nome,contentType:'application/pdf',contentBytes:b64(u8)}]},saveToSentItems:true})});
+    mailOK=true;
+    passo('A registar…');
+    const reg=(await lerJSON('_remax.json'))||{versao:1,eventos:[]};
+    Object.assign(reg,{loja:RX.loja,imovel:RX.imovel,cidade:RX.cidade,av:RX.av||reg.av||'',resultado:rxResultado()});
+    (reg.eventos=reg.eventos||[]).push({quando:quando.toISOString(),entrada:RX.entrada||null,tipo:'relatorio',lado:'REMAX',resultado:rxResultado(),por:nomeConta()||$('quem').value.trim(),para,ficheiro:'Análises/'+nome,
+      impeditivo:linhasDe(RX.imp),complemento:linhasDe(RX.comp)});
+    await gq(`${GRAPH}/drives/${PASTA.drive}/items/${PASTA.item}:/_remax.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(reg,null,2)});
+    let avisoLista='';
+    try{const idp=await rxPublicar(quando,para);reg.eventos[reg.eventos.length-1].partilha=idp;
+      await gq(`${GRAPH}/drives/${PASTA.drive}/items/${PASTA.item}:/_remax.json:/content`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(reg,null,2)});}
+    catch(e){console.info('[REMAX] área partilhada ainda não montada — só e-mail:',e.message);} // via e-mail: o site REMAX-Partilha é opcional
+    if(RX.av&&RX.site&&RX.lista){
+      try{const base=`${GRAPH}/sites/${RX.site}/lists/${RX.lista}/items/${RX.av}`;
+        const it=await (await gq(`${base}?$expand=fields($select=Notas)`)).json();
+        const dpt=quando.toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});
+        const linha=`[${dpt}] Relatório enviado (${r.s} ${r.t}) a ${para.join(', ')}`;
+        const f={Notas:[(it.fields&&it.fields.Notas)||'',linha].filter(Boolean).join('\n')};
+        // A análise fecha com o envio: a REMAX trata do que falta. Só reabre se entrarem novos documentos na pasta.
+        f.Estado='Concluído';f.Data_Conclusao=quando.toISOString().slice(0,10)+'T12:00:00Z';
+        await gq(`${base}/fields`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(f)});
+      }catch(e){avisoLista=' (não consegui atualizar a linha do processo: '+e.message+')';}
+    }
+    RX.enviado=`✓ Enviado a ${para.join(', ')} às ${quando.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} · PDF em «Análises»${avisoLista}`;
+    passo(RX.enviado);
+  }catch(e){passo(mailOK?'O e-mail foi enviado, mas falhou o registo: '+e.message+' — não volte a lançar; avise a Liliana.':'Erro: '+e.message+' — o e-mail não foi enviado; pode tentar de novo.');}
+  btn.disabled=false;
+};
+</script>
+<script>
+/* ═══════════ BARRA LBC — saltar entre ferramentas com a mesma pasta (24/10/2026) ═══════════
+   Faixa fina no topo de cada ferramenta: Portal · Pasta · Gerador · Verificador · Analisador.
+   Leva sempre a pasta do cliente em que se está a trabalhar. Cada ferramenta abre numa aba
+   própria por pasta (lbc-<ferramenta>-<id da pasta>): se já estiver aberta, salta para ela em
+   vez de a recarregar — não se perde trabalho por preencher.
+   A ferramenta indica onde está com window.LBC_FERRAMENTA e, se tiver pasta escolhida dentro
+   dela, com window.lbcPastaAtual() → {driveId, id, nome}. A sessão passa de aba em aba
+   (window.graphToken / renovarToken de quem abriu; em último caso, a última guardada). */
+(function(){
+  if(window.__barraLBC)return;window.__barraLBC=true;
+  const BASE='https://lililbc.github.io';
+  const URL_={portal:BASE+'/portal-lbc/',gerador:BASE+'/portal-lbc/gerador.html',verificador:BASE+'/verificador-lbc/verificador.html',analisador:BASE+'/verificador-lbc/analisador.html'};
+  const ROT={portal:'🏠 Portal',pasta:'📂 Pasta',gerador:'✍ Gerador',verificador:'✔ Verificador',analisador:'🔎 Analisador'};
+  const aqui=()=>window.LBC_FERRAMENTA||'';
+  function ctx(){
+    try{if(typeof window.lbcPastaAtual==='function'){const c=window.lbcPastaAtual();if(c&&c.driveId&&c.id)return c;}}catch(_){}
+    const q=new URLSearchParams(location.search),p=q.get('pasta');if(!p)return null;
+    const [driveId,id]=p.split('|');return driveId&&id?{driveId,id,nome:q.get('nome')||''}:null;}
+  const link=(t,c)=>c?`${URL_[t]}?pasta=${encodeURIComponent(c.driveId+'|'+c.id)}&nome=${encodeURIComponent(c.nome||'')}`:URL_[t];
+  function irPara(nome,url){
+    // abre (ou volta a) uma aba com nome: window.open('',nome) devolve a aba existente sem a recarregar
+    let w=null;try{w=window.open('',nome);}catch(_){}
+    if(!w){window.open(url,'_blank');return;}
+    try{const h=w.location.href;if(!h||h==='about:blank')w.location.href=url;}catch(_){/* outra origem: já está aberta */}
+    try{w.focus();}catch(_){}}
+  async function token(){
+    try{if(typeof window.lbcToken==='function'){const t=await window.lbcToken();if(t)return t;}}catch(_){}
+    try{if(window.graphToken)return window.graphToken;}catch(_){}
+    try{if(window.opener&&window.opener.graphToken)return window.opener.graphToken;}catch(_){}
+    try{return localStorage.getItem('lbc_graph_token')||'';}catch(_){return'';}}
+  async function abrirPasta(){
+    const c=ctx();if(!c){alert('Escolha primeiro a pasta do cliente.');return;}
+    const w=window.open('about:blank','lbc-pasta');
+    try{const r=await fetch(`https://graph.microsoft.com/v1.0/drives/${c.driveId}/items/${c.id}?$select=webUrl`,{headers:{Authorization:'Bearer '+await token()}});
+      if(!r.ok)throw new Error(r.status);const j=await r.json();
+      const u=j.webUrl+(j.webUrl.includes('?')?'&':'?')+'env=WebView';w.location.href=u;}
+    catch(e){try{w.close();}catch(_){}alert('Não consegui abrir a pasta ('+e.message+').');}}
+  window.lbcIr=t=>{
+    if(t==='pasta')return abrirPasta();
+    const c=ctx();
+    // guardar a sessão para a aba seguinte (mesma origem: lililbc.github.io)
+    token().then(tk=>{try{if(tk)localStorage.setItem('lbc_graph_token',tk);}catch(_){}});
+    if(t==='portal')return irPara('lbc-portal',URL_.portal);
+    if(!c&&t!=='gerador'){alert('Escolha primeiro a pasta do cliente.');return;}
+    irPara(`lbc-${t}${c?'-'+c.id:''}`,link(t,c));};
+  function pintar(){
+    let b=document.getElementById('barra-lbc');
+    if(!b){b=document.createElement('nav');b.id='barra-lbc';b.setAttribute('aria-label','Ferramentas LBC');document.body.insertBefore(b,document.body.firstChild);
+      const st=document.createElement('style');st.textContent=`#barra-lbc{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;padding:5px 14px;background:#24212B;color:#EDEAF5;font:500 12px 'DM Sans',system-ui,sans-serif;position:relative;z-index:50}
+#barra-lbc .bl-m{font-weight:700;letter-spacing:.06em;margin-right:4px;color:#C9C1E3}#barra-lbc .bl-p{color:#B7B0C8;margin-right:auto;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#barra-lbc button{font:inherit;color:#EDEAF5;background:transparent;border:1px solid #4A4458;border-radius:999px;padding:3px 10px;cursor:pointer;min-height:26px}
+#barra-lbc button:hover{background:#3A3448}#barra-lbc button[aria-current="page"]{background:#5B4C9A;border-color:#5B4C9A;cursor:default}
+@media print{#barra-lbc{display:none!important}}`;document.head.appendChild(st);}
+    const c=ctx();
+    // esta aba fica com o nome da ferramenta+pasta, para as outras a encontrarem sem a recarregar
+    try{if(aqui()&&(!window.name||window.name.startsWith('lbc-')))window.name=aqui()==='portal'?'lbc-portal':`lbc-${aqui()}${c?'-'+c.id:''}`;}catch(_){}
+    b.innerHTML=`<span class="bl-m">LBC</span><span class="bl-p" title="${c?String(c.nome).replace(/"/g,'&quot;'):''}">${c?'📁 '+String(c.nome||'pasta do cliente').replace(/</g,'&lt;'):'sem pasta escolhida'}</span>`+
+      ['portal','pasta','gerador','verificador','analisador'].map(t=>`<button type="button" ${t===aqui()?'aria-current="page"':''} onclick="${t===aqui()?'':`lbcIr('${t}')`}" ${(!c&&t!=='portal'&&t!=='gerador'&&t!==aqui())?'disabled style="opacity:.45;cursor:default"':''}>${ROT[t]}</button>`).join('');}
+  window.lbcBarraAtualizar=pintar;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pintar);else pintar();
+})();
+</script>
+</body>
+</html>

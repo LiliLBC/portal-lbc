@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-25.1</span>
+    <span class="page-sub">piloto · v2026-10-25.3</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6135,11 +6135,42 @@ function gmGuardar(){
   gmFoto(R);
   return R;
 }
+/* Mapa dos campos que alimentam um bloco (25/10/2026): mal o bloco é editado à mão, experimenta-se
+   cada campo do formulário (muda-se e repõe-se logo, sem eventos) e bloqueiam-se já os que mexem
+   no texto desse bloco — não é preciso alguém tentar alterá-los primeiro. */
+const GM_FORA=/^(f-tipo-ato|pasta-search|bib-|cl-|esp-onde|com-|mz-)/;
+function gmMapear(id){
+  const base=gmTextos(compor())[id];if(base===undefined)return[];
+  const achados=[];GM.pausa=true;
+  try{
+    for(const e of gmCampos()){
+      if(GM_FORA.test(e.id)||e.dataset.bloqManual)continue;
+      const ant=gmVal(e);let teste;
+      if(e.type==='checkbox'||e.type==='radio')teste=ant==='1'?'0':'1';
+      else if(e.tagName==='SELECT'){const o=[...e.options].find(o=>o.value!==ant);if(!o)continue;teste=o.value;}
+      else if(e.type==='date')teste=ant==='2001-02-03'?'2002-03-04':'2001-02-03';
+      else if(e.type==='number')teste=String((+ant||0)+7);
+      else teste=(ant||'')+'Ẍ7';
+      gmPor(e,teste);
+      let mud=false;try{mud=(gmTextos(compor())[id]??'∅')!==base;}catch(_){mud=false;}
+      gmPor(e,ant);
+      if(mud)achados.push(e.id);
+    }
+  }finally{GM.pausa=false;}
+  return achados;
+}
+function gmMapearEBloquear(id){
+  const m=manuais[id];if(!m||typeof m!=='object'||m.mapeado)return;
+  const ids=gmMapear(id);m.campos=[...new Set([...(m.campos||[]),...ids])];m.mapeado=true;
+  ids.forEach(c=>{const e=document.getElementById(c);if(e)gmBloquear(e,id);});
+  if(ids.length)showToast(`${ids.length} campo(s) do formulário ficaram bloqueados: alimentam o bloco editado à mão. Para os voltar a usar, ↺ repor nesse bloco.`,'');
+}
 function marcarManual(el){
   const id=el.dataset.id;
   const ant=manuais[id];
   if(ant&&typeof ant==='object'&&ant.base!==undefined)ant.html=el.innerHTML;
-  else{const base=gmTextos(compor())[id]??'';manuais[id]={html:el.innerHTML,base,por:gmQuem(),quando:new Date().toISOString(),campos:(ant&&ant.campos)||[]};GM.ultimo[id]=base;}
+  else{const base=gmTextos(compor())[id]??'';manuais[id]={html:el.innerHTML,base,por:gmQuem(),quando:new Date().toISOString(),campos:(ant&&ant.campos)||[]};GM.ultimo[id]=base;
+    setTimeout(()=>gmMapearEBloquear(id),0);}
   const bloco=el.closest('.bloco');
   bloco.classList.add('manual');
   const f=bloco.querySelector('.b-ferr');
@@ -7256,6 +7287,13 @@ function dadosCPCV(){
     Assin:assinaturasCPCV()
   };
 }
+function nomeCPCV(){
+  const limpa=t=>String(t||'').replace(/[\\/:*?"<>|#%]/g,'').replace(/\s+/g,' ').trim();
+  let t=new URLSearchParams(location.search).get('titulo')||'';
+  if(!t&&pastaSeleccionada)t=pastaSeleccionada.nome.replace(/^\d{8}\s+/,'').replace(/\s*[–-]?\s*(CPCV|AN[ÁA]LISE)\s*$/i,'');
+  if(!t){const c0=lerCompradores()[0]||{};t=c0.nome||c0.denom||'CONTRATO';}
+  return `${limpa(t).slice(0,90)} – CPCV`;
+}
 async function gerarWordCPCV(docsDrive,DocxClass){
   const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CPCV_v3.docx:/content`);
   if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CPCV_v3.docx — carregue o template para essa pasta');
@@ -7263,9 +7301,9 @@ async function gerarWordCPCV(docsDrive,DocxClass){
   const doc=new DocxClass(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
   doc.render(dadosCPCV());
   const blob=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-  const c0=lerCompradores()[0]||{};
-  const nb=(c0.nome||c0.denom||'CONTRATO').split(/\s+/);
-  const nomeFich=`CPCV_${nb[0]||''}_${nb.length>1?nb[nb.length-1]:''}`.replace(/_+$/,'')+'.docx';
+  /* Nome pelo imóvel — rua, número e localidade, como a pasta e o processo (25/10/2026):
+     «Rua do Pinheiro 12, Beja – CPCV.docx». Vem do título do processo (Portal) ou do nome da pasta. */
+  const nomeFich=nomeCPCV()+'.docx';
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nomeFich;a.click();
   if(pastaSeleccionada){
     await graphFetch(`${GRAPH_BASE}/drives/${pastaSeleccionada.driveId}/items/${pastaSeleccionada.id}:/${encodeURIComponent(nomeFich)}:/content`,{method:'PUT',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:blob});
@@ -7701,6 +7739,7 @@ function restaurarEstado(d){
       else if(m&&m.base===undefined)Object.assign(m,{base:t[id]??'',campos:m.campos||[]});});
     gmAplicarBloqueios();gmFoto();
   }finally{GM.pausa=false;}
+  setTimeout(()=>{Object.keys(manuais).forEach(id=>{try{gmMapearEBloquear(id);}catch(e){console.warn('[mapa]',e);}});gmFoto();},0);
   render();
 }
 /* ── RASCUNHO NO BROWSER · uma gaveta por pasta ──
