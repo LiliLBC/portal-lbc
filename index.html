@@ -17102,6 +17102,8 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
 <script>
 
 
+
+
 /* ═══════════ CPCV REMAX — lado da LBC (24/10/2026) ═══════════
    A pasta do cliente é o arquivo oficial do CPCV; o site REMAX-Partilha serve só para
    trocar versões com a loja (via página dos coordenadores, quando montada, ou por e-mail).
@@ -17228,10 +17230,13 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
         <div style="font-size:12.5px;margin-bottom:.8rem">${!est?'✏ Em edição — ainda não enviado à loja.':(s=>s.estado==='concluido'?(s.concluidoPor==='REMAX'?`✓ Concluído pela loja — versão final carregada em ${dh(s.desde)}${s.por?' por '+escHtml(s.por):''}.`:`✓ Concluído — enviado à loja em ${dh(s.desde)}. A loja pode descarregar e trabalhar.`):`✏ Em edição na LBC desde ${dh(s.desde)}${s.por?' (versão de '+escHtml(s.por)+')':''}. A loja não deve descarregar até voltar a concluir.`)(estadoCPCV(est))}</div>
         <div style="display:flex;flex-direction:column;gap:.55rem;font-size:13px">
           <b>Concluir a versão da LBC e enviar à loja</b>
-          ${wds.length?`<select class="form-select" id="cpcv-fich">${wds.map(x=>`<option value="${x.id}">${escHtml(x.name)} · alterado ${dh(x.lastModifiedDateTime)}</option>`).join('')}</select>`:'<div class="notice notice-info">Não há ficheiros Word na pasta do processo. Gere ou guarde lá o CPCV primeiro.</div>'}
+          ${wds.length?`<select class="form-select" id="cpcv-fich" onchange="document.getElementById('cpcv-pc-wrap').style.display=this.value?'none':''">${wds.map(x=>`<option value="${x.id}">${escHtml(x.name)} · alterado ${dh(x.lastModifiedDateTime)}</option>`).join('')}<option value="">— escolher do computador —</option></select>`:'<input type="hidden" id="cpcv-fich" value="">'}
+          <div id="cpcv-pc-wrap" style="${wds.length?'display:none':''}">${wds.length?'':'<span style="font-size:12px;color:var(--text-muted)">Não há Word na pasta do processo — escolha o ficheiro no computador: </span>'}<input type="file" id="cpcv-fich-pc" accept=".docx"></div>
           <div>${coords.map(x=>`<label style="margin-right:1rem"><input type="checkbox" class="cpcv-para" value="${x.e}" checked> ${escHtml(x.n)}</label>`).join('')}
             <label style="margin-right:1rem"><input type="checkbox" id="cpcv-anexo" checked> enviar o Word em anexo</label></div>
-          <div><button class="btn btn-primary" onclick="cpcvPublicar()" ${wds.length?'':'disabled'}>✓ Concluir e enviar à loja</button></div>
+          <label style="display:block">Nota para a loja <span style="color:var(--text-muted);font-size:11.5px">(opcional — aparece na Área REMAX junto ao CPCV e no e-mail)</span>
+            <textarea class="form-input" id="cpcv-nota" rows="2" placeholder="Ex: falta a certidão de … para completar os dados do CPCV" style="width:100%;resize:vertical"></textarea></label>
+          <div><button class="btn btn-primary" onclick="cpcvPublicar()">✓ Concluir e enviar à loja</button></div>
           <hr style="border:none;border-top:1px solid var(--border);margin:.4rem 0">
           <b>Registar uma versão recebida da loja por e-mail</b>
           <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
@@ -17243,9 +17248,9 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
             <button class="btn" onclick="cpcvDiferencas()" ${cs.length>=2?'':'disabled'}>🔍 O que mudou (v${cs.length>=2?cs[cs.length-2].n:'–'} → v${cs.length?cs[cs.length-1].n:'–'})</button>
           </div>
           <div id="cpcv-dif"></div>
-          <b style="margin-top:.4rem">Histórico</b>
+          <b style="margin-top:.4rem">Histórico ${ev.length?`<button class="btn btn-sm" style="font-weight:400;margin-left:.5rem" onclick="cpcvAnularUltimo()" title="Retira do histórico o último registo (feito por engano). A cópia na pasta fica.">↶ Anular o último registo</button>`:''}</b>
           <div style="max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:8px">
-            ${ev.length?ev.map(e=>`<div style="padding:5px 9px;border-bottom:1px solid var(--border);font-size:12px">${dh(e.quando)} · <b>${e.lado==='LBC'?'LBC':'Loja'}</b> · ${e.tipo==='versao'?(e.final?'versão final':'nova versão'):e.tipo==='concluido'?'concluído':e.tipo==='reaberto'?'reaberto':escHtml(e.tipo)}${e.porNome?' · '+escHtml(e.porNome):''}${e.copiaLBC?` · <span style="color:var(--text-muted)">${escHtml(e.copiaLBC)}</span>`:''}</div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--text-muted)">Sem movimentos.</div>'}
+            ${ev.length?ev.map(e=>`<div style="padding:5px 9px;border-bottom:1px solid var(--border);font-size:12px">${dh(e.quando)} · <b>${e.lado==='LBC'?'LBC':'Loja'}</b> · ${e.tipo==='versao'?(e.final?'versão final':'nova versão'):e.tipo==='concluido'?'concluído':e.tipo==='reaberto'?'reaberto':escHtml(e.tipo)}${e.porNome?' · '+escHtml(e.porNome):''}${e.nota?` · <b>nota:</b> ${escHtml(e.nota)}`:''}${e.copiaLBC?` · <span style="color:var(--text-muted)">${escHtml(e.copiaLBC)}</span>`:''}</div>`).join(''):'<div style="padding:8px;font-size:12px;color:var(--text-muted)">Sem movimentos.</div>'}
           </div>
           <div style="font-size:11.5px;color:var(--text-muted)">Cópias guardadas na pasta do processo, subpasta «CPCV»: ${cs.length?cs.map(x=>'v'+x.n).join(', '):'nenhuma ainda'}.</div>
         </div>
@@ -17258,14 +17263,21 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
 
   window.cpcvPublicar=async()=>{
     const i=ATUAL;const sel=document.getElementById('cpcv-fich');if(!i||!sel)return;
+    /* Word escolhido no computador (25/10/2026): também se guarda na pasta do processo. */
+    const pc=!sel.value?document.getElementById('cpcv-fich-pc')?.files?.[0]:null;
+    if(!sel.value&&!pc){showToast('Escolha o Word do CPCV (da pasta ou do computador).','error');return;}
+    if(pc&&!/\.docx$/i.test(pc.name)){showToast('O ficheiro tem de ser um Word (.docx).','error');return;}
     const para=[...document.querySelectorAll('.cpcv-para:checked')].map(x=>x.value);const anexo=document.getElementById('cpcv-anexo').checked;
+    const nota=(document.getElementById('cpcv-nota')?.value||'').trim();
     try{
       showToast('A publicar…','info');
-      const pasta=await pastaCliente(i);const docs=await filhos(driveIdAvencas,pasta.id);const f=docs.find(x=>x.id===sel.value);
+      const pasta=await pastaCliente(i);const docs=await filhos(driveIdAvencas,pasta.id);
+      const f=pc?{name:pc.name,lastModifiedDateTime:new Date(pc.lastModified).toISOString(),_pc:pc}:docs.find(x=>x.id===sel.value);
+      if(pc)await putEmPasta(driveIdAvencas,pasta.id,pc.name,await pc.arrayBuffer(),DOCX);
       const est=await sincronizar(i,true);
       const ultR=est&&[...(est.eventos||[])].filter(e=>e.tipo==='versao'&&e.lado==='REMAX').sort((a,b)=>b.quando.localeCompare(a.quando))[0];
       if(ultR&&ultR.quando>f.lastModifiedDateTime&&!confirm(`A loja entregou uma versão em ${dh(ultR.quando)}, depois da última alteração deste ficheiro (${dh(f.lastModifiedDateTime)}).\n\nA versão da loja já está guardada na pasta (${ultR.copiaLBC||'CPCV'}). Publicar mesmo assim a sua?`))return;
-      const buf=await conteudo(driveIdAvencas,f);
+      const buf=f._pc?await f._pc.arrayBuffer():await conteudo(driveIdAvencas,f);
       const c=await guardarCopia(i,pasta,buf);
       const d=await pdrive();const ficheiro=(est&&est.ficheiro)||`${base(i)}.docx`;
       const pastaP=await meta(d,`${i[AP.loja]}/CPCV/${idCPCV(i)}`);
@@ -17273,10 +17285,11 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
       await put(d,atual?'item:'+atual.id:`${i[AP.loja]}/CPCV/${idCPCV(i)}/${ficheiro}`,buf,DOCX);
       const quando=new Date().toISOString();const ent=avInicioMs(i);
       await alterarEstado(i,e=>{e=e||{versao:1,...partes(i),loja:i[AP.loja],av:i.id,ficheiro,entrada:ent!=null?new Date(ent).toISOString():null,concluido:false,eventos:[]};
-        e.eventos.push({quando,lado:'LBC',tipo:'versao',por:(window.contaAtual&&contaAtual.username)||'',porNome:nomeLBC(),copiaLBC:`CPCV/${c.nome}`});e.concluido=false;return e;});
+        e.eventos.push({quando,lado:'LBC',tipo:'versao',por:(window.contaAtual&&contaAtual.username)||'',porNome:nomeLBC(),copiaLBC:`CPCV/${c.nome}`,...(nota?{nota}:{})});e.concluido=false;return e;});
       if(para.length){const nm=ficheiro;const corpo=`<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#24212B;line-height:1.5">
 <p>${new Date().getHours()<13?'Bom dia':new Date().getHours()<20?'Boa tarde':'Boa noite'},</p>
 <p>Segue a nova versão do CPCV de <b>${escHtml(i[AP.titulo]||'')}</b>${anexo?' em anexo':''}. Para a alterar, use sempre esta versão e devolva o Word completo.</p>
+${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821B;background:#FDF3E1"><b>Nota da LBC:</b><br>${escHtml(nota).replace(/\n/g,'<br>')}</div>`:''}
 <p>Com os melhores cumprimentos,<br>${escHtml(nomeLBC())}<br>LBC — Solicitadora, SP, RL</p></div>`;
         const b64=u8=>{let s='';for(let k=0;k<u8.length;k+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(k,k+0x8000));return btoa(s);};
         await renovarToken();
@@ -17308,6 +17321,18 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
     }catch(e){showToast('Erro: '+e.message,'error');console.error('[CPCV] registar',e);}
   };
 
+  /* Registo feito por engano (25/10/2026): retira o último evento do histórico partilhado.
+     As cópias vN na pasta do processo ficam como estão. */
+  window.cpcvAnularUltimo=async()=>{
+    const i=ATUAL;if(!i)return;
+    try{const e0=await lerEstado(i);const evs=e0?[...(e0.dados.eventos||[])].sort((a,b)=>a.quando.localeCompare(b.quando)):[];
+      const u=evs[evs.length-1];if(!u){showToast('Não há registos.','');return;}
+      if(!confirm(`Anular o último registo?\n\n${dh(u.quando)} · ${u.lado==='LBC'?'LBC':'Loja'} · ${u.tipo==='versao'?(u.final?'versão final':'nova versão'):u.tipo}${u.porNome?' · '+u.porNome:''}\n\nO estado do CPCV volta ao que era antes. A cópia na pasta do processo fica.`))return;
+      await alterarEstado(i,e=>{e.eventos=(e.eventos||[]).filter(x=>!(x.quando===u.quando&&x.lado===u.lado&&x.tipo===u.tipo));
+        (e.anulados=e.anulados||[]).push({...u,anuladoEm:new Date().toISOString(),anuladoPor:nomeLBC()});return e;});
+      showToast('Registo anulado.','success');recarregar();
+    }catch(e){showToast('Erro: '+e.message,'error');}
+  };
   window.cpcvConcluir=async fechar_=>{
     const i=ATUAL;try{const quando=new Date().toISOString();
       await alterarEstado(i,e=>{if(!e)throw new Error('Ainda não publicado.');
