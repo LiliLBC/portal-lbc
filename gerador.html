@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-25.3</span>
+    <span class="page-sub">piloto · v2026-10-25.6</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -7288,13 +7288,18 @@ function dadosCPCV(){
   };
 }
 function nomeCPCV(){
+  /* «CPCV_Rua Miguel Torga nº 9, Aljustrel» — o nome do processo / da pasta (25/10/2026). */
   const limpa=t=>String(t||'').replace(/[\\/:*?"<>|#%]/g,'').replace(/\s+/g,' ').trim();
+  /* Ordem: título do processo (Portal) → nome da pasta → morada do imóvel («Sito em»). */
   let t=new URLSearchParams(location.search).get('titulo')||'';
   if(!t&&pastaSeleccionada)t=pastaSeleccionada.nome.replace(/^\d{8}\s+/,'').replace(/\s*[–-]?\s*(CPCV|AN[ÁA]LISE)\s*$/i,'');
-  if(!t){const c0=lerCompradores()[0]||{};t=c0.nome||c0.denom||'CONTRATO';}
-  return `${limpa(t).slice(0,90)} – CPCV`;
+  if(!t)t=v('f-im-sito')||'';
+  if(!t)return'';
+  return `CPCV_${limpa(t).slice(0,90)}`;
 }
 async function gerarWordCPCV(docsDrive,DocxClass){
+  /* O nome do CPCV é o do processo (rua, número, localidade): sem pasta escolhida não se gera. */
+  if(!nomeCPCV())throw new Error('escolha a pasta do processo — o nome do CPCV vem da pasta (ou, sem pasta, da morada do imóvel)');
   const fr=await graphFetch(`${GRAPH_BASE}/drives/${docsDrive.id}/root:/Templates/TEMPL_CPCV_v3.docx:/content`);
   if(!fr.ok)throw new Error('não encontrei Templates/TEMPL_CPCV_v3.docx — carregue o template para essa pasta');
   const zip=new (window.PizZip)(await fr.arrayBuffer());
