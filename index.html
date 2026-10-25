@@ -10576,25 +10576,62 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     if(!LID){showToast('Falta criar a lista Etiquetas no SharePoint','error');return;}
     ligEd={lib,itemId,nome,url};pintarLig();
   };
+  /* Pesquisa de pastas para ligar (25/10/2026): percorre as três bibliotecas
+     (Escrituras, Processos, Avenças), incluindo as subpastas de agrupamento
+     (ex.: Avenças › REMAX › Beja), e junta a pesquisa do SharePoint. A pesquisa do
+     SharePoint sozinha falhava em nomes de pastas («Nenhuma pasta encontrada»). */
+  let IDX=null,IDXquando=0,IDXprom=null;
+  async function filhosPastas(drive,itemId){
+    const out=[];let url=`${GRAPH_BASE}/drives/${drive}/items/${itemId}/children?$select=id,name,folder,webUrl&$top=999`;
+    while(url){const r=await graphGet(url);(r.value||[]).forEach(x=>{if(x.folder)out.push(x);});url=r['@odata.nextLink']||null;}
+    return out;
+  }
+  async function indicePastas(){
+    if(IDX&&Date.now()-IDXquando<5*60*1000)return IDX;
+    if(IDXprom)return IDXprom;
+    IDXprom=(async()=>{
+      const res=[];
+      const ehAgrupador=n=>!/^\d{8}\b/.test(n);   /* pastas de processo começam pela data AAAAMMDD */
+      await Promise.all(Object.entries(LIBS).map(async([lib,L])=>{const drive=L.drive();if(!drive)return;
+        const visitar=async(itemId,em,nivel)=>{
+          let f=[];try{f=await filhosPastas(drive,itemId);}catch(_){return;}
+          const sub=[];
+          f.forEach(x=>{res.push({lib,itemId:x.id,nome:x.name,url:x.webUrl,em});
+            if(nivel<3&&ehAgrupador(x.name))sub.push(x);});
+          for(let i=0;i<sub.length;i+=6)await Promise.all(sub.slice(i,i+6).map(x=>visitar(x.id,(em?em+' › ':'')+x.name,nivel+1)));
+        };
+        await visitar('root','',1);
+      }));
+      IDX=res;IDXquando=Date.now();IDXprom=null;return res;
+    })();
+    return IDXprom;
+  }
   window.ligProcurar=()=>{clearTimeout(ligT);ligT=setTimeout(async()=>{
     const q=($('lig-q')?.value||'').trim(),box=$('lig-res');if(!box)return;
     if(q.length<3){box.innerHTML='';ligRes=[];return;}
-    box.innerHTML='<div style="font-size:12px;color:var(--text-faint)">A procurar…</div>';
+    box.innerHTML='<div style="font-size:12px;color:var(--text-faint)">A procurar em Escrituras, Processos e Avenças…</div>';
     const ja=new Set((ITENS[chave(ligEd.lib,ligEd.itemId)]?.ligacoes||[]).map(x=>x.lib+'|'+x.itemId));
-    const res=[];
-    for(const [lib,L] of Object.entries(LIBS)){const drive=L.drive();if(!drive)continue;
+    const palavras=norm(q).split(' ').filter(Boolean);
+    const vale=x=>x.itemId!==ligEd.itemId&&!ja.has(x.lib+'|'+x.itemId);
+    const res=[],vistos=new Set();
+    const juntar=x=>{const k=x.lib+'|'+x.itemId;if(vistos.has(k)||!vale(x))return;vistos.add(k);res.push(x);};
+    let idx=[];try{idx=await indicePastas();}catch(_){}
+    if(($('lig-q')?.value||'').trim()!==q)return;
+    idx.filter(x=>{const n=norm(x.nome);return palavras.every(w=>n.includes(w));}).forEach(juntar);
+    await Promise.all(Object.entries(LIBS).map(async([lib,L])=>{const drive=L.drive();if(!drive)return;
       try{const r=await graphGet(`${GRAPH_BASE}/drives/${drive}/root/search(q='${encodeURIComponent(q.replace(/'/g,"''"))}')?$select=id,name,folder,webUrl,parentReference&$top=40`);
-        (r.value||[]).filter(x=>x.folder&&x.id!==ligEd.itemId&&!ja.has(lib+'|'+x.id)).forEach(x=>{
-          const em=decodeURIComponent(((x.parentReference&&x.parentReference.path)||'').split('root:')[1]||'').replace(/^\//,'');
-          res.push({lib,itemId:x.id,nome:x.name,url:x.webUrl,em});});
+        (r.value||[]).filter(x=>x.folder).forEach(x=>{
+          const em=decodeURIComponent(((x.parentReference&&x.parentReference.path)||'').split('root:')[1]||'').replace(/^\//,'').replace(/\//g,' › ');
+          juntar({lib,itemId:x.id,nome:x.name,url:x.webUrl,em});});
       }catch(_){}
-    }
-    ligRes=res.slice(0,30);
+    }));
+    if(($('lig-q')?.value||'').trim()!==q)return;
+    ligRes=res.slice(0,40);
     box.innerHTML=ligRes.length?ligRes.map((x,i)=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border-bottom:1px solid var(--border)">
         <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);min-width:72px">${esc(LIBS[x.lib].nome)}</span>
         <span style="flex:1;min-width:0"><span style="display:block;font-family:'DM Mono',monospace;font-size:12px">${esc(x.nome)}</span>${x.em?`<span style="font-size:10.5px;color:var(--text-faint)">em ${esc(x.em)}</span>`:''}</span>
         <button class="btn btn-sm btn-primary" onclick="ligLigar(${i})">Ligar</button></div>`).join('')
-      :'<div style="font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada com esse nome.</div>';
+      :'<div style="font-size:12px;color:var(--text-faint)">Nenhuma pasta encontrada com esse nome em Escrituras, Processos ou Avenças.</div>';
   },350);};
   window.ligLigar=async i=>{const x=ligRes[i];if(!x)return;
     try{await ligarPar(ligEd,x,true);showToast('Pastas ligadas','success');pintarLig();}catch(e){showToast('Erro: '+e.message,'error');}};
