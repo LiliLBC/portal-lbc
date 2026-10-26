@@ -11853,7 +11853,7 @@ function avRenderLista(lista){
     const cron=avCronometro(i);
     const cor=corForn[i[AP.fornecedor]]||'var(--text-muted)';
     const pastaBtn=i[AP.pasta]
-      ?`<button onclick="event.stopPropagation();window.open(embedSP('${escHtml(i[AP.pasta])}'),'_blank')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-light);color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Abrir pasta">
+      ?`<button onclick="event.stopPropagation();avAbrirPasta('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-light);color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Abrir pasta">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
           Pasta
         </button>`
@@ -11917,6 +11917,25 @@ async function avLigResolver(lista){
   if(window.ligPintar)window.ligPintar();
 }
 
+/* «Pasta» nas avenças (26/10/2026): abre pelo endereço que o próprio SharePoint dá para a
+   pasta (pedido pelo id), e não pelo endereço guardado na linha, que em nomes com «º», «(»
+   ou vírgulas podia falhar («Não é possível aceder a este site»). */
+async function avAbrirPasta(id){
+  const i=(typeof todosProcessosAv!=='undefined'?todosProcessosAv:[]).find(r=>String(r.id)===String(id));
+  const guardado=i&&i[AP.pasta];
+  const w=window.open('about:blank','_blank');
+  let url=AV_PASTA_ID[id]&&AV_PASTA_ID[id].webUrl;
+  if(!url&&i&&driveIdAvencas){
+    try{await renovarToken();
+      const nome=decodeURIComponent(String(guardado||'').split('/').pop()||'');
+      const r=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nome)}?$select=id,name,webUrl`,{headers:{'Authorization':'Bearer '+graphToken}});
+      if(r.ok){const it=await r.json();AV_PASTA_ID[id]=it;url=it.webUrl;}
+    }catch(_){}
+  }
+  url=url||guardado;
+  if(!url){try{w&&w.close();}catch(_){}showToast('Esta avença não tem pasta associada','error');return;}
+  if(w)w.location=embedSP(url);else window.open(embedSP(url),'_blank');
+}
 let listaIdAvencasProc=null;
 
 function avPainelFornecedorChange(){
