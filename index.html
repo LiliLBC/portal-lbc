@@ -17489,9 +17489,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
 /* ═══════════ RESULTADO DA ANÁLISE REMAX — no Portal (26/10/2026) ═══════════
    Botão «📋 Resultado» nas linhas REMAX · ANÁLISE (como o «📑 Loja» dos CPCV). Abre um
    formulário com três campos de texto livre (uma linha por ponto):
-     ✓ OK — em conformidade
-     ⚠ Intermédio — documentação a completar
-     ✕ O que pode levantar questões na escritura
+     ✓ OK · ⚠ Recomendação · ✕ Impeditivo de escritura
    Ao gravar: gera o PDF e guarda-o na pasta do cliente (subpasta «Análises»), publica o
    relatório na Área REMAX da loja (REMAXPartilha/<Loja>/Analises/<id>.json — os
    coordenadores pesquisam por morada e exportam o PDF) e fecha o processo.
@@ -17578,13 +17576,13 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
           for(const l of lz){txt(l,M+18,y-10.5,F,10.5,C.txt);y-=14.5;}y-=4;}
         y-=4;}
       y-=12;};
-    seccao('impeditivo','O que impede a escritura',d.impeditivo,C.red);
-    seccao('complemento','Documentação a completar',d.complemento,C.amb);
-    if(d.conforme&&d.conforme.length)seccao('ok','Em conformidade',d.conforme,C.grnT);
-    else if(d.resultado==='ok'){simbolo('ok',M+6,y-5,6);txt('EM CONFORMIDADE',M+18,y-9,FB,9.5,C.grnT);y-=16;
+    seccao('impeditivo','Impeditivo de escritura',d.impeditivo,C.red);
+    seccao('complemento','Recomendação',d.complemento,C.amb);
+    if(d.conforme&&d.conforme.length)seccao('ok','OK',d.conforme,C.grnT);
+    else if(d.resultado==='ok'){simbolo('ok',M+6,y-5,6);txt('OK',M+18,y-9,FB,9.5,C.grnT);y-=16;
       pg.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:C.linha});y-=10;
       for(const l of parte(frasesResumo(d),F,10.5,LW-18)){txt(l,M+18,y-10.5,F,10.5,C.txt);y-=14.5;}y-=16;}
-    seccao(null,'Recomendações',d.recomendacoes,C.roxo);
+    seccao(null,'Outras recomendações',d.recomendacoes,C.roxo);
     const pags=doc.getPages();pags.forEach((p,i)=>{
       p.drawLine({start:{x:M,y:M-6},end:{x:W-M,y:M-6},thickness:.5,color:C.linha});
       p.drawText(limpa('LBC — SOLICITADORA, SP, RL',FB),{x:M,y:M-19,size:8,font:FB,color:C.roxo});
@@ -17598,11 +17596,11 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   function dados(){
     const v=id=>document.getElementById(id).value;
     const conforme=linhas(v('anr-ok')),complemento=linhas(v('anr-int')),impeditivo=linhas(v('anr-imp'));
-    const recomendacoes=linhas(v('anr-rec'));
+    const recomendacoes=(ATUAL&&ATUAL._rec)||[];   /* «Outras recomendações»: só de relatórios antigos do Analisador */
     return {conforme,complemento,impeditivo,recomendacoes,resultado:impeditivo.length?'impeditivo':complemento.length?'complemento':'ok'};
   }
   function pintarResultado(){const d=dados(),el=document.getElementById('anr-res');if(!el)return;
-    el.innerHTML=d.resultado==='impeditivo'?'<b style="color:#8E2A22">✕ Com questões para a escritura</b>':d.resultado==='complemento'?'<b style="color:#7A4F0C">⚠ Documentação a completar</b>':'<b style="color:#1F5E3A">✓ Em conformidade</b>';}
+    el.innerHTML=d.resultado==='impeditivo'?'<b style="color:#8E2A22">✕ Impeditivo de escritura</b>':d.resultado==='complemento'?'<b style="color:#7A4F0C">⚠ Recomendação</b>':'<b style="color:#1F5E3A">✓ OK</b>';}
   window.anrAbrir=async id=>{
     const i=todosProcessosAv.find(r=>String(r.id)===String(id));if(!ehAnaliseRemax(i))return;
     if(!i[AP.loja]){showToast('Indique primeiro a loja REMAX no processo (é a loja que vê o relatório).','error');return;}
@@ -17620,11 +17618,10 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
         <div><label for="anr-cid" style="display:block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted);margin-bottom:.2rem">CIDADE</label><input id="anr-cid" class="form-input" style="width:100%" value="${escHtml(nm.cidade)}"></div>
         <div><div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted);margin-bottom:.2rem">RESULTADO</div><span id="anr-res"></span></div>
       </div>
-      ${campo('anr-ok','✓ OK','— em conformidade (uma linha por ponto)','#1F5E3A','Ex: Descrição predial e inscrição matricial coincidentes.')}
-      ${campo('anr-int','⚠ Intermédio','— documentação a completar: cadernetas atualizadas, licença de utilização…','#7A4F0C','Ex: Falta a licença de utilização.')}
-      ${campo('anr-imp','✕ Pode levantar questões na escritura','— partilhas, procuração, penhora…','#8E2A22','Ex: Hipoteca a favor do banco X — é preciso o distrate.')}
-      ${campo('anr-rec','Recomendações','(opcional)','var(--text-muted)','',2)}
-      <div style="font-size:11.5px;color:var(--text-faint);margin-top:.4rem">Se houver algum ponto em «questões», o resultado é ✕; senão, se houver «intermédio», é ⚠; só com «OK», é ✓. O PDF não leva NIF, nomes dos titulares nem cópias dos documentos.</div>
+      ${campo('anr-ok','✓ OK','(uma linha por ponto)','#1F5E3A','Ex: Descrição predial e inscrição matricial coincidentes.')}
+      ${campo('anr-int','⚠ Recomendação','— cadernetas atualizadas, licença de utilização…','#7A4F0C','Ex: Pedir a licença de utilização.')}
+      ${campo('anr-imp','✕ Impeditivo de escritura','— partilhas, procuração, penhora…','#8E2A22','Ex: Hipoteca a favor do banco X — é preciso o distrate.')}
+      <div style="font-size:11.5px;color:var(--text-faint);margin-top:.4rem">Se houver algum impeditivo, o resultado é ✕; senão, se houver recomendação, é ⚠; só com «OK», é ✓. O PDF não leva NIF, nomes dos titulares nem cópias dos documentos.</div>
       <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted);margin:.9rem 0 .3rem">ENVIAR A</div>
       <div style="display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;font-size:13px">
         ${coord.map((c,k)=>`<label><input type="checkbox" data-anr-para="${escHtml(c.e)}"${k===0?' checked':''}> ${escHtml(c.n)} <span style="color:var(--text-faint);font-size:12px">&lt;${escHtml(c.e)}&gt;</span></label>`).join('')||'<span style="color:var(--text-faint)">Sem coordenadores registados para esta loja.</span>'}
@@ -17636,7 +17633,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
         <button class="btn" onclick="anrPrever()">👁 Pré-visualizar PDF</button>
         <button class="btn btn-primary" id="anr-gravar" onclick="anrGravar()">📨 Lançar relatório e enviar por e-mail</button></div>`;
     document.body.appendChild(d);
-    ['anr-ok','anr-int','anr-imp','anr-rec'].forEach(x=>d.querySelector('#'+x).addEventListener('input',pintarResultado));
+    ['anr-ok','anr-int','anr-imp'].forEach(x=>d.querySelector('#'+x).addEventListener('input',pintarResultado));
     d.addEventListener('cancel',()=>{d.remove();ATUAL=null;});
     d.showModal();pintarResultado();
     /* Já publicado antes? Repõe o texto para corrigir. */
@@ -17644,7 +17641,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     const ant=await lerPublicado(i);
     if(ant&&document.getElementById('anr-dlg')===d){
       d.querySelector('#anr-ok').value=(ant.conforme||[]).join('\n');d.querySelector('#anr-int').value=(ant.complemento||[]).join('\n');
-      d.querySelector('#anr-imp').value=(ant.impeditivo||[]).join('\n');d.querySelector('#anr-rec').value=(ant.recomendacoes||[]).join('\n');
+      d.querySelector('#anr-imp').value=(ant.impeditivo||[]).join('\n');i._rec=ant.recomendacoes||[];
       if(ant.imovel){d.querySelector('#anr-nome').value=ant.imovel;d.querySelector('#anr-cid').value=ant.cidade||'';}
       nota.textContent=`Já publicado em ${new Date(ant.enviado).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}${ant.porLBC?' por '+ant.porLBC:''}. Ao gravar, substitui-se o que a loja vê.`;pintarResultado();}
     else nota.textContent='';
@@ -17667,7 +17664,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     if(extra.some(e=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))){n.textContent='Verifique o «Outro e-mail».';return;}
     const para=[...new Set([...[...document.querySelectorAll('[data-anr-para]:checked')].map(c=>c.dataset.anrPara),...extra.map(e=>e.toLowerCase())])];
     const mail=para.length>0;
-    const rs=d.resultado==='impeditivo'?'✕ Com questões para a escritura':d.resultado==='complemento'?'⚠ Documentação a completar':'✓ Em conformidade';
+    const rs=d.resultado==='impeditivo'?'✕ Impeditivo de escritura':d.resultado==='complemento'?'⚠ Recomendação':'✓ OK';
     if(!confirm(`Lançar o relatório «${rs}»${mail?` e enviar por e-mail a:\n${para.join('\n')}`:' SEM e-mail (só na Área REMAX)'}\n\nFica na pasta do cliente, na Área REMAX da loja ${i[AP.loja]}, e o processo fica concluído.`))return;
     btn.disabled=true;let publicado=false;
     try{
@@ -17689,7 +17686,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
         const corpo=`<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#24212B;line-height:1.5"><p>${sauda},</p>
 <p>Segue em anexo o relatório da análise do imóvel <b>${escHtml(p.imovel)}${p.cidade?', '+escHtml(p.cidade):''}</b>. Fica também disponível na Área REMAX.</p>
 <div style="padding:10px 14px;border-radius:6px;border-left:4px solid ${cor};background:${bg}"><b style="color:${cor}">${rs}</b></div>
-${lista('✕ O que impede a escritura',p.impeditivo,'#8E2A22')}${lista('⚠ Documentação a completar',p.complemento,'#7A4F0C')}${lista('✓ Em conformidade',p.conforme,'#1F5E3A')}${lista('Recomendações',p.recomendacoes,'#24212B')}
+${lista('✕ Impeditivo de escritura',p.impeditivo,'#8E2A22')}${lista('⚠ Recomendação',p.complemento,'#7A4F0C')}${lista('✓ OK',p.conforme,'#1F5E3A')}${lista('Outras recomendações',p.recomendacoes,'#24212B')}
 <p style="margin-top:16px">Com os melhores cumprimentos,<br>${escHtml(p.porLBC)}<br>LBC — Solicitadora, SP, RL</p></div>`;
         r=await fetch(`${GRAPH_BASE}/me/sendMail`,{method:'POST',headers:{...H(),'Content-Type':'application/json'},body:JSON.stringify({message:{
           subject:`Análise — ${p.imovel}${p.cidade?', '+p.cidade:''} · ${rs}`,body:{contentType:'HTML',content:corpo},
@@ -17699,7 +17696,7 @@ ${lista('✕ O que impede a escritura',p.impeditivo,'#8E2A22')}${lista('⚠ Docu
       n.textContent='A fechar o processo…';
       try{const base=`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items/${i.id}`;
         const dpt=quando.toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});
-        const rot=d.resultado==='impeditivo'?'✕ com questões':d.resultado==='complemento'?'⚠ a completar':'✓ conforme';
+        const rot=d.resultado==='impeditivo'?'✕ impeditivo de escritura':d.resultado==='complemento'?'⚠ recomendação':'✓ OK';
         await graphPatch(`${base}/fields`,{[AP.notas]:[i[AP.notas]||'',`[${dpt}] Resultado da análise publicado na Área REMAX (${rot})${mail?' e enviado por e-mail a '+para.join(', '):''} — ${p.porLBC}`].filter(Boolean).join('\n'),
           [AP.estado]:'Concluído',[AP.conclusao]:quando.toISOString().slice(0,10)+'T12:00:00Z'});}
       catch(e){console.warn('[Análise] linha do processo:',e);}
