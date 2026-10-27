@@ -386,6 +386,9 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-section">Visão geral</div>
     <div class="nav-item active" onclick="nav('calendario',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M5 1v4M11 1v4M1 7h14"/></svg></span>Calendário
+    </div>
+    <div class="nav-item" id="nav-tarefasesc" onclick="nav('tarefasesc',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8l2 2 4-4"/></svg></span>Tarefas
       <span class="nav-badge nav-badge-amber" id="tarefas-badge"></span>
     </div>
     <div class="nav-section">Escrituras</div>
@@ -1078,42 +1081,6 @@ tbody tr:hover td{background:#FAFAF8}
             <div id="cal-grid-wrap"></div>
           </div>
 
-          <!-- TAREFAS -->
-          <div style="width:480px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-              <div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--text-muted)">Escritório</div></div>
-              <button class="btn btn-primary btn-sm" onclick="toggleFormTarefaDash()">+ Nova</button>
-            </div>
-            <!-- Form inline nova tarefa -->
-            <div id="dash-tarefa-form" style="display:none;margin-bottom:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-              <div class="form-group" style="margin-bottom:.4rem"><input class="form-input" id="dash-tar-titulo" placeholder="Descrição *" style="font-size:12px"></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.4rem">
-                <select class="form-select" id="dash-tar-responsavel" style="font-size:12px"><option value="">Responsável</option><option>Liliana Cardoso</option><option>Andreia Cabanas</option></select>
-                <input class="form-input" id="dash-tar-prazo" type="date" style="font-size:12px">
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
-                <select class="form-select" id="dash-tar-prioridade" style="font-size:12px"><option>Normal</option><option>Urgente</option><option>Baixa</option></select>
-                <input class="form-input" id="dash-tar-obs" placeholder="Observações" style="font-size:12px">
-              </div>
-              <div style="display:flex;gap:.4rem">
-                <button class="btn btn-primary btn-sm" style="flex:1" onclick="criarTarefaDash()">Criar</button>
-                <button class="btn btn-sm" onclick="toggleFormTarefaDash()">Cancelar</button>
-              </div>
-            </div>
-            <!-- Filtros -->
-            <div class="filter-row" style="margin-bottom:.6rem;gap:.3rem">
-              <button class="filter-chip active" onclick="filtrarTarefasDash('',this)" style="font-size:10px;padding:2px 8px">Todas</button>
-              <button class="filter-chip" onclick="filtrarTarefasDash('Urgente',this)" style="font-size:10px;padding:2px 8px">Urgentes</button>
-              <button class="filter-chip" onclick="filtrarTarefasDash('Por fazer',this)" style="font-size:10px;padding:2px 8px">Por fazer</button>
-              <button class="filter-chip" onclick="filtrarTarefasDash('Em curso',this)" style="font-size:10px;padding:2px 8px">Em curso</button>
-            </div>
-            <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
-            <div id="dash-tar-lista" style="max-height:580px;overflow-y:auto"></div>
-            <div id="dash-tar-vazio" class="notice notice-success" style="display:none;font-size:12px">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
-              Sem tarefas pendentes!
-            </div>
-          </div>
         </div>
 
         <!-- LEMBRETES RÁPIDOS -->
@@ -1375,6 +1342,44 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
       </div>
 
+      <div class="screen" id="screen-tarefasesc">
+          <!-- TAREFAS — separador próprio, por baixo do Calendário (27/10/2026) -->
+          <div style="max-width:1000px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+              <div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--text-muted)">Escritório</div></div>
+              <button class="btn btn-primary btn-sm" onclick="toggleFormTarefaDash()">+ Nova</button>
+            </div>
+            <!-- Form inline nova tarefa -->
+            <div id="dash-tarefa-form" style="display:none;margin-bottom:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+              <div class="form-group" style="margin-bottom:.4rem"><input class="form-input" id="dash-tar-titulo" placeholder="Descrição *" style="font-size:12px"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.4rem">
+                <select class="form-select" id="dash-tar-responsavel" style="font-size:12px"><option value="">Responsável</option><option>Liliana Cardoso</option><option>Andreia Cabanas</option></select>
+                <input class="form-input" id="dash-tar-prazo" type="date" style="font-size:12px">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
+                <select class="form-select" id="dash-tar-prioridade" style="font-size:12px"><option>Normal</option><option>Urgente</option><option>Baixa</option></select>
+                <input class="form-input" id="dash-tar-obs" placeholder="Observações" style="font-size:12px">
+              </div>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-primary btn-sm" style="flex:1" onclick="criarTarefaDash()">Criar</button>
+                <button class="btn btn-sm" onclick="toggleFormTarefaDash()">Cancelar</button>
+              </div>
+            </div>
+            <!-- Filtros -->
+            <div class="filter-row" style="margin-bottom:.6rem;gap:.3rem">
+              <button class="filter-chip active" onclick="filtrarTarefasDash('',this)" style="font-size:10px;padding:2px 8px">Todas</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Urgente',this)" style="font-size:10px;padding:2px 8px">Urgentes</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Por fazer',this)" style="font-size:10px;padding:2px 8px">Por fazer</button>
+              <button class="filter-chip" onclick="filtrarTarefasDash('Em curso',this)" style="font-size:10px;padding:2px 8px">Em curso</button>
+            </div>
+            <div id="dash-tar-loading" class="loading-overlay" style="padding:1.5rem"><div class="spinner"></div></div>
+            <div id="dash-tar-lista"></div>
+            <div id="dash-tar-vazio" class="notice notice-success" style="display:none;font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l4 4 8-8"/></svg>
+              Sem tarefas pendentes!
+            </div>
+          </div>
+      </div>
       <div class="screen" id="screen-processos">
         <!-- TABS -->
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.75rem;align-items:center;justify-content:space-between">
@@ -2898,7 +2903,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={etiquetas:'Etiquetas',empresas:'Empresas',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
+const pageTitles={etiquetas:'Etiquetas',empresas:'Empresas',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',tarefasesc:'Tarefas',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
 
 function toggleSidebar(){
   const sidebar=document.querySelector('.sidebar');
@@ -5332,7 +5337,7 @@ document.addEventListener('click',e=>{const p=document.getElementById('cal-day-p
    depois das 19h ou sem hora ficam por cima ou por baixo das linhas. As horas de início e de
    fim continuam livres: os blocos são só para ver a agenda. */
 const CAL_BL_INI=9,CAL_BL_FIM=19;
-let CAL_BLOCOS=(()=>{try{return localStorage.getItem('lbc_cal_blocos')==='1';}catch(_){return false;}})();
+let CAL_BLOCOS=(()=>{try{return localStorage.getItem('lbc_cal_blocos')!=='0';}catch(_){return true;}})();   /* ligado por omissão; desliga-se no botão */
 function calBlocosAlternar(){CAL_BLOCOS=!CAL_BLOCOS;try{localStorage.setItem('lbc_cal_blocos',CAL_BLOCOS?'1':'0');}catch(_){}
   calBlocosBotao();if(calView!=='mes'){const b=[...document.querySelectorAll('.cal-view-btn')].find(x=>x.textContent.trim()==='Mês');if(b){calSetView('mes',b);return;}}renderCalendario();}
 function calBlocosBotao(){const b=document.getElementById('cal-blocos-btn');if(b)b.classList.toggle('active',CAL_BLOCOS);}
@@ -17246,7 +17251,7 @@ function instalar(){
   scr.innerHTML='<div class="pr-wrap"><div id="pr-corpo"></div></div>';
   base.parentNode.appendChild(scr);
 
-  const cal=document.querySelector('.nav-item[onclick*="calendario"]');
+  const cal=document.getElementById('nav-tarefasesc')||document.querySelector('.nav-item[onclick*="calendario"]');
   const item=document.createElement('div');
   item.className='nav-item';item.id='nav-porresponder';
   item.setAttribute('onclick',"nav('porresponder',this)");
