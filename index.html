@@ -248,6 +248,15 @@ tbody tr:hover td{background:#FAFAF8}
 .cal-event-ausencia{background:#F8D7DA;color:#B02A37;border-left-color:#B02A37}
 .cal-event-outro{background:#E2E3E5;color:#383D41;border-left-color:#383D41}
 .cal-event-tarefa{background:var(--red-light);color:var(--red);border-left-color:var(--red)}
+.cal-blocos{display:flex;flex-direction:column;gap:1px;margin-top:1px}
+.cal-bl{display:flex;align-items:stretch;gap:3px;min-height:15px}
+.cal-bl-h{flex:none;width:17px;font-size:8.5px;color:var(--text-faint);text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+.cal-bl-c{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.cal-bl-c .cal-event{margin-bottom:0}
+.cal-bl-livre{flex:1;border:1px dashed #D9D4E8;border-radius:3px;min-height:13px;font-size:8.5px;color:#B6AFC9;padding:0 4px;line-height:13px}
+.cal-bl-livre:hover{background:#fff;border-color:var(--accent);color:var(--accent-dark)}
+.cal-bl-cont{flex:1;min-height:13px;border-radius:3px;font-size:8.5px;line-height:13px;padding:0 5px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-blocos-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
 .cal-more{font-size:10px;color:var(--accent-dark);padding:1px 5px;cursor:pointer;font-weight:500}
 .cal-more:hover{text-decoration:underline}
 .cal-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:3px;vertical-align:middle}
@@ -1060,6 +1069,7 @@ tbody tr:hover td{background:#FAFAF8}
                 <div id="cal-badge-cgd-sem-num" style="display:none;margin-left:.5rem;padding:6px 12px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="filtrarCGDSemNum()" title="Clica para ver os eventos CGD sem nº de processo">⚠️ <span id="cal-badge-cgd-count">0</span> sem nº processo</div>
               </div>
               <div class="cal-view-btns">
+                <button class="cal-view-btn cal-blocos-btn" id="cal-blocos-btn" onclick="calBlocosAlternar()" title="Mostrar cada dia em blocos de hora (9h–19h) para ver os buracos na agenda">⏱ Blocos de hora</button>
                 <button class="cal-view-btn" onclick="calSetView('dia',this)">Dia</button>
                 <button class="cal-view-btn" onclick="calSetView('semana',this)">Semana</button>
                 <button class="cal-view-btn active" onclick="calSetView('mes',this)">Mês</button>
@@ -5314,7 +5324,46 @@ function calVerDia(dateStr,ev){
 }
 document.addEventListener('click',e=>{const p=document.getElementById('cal-day-pop');if(p&&!p.contains(e.target))p.remove();});
 
+/* ── BLOCOS DE HORA NA VISTA MÊS (27/10/2026) ──
+   Com «⏱ Blocos de hora», cada dia útil mostra uma linha por hora, das 9h às 18h (até às 19h).
+   Cada evento fica na linha da hora em que começa (vários na mesma hora acumulam-se); as
+   horas seguintes que ele ocupa aparecem esbatidas («↳»); as horas sem nada ficam «livre»
+   (tracejado) — clicar num «livre» abre um evento novo já a essa hora. Eventos antes das 9h,
+   depois das 19h ou sem hora ficam por cima ou por baixo das linhas. As horas de início e de
+   fim continuam livres: os blocos são só para ver a agenda. */
+const CAL_BL_INI=9,CAL_BL_FIM=19;
+let CAL_BLOCOS=(()=>{try{return localStorage.getItem('lbc_cal_blocos')==='1';}catch(_){return false;}})();
+function calBlocosAlternar(){CAL_BLOCOS=!CAL_BLOCOS;try{localStorage.setItem('lbc_cal_blocos',CAL_BLOCOS?'1':'0');}catch(_){}
+  calBlocosBotao();if(calView!=='mes'){const b=[...document.querySelectorAll('.cal-view-btn')].find(x=>x.textContent.trim()==='Mês');if(b){calSetView('mes',b);return;}}renderCalendario();}
+function calBlocosBotao(){const b=document.getElementById('cal-blocos-btn');if(b)b.classList.toggle('active',CAL_BLOCOS);}
+function calNovoAHora(dateStr,h,ev){if(ev)ev.stopPropagation();abrirModalEvento(dateStr);
+  const p=n=>String(n).padStart(2,'0');const a=document.getElementById('ev-hora'),b=document.getElementById('ev-hora-fim');
+  if(a)a.value=`${p(h)}:00`;if(b)b.value=`${p(h+1)}:00`;}
+function calBlocosDia(dateStr,evts,dow){
+  const min=h=>{const m=String(h||'').match(/^(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
+  const fimDe=e=>{const a=min(e._hora),b=min(e._horaFim);return b!=null&&b>a?b:a+60;};
+  const antes=[],depois=[],porHora={};
+  evts.forEach(e=>{const a=min(e._hora);
+    if(a==null){depois.push(e);return;}
+    const h=Math.floor(a/60);
+    if(h<CAL_BL_INI)antes.push(e);else if(h>=CAL_BL_FIM)depois.push(e);else(porHora[h]=porHora[h]||[]).push(e);});
+  /* fim de semana sem nada: não desenha as linhas */
+  if((dow===0||dow===6)&&!Object.keys(porHora).length)return [...antes,...depois].map(renderEvt).join('');
+  const comHora=evts.filter(e=>min(e._hora)!=null);
+  let out=antes.map(renderEvt).join('')+'<div class="cal-blocos">';
+  for(let h=CAL_BL_INI;h<CAL_BL_FIM;h++){
+    const aqui=porHora[h]||[];
+    let c;
+    if(aqui.length)c=aqui.map(renderEvt).join('');
+    else{const cont=comHora.find(e=>{const a=min(e._hora);return a<h*60&&fimDe(e)>h*60;});
+      c=cont?`<div class="cal-bl-cont ${COR_EVENTO[cont._tipo]||'cal-event-outro'}" title="Ocupado até ${escHtml(cont._horaFim||'')}" onclick="abrirEventoExistente('${cont.id}',event)">↳ ${escHtml(cont[A.titulo]||'')}</div>`
+        :`<div class="cal-bl-livre" title="Livre — clique para marcar às ${h}:00" onclick="calNovoAHora('${dateStr}',${h},event)">livre</div>`;}
+    out+=`<div class="cal-bl"><span class="cal-bl-h">${h}h</span><div class="cal-bl-c">${c}</div></div>`;
+  }
+  return out+'</div>'+depois.map(renderEvt).join('');
+}
 function renderMes(wrap){
+  calBlocosBotao();
   const ex=document.getElementById('cal-day-pop');if(ex)ex.remove();
   const ano=calData.getFullYear(),mes=calData.getMonth();
   document.getElementById('cal-title').textContent=`${MESES[mes]} ${ano}`;
@@ -5333,6 +5382,7 @@ function renderMes(wrap){
     const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoje=dateStr===hojeStr;
     const evts=eventosNoDia(dateStr);
+    if(CAL_BLOCOS){html+=`<div class="cal-day${isHoje?' today':''}" onclick="abrirModalEvento('${dateStr}')"><div class="cal-day-num">${d}</div>${calBlocosDia(dateStr,evts,new Date(ano,mes,d).getDay())}</div>`;continue;}
     const evtsHtml=evts.slice(0,4).map(renderEvt).join('');
     const dots=evts.slice(4).map(e=>`<span class="cal-dot ${(COR_EVENTO[e._tipo]||'cal-event-outro').replace('cal-event-','cal-dot-')}"></span>`).join('');
     const mais=evts.length>4?`<div class="cal-more" onclick="event.stopPropagation();calVerDia('${dateStr}',event)">+${evts.length-4} mais${dots}</div>`:'';
