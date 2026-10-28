@@ -82,6 +82,7 @@ tbody tr:hover td{background:#FAFAF8}
 .badge-green{background:var(--green-light);color:var(--green)}
 .badge-amber{background:var(--amber-light);color:var(--amber)}
 .badge-red{background:var(--red-light);color:var(--red)}
+.badge-red{background:var(--red-light);color:var(--red)}
 .badge-blue{background:var(--blue-light);color:var(--blue)}
 .badge-purple{background:var(--accent-light);color:var(--accent-dark)}
 .badge-gray{background:var(--surface2);color:var(--text-muted)}
@@ -426,6 +427,9 @@ tbody tr:hover td{background:#FAFAF8}
     </div>
     <div class="nav-item" onclick="nav('material',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3a2 2 0 00-2-2H1v11h5a2 2 0 012 2zM8 3a2 2 0 012-2h5v11h-5a2 2 0 00-2 2zM8 3v11"/></svg></span>Material de apoio
+    </div>
+    <div class="nav-item" onclick="nav('suprep',this)">
+      <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 1.5h7l3 3V14.5H3z"/><path d="M10 1.5v3h3M5.5 8h5M5.5 10.5h5M5.5 5.5h2.5"/></svg></span>Suprimentos — respostas
     </div>
     <div class="nav-section" id="nav-section-financeiro">Financeiro</div>
     <div class="nav-item" id="nav-fin-financeiro" onclick="nav('financeiro',this)" style="display:none">
@@ -973,6 +977,38 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
         <div id="mat-loading" class="loading-overlay" style="display:none"><div class="spinner"></div><div class="loading-text">A carregar material...</div></div>
         <div id="mat-list"></div>
+      </div>
+
+      <!-- ═══════════ REPOSITÓRIO DE SUPRIMENTOS (28/10/2026) ═══════════ -->
+      <div class="screen" id="screen-suprep">
+        <div class="section-header">
+          <div><div class="section-title">Suprimentos — respostas</div><div class="section-sub">Os suprimentos que nos aparecem e as respostas que demos, com os documentos de cada uma</div></div>
+          <button class="btn btn-primary btn-sm" onclick="srEditarSup()">+ Novo suprimento</button>
+        </div>
+        <div id="sr-aviso" style="display:none;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:7px;padding:.8rem 1rem;font-size:12.5px;line-height:1.7;margin-bottom:1rem"></div>
+        <div style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+          <input class="search-input" id="sr-q" placeholder="Pesquisar no assunto, fundamento, respostas, conservatória, documentos…" oninput="srPintar()" style="padding-left:12px;flex:1;min-width:240px">
+          <select class="form-select" id="sr-area" onchange="srPintar()" style="max-width:220px"><option value="">Todas as áreas</option></select>
+          <button class="filter-chip" onclick="srSoAceites(this)" title="Só os suprimentos com pelo menos uma resposta aceite">✓ Com resposta aceite</button>
+        </div>
+        <div id="sr-loading" class="loading-overlay" style="display:none"><div class="spinner"></div><div class="loading-text">A carregar suprimentos...</div></div>
+        <div id="sr-lista"></div>
+      </div>
+      <div class="modal-overlay" id="sr-modal-sup" onclick="if(event.target===this)srFecharSup()">
+        <div class="modal-box" style="max-width:580px;width:95%">
+          <div class="modal-box-title" id="sr-sup-titulo">Novo suprimento</div>
+          <div class="form-grid-2" style="gap:.65rem">
+            <div class="form-group form-full"><label class="form-label">Assunto do suprimento <span>*</span></label><input class="form-input" id="sr-f-assunto" placeholder="Ex: Falta de menção do regime de bens do transmitente"></div>
+            <div class="form-group"><label class="form-label">Área</label><input class="form-input" id="sr-f-area" list="sr-areas-list" placeholder="Registo Predial"><datalist id="sr-areas-list"></datalist></div>
+            <div class="form-group"><label class="form-label">Fundamento invocado</label><input class="form-input" id="sr-f-fund" placeholder="Ex: art. 43.º do CRPredial"></div>
+            <div class="form-group form-full"><label class="form-label">Descrição / o que a conservatória costuma pedir</label><textarea class="form-textarea" id="sr-f-desc" placeholder="Texto habitual do suprimento, em que casos aparece…"></textarea></div>
+            <div class="form-group form-full"><label class="form-label">Tags (separadas por vírgula)</label><input class="form-input" id="sr-f-tags" placeholder="Ex: regime de bens, habilitação, DPA"></div>
+          </div>
+          <div class="modal-actions"><button class="btn" onclick="srFecharSup()">Cancelar</button><button class="btn btn-primary" id="sr-btn-sup" onclick="srGravarSup()">Guardar</button></div>
+        </div>
+      </div>
+      <div class="modal-overlay" id="sr-modal-det" onclick="if(event.target===this)srFecharDet()">
+        <div class="modal-box" style="max-width:820px;width:96%;max-height:90vh;overflow-y:auto" id="sr-det"></div>
       </div>
 
       <!-- MODAL CONFERÊNCIA LISTAGEM CGD -->
@@ -2923,7 +2959,7 @@ function fmtPrazo(iso){
   return`Prazo: ${fmtData(iso)}`;
 }
 
-const pageTitles={etiquetas:'Etiquetas',empresas:'Empresas',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',tarefasesc:'Tarefas',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
+const pageTitles={etiquetas:'Etiquetas',empresas:'Empresas',financeiro:'Dashboard financeiro',agendar:'Novo agendamento',pastas:'Pastas / clientes',registo:'Registo de escrituras',suprimentos:'Suprimentos pendentes',tarefas:'Tarefas do escritório',calendario:'Calendário',suprep:'Suprimentos — respostas',tarefasesc:'Tarefas',processos:'Processos',contacorrente:'Conta corrente',contabilidade:'Contabilidade',avencas:'Avenças',relatorios:'Relatórios',material:'Material de apoio'};
 
 function toggleSidebar(){
   const sidebar=document.querySelector('.sidebar');
@@ -3162,6 +3198,7 @@ function nav(id,el){
   if(id==='financeiro'){carregarDashboard();carregarAvencasMensais();setTimeout(()=>{if(typeof dashRenderTudo==='function')dashRenderTudo();},150);}
   if(id==='avencas')carregarAvencas();
   if(id==='material')carregarMaterial();
+  if(id==='suprep')srCarregar();
   if(id==='clientes')cliInit();
   if(id==='empresas')empInit();
   if(id==='etiquetas')etqInit();
@@ -3272,7 +3309,8 @@ async function carregarMaterial(force=false){
     materialItens=(data.value||[]).map(it=>{
       const f=it.fields||{};
       return{id:it.id,titulo:f.Title||'',categoria:f.Categoria||'',tema:f.Tema||'',tipo:f.TipoMaterial||f.Tipo||'Nota prática',ligacao:f.Ligacao||'',ficheiro:f.FicheiroUrl||'',descricao:f.Descricao||'',tags:f.Tags||'',modificado:it.lastModifiedDateTime};
-    }).sort((a,b)=>a.titulo.localeCompare(b.titulo,'pt'));
+    }).filter(i=>i.tipo!=='Suprimento')   /* os suprimentos têm separador próprio (28/10/2026) */
+    .sort((a,b)=>a.titulo.localeCompare(b.titulo,'pt'));
     materialCarregado=true;
     matFicheiros={};
     if(driveIdMaterial){try{await renovarToken();
@@ -17561,6 +17599,225 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     }catch(e){out.innerHTML=`<div class="notice notice-error">${escHtml(e.message)}</div>`;}
   };
   window._cpcvTeste={lcs,palavras,comQuem,idCPCV,base};
+})();
+/* ═══════════ REPOSITÓRIO DE SUPRIMENTOS (28/10/2026) ═══════════
+   Cada «suprimento» é um assunto (ex.: «Falta de menção do regime de bens do transmitente»)
+   e vai sendo alimentado com as respostas que a LBC deu — cada resposta com data,
+   conservatória/entidade, referência, resultado (aceite / recusada / pendente), o texto ou a
+   nota da resposta e vários documentos.
+   Não precisa de nada novo no SharePoint: o assunto fica na lista MaterialApoio (TipoMaterial
+   «Suprimento», que não aparece no Material de apoio) e as respostas e os documentos na
+   biblioteca MATERIAL_APOIO › Suprimentos › <id> (respostas.json + uma subpasta por resposta).
+   Gravar uma resposta usa a versão do ficheiro (eTag): se a Andreia e a Liliana gravarem ao
+   mesmo tempo, a segunda volta a ler e junta — nada se perde. */
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=t=>escHtml(t==null?'':String(t));
+  const TIPO='Suprimento',PASTA='Suprimentos';
+  const AREAS=['Registo Predial','Registo Comercial','Registo Civil','Registo Automóvel','Finanças / AT','Outro'];
+  const RES={aceite:{t:'Aceite',c:'badge-green'},recusada:{t:'Recusada',c:'badge-red'},pendente:{t:'Pendente',c:'badge-amber'}};
+  const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const enc=p=>p.split('/').map(encodeURIComponent).join('/');
+  const H=()=>({'Authorization':'Bearer '+graphToken});
+  const quem=()=>{const c=window.contaAtual||(typeof contaAtual!=='undefined'?contaAtual:null);return (c&&(c.name||c.username))||'';};
+  const dPT=iso=>iso?new Date(iso.length===10?iso+'T12:00:00':iso).toLocaleDateString('pt-PT'):'';
+  let ITENS=[],carregado=false,AREA='',SO_ACEITES=false,ABERTO=null,EDIT_SUP=null,EDIT_RESP=null,REMOVER=new Set();
+
+  /* ── leitura ── */
+  async function lerRespostas(id){
+    await renovarToken();
+    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(`${PASTA}/${id}`)}:/children?$top=999&$expand=children($select=id,name,webUrl,file)`,{headers:H()});
+    if(r.status===404)return{respostas:[],etag:null,docs:{}};
+    if(!r.ok)throw new Error('SharePoint respondeu '+r.status);
+    const filhos=(await r.json()).value||[];
+    const docs={};filhos.filter(x=>x.folder).forEach(f=>{docs[f.name]=(f.children||[]).filter(c=>c.file).map(c=>({id:c.id,nome:c.name,url:c.webUrl})).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));});
+    const js=filhos.find(x=>x.file&&x.name==='respostas.json');
+    if(!js)return{respostas:[],etag:null,docs};
+    const c=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/items/${js.id}/content`,{headers:H()});
+    const dados=c.ok?await c.json():{respostas:[]};
+    return{respostas:(dados.respostas||[]),etag:js.eTag||null,itemId:js.id,docs};
+  }
+  async function carregar(forcar){
+    if(carregado&&!forcar){pintar();return;}
+    $('sr-loading').style.display='flex';
+    await resolverMaterialIds();
+    const av=$('sr-aviso');
+    if(!listaIdMaterial||!driveIdMaterial){$('sr-loading').style.display='none';av.style.display='block';
+      av.innerHTML='<b>Configuração em falta.</b> Este repositório usa a mesma lista (<b>MaterialApoio</b>) e a mesma biblioteca (<b>MATERIAL_APOIO</b>) do Material de apoio. Confirme que as duas existem no site lbcsolicitadora2.';return;}
+    av.style.display='none';
+    try{
+      const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items?$expand=fields&$top=999`);
+      ITENS=(data.value||[]).map(it=>({id:it.id,f:it.fields||{}})).filter(x=>(x.f.TipoMaterial||x.f.Tipo)===TIPO)
+        .map(({id,f})=>({id,assunto:f.Title||'',area:f.Categoria||'',fundamento:f.Tema||'',descricao:f.Descricao||'',tags:f.Tags||'',respostas:[],docs:{}}));
+      await Promise.all(ITENS.map(async s=>{try{const r=await lerRespostas(s.id);s.respostas=r.respostas;s.docs=r.docs;}catch(_){}}));
+      ITENS.sort((a,b)=>a.assunto.localeCompare(b.assunto,'pt'));
+      carregado=true;
+      const areas=[...new Set([...AREAS,...ITENS.map(s=>s.area).filter(Boolean)])];
+      $('sr-area').innerHTML='<option value="">Todas as áreas</option>'+areas.map(a=>`<option${a===AREA?' selected':''}>${esc(a)}</option>`).join('');
+      $('sr-areas-list').innerHTML=areas.map(a=>`<option value="${esc(a)}">`).join('');
+      pintar();
+    }catch(e){showToast('Erro ao carregar os suprimentos: '+e.message,'error');}
+    $('sr-loading').style.display='none';
+  }
+  window.srCarregar=carregar;
+
+  /* ── lista ── */
+  function pintar(){
+    const q=norm($('sr-q').value).trim(),pal=q.split(/\s+/).filter(Boolean);
+    AREA=$('sr-area').value;
+    const texto=s=>norm([s.assunto,s.area,s.fundamento,s.descricao,s.tags,...s.respostas.flatMap(r=>[r.entidade,r.referencia,r.nota,...((s.docs[r.id]||[]).map(d=>d.nome))])].join(' '));
+    let l=ITENS.filter(s=>(!AREA||s.area===AREA)&&(!SO_ACEITES||s.respostas.some(r=>r.resultado==='aceite'))&&(!pal.length||(t=>pal.every(w=>t.includes(w)))(texto(s))));
+    const el=$('sr-lista');
+    if(!l.length){el.innerHTML=`<div style="text-align:center;padding:2.5rem;color:var(--text-faint);font-size:13px">${ITENS.length?'Nenhum suprimento com estes filtros.':'Ainda não há suprimentos.<br>Use «+ Novo suprimento» para registar o primeiro assunto e depois junte-lhe as respostas.'}</div>`;return;}
+    const qq=$('sr-q').value.trim();
+    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.75rem">'+l.map(s=>{
+      const n=s.respostas.length,nA=s.respostas.filter(r=>r.resultado==='aceite').length,nR=s.respostas.filter(r=>r.resultado==='recusada').length;
+      const ult=[...s.respostas].sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0];
+      const tags=(s.tags||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,6);
+      return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.85rem .95rem;display:flex;flex-direction:column;gap:.45rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem"><span class="badge badge-purple">${esc(s.area||'Suprimento')}</span>
+          <span style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn btn-sm" style="padding:2px 7px" title="Editar o assunto" onclick="srEditarSup('${s.id}')">✏️</button>
+            <button class="btn btn-sm" style="padding:2px 7px" title="Apagar" onclick="srApagarSup('${s.id}')">🗑</button></span></div>
+        <div style="font-weight:600;font-size:13.5px;line-height:1.35;cursor:pointer" onclick="srAbrir('${s.id}')">${highlight(s.assunto,qq)}</div>
+        ${s.fundamento?`<div style="font-size:11.5px;color:var(--text-muted)">${highlight(s.fundamento,qq)}</div>`:''}
+        ${s.descricao?`<div style="font-size:12px;color:var(--text-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${highlight(s.descricao,qq)}</div>`:''}
+        ${tags.length?`<div style="display:flex;gap:4px;flex-wrap:wrap">${tags.map(t=>`<span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:1px 8px;color:var(--text-muted)">${esc(t)}</span>`).join('')}</div>`:''}
+        <div style="font-size:11.5px;color:var(--text-muted)">${n?`${n} resposta${n>1?'s':''}${nA?` · <span style="color:var(--green)">✓ ${nA} aceite${nA>1?'s':''}</span>`:''}${nR?` · <span style="color:var(--red)">✕ ${nR} recusada${nR>1?'s':''}</span>`:''}${ult?` · última ${dPT(ult.data)}`:''}`:'Ainda sem respostas'}</div>
+        <div style="display:flex;gap:.4rem;margin-top:auto;padding-top:.3rem">
+          <button class="btn btn-sm btn-primary" onclick="srAbrir('${s.id}')">📂 Ver respostas</button>
+          <button class="btn btn-sm" onclick="srAbrir('${s.id}',true)">＋ Resposta</button></div>
+      </div>`;}).join('')+'</div>';
+  }
+  window.srPintar=pintar;
+  window.srSoAceites=el=>{SO_ACEITES=!SO_ACEITES;el.classList.toggle('active',SO_ACEITES);pintar();};
+
+  /* ── assunto (novo / editar / apagar) ── */
+  window.srEditarSup=id=>{
+    EDIT_SUP=id||null;const s=id?ITENS.find(x=>x.id===id):null;
+    $('sr-sup-titulo').textContent=s?'Editar suprimento':'Novo suprimento';
+    $('sr-f-assunto').value=s?.assunto||'';$('sr-f-area').value=s?.area||'';$('sr-f-fund').value=s?.fundamento||'';
+    $('sr-f-desc').value=s?.descricao||'';$('sr-f-tags').value=s?.tags||'';
+    $('sr-modal-sup').classList.add('show');setTimeout(()=>$('sr-f-assunto').focus(),50);
+  };
+  window.srFecharSup=()=>$('sr-modal-sup').classList.remove('show');
+  window.srGravarSup=async()=>{
+    const assunto=$('sr-f-assunto').value.trim(),area=$('sr-f-area').value.trim();
+    if(!assunto){showToast('Indique o assunto do suprimento','error');return;}
+    const b=$('sr-btn-sup');b.disabled=true;
+    try{const campos={Title:assunto,Categoria:area||'Registo Predial',Tema:$('sr-f-fund').value.trim(),TipoMaterial:TIPO,Descricao:$('sr-f-desc').value.trim(),Tags:$('sr-f-tags').value.trim()};
+      let novoId=null;
+      if(EDIT_SUP)await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items/${EDIT_SUP}/fields`,campos);
+      else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items`,{fields:campos});novoId=r&&r.id;}
+      srFecharSup();showToast('Suprimento guardado','success');await carregar(true);
+      if(novoId)srAbrir(novoId,true);
+    }catch(e){showToast('Erro: '+e.message,'error');}
+    b.disabled=false;
+  };
+  window.srApagarSup=async id=>{
+    const s=ITENS.find(x=>x.id===id);if(!s)return;
+    if(!confirm(`Apagar o suprimento «${s.assunto}»${s.respostas.length?` e as suas ${s.respostas.length} resposta(s)`:''}?\n\nOs documentos não são apagados: ficam na biblioteca MATERIAL_APOIO › Suprimentos › ${s.id}.`))return;
+    try{await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items/${id}`,{method:'DELETE',headers:H()});
+      if(!r.ok)throw new Error('Erro '+r.status);showToast('Suprimento apagado','success');await carregar(true);}
+    catch(e){showToast('Erro ao apagar: '+e.message,'error');}
+  };
+
+  /* ── respostas de um suprimento ── */
+  window.srAbrir=(id,nova)=>{ABERTO=id;pintarDet();$('sr-modal-det').classList.add('show');if(nova)srNovaResp();};
+  window.srFecharDet=()=>{$('sr-modal-det').classList.remove('show');ABERTO=null;EDIT_RESP=null;};
+  function pintarDet(){
+    const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;
+    const rs=[...s.respostas].sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+    $('sr-det').innerHTML=`<div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start">
+        <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)">${esc(s.area||'Suprimento')}</div>
+          <div class="modal-box-title" style="margin:.15rem 0 .3rem">${esc(s.assunto)}</div>
+          ${s.fundamento?`<div style="font-size:12px;color:var(--text-muted)">${esc(s.fundamento)}</div>`:''}</div>
+        <button class="btn btn-sm" onclick="srFecharDet()">✕</button></div>
+      ${s.descricao?`<div style="font-size:12.5px;line-height:1.6;white-space:pre-wrap;background:var(--surface2);border-radius:8px;padding:.6rem .8rem;margin:.6rem 0">${esc(s.descricao)}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:.8rem 0 .4rem"><b style="font-size:13px">Respostas (${rs.length})</b>
+        <button class="btn btn-primary btn-sm" onclick="srNovaResp()">＋ Nova resposta</button></div>
+      <div id="sr-form-resp"></div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">${rs.map(r=>{const docs=s.docs[r.id]||[],R=RES[r.resultado]||RES.pendente;
+        return`<div style="border:1px solid var(--border);border-radius:9px;padding:.65rem .8rem;background:var(--surface)">
+          <div style="display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center">
+            <span class="badge ${R.c}">${R.t}</span><b style="font-size:12.5px">${dPT(r.data)}</b>
+            ${r.entidade?`<span style="font-size:12px">${esc(r.entidade)}</span>`:''}${r.referencia?`<span style="font-size:11.5px;color:var(--text-muted)">· ${esc(r.referencia)}</span>`:''}
+            <span style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 7px" title="Editar" onclick="srEditarResp('${r.id}')">✏️</button>
+              <button class="btn btn-sm" style="padding:2px 7px" title="Apagar" onclick="srApagarResp('${r.id}')">🗑</button></span></div>
+          ${r.nota?`<div style="font-size:12.5px;line-height:1.55;white-space:pre-wrap;margin-top:.45rem">${esc(r.nota)}</div>`:''}
+          ${docs.length?`<div style="display:flex;flex-direction:column;gap:2px;margin-top:.45rem">${docs.map(d=>`<a href="${esc(d.url)}" target="_blank" style="font-size:12px;color:var(--accent-dark);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.nome)}">📄 ${esc(d.nome)}</a>`).join('')}</div>`:''}
+          <div style="font-size:10.5px;color:var(--text-faint);margin-top:.35rem">${r.por?`Registada por ${esc(r.por)}`:''}</div>
+        </div>`;}).join('')||'<div style="font-size:12px;color:var(--text-faint)">Ainda sem respostas.</div>'}</div>`;
+  }
+  window.srNovaResp=()=>srEditarResp(null);
+  window.srEditarResp=rid=>{
+    const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;
+    EDIT_RESP=rid;REMOVER=new Set();const r=rid?s.respostas.find(x=>x.id===rid):null;
+    const hoje=new Date().toISOString().slice(0,10);
+    $('sr-form-resp').innerHTML=`<div style="border:1px solid var(--accent);border-radius:9px;padding:.75rem .85rem;margin-bottom:.7rem;background:var(--accent-light)">
+      <div style="font-weight:600;font-size:12.5px;margin-bottom:.5rem">${r?'Editar resposta':'Nova resposta'}</div>
+      <div style="display:grid;grid-template-columns:130px 1fr 1fr 130px;gap:.45rem">
+        <input type="date" class="form-input" id="sr-r-data" value="${esc(r?.data||hoje)}" style="font-size:12px" aria-label="Data">
+        <input class="form-input" id="sr-r-ent" placeholder="Conservatória / entidade" value="${esc(r?.entidade||'')}" style="font-size:12px">
+        <input class="form-input" id="sr-r-ref" placeholder="Referência (n.º do pedido, AP., processo)" value="${esc(r?.referencia||'')}" style="font-size:12px">
+        <select class="form-select" id="sr-r-res" style="font-size:12px">${Object.entries(RES).map(([k,v])=>`<option value="${k}"${(r?.resultado||'pendente')===k?' selected':''}>${v.t}</option>`).join('')}</select>
+      </div>
+      <textarea class="form-textarea" id="sr-r-nota" placeholder="Texto da resposta ou nota (fundamentos, o que a conservatória disse, o que resultou…)" style="margin-top:.45rem;min-height:90px;font-size:12.5px">${esc(r?.nota||'')}</textarea>
+      <div style="margin-top:.45rem"><label class="form-label" style="font-size:11.5px">Documentos da resposta (pode escolher vários)</label>
+        <input type="file" class="form-input" id="sr-r-fich" multiple onchange="srMostrarDocs()"><div id="sr-r-docs" style="margin-top:4px"></div></div>
+      <div style="display:flex;gap:.4rem;justify-content:flex-end;margin-top:.55rem">
+        <button class="btn btn-sm" onclick="document.getElementById('sr-form-resp').innerHTML=''">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="sr-btn-resp" onclick="srGravarResp()">Guardar resposta</button></div></div>`;
+    srMostrarDocs();$('sr-r-ent').focus();
+  };
+  window.srMostrarDocs=()=>{
+    const s=ITENS.find(x=>x.id===ABERTO);const ja=EDIT_RESP?(s.docs[EDIT_RESP]||[]):[];
+    $('sr-r-docs').innerHTML=ja.map(d=>{const fora=REMOVER.has(d.id);return`<div style="display:flex;gap:6px;align-items:center;font-size:12px${fora?';opacity:.45;text-decoration:line-through':''}"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ${esc(d.nome)}</span>
+      <button type="button" class="btn btn-sm" style="padding:0 7px" onclick="srTirarDoc('${d.id}')">${fora?'↺':'✕'}</button></div>`;}).join('')
+      +[...($('sr-r-fich').files||[])].map(f=>`<div style="font-size:12px;color:var(--green)">＋ ${esc(f.name)}</div>`).join('');
+  };
+  window.srTirarDoc=id=>{REMOVER.has(id)?REMOVER.delete(id):REMOVER.add(id);srMostrarDocs();};
+
+  /* grava respostas.json com a versão lida (If-Match); se outra pessoa gravou entretanto, relê e junta */
+  async function gravarRespostas(supId,mudar){
+    for(let t=0;t<3;t++){
+      const atual=await lerRespostas(supId);
+      const lista=mudar(atual.respostas.slice());
+      await renovarToken();
+      const h={...H(),'Content-Type':'application/json'};if(atual.etag)h['If-Match']=atual.etag;
+      const url=atual.itemId?`${GRAPH_BASE}/drives/${driveIdMaterial}/items/${atual.itemId}/content`:`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(`${PASTA}/${supId}/respostas.json`)}:/content`;
+      const r=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({versao:1,suprimento:supId,respostas:lista},null,2)});
+      if(r.ok)return lista;
+      if(r.status!==412&&r.status!==409)throw new Error('não consegui gravar as respostas ('+r.status+')');
+    }
+    throw new Error('outra pessoa está a gravar neste suprimento — tente de novo');
+  }
+  window.srGravarResp=async()=>{
+    const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;
+    const b=$('sr-btn-resp');b.disabled=true;
+    const rid=EDIT_RESP||('r'+Date.now().toString(36));
+    const reg={id:rid,data:$('sr-r-data').value,entidade:$('sr-r-ent').value.trim(),referencia:$('sr-r-ref').value.trim(),resultado:$('sr-r-res').value,nota:$('sr-r-nota').value.trim()};
+    const files=[...($('sr-r-fich').files||[])];
+    if(!reg.nota&&!files.length&&!(s.docs[rid]||[]).length){showToast('Escreva a resposta ou junte pelo menos um documento','error');b.disabled=false;return;}
+    try{
+      for(let k=0;k<files.length;k++){b.textContent=`A carregar ${k+1}/${files.length}…`;await uploadFicheiroMaterial(files[k],`${PASTA}/${s.id}/${rid}`);}
+      for(const fid of REMOVER){await renovarToken();const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/items/${fid}`,{method:'DELETE',headers:H()});
+        if(!r.ok&&r.status!==404)throw new Error('não consegui retirar um documento ('+r.status+')');}
+      b.textContent='A guardar…';
+      await gravarRespostas(s.id,l=>{const i=l.findIndex(x=>x.id===rid);const ant=i>=0?l[i]:{};
+        const novo={...ant,...reg,por:ant.por||quem(),criado:ant.criado||new Date().toISOString(),alterado:EDIT_RESP?new Date().toISOString():undefined,alteradoPor:EDIT_RESP?quem():undefined};
+        if(i>=0)l[i]=novo;else l.push(novo);return l;});
+      const r=await lerRespostas(s.id);s.respostas=r.respostas;s.docs=r.docs;
+      EDIT_RESP=null;pintarDet();pintar();showToast('Resposta guardada','success');
+    }catch(e){showToast('Erro: '+e.message,'error');b.disabled=false;b.textContent='Guardar resposta';}
+  };
+  window.srApagarResp=async rid=>{
+    const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;const r=s.respostas.find(x=>x.id===rid);
+    if(!confirm(`Apagar a resposta de ${dPT(r&&r.data)}${r&&r.entidade?' ('+r.entidade+')':''}?\n\nOs documentos não são apagados: ficam na biblioteca MATERIAL_APOIO › Suprimentos.`))return;
+    try{await gravarRespostas(s.id,l=>l.filter(x=>x.id!==rid));const x=await lerRespostas(s.id);s.respostas=x.respostas;s.docs=x.docs;pintarDet();pintar();showToast('Resposta apagada','success');}
+    catch(e){showToast('Erro: '+e.message,'error');}
+  };
+  window._srTeste={norm};
 })();
 /* ═══════════ RESULTADO DA ANÁLISE REMAX — no Portal (26/10/2026) ═══════════
    Botão «📋 Resultado» nas linhas REMAX · ANÁLISE (como o «📑 Loja» dos CPCV). Abre um
