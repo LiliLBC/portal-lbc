@@ -17601,15 +17601,17 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   window._cpcvTeste={lcs,palavras,comQuem,idCPCV,base};
 })();
 /* ═══════════ REPOSITÓRIO DE SUPRIMENTOS (28/10/2026) ═══════════
-   Cada «suprimento» é um assunto (ex.: «Falta de menção do regime de bens do transmitente»)
-   e vai sendo alimentado com as respostas que a LBC deu — cada resposta com data,
-   conservatória/entidade, referência, resultado (aceite / recusada / pendente), o texto ou a
-   nota da resposta e vários documentos.
-   Não precisa de nada novo no SharePoint: o assunto fica na lista MaterialApoio (TipoMaterial
-   «Suprimento», que não aparece no Material de apoio) e as respostas e os documentos na
-   biblioteca MATERIAL_APOIO › Suprimentos › <id> (respostas.json + uma subpasta por resposta).
-   Gravar uma resposta usa a versão do ficheiro (eTag): se a Andreia e a Liliana gravarem ao
-   mesmo tempo, a segunda volta a ler e junta — nada se perde. */
+   Cada «suprimento» é um assunto (ex.: «Identificação dos intervenientes no contrato») e
+   vai sendo alimentado com as respostas que a LBC deu — cada resposta com data,
+   conservatória/entidade, referência, resultado (aceite / recusada / pendente), o texto e
+   vários documentos.
+     · o assunto fica na lista MaterialApoio (TipoMaterial «Suprimento», que não aparece
+       no Material de apoio);
+     · cada RESPOSTA é um registo próprio na lista «SuprimentosRespostas» (o Portal cria-a
+       sozinho na primeira vez) — uma resposta nova nunca substitui outra (v2, 28/10/2026:
+       a 1.ª versão guardava todas num só ficheiro e o navegador devolvia uma cópia antiga,
+       que apagava as anteriores);
+     · os documentos ficam na biblioteca MATERIAL_APOIO › Suprimentos › <assunto> › <resposta>. */
 (function(){
   const $=id=>document.getElementById(id);
   const esc=t=>escHtml(t==null?'':String(t));
@@ -17623,19 +17625,37 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   const dPT=iso=>iso?new Date(iso.length===10?iso+'T12:00:00':iso).toLocaleDateString('pt-PT'):'';
   let ITENS=[],carregado=false,AREA='',SO_ACEITES=false,ABERTO=null,EDIT_SUP=null,EDIT_RESP=null,REMOVER=new Set();
 
-  /* ── leitura ── */
-  async function lerRespostas(id){
-    await renovarToken();
-    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(`${PASTA}/${id}`)}:/children?$top=999&$expand=children($select=id,name,webUrl,file)`,{headers:H()});
-    if(r.status===404)return{respostas:[],etag:null,docs:{}};
-    if(!r.ok)throw new Error('SharePoint respondeu '+r.status);
-    const filhos=(await r.json()).value||[];
-    const docs={};filhos.filter(x=>x.folder).forEach(f=>{docs[f.name]=(f.children||[]).filter(c=>c.file).map(c=>({id:c.id,nome:c.name,url:c.webUrl})).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));});
-    const js=filhos.find(x=>x.file&&x.name==='respostas.json');
-    if(!js)return{respostas:[],etag:null,docs};
-    const c=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/items/${js.id}/content`,{headers:H()});
-    const dados=c.ok?await c.json():{respostas:[]};
-    return{respostas:(dados.respostas||[]),etag:js.eTag||null,itemId:js.id,docs};
+  /* ── lista das respostas (uma linha por resposta) ── */
+  const LISTA='SuprimentosRespostas';let LID=null;
+  const COLS=[['DataResp',{}],['Entidade',{}],['Referencia',{}],['Resultado',{}],['Por',{}],['OrigemId',{}],
+    ['Nota',{allowMultipleLines:true,textType:'plain',linesForEditing:8}],['Documentos',{allowMultipleLines:true,textType:'plain',linesForEditing:4}]];
+  async function garantirLista(){
+    if(LID)return LID;
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
+    const l=(r.value||[]).find(x=>x.displayName===LISTA||x.name===LISTA);
+    if(l)return LID=l.id;
+    /* primeira vez: cria a lista com as colunas */
+    const nova=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists`,{displayName:LISTA,list:{template:'genericList'},
+      columns:COLS.map(([name,text])=>({name,text}))});
+    if(!nova||!nova.id)throw new Error('não consegui criar a lista '+LISTA+' no SharePoint');
+    return LID=nova.id;
+  }
+  const docsDe=f=>{try{return JSON.parse(f.Documentos||'[]');}catch(_){return[];}};
+  const deItem=it=>{const f=it.fields||{};return{id:it.id,sup:f.Title||'',data:f.DataResp||'',entidade:f.Entidade||'',referencia:f.Referencia||'',
+    resultado:f.Resultado||'pendente',nota:f.Nota||'',por:f.Por||'',origem:f.OrigemId||'',docs:docsDe(f),criado:it.createdDateTime};};
+  async function lerTodas(){
+    await garantirLista();
+    const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items?$expand=fields&$top=999`);
+    return (r.value||[]).map(deItem);
+  }
+  /* respostas gravadas pela 1.ª versão (ficheiro respostas.json) passam para a lista, uma vez */
+  async function importarAntigas(ids,ja){
+    for(const id of ids){try{await renovarToken();
+      const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(`${PASTA}/${id}/respostas.json`)}:/content?t=${Date.now()}`,{headers:H(),cache:'no-store'});
+      if(!r.ok)continue;const j=await r.json();
+      for(const x of (j.respostas||[])){if(ja.has(x.id))continue;
+        await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:{Title:id,DataResp:x.data||'',Entidade:x.entidade||'',Referencia:x.referencia||'',Resultado:x.resultado||'pendente',Nota:x.nota||'',Por:x.por||'',OrigemId:x.id}});}
+    }catch(_){}}
   }
   async function carregar(forcar){
     if(carregado&&!forcar){pintar();return;}
@@ -17649,7 +17669,11 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
       const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdMaterial}/items?$expand=fields&$top=999`);
       ITENS=(data.value||[]).map(it=>({id:it.id,f:it.fields||{}})).filter(x=>(x.f.TipoMaterial||x.f.Tipo)===TIPO)
         .map(({id,f})=>({id,assunto:f.Title||'',area:f.Categoria||'',fundamento:f.Tema||'',descricao:f.Descricao||'',tags:f.Tags||'',respostas:[],docs:{}}));
-      await Promise.all(ITENS.map(async s=>{try{const r=await lerRespostas(s.id);s.respostas=r.respostas;s.docs=r.docs;}catch(_){}}));
+      let todas=await lerTodas();
+      const ja=new Set(todas.map(r=>r.origem).filter(Boolean));
+      const comJson=ITENS.map(x=>x.id);
+      if(!sessionStorage.getItem('lbc_sr_importado')){await importarAntigas(comJson,ja);try{sessionStorage.setItem('lbc_sr_importado','1');}catch(_){}todas=await lerTodas();}
+      ITENS.forEach(x=>{x.respostas=todas.filter(r=>r.sup===x.id);x.docs={};x.respostas.forEach(r=>{x.docs[r.id]=r.docs;});});
       ITENS.sort((a,b)=>a.assunto.localeCompare(b.assunto,'pt'));
       carregado=true;
       const areas=[...new Set([...AREAS,...ITENS.map(s=>s.area).filter(Boolean)])];
@@ -17727,7 +17751,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   window.srFecharDet=()=>{$('sr-modal-det').classList.remove('show');ABERTO=null;EDIT_RESP=null;};
   function pintarDet(){
     const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;
-    const rs=[...s.respostas].sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+    const rs=[...s.respostas].sort((a,b)=>String(b.data).localeCompare(String(a.data))||(+b.id||0)-(+a.id||0));
     $('sr-det').innerHTML=`<div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start">
         <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)">${esc(s.area||'Suprimento')}</div>
           <div class="modal-box-title" style="margin:.15rem 0 .3rem">${esc(s.assunto)}</div>
@@ -17756,13 +17780,13 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     const hoje=new Date().toISOString().slice(0,10);
     $('sr-form-resp').innerHTML=`<div style="border:1px solid var(--accent);border-radius:9px;padding:.75rem .85rem;margin-bottom:.7rem;background:var(--accent-light)">
       <div style="font-weight:600;font-size:12.5px;margin-bottom:.5rem">${r?'Editar resposta':'Nova resposta'}</div>
-      <div style="display:grid;grid-template-columns:130px 1fr 1fr 130px;gap:.45rem">
+      <div style="display:grid;grid-template-columns:150px 1fr 1fr 140px;gap:.45rem">
         <input type="date" class="form-input" id="sr-r-data" value="${esc(r?.data||hoje)}" style="font-size:12px" aria-label="Data">
         <input class="form-input" id="sr-r-ent" placeholder="Conservatória / entidade" value="${esc(r?.entidade||'')}" style="font-size:12px">
         <input class="form-input" id="sr-r-ref" placeholder="Referência (n.º do pedido, AP., processo)" value="${esc(r?.referencia||'')}" style="font-size:12px">
         <select class="form-select" id="sr-r-res" style="font-size:12px">${Object.entries(RES).map(([k,v])=>`<option value="${k}"${(r?.resultado||'pendente')===k?' selected':''}>${v.t}</option>`).join('')}</select>
       </div>
-      <textarea class="form-textarea" id="sr-r-nota" placeholder="Texto da resposta ou nota (fundamentos, o que a conservatória disse, o que resultou…)" style="margin-top:.45rem;min-height:90px;font-size:12.5px">${esc(r?.nota||'')}</textarea>
+      <textarea class="form-textarea" id="sr-r-nota" placeholder="Texto da resposta ou nota (fundamentos, o que a conservatória disse, o que resultou…)" style="display:block;width:100%;box-sizing:border-box;margin-top:.45rem;min-height:140px;font-size:12.5px">${esc(r?.nota||'')}</textarea>
       <div style="margin-top:.45rem"><label class="form-label" style="font-size:11.5px">Documentos da resposta (pode escolher vários)</label>
         <input type="file" class="form-input" id="sr-r-fich" multiple onchange="srMostrarDocs()"><div id="sr-r-docs" style="margin-top:4px"></div></div>
       <div style="display:flex;gap:.4rem;justify-content:flex-end;margin-top:.55rem">
@@ -17778,43 +17802,44 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   };
   window.srTirarDoc=id=>{REMOVER.has(id)?REMOVER.delete(id):REMOVER.add(id);srMostrarDocs();};
 
-  /* grava respostas.json com a versão lida (If-Match); se outra pessoa gravou entretanto, relê e junta */
-  async function gravarRespostas(supId,mudar){
-    for(let t=0;t<3;t++){
-      const atual=await lerRespostas(supId);
-      const lista=mudar(atual.respostas.slice());
-      await renovarToken();
-      const h={...H(),'Content-Type':'application/json'};if(atual.etag)h['If-Match']=atual.etag;
-      const url=atual.itemId?`${GRAPH_BASE}/drives/${driveIdMaterial}/items/${atual.itemId}/content`:`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(`${PASTA}/${supId}/respostas.json`)}:/content`;
-      const r=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({versao:1,suprimento:supId,respostas:lista},null,2)});
-      if(r.ok)return lista;
-      if(r.status!==412&&r.status!==409)throw new Error('não consegui gravar as respostas ('+r.status+')');
-    }
-    throw new Error('outra pessoa está a gravar neste suprimento — tente de novo');
-  }
+  async function recarregarSup(s){const todas=await lerTodas();s.respostas=todas.filter(r=>r.sup===s.id);s.docs={};s.respostas.forEach(r=>{s.docs[r.id]=r.docs;});}
   window.srGravarResp=async()=>{
     const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;
     const b=$('sr-btn-resp');b.disabled=true;
-    const rid=EDIT_RESP||('r'+Date.now().toString(36));
-    const reg={id:rid,data:$('sr-r-data').value,entidade:$('sr-r-ent').value.trim(),referencia:$('sr-r-ref').value.trim(),resultado:$('sr-r-res').value,nota:$('sr-r-nota').value.trim()};
+    const campos={Title:s.id,DataResp:$('sr-r-data').value,Entidade:$('sr-r-ent').value.trim(),Referencia:$('sr-r-ref').value.trim(),Resultado:$('sr-r-res').value,Nota:$('sr-r-nota').value.trim()};
     const files=[...($('sr-r-fich').files||[])];
-    if(!reg.nota&&!files.length&&!(s.docs[rid]||[]).length){showToast('Escreva a resposta ou junte pelo menos um documento','error');b.disabled=false;return;}
+    const docsAnt=EDIT_RESP?(s.docs[EDIT_RESP]||[]):[];
+    if(!campos.Nota&&!files.length&&!docsAnt.length){showToast('Escreva a resposta ou junte pelo menos um documento','error');b.disabled=false;return;}
     try{
-      for(let k=0;k<files.length;k++){b.textContent=`A carregar ${k+1}/${files.length}…`;await uploadFicheiroMaterial(files[k],`${PASTA}/${s.id}/${rid}`);}
+      await garantirLista();
+      let rid=EDIT_RESP;
+      /* resposta nova = registo novo na lista (nunca substitui outra) */
+      if(!rid){campos.Por=quem();const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:campos});rid=r&&r.id;if(!rid)throw new Error('o SharePoint não devolveu o registo');}
+      let docs=docsAnt.filter(d=>!REMOVER.has(d.id));
       for(const fid of REMOVER){await renovarToken();const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/items/${fid}`,{method:'DELETE',headers:H()});
         if(!r.ok&&r.status!==404)throw new Error('não consegui retirar um documento ('+r.status+')');}
+      for(let k=0;k<files.length;k++){b.textContent=`A carregar ${k+1}/${files.length}…`;
+        await renovarToken();
+        const caminho=`${PASTA}/${s.id}/${rid}/${files[k].name}`;
+        let it;
+        if(files[k].size<=4*1024*1024){const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(caminho)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:H(),body:files[k]});
+          if(!r.ok)throw new Error('o documento não carregou ('+r.status+')');it=await r.json();}
+        else{await uploadFicheiroMaterial(files[k],`${PASTA}/${s.id}/${rid}`);
+          const r=await fetch(`${GRAPH_BASE}/drives/${driveIdMaterial}/root:/${enc(caminho)}?$select=id,name,webUrl`,{headers:H(),cache:'no-store'});it=await r.json();}
+        docs.push({id:it.id,nome:it.name,url:it.webUrl});}
       b.textContent='A guardar…';
-      await gravarRespostas(s.id,l=>{const i=l.findIndex(x=>x.id===rid);const ant=i>=0?l[i]:{};
-        const novo={...ant,...reg,por:ant.por||quem(),criado:ant.criado||new Date().toISOString(),alterado:EDIT_RESP?new Date().toISOString():undefined,alteradoPor:EDIT_RESP?quem():undefined};
-        if(i>=0)l[i]=novo;else l.push(novo);return l;});
-      const r=await lerRespostas(s.id);s.respostas=r.respostas;s.docs=r.docs;
+      campos.Documentos=JSON.stringify(docs);
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${rid}/fields`,campos);
+      await recarregarSup(s);
       EDIT_RESP=null;pintarDet();pintar();showToast('Resposta guardada','success');
     }catch(e){showToast('Erro: '+e.message,'error');b.disabled=false;b.textContent='Guardar resposta';}
   };
   window.srApagarResp=async rid=>{
     const s=ITENS.find(x=>x.id===ABERTO);if(!s)return;const r=s.respostas.find(x=>x.id===rid);
     if(!confirm(`Apagar a resposta de ${dPT(r&&r.data)}${r&&r.entidade?' ('+r.entidade+')':''}?\n\nOs documentos não são apagados: ficam na biblioteca MATERIAL_APOIO › Suprimentos.`))return;
-    try{await gravarRespostas(s.id,l=>l.filter(x=>x.id!==rid));const x=await lerRespostas(s.id);s.respostas=x.respostas;s.docs=x.docs;pintarDet();pintar();showToast('Resposta apagada','success');}
+    try{await renovarToken();const x=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items/${rid}`,{method:'DELETE',headers:H()});
+      if(!x.ok&&x.status!==404)throw new Error('Erro '+x.status);
+      await recarregarSup(s);pintarDet();pintar();showToast('Resposta apagada','success');}
     catch(e){showToast('Erro: '+e.message,'error');}
   };
   window._srTeste={norm};
