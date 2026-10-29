@@ -13889,6 +13889,10 @@ ${eye}${head}
 ════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function(){
+  /* DESATIVADO a pedido da Liliana (29/10/2026): «só perturba». O código fica para se
+     poder voltar a ligar — basta mudar LEMB_ATIVO para true. */
+  const LEMB_ATIVO=false;
+  if(!LEMB_ATIVO)return;
   const ANTEC=5, INT=30000;                          // 5 min antes; verifica a cada 30s
   const EXCLUIR=/feriado|ocupado|f[ée]rias|almo[çc]o|reuni[ãa]o/i; // eventos que não são escrituras
   const A_=(typeof A!=='undefined')?A:{titulo:'Title',data:'Data',horaFim:'Hora_Fim',tipo:'Evento'};
