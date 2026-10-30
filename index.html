@@ -258,6 +258,11 @@ tbody tr:hover td{background:#FAFAF8}
 .cal-bl-livre:hover{background:#fff;border-color:var(--accent);color:var(--accent-dark)}
 .cal-bl-cont{flex:1;min-height:13px;border-radius:3px;font-size:8.5px;line-height:13px;padding:0 5px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-blocos-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:500}
+.anl-hoje{background:#DC2626!important;border-color:#DC2626!important;color:#fff!important;font-weight:600;animation:anlpulse 1.6s infinite}
+@keyframes anlpulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.45)}70%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}
+.anl-hoje-msg{font-size:11.5px;font-weight:600;color:#B91C1C;margin-top:3px}
+.anl-feito{background:#DCFCE7!important;border-color:#16A34A!important;color:#166534!important}
+.btn-ficha{background:#EEF2FF;border-color:#6366F1;color:#3730A3}
 .cal-more{font-size:10px;color:var(--accent-dark);padding:1px 5px;cursor:pointer;font-weight:500}
 .cal-more:hover{text-decoration:underline}
 .cal-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:3px;vertical-align:middle}
@@ -3585,6 +3590,8 @@ async function carregarPastas(){
   }catch(e){document.getElementById('pastas-loading').innerHTML=`<div class="notice notice-error" style="margin:0">Erro: ${e.message}</div>`;}
 }
 
+/* Dia da escritura = data no início do nome da pasta (AAAAMMDD) (30/10/2026). */
+function pastaEhHoje(nome){const d=new Date();const h=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;return String(nome||'').slice(0,8)===h;}
 function renderPastas(lista){
   document.getElementById('pastas-loading').style.display='none';
   const el=document.getElementById('pastas-list'),count=document.getElementById('pastas-count');
@@ -3592,7 +3599,7 @@ function renderPastas(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
   el.innerHTML=lista.map(p=>`
     <div class="pasta-card">
-      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div><div data-lig-lista="ESCRITURAS|${p.id}"></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
+      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div>${pastaEhHoje(p.name)?`<div class="anl-hoje-msg" data-anl-msg="ESCRITURAS|${p.id}">⚠ Escritura hoje — carregar CRP, CPU e BC emitidos hoje</div>`:''}<div data-lig-lista="ESCRITURAS|${p.id}"></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
       <div class="pasta-actions">
         <button class="btn btn-sm visto-velha" data-visto-btn="ESCRITURAS|${p.id}" data-mod="${escHtml(p.lastModifiedDateTime||'')}" onclick="vistoAlternar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Visto da Liliana" style="padding:4px 8px">✓</button>
         <button class="btn btn-sm" data-lig-btn="ESCRITURAS|${p.id}" onclick="ligAbrir('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Pastas ligadas" style="padding:4px 8px">🔗</button>
@@ -3601,10 +3608,10 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="editarNomePasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Editar nome da pasta" style="padding:4px 8px">✏️</button>
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
-        <button class="btn btn-sm" onclick="abrirRececao('${p.id}')" title="Verificador: cataloga os documentos da pasta (em «Catalogados») e alimenta a matriz">🔍 Verificador</button>
-        <button class="btn btn-sm" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Analisador predial: certidões × cadernetas, com relatório na pasta">🔎 Analisar</button>
+        ${/* Verificador e Matriz retirados (30/10/2026): o verificador deixou de se usar. */''}
+        <span data-ficha="ESCRITURAS|${p.id}"></span>
+        <button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>
         <button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>
-        <button class="btn btn-sm" onclick="matrizAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ver os dados que o verificador já compilou desta pasta">📋 Matriz</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
       </div>
     </div>`).join('');
@@ -3622,7 +3629,7 @@ const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html'
 function abrirAnalisador(lib,itemId,nome){
   const drive=lib==='PROCESSOS'?bibliotecaProcessosId:lib==='AVENCAS'?driveIdAvencas:bibliotecaId;
   if(!drive||!itemId){showToast('Biblioteca ainda não carregada.','error');return;}
-  lbcGuardarSessao();lbcAbrir(`lbc-analisador-${itemId}`,`${ANALISADOR_URL}?pasta=${encodeURIComponent(drive+'|'+itemId)}&nome=${encodeURIComponent(nome||'')}`);
+  lbcGuardarSessao();lbcAbrir(`lbc-analisador-${itemId}`,`${ANALISADOR_URL}?pasta=${encodeURIComponent(drive+'|'+itemId)}&nome=${encodeURIComponent(nome||'')}&lib=${encodeURIComponent(lib||'')}`);
 }
 /* Processo REMAX de análise → Analisador com o painel «Relatório para a REMAX»
    (loja, linha da lista e título seguem no endereço; os documentos continuam a ser lidos só no navegador). */
@@ -10604,7 +10611,26 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     document.querySelectorAll('[data-nota]').forEach(el=>{el.innerHTML='';});
     document.querySelectorAll('[data-nota-btn]').forEach(b=>{const n=(ITENS[b.dataset.notaBtn]?.nota||'').trim();
       b.classList.toggle('tem-nota',!!n);b.title=n?'Nota da pasta:\n'+n:'Notas da pasta';});
+    /* Ficha da escritura gerada no Analisador (30/10/2026): botão para descarregar o PDF;
+       no próprio dia, o «Analisar» deixa de estar a vermelho. */
+    document.querySelectorAll('[data-ficha]').forEach(el=>{const it=ITENS[el.dataset.ficha],f=it&&it.ficha;
+      if(!f||!f.id){el.innerHTML='';return;}
+      const dt=f.quando?new Date(f.quando).toLocaleDateString('pt-PT'):'';
+      el.innerHTML=`<button class="btn btn-sm btn-ficha" title="Descarregar ${esc(f.nome||'a ficha')}" onclick="event.stopPropagation();fichaDescarregar('${el.dataset.ficha}')">📄 Ficha ${esc(dt)}</button>`;
+      const hoje=f.quando&&new Date(f.quando).toDateString()===new Date().toDateString();
+      const b=document.querySelector(`[data-anl="${el.dataset.ficha}"]`);if(b&&hoje){b.classList.remove('anl-hoje');b.classList.add('anl-feito');b.title='Ficha da escritura já gerada hoje';}
+      const m=document.querySelector(`[data-anl-msg="${el.dataset.ficha}"]`);if(m&&hoje){m.textContent='✓ Ficha da escritura gerada hoje';m.style.color='#166534';}
+    });
     vistoPintar();ligPintar();};
+  /* Ao voltar ao Portal (ex.: depois de gerar a ficha no Analisador), relê os registos para o botão aparecer logo. */
+  let ultFoco=0;window.addEventListener('focus',async()=>{if(Date.now()-ultFoco<15000)return;ultFoco=Date.now();
+    if(!document.querySelector('#screen-pastas.active [data-ficha]'))return;try{await carregar(true);window.etqPintar();}catch(_){}});
+  window.fichaDescarregar=async k=>{const f=ITENS[k]&&ITENS[k].ficha;if(!f)return;
+    const [lib]=k.split('|');const drive=LIBS[lib]&&LIBS[lib].drive();
+    try{await renovarToken();const r=await fetch(`${GRAPH_BASE}/drives/${drive}/items/${f.id}/content`,{headers:{'Authorization':'Bearer '+graphToken}});
+      if(!r.ok)throw new Error(r.status===404?'a ficha já não está na pasta':'SharePoint respondeu '+r.status);
+      const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download=f.nome||'Ficha da escritura.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+    catch(e){showToast('Não consegui descarregar a ficha: '+e.message,'error');}};
 
   /* ── VISTO DA LILIANA (24/10/2026) ──
      Um visto por pasta, na capa, que só a Liliana marca ou desmarca. Fica no mesmo

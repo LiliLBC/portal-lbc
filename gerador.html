@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-25.6</span>
+    <span class="page-sub">piloto · v2026-10-30.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -9905,7 +9905,7 @@ window.addEventListener('load',()=>{
     // esta aba fica com o nome da ferramenta+pasta, para as outras a encontrarem sem a recarregar
     try{if(aqui()&&(!window.name||window.name.startsWith('lbc-')))window.name=aqui()==='portal'?'lbc-portal':`lbc-${aqui()}${c?'-'+c.id:''}`;}catch(_){}
     b.innerHTML=`<span class="bl-m">LBC</span><span class="bl-p" title="${c?String(c.nome).replace(/"/g,'&quot;'):''}">${c?'📁 '+String(c.nome||'pasta do cliente').replace(/</g,'&lt;'):'sem pasta escolhida'}</span>`+
-      ['portal','pasta','gerador','verificador','analisador'].map(t=>`<button type="button" ${t===aqui()?'aria-current="page"':''} onclick="${t===aqui()?'':`lbcIr('${t}')`}" ${(!c&&t!=='portal'&&t!=='gerador'&&t!==aqui())?'disabled style="opacity:.45;cursor:default"':''}>${ROT[t]}</button>`).join('');}
+      ['portal','pasta','gerador','analisador'].map(t=>`<button type="button" ${t===aqui()?'aria-current="page"':''} onclick="${t===aqui()?'':`lbcIr('${t}')`}" ${(!c&&t!=='portal'&&t!=='gerador'&&t!==aqui())?'disabled style="opacity:.45;cursor:default"':''}>${ROT[t]}</button>`).join('');}
   window.lbcBarraAtualizar=pintar;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pintar);else pintar();
 })();
