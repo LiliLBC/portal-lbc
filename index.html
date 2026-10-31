@@ -2695,7 +2695,9 @@ const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
 const REDIRECT='https://lililbc.github.io/portal-lbc/';
 /* Ecrã de ditado no telemóvel: ?voz=1 (ou a voltar do início de sessão iniciado nesse ecrã). */
 /* Atalho da Siri: ?voz=1&t=<texto ditado> grava logo o lembrete (o texto espera aqui se for preciso entrar primeiro). */
-try{const _t=new URLSearchParams(location.search).get('t');if(_t&&_t.trim())localStorage.setItem('lbc_voz_pendente',JSON.stringify({t:_t.trim(),q:Date.now()}));}catch(_){}
+try{const _t=new URLSearchParams(location.search).get('t');if(_t&&_t.trim()){const f=JSON.parse(localStorage.getItem('lbc_voz_fila')||'[]');
+  const id='v'+Date.now();if(!f.some(x=>x.t===_t.trim()&&Date.now()-x.q<120000))f.push({id,t:_t.trim(),q:Date.now()});localStorage.setItem('lbc_voz_fila',JSON.stringify(f));
+  history.replaceState(null,'',location.pathname+'?voz=1');}}catch(_){}
 const VOZ_MODO=(()=>{try{if(new URLSearchParams(location.search).has('voz'))return true;const f=+localStorage.getItem('lbc_voz_login')||0;return Date.now()-f<10*60*1000;}catch(_){return false;}})();
 const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read','Mail.Send','Mail.ReadWrite','Mail.ReadWrite.Shared'];
 const GRAPH_BASE='https://graph.microsoft.com/v1.0';
@@ -3616,6 +3618,7 @@ function renderPastas(lista){
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         ${/* Verificador e Matriz retirados (30/10/2026): o verificador deixou de se usar. */''}
         <span data-ficha="ESCRITURAS|${p.id}"></span>
+        ${(window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
         <button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>
         <button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta('${escHtml(p.name||'')}')">Registar</button>
@@ -12858,13 +12861,24 @@ async function vozAbrir(){
   <div style="margin-top:1rem;font-size:12px;font-weight:600;color:#6B6770">ÚLTIMOS</div><div id="voz-lista"></div>`;
   const txt=document.getElementById('voz-txt'),est=document.getElementById('voz-estado');
   const lista=async()=>{try{const l=(await lemListar()).slice(0,8);document.getElementById('voz-lista').innerHTML=l.map(x=>`<div class="voz-it">${x.origem==='voz'?'🎤 ':''}${escHtml(x.texto)}<br><small>${lemData(x.quando||x._criado)}</small></div>`).join('')||'<div style="font-size:13px;color:#8A8590;margin-top:4px">Ainda sem lembretes.</div>';}catch(_){}};
-  /* veio da Siri com o texto já ditado: grava sem tocar em nada */
-  try{const pend=JSON.parse(localStorage.getItem('lbc_voz_pendente')||'null');
-    if(pend&&pend.t&&Date.now()-pend.q<30*60*1000){localStorage.removeItem('lbc_voz_pendente');try{history.replaceState(null,'',location.pathname+'?voz=1');}catch(_){}
-      est.style.color='#6B6770';est.textContent='A guardar o que ditou…';
-      try{await lemCriar(pend.t,'','voz');est.style.color='#166534';est.textContent='✓ Guardado: «'+pend.t+'»';}
-      catch(e){txt.value=pend.t;est.style.color='#B91C1C';est.textContent='Não guardou ('+e.message+') — o texto está na caixa; carregue em Guardar.';}}
-    else if(pend)localStorage.removeItem('lbc_voz_pendente');}catch(_){}
+  /* Fila no telemóvel (31/10/2026): o que vem da Siri fica primeiro guardado no próprio
+     telemóvel e só sai da fila depois de o OneDrive confirmar. Sem rede ou sem sessão, fica à
+     espera e tenta de novo (a cada 20 s com o ecrã aberto, e sempre que o ecrã abrir) —
+     nada se perde, e o ecrã diz sempre quantos faltam enviar. */
+  const fila=()=>{try{return JSON.parse(localStorage.getItem('lbc_voz_fila')||'[]');}catch(_){return[];}};
+  const guardaFila=f=>{try{localStorage.setItem('lbc_voz_fila',JSON.stringify(f));}catch(_){}};
+  let aEnviar=false;
+  const enviarFila=async()=>{if(aEnviar)return;aEnviar=true;
+    let f=fila();const ok=[];
+    for(const x of f){try{await lemCriar(x.t,x.q?'ditado às '+new Date(x.q).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}):'','voz');ok.push(x);f=fila().filter(y=>y.id!==x.id);guardaFila(f);}catch(e){break;}}
+    const resto=fila();aEnviar=false;
+    if(ok.length){est.style.color='#166534';est.innerHTML=`✓ Guardado${ok.length>1?'s '+ok.length:''}: «${escHtml(ok[ok.length-1].t)}»`;lista();}
+    if(resto.length){est.style.color='#B91C1C';est.innerHTML=(ok.length?est.innerHTML+'<br>':'')+`⏳ ${resto.length} por enviar (sem rede ou sem sessão) — ficam guardados neste telemóvel e seguem sozinhos.`;}
+    pintarFila();};
+  const pintarFila=()=>{const f=fila();let el=document.getElementById('voz-fila');if(!el){el=document.createElement('div');el.id='voz-fila';document.getElementById('voz-lista').before(el);}
+    el.innerHTML=f.length?`<div style="margin-top:.8rem;font-size:12px;font-weight:600;color:#B91C1C">POR ENVIAR (${f.length})</div>${f.map(x=>`<div class="voz-it" style="border-color:#FCA5A5">⏳ ${escHtml(x.t)}<br><small>${new Date(x.q).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></div>`).join('')}`:'';};
+  if(fila().length){est.style.color='#6B6770';est.textContent='A guardar o que ditou…';}
+  pintarFila();enviarFila();setInterval(()=>{if(fila().length)enviarFila();},20000);
   lista();
   document.getElementById('voz-gravar').onclick=async()=>{const t=txt.value.trim();if(!t){txt.focus();return;}
     est.style.color='#6B6770';est.textContent='A guardar…';
@@ -17957,6 +17971,307 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     catch(e){showToast('Erro: '+e.message,'error');}
   };
   window._srTeste={norm};
+})();
+/* ═══════════ DEPÓSITO DO DPA (31/10/2026) ═══════════
+   Só para a Liliana (o botão «📤 Depósito» não aparece a mais ninguém).
+   A Andreia junta num único PDF digitalizado, na subpasta DPA da escritura, tudo o que vai
+   a depósito (título, impostos, habilitações, certidões…). Aqui o Portal:
+     1. lê cada página (OCR no próprio computador — nada sai daqui) e põe de parte os
+        versos em branco;
+     2. divide o PDF em documentos e propõe a designação e a data de emissão de cada um
+        («Título», «Habilitação de herdeiros de X», «Autorização judicial de X»,
+        «Imposto do Selo de X» com a data de receção, «DUC» = IMT + IS da aquisição);
+        o que não reconhece (ex.: cópia de cheque) fica «a rever» e fora do depósito;
+     3. mostra a folha do depósito com botões «copiar»: os dados fixos do apresentante e,
+        lidos do título, o 1.º comprador/mutuário e NIF, o valor de compra, o valor do mútuo,
+        o valor total da hipoteca e o prédio pela descrição;
+     4. grava os documentos separados em «DPA › Para depósito» (o que não vai a depósito fica
+        na pasta da escritura, como «Arquivo – …») e descarrega-os para anexar no Predial Online.
+   Tudo pode ser corrigido antes de gravar: designação, data, depositar sim/não, e a que
+   documento pertence cada página. */
+(function(){
+  const EU='liliana.cardoso@lbc-solicitadora.pt';
+  const souEu=()=>{try{const c=window.contaAtual||(typeof contaAtual!=='undefined'?contaAtual:null);return String(c&&c.username||'').toLowerCase()===EU;}catch(_){return false;}};
+  window.depSouEu=souEu;
+  /* os mesmos dados fixos do «Mapa de registo» */
+  const APRES=[['Nome','LILIANA BURRICA'],['e-mail','lburrica08733@osae.pt'],['Tipo de documento','Cédula Profissional'],['N.º do documento','8733'],
+    ['Qualidade','Solicitador'],['NIF','519018532'],['Residência','Rua Domingos Franco de Oliveira nº 16'],['Código postal','7005-552'],['Localidade','Évora'],
+    ['Telemóvel','+351960215959'],['IBAN','PT50003506550000527673017'],['BIC/SWIFT','CGDIPTPL'],['e-mail adicional','info@lbc-solicitadora.pt']];
+  const URL_PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',URL_PDFJS_W='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const URL_PDFLIB='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',URL_TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  const $=id=>document.getElementById(id);
+  const esc=t=>escHtml(t==null?'':String(t));
+  const H=()=>({'Authorization':'Bearer '+graphToken});
+  const N=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+  const PAL=/\b(DE|DO|DA|QUE|EM|PARA|COM|NO|NA|OS|AS|POR|SE|AO|NOS|PELO|PELA|SOB)\b/g;
+  const legivel=t=>(N(t).match(PAL)||[]).length>=5;
+  const titulo=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim().replace(/(^|\s)(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/\s(Da|De|Do|Das|Dos|E)\s/g,m=>m.toLowerCase());
+  const isoPT=iso=>{const m=String(iso||'').match(/(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}-${m[2]}-${m[1]}`:'';};
+  let ST=null;   /* estado da janela aberta */
+
+  function janela(html){let o=$('dep-ov');if(!o){o=document.createElement('div');o.id='dep-ov';o.className='modal-overlay';
+      o.innerHTML='<div class="modal-box" id="dep-box" style="max-width:1150px;width:97%;max-height:94vh;overflow:auto"></div>';document.body.appendChild(o);}
+    $('dep-box').innerHTML=html;o.classList.add('show');}
+  window.depFechar=()=>{const o=$('dep-ov');if(o)o.classList.remove('show');if(ST&&ST.worker){try{ST.worker.terminate();}catch(_){}}ST=null;};
+  const cab=(t,sub)=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem"><div><div class="modal-box-title" style="margin:0">📤 Depósito · ${esc(t)}</div>${sub?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px">${sub}</div>`:''}</div><button class="btn btn-sm" onclick="depFechar()">✕</button></div>`;
+  const progresso=(t,p)=>{const el=$('dep-prog');if(el)el.innerHTML=`<div style="font-size:13px;margin:.8rem 0 .4rem">${esc(t)}</div><div style="height:8px;background:var(--surface2);border-radius:6px;overflow:hidden"><div style="height:100%;width:${Math.round((p||0)*100)}%;background:var(--accent);transition:width .3s"></div></div>`;};
+
+  /* ── abrir: encontra a subpasta DPA e o PDF único ── */
+  window.depAbrir=async(itemId,nome)=>{
+    if(!souEu()){showToast('Só a Liliana Cardoso faz depósitos.','error');return;}
+    ST={itemId,nome,paginas:[],grupos:[],dados:{}};
+    janela(cab(nome,'A procurar a subpasta DPA…')+'<div id="dep-prog"></div>');
+    try{
+      await renovarToken();
+      const filhos=async id=>{const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${id}/children?$top=500&$select=id,name,file,folder,size,lastModifiedDateTime`,{headers:H()});if(!r.ok)throw new Error('SharePoint respondeu '+r.status);return (await r.json()).value||[];};
+      const raiz=await filhos(itemId);const dpa=raiz.find(x=>x.folder&&/^DPA$/i.test(x.name.trim()));
+      if(!dpa){janela(cab(nome)+`<div class="notice notice-warning" style="display:block;margin-top:1rem">Esta pasta não tem a subpasta <b>DPA</b>. Crie-a e ponha lá o PDF único com o que vai a depósito.</div>`);return;}
+      ST.dpaId=dpa.id;
+      const fs=await filhos(dpa.id);
+      const pdfs=fs.filter(x=>x.file&&/\.pdf$/i.test(x.name)&&!/^\d{2}\s/.test(x.name)&&!/^Arquivo/i.test(x.name));
+      const ja=fs.find(x=>x.folder&&/^Para dep[óo]sito$/i.test(x.name));
+      if(!pdfs.length){janela(cab(nome)+`<div class="notice notice-warning" style="display:block;margin-top:1rem">Na subpasta DPA não há nenhum PDF por separar.${ja?' Os documentos já separados estão em «DPA › Para depósito».':''}</div>`);return;}
+      pdfs.sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
+      if(pdfs.length>1){
+        janela(cab(nome,'Há mais do que um PDF na subpasta DPA — qual é o PDF único do depósito?')+`<div style="display:flex;flex-direction:column;gap:.4rem;margin-top:1rem">${pdfs.map((f,i)=>`<button class="btn" style="justify-content:flex-start" onclick="depLer(${i})">📄 ${esc(f.name)} <span style="color:var(--text-faint);font-size:11px;margin-left:.5rem">${(f.size/1048576).toFixed(1)} MB</span></button>`).join('')}</div>`);
+        ST.pdfs=pdfs;return;}
+      ST.pdfs=pdfs;depLer(0);
+    }catch(e){janela(cab(nome)+`<div class="notice notice-error" style="display:block;margin-top:1rem">Erro: ${esc(e.message)}</div>`);}
+  };
+
+  /* ── ler o PDF: páginas em branco, OCR do topo, divisão, OCR completo do que interessa ── */
+  async function canvasDe(page,escala){const vp=page.getViewport({scale:escala});const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;return c;}
+  function emBranco(c){const ctx=c.getContext('2d');const w=c.width,h=c.height;const d=ctx.getImageData(Math.round(w*.06),Math.round(h*.05),Math.round(w*.88),Math.round(h*.9)).data;
+    /* versos digitalizados: nem um traço abaixo de 190 (o texto mais claro dos contratos fica muito acima de 0,03 %) */
+    let esc=0,n=0;for(let i=0;i<d.length;i+=4){const g=(d[i]+d[i+1]+d[i+2])/3;n++;if(g<190)esc++;}return esc/n<0.0003;}
+  function topo(c,frac){const t=document.createElement('canvas');t.width=c.width;t.height=Math.round(c.height*frac);t.getContext('2d').drawImage(c,0,0);return t;}
+  window.depLer=async i=>{
+    const f=ST.pdfs[i];ST.ficheiro=f;
+    janela(cab(ST.nome,`A ler «${esc(f.name)}» — fica tudo neste computador.`)+'<div id="dep-prog"></div>');
+    try{
+      progresso('A descarregar o PDF…',0.02);
+      await renovarToken();
+      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:H()});if(!r.ok)throw new Error('não consegui descarregar o PDF ('+r.status+')');
+      ST.bytes=new Uint8Array(await r.arrayBuffer());
+      progresso('A preparar o leitor…',0.05);
+      await carregarScriptUma(URL_PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=URL_PDFJS_W;
+      await carregarScriptUma(URL_TESS);
+      const pdf=await pdfjsLib.getDocument({data:ST.bytes.slice()}).promise;ST.n=pdf.numPages;
+      ST.worker=await Tesseract.createWorker('por');
+      try{await ST.worker.setParameters({tessedit_pageseg_mode:'6'});}catch(_){}
+      for(let p=1;p<=pdf.numPages;p++){
+        progresso(`A ler a página ${p} de ${pdf.numPages}…`,0.05+0.6*(p-1)/pdf.numPages);
+        const page=await pdf.getPage(p);
+        const peq=await canvasDe(page,0.5);const branco=emBranco(peq);
+        const pg={n:p,thumb:peq.toDataURL('image/jpeg',0.5),branco,topo:'',texto:''};
+        if(!branco){const c=await canvasDe(page,1.6);pg._c=c;window._depPag=p;const {data}=await ST.worker.recognize(topo(c,0.34));pg.topo=data.text||'';}
+        ST.paginas.push(pg);
+      }
+      dividir();
+      /* OCR completo: o título (até achar os dados da folha) e os outros documentos (nomes e datas) */
+      const alvo=[];ST.grupos.forEach(g=>{if(g.tipo==='titulo')alvo.push(...g.pags.slice(0,18));else if(g.tipo!=='outro')alvo.push(...g.pags);});
+      try{await ST.worker.setParameters({tessedit_pageseg_mode:'3'});}catch(_){}   /* página inteira: deteta também texto rodado (cheques) */
+      let k=0,tituloOk=false;
+      for(const n of alvo){k++;progresso(`A ler o texto completo (${k} de ${alvo.length})…`,0.65+0.33*k/alvo.length);
+        const tg=ST.grupos.find(g=>g.pags.includes(n));const ehT=tg&&tg.tipo==='titulo';
+        if(ehT&&tituloOk)continue;   /* já se tem tudo o que a folha precisa do título */
+        const pg=ST.paginas[n-1];if(pg._c){window._depPag=n;const {data}=await ST.worker.recognize(pg._c);pg.texto=data.text||'';}
+        if(ehT){const d=lerFolha(tg);if(d.completo&&tg.pags.indexOf(n)>=8)tituloOk=true;}}
+      try{await ST.worker.terminate();}catch(_){}ST.worker=null;
+      ST.paginas.forEach(pg=>{delete pg._c;});
+      separarCheques();
+      ST.grupos.forEach(nomear);
+      ST.dados=lerFolha(ST.grupos.find(g=>g.tipo==='titulo')||{pags:[]});
+      pintar();
+    }catch(e){janela(cab(ST.nome)+`<div class="notice notice-error" style="display:block;margin-top:1rem">Erro: ${esc(e.message)}</div>`);}
+  };
+
+  /* ── divisão em documentos pelo cabeçalho de cada página ── */
+  function tipoTopo(t){const T=N(t);
+    if(/TERMO DE AUTENTICA/.test(T))return'titulo';
+    if(/DOCUMENTO COMPLEMENTAR|ANEXO \(?I\)?\s*-?\s*\(?A QUE SE REFERE/.test(T))return'titulo+';
+    if(/CERTIDAO NOTARIAL PERMANENTE/.test(T)&&/HABILITA/.test(T))return'habilitacao';
+    if(/^\W*(\S+\s+){0,12}HABILITACAO\b/.test(T)&&/OUTORGANTE|NO DIA/.test(T))return'habilitacao+';
+    /* só o cabeçalho do tribunal (início de linha), não uma referência no meio do contrato («…do Tribunal Judicial…») */
+    if(/(^|\n)[^\nA-Z]{0,8}TRIBUNAL JUDICIAL DA COMARCA/.test(T)||(/TRIBUNAL JUDICIAL DA COMARCA/.test(T)&&!/\b(DO|NO|PELO|AO|DESTE|NESTE)\s+TRIBUNAL JUDICIAL/.test(T)))return'judicial';
+    if(/FOLHA DE ROSTO/.test(T)&&/CERTIDAO/.test(T))return'at';
+    if(/IMPOSTO DO SELO/.test(T)&&/TRANSMISSOES GRATUITAS|TRANSUSSOES|GRATUITAS/.test(T))return'at+';
+    if(/IMPOSTO SELO\s*-?\s*VERBA|IMPOSTO MUNICIPAL SOBRE AS TRANSMISSOES|ONEROSAS DE IMOVEIS/.test(T))return'duc';
+    if(/\bPROCURACAO\b/.test(T))return'procuracao';
+    if(/DISTRATE|CANCELAMENTO DE HIPOTECA/.test(T))return'distrate';
+    if(/CADERNETA PREDIAL/.test(T))return'caderneta';
+    if(/CERTIDAO PERMANENTE|INFORMACAO PREDIAL/.test(T))return'crp';
+    if(/\bCERTIDAO\b/.test(T)&&/AUTORIDADE TRIBUTARIA|SERVICO DE FINANCAS/.test(T))return'at';
+    return legivel(t)?'+':'?';
+  }
+  function dividir(){
+    const G=[];let cur=null;const novo=tipo=>{cur={tipo,pags:[],depositar:tipo!=='outro'};G.push(cur);return cur;};
+    for(const pg of ST.paginas){
+      if(pg.branco){pg.grupo=-1;continue;}
+      let t=tipoTopo(pg.topo);
+      if(t.endsWith('+')&&t!=='+'){const base=t.slice(0,-1);if(!cur||cur.tipo!==base)novo(base);}
+      else if(t==='+'||t==='?'){if(!cur)novo('titulo');}   /* sem cabeçalho novo (ou rubricas a baralhar o OCR): continua o documento anterior */
+      else if(t==='duc'||t==='judicial'){if(!cur||cur.tipo!==t)novo(t);}
+      else if(t==='titulo'){if(!cur||cur.tipo!=='titulo')novo('titulo');}
+      else novo(t);
+      cur.pags.push(pg.n);
+    }
+    ST.grupos=G;
+  }
+  /* cópias de cheques (meio de pagamento): saem do documento onde calharam e ficam à parte, fora do depósito */
+  function separarCheques(){
+    const G=ST.grupos;
+    for(let i=0;i<G.length;i++){const g=G[i];if(g.tipo==='cheque')continue;
+      const ch=g.pags.filter(n=>/PAGUE POR ESTE CHEQUE|\bCHEQUE\b[\s\S]{0,200}ORDEM DE|ORDEM DE[\s\S]{0,80}QUANTIA/.test(N(ST.paginas[n-1].texto)));
+      if(!ch.length||ch.length===g.pags.length&&g.tipo==='outro'){if(ch.length)g.tipo='cheque';continue;}
+      g.pags=g.pags.filter(n=>!ch.includes(n));G.splice(i+1,0,{tipo:'cheque',pags:ch,depositar:false});i++;}
+    ST.grupos=G.filter(g=>g.pags.length);
+  }
+  /* ── designação e data de cada documento ── */
+  const dataEscritura=()=>{const m=String(ST.nome||'').match(/^(\d{4})(\d{2})(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:new Date().toISOString().slice(0,10);};
+  const txtG=g=>g.pags.map(n=>{const p=ST.paginas[n-1];return p.texto||p.topo;}).join('\n');
+  function nomear(g){
+    const T=txtG(g),U=N(T);const iso=(re)=>{const m=T.match(re);if(!m)return'';const s=m[1];let x=s.match(/(\d{4})[-\/.](\d{2})[-\/.](\d{2})/);if(x)return`${x[1]}-${x[2]}-${x[3]}`;x=s.match(/(\d{2})[-\/.](\d{2})[-\/.](\d{4})/);return x?`${x[3]}-${x[2]}-${x[1]}`:'';};
+    const NOME="([A-ZÁÂÃÀÉÊÍÓÔÕÚÇ][A-Za-zÁÂÃÀÉÊÍÓÔÕÚÇáâãàéêíóôõúç]+(?:\\s+(?:d[aeo]s?\\s+|e\\s+)?[A-ZÁÂÃÀÉÊÍÓÔÕÚÇ][A-Za-zÁÂÃÀÉÊÍÓÔÕÚÇáâãàéêíóôõúç]+){1,6})";
+    if(g.tipo==='titulo'){g.designacao='Título';g.data=dataEscritura();}
+    else if(g.tipo==='habilitacao'){const m=T.match(new RegExp('faleceu\\s+'+NOME,'i'))||T.match(new RegExp('[óo]bito de\\s+'+NOME,'i'))||T.match(/Denomina[çc][ãa]o\s*\n?\s*HABILITA[ÇC][ÃA]O\s+([A-ZÁ-Ú ]+)/i);
+      g.designacao='Habilitação de herdeiros'+(m?' de '+titulo(m[1]):'');g.data=iso(/Data do documento[\s\S]{0,80}?(\d{4}-\d{2}-\d{2})/i)||iso(/(\d{4}-\d{2}-\d{2})/)||'';}
+    else if(g.tipo==='judicial'){const m=T.match(new RegExp('Acompanhad[oa]\\s*:\\s*'+NOME))||T.match(new RegExp('benefici[áa]rio\\s+'+NOME.replace(/a-z/g,'A-Z'),'i'));
+      g.designacao='Autorização judicial'+(m?' de '+titulo(m[1]):'');g.data=iso(/,\s*(\d{2}-\d{2}-\d{4})\s*\./)||iso(/(\d{2}-\d{2}-\d{4})/);}
+    else if(g.tipo==='at'){const m=T.match(/AUTOR DA TRANSMISS[ÃA]O[\s\S]{0,120}?Nome\s*:?\s*([A-ZÁÂÃÀÉÊÍÓÔÕÚÇ ]{6,}?)\s*(?:\n|Domic)/i);
+      const gr=/TRANSMISS[ÕO]ES GRATUITAS/i.test(T);g.designacao=gr?'Imposto do Selo'+(m?' de '+titulo(m[1]):''):'Certidão da AT';
+      g.data=iso(/Data Rece[pç][çc]?[ãa]o\s*:?\s*(\d{4}-\d{2}-\d{2})/i)||iso(/(\d{4}-\d{2}-\d{2})/);}
+    else if(g.tipo==='duc'){g.designacao='DUC';g.data=iso(/Data da Liquida[çc][ãa]o\s*:?\s*(\d{4}-\d{2}-\d{2})/i)||dataEscritura();}
+    else if(g.tipo==='procuracao'){g.designacao='Procuração';g.data=iso(/(\d{2}[\/-]\d{2}[\/-]\d{4})/)||'';}
+    else if(g.tipo==='distrate'){g.designacao='Distrate';g.data=iso(/(\d{2}[\/-]\d{2}[\/-]\d{4})/)||'';}
+    else if(g.tipo==='crp'){g.designacao='Certidão permanente';g.data='';}
+    else if(g.tipo==='caderneta'){g.designacao='Caderneta predial';g.data=iso(/Obtido via internet em\s*(\d{4}-\d{2}-\d{2})/i)||'';}
+    else if(g.tipo==='cheque'){g.designacao='Cheque';g.depositar=false;const m=T.match(/(20\d{2})[.\-\/ ]?(\d{2})[.\-\/ ]?(\d{2})/);g.data=m?`${m[1]}-${m[2]}-${m[3]}`:dataEscritura();}
+    else{g.designacao='Outro documento (rever)';g.data='';g.depositar=false;}
+  }
+  /* ── dados da folha, lidos do título ── */
+  function lerFolha(g){
+    const T=txtG(g).replace(/\s+/g,' ');const d={};
+    const val=s=>{if(!s)return'';const x=s.replace(/\s/g,'').replace(/\.(?=\d{3})/g,'');const m=x.match(/(\d+),(\d{2})/);return m?`${m[1]},${m[2]}`:'';};   /* sem separador de milhares nem «€», pronto a colar no Predial Online */
+    const lab=T.search(/adiante (?:identificad|designad)[oa]s?\s+(?:como|por)\s+(?:PARTE COMPRADORA|COMPRADORES?|MUTU[ÁA]RIOS?|PARTE DEVEDORA|SEGUND)/i);
+    if(lab>0){const ini=Math.max(T.lastIndexOf('SEGUND',lab),T.lastIndexOf(';',lab-1)+1,0);const seg=T.slice(ini,lab);
+      const m=seg.match(/([A-ZÁÂÃÀÉÊÍÓÔÕÚÇ][A-ZÁÂÃÀÉÊÍÓÔÕÚÇ ]{4,}?)\s*,\s*(?:n[úu]mero de identifica[çc][ãa]o fiscal|NIF|contribuinte(?: fiscal)?(?: n\.?[ºo°])?)\s*:?\s*([\d.\s]{9,13})/);
+      if(m){d.comprador=m[1].replace(/^(SEGUNDOS?|OUTORGANTES?)\s+/,'').trim();d.nif=m[2].replace(/\D/g,'').slice(0,9);}}
+    let m=T.match(/pre[çc]o de\s*([\d .]+,\d{2})/i);if(m)d.compra=val(m[1]);
+    m=T.match(/empr[ée]stimo no montante de\s*([\d .]+,\d{2})/i)||T.match(/m[úu]tuo[^.]{0,80}?montante de\s*([\d .]+,\d{2})/i);if(m)d.mutuo=val(m[1]);
+    m=T.match(/montante m[áa]ximo (?:garantido|assegurado)[\s\S]{0,90}?([\d .]+,\d{2})/i);if(m)d.hipoteca=val(m[1]);
+    m=T.match(/descrit[oa] na Conservat[óo]ria do Registo Predial de\s+([A-ZÁ-Úa-zá-ú\- ]+?)\s+sob o n[úu]mero\s+(\d+)(?:\s+da freguesia de\s+([^,\n]+))?/i);
+    if(m){d.crp=m[1].trim();d.descricao=m[2];d.freguesia=(m[3]||'').trim();}
+    m=T.match(/FRA[ÇC][ÃA]O\s+AUT[ÓO]NOMA\s+DESIGNADA\s+PELA\s+LETRA\s*[«"“']?\s*([A-Z]{1,3})\b/i);if(m)d.fracao=m[1].toUpperCase();
+    m=T.match(/matriz predial (?:urbana|r[úu]stica)[^,]{0,40}?sob o artigo\s+(\d+)/i)||T.match(/sob o artigo\s+(\d+)/i);if(m)d.artigo=m[1];
+    /* se o título fala em mútuo/hipoteca, só está completo quando tiver o mútuo e a hipoteca */
+    const esperaMutuo=/m[úu]tuo com hipoteca|e m[úu]tuo|empr[ée]stimo|hipoteca volunt/i.test(T);
+    d.completo=!!(d.comprador&&d.descricao&&(d.compra||d.mutuo)&&(!esperaMutuo||(d.mutuo&&d.hipoteca)));
+    return d;
+  }
+
+  /* ── ecrã de revisão ── */
+  function pintar(){
+    const G=ST.grupos,d=ST.dados;
+    const opts=sel=>G.map((g,i)=>`<option value="${i}"${sel===i?' selected':''}>${i+1} · ${esc(g.designacao)}</option>`).join('')+'<option value="novo">+ novo documento a partir daqui</option><option value="-1"'+(sel===-1?' selected':'')+'>— retirar (página em branco)</option>';
+    const copia=(rot,v)=>`<div style="display:flex;align-items:center;gap:.5rem;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="min-width:150px;font-size:11.5px;color:var(--text-muted)">${esc(rot)}</span><span class="dep-copiar" style="flex:1;font-size:13px;cursor:pointer;font-weight:500" title="Clique para copiar" onclick="depCopiar(this)">${esc(v||'—')}</span></div>`;
+    const campo=(rot,k)=>`<div style="display:flex;align-items:center;gap:.5rem;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="min-width:150px;font-size:11.5px;color:var(--text-muted)">${esc(rot)}</span><input class="form-input" style="flex:1;font-size:13px;padding:4px 8px" value="${esc(d[k]||'')}" oninput="depDado('${k}',this.value)"><button class="btn btn-sm" style="padding:2px 8px" onclick="depCopiar(this.previousElementSibling)">⧉</button></div>`;
+    const brancos=ST.paginas.filter(p=>p.grupo===-1).map(p=>p.n);
+    janela(cab(ST.nome,`${esc(ST.ficheiro.name)} · ${ST.n} páginas${brancos.length?` · ${brancos.length} em branco retiradas (${brancos.join(', ')})`:''}`)+`
+      <div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:1.2rem;margin-top:1rem;align-items:start">
+      <div>
+        <div style="font-weight:600;font-size:13px;margin-bottom:.4rem">Documentos (${G.length})</div>
+        ${G.map((g,i)=>`<div style="border:1px solid var(--border);border-radius:10px;padding:.6rem .7rem;margin-bottom:.6rem;background:${g.depositar?'var(--surface)':'#FFF7ED'}">
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <b style="font-size:13px;min-width:20px">${i+1}</b>
+            <input class="form-input" style="flex:1;min-width:220px;font-size:13px;padding:4px 8px" value="${esc(g.designacao)}" oninput="depG(${i},'designacao',this.value)">
+            <input type="date" class="form-input" style="width:150px;font-size:13px;padding:4px 8px" value="${esc(g.data||'')}" oninput="depG(${i},'data',this.value)">
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox"${g.depositar?' checked':''} onchange="depG(${i},'depositar',this.checked)"> depositar</label>
+          </div>
+          ${!g.data&&g.depositar?'<div style="font-size:11.5px;color:#B45309;margin-top:3px">⚠ Indique a data de emissão.</div>':''}
+          ${!g.depositar?'<div style="font-size:11.5px;color:#B45309;margin-top:3px">Fica arquivado na pasta da escritura, fora do depósito.</div>':''}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem">${g.pags.map(n=>`<div style="text-align:center"><img src="${ST.paginas[n-1].thumb}" style="height:84px;border:1px solid var(--border);border-radius:3px;display:block;cursor:zoom-in" onclick="depVer(${n})" alt="página ${n}">
+            <select style="font-size:10px;max-width:84px;margin-top:2px" onchange="depMover(${n},this.value)" title="Página ${n}">${opts(i)}</select><div style="font-size:10px;color:var(--text-faint)">p. ${n}</div></div>`).join('')}</div>
+        </div>`).join('')}
+        ${brancos.length?`<details style="font-size:12px"><summary>Páginas retiradas (${brancos.length})</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem">${brancos.map(n=>`<div style="text-align:center"><img src="${ST.paginas[n-1].thumb}" style="height:70px;border:1px solid var(--border);border-radius:3px;cursor:zoom-in" onclick="depVer(${n})"><select style="font-size:10px;max-width:70px;display:block" onchange="depMover(${n},this.value)">${opts(-1)}</select><div style="font-size:10px;color:var(--text-faint)">p. ${n}</div></div>`).join('')}</div></details>`:''}
+      </div>
+      <div style="position:sticky;top:0">
+        <div style="font-weight:600;font-size:13px;margin-bottom:.3rem">Apresentante <span style="font-weight:400;color:var(--text-faint);font-size:11px">· clique num valor para copiar</span></div>
+        <div style="background:var(--surface2);border-radius:10px;padding:.5rem .7rem;margin-bottom:.9rem">${APRES.map(([k,v])=>copia(k,v)).join('')}</div>
+        <div style="font-weight:600;font-size:13px;margin-bottom:.3rem">Escritura <span style="font-weight:400;color:var(--text-faint);font-size:11px">· lido do título — confirme</span></div>
+        <div style="background:var(--surface2);border-radius:10px;padding:.5rem .7rem">
+          ${campo('1.º comprador / mutuário','comprador')}${campo('NIF','nif')}${campo('Valor de compra','compra')}${campo('Valor do mútuo','mutuo')}${campo('Valor total da hipoteca','hipoteca')}
+          ${campo('Conservatória','crp')}${campo('Descrição n.º','descricao')}${campo('Freguesia','freguesia')}${campo('Fração','fracao')}${campo('Artigo matricial','artigo')}
+        </div>
+        <div id="dep-fim" style="margin-top:1rem"></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:.6rem;padding:10px" id="dep-gerar" onclick="depGerar()">💾 Gravar os documentos separados e descarregar</button>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:.4rem">Os do depósito ficam em «DPA › Para depósito»; os outros na pasta da escritura, como «Arquivo – …». O PDF único não é apagado.</div>
+      </div></div>`);
+  }
+  window.depG=(i,k,v)=>{ST.grupos[i][k]=v;if(k==='depositar')pintar();};
+  window.depDado=(k,v)=>{ST.dados[k]=v;};
+  window.depCopiar=el=>{const v=(el.value!==undefined?el.value:el.textContent)||'';if(!v||v==='—')return;
+    navigator.clipboard.writeText(v).then(()=>{el.style.background='#DCFCE7';setTimeout(()=>el.style.background='',700);showToast('Copiado: '+v.slice(0,40),'success');}).catch(()=>showToast('Não consegui copiar','error'));};
+  window.depVer=n=>{const w=window.open('','_blank');if(!w)return;
+    (async()=>{try{const pdf=await pdfjsLib.getDocument({data:ST.bytes.slice()}).promise;const c=await canvasDe(await pdf.getPage(n),1.4);
+      w.document.write(`<title>Página ${n}</title><body style="margin:0;background:#555;text-align:center"><img src="${c.toDataURL('image/jpeg',0.85)}" style="max-width:100%"></body>`);w.document.close();}catch(e){w.close();}})();};
+  window.depMover=(n,para)=>{
+    const pg=ST.paginas[n-1];const G=ST.grupos;
+    G.forEach(g=>{g.pags=g.pags.filter(x=>x!==n);});
+    if(para==='-1'){pg.grupo=-1;}
+    else if(para==='novo'){/* novo documento com esta página e as seguintes do mesmo documento */
+      let i=G.findIndex(g=>g.pags.some(x=>x>n)&&g.pags.some(x=>x<n));
+      const g={tipo:'outro',pags:[n],depositar:true,designacao:'Novo documento',data:''};
+      if(i>=0){const seg=G[i].pags.filter(x=>x>n);G[i].pags=G[i].pags.filter(x=>x<n);g.pags.push(...seg);G.splice(i+1,0,g);}
+      else{const j=G.findIndex(x=>x.pags.length&&Math.min(...x.pags)>n);if(j<0)G.push(g);else G.splice(j,0,g);}
+      pg.grupo=0;}
+    else{const g=G[+para];g.pags.push(n);g.pags.sort((a,b)=>a-b);pg.grupo=0;}
+    ST.grupos=G.filter(g=>g.pags.length);pintar();
+  };
+
+  /* ── gerar, gravar e descarregar ── */
+  const limpaNome=t=>String(t||'').replace(/[\\/:*?"<>|#%]/g,'').replace(/\s+/g,' ').trim().slice(0,120);
+  window.depGerar=async()=>{
+    const G=ST.grupos.filter(g=>g.pags.length);const b=$('dep-gerar'),fim=$('dep-fim');
+    const semData=G.filter(g=>g.depositar&&!g.data);if(semData.length&&!confirm(`${semData.length} documento(s) a depositar sem data de emissão. Continuar assim?`))return;
+    b.disabled=true;
+    try{
+      await carregarScriptUma(URL_PDFLIB);
+      const src=await PDFLib.PDFDocument.load(ST.bytes);
+      let k=0;const saidas=[];
+      for(const g of G){
+        const dep=G.filter(x=>x.depositar);const ord=dep.indexOf(g)+1;
+        const nome=g.depositar?`${String(ord).padStart(2,'0')} ${limpaNome(g.designacao)}${g.data?' '+isoPT(g.data):''}.pdf`:`Arquivo - ${limpaNome(g.designacao)}${g.data?' '+isoPT(g.data):''}.pdf`;
+        b.textContent=`A preparar ${++k} de ${G.length}…`;
+        const d=await PDFLib.PDFDocument.create();const cp=await d.copyPages(src,g.pags.map(n=>n-1));cp.forEach(p=>d.addPage(p));
+        d.setTitle(g.designacao);const u8=await d.save();
+        saidas.push({nome,u8,dep:g.depositar});
+      }
+      b.textContent='A gravar na pasta…';
+      await renovarToken();
+      for(const s of saidas){
+        const url=s.dep?`${GRAPH_BASE}/drives/${bibliotecaId}/items/${ST.dpaId}:/${encodeURIComponent('Para depósito')}/${encodeURIComponent(s.nome)}:/content`
+                       :`${GRAPH_BASE}/drives/${bibliotecaId}/items/${ST.itemId}:/${encodeURIComponent(s.nome)}:/content`;
+        let r;
+        if(s.u8.length<=4*1024*1024)r=await fetch(url,{method:'PUT',headers:{...H(),'Content-Type':'application/pdf'},body:s.u8});
+        else{const ses=await fetch(url.replace(/:\/content$/,':/createUploadSession'),{method:'POST',headers:{...H(),'Content-Type':'application/json'},body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':'replace'}})});
+          if(!ses.ok)throw new Error('não consegui gravar '+s.nome+' ('+ses.status+')');const up=(await ses.json()).uploadUrl;const C=3932160;
+          for(let p=0;p<s.u8.length;p+=C){const fimB=Math.min(p+C,s.u8.length);r=await fetch(up,{method:'PUT',headers:{'Content-Range':`bytes ${p}-${fimB-1}/${s.u8.length}`},body:s.u8.slice(p,fimB)});if(!r.ok&&r.status!==202)throw new Error('falhou o envio de '+s.nome);}}
+        if(!r.ok&&r.status!==202)throw new Error('não consegui gravar '+s.nome+' ('+r.status+')');
+      }
+      ST.saidas=saidas;
+      fim.innerHTML=`<div style="border:1px solid #16A34A;background:#F0FDF4;border-radius:10px;padding:.6rem .7rem">
+        <div style="font-weight:600;font-size:13px;color:#166534;margin-bottom:.3rem">✓ Gravados na pasta. Para anexar no Predial Online:</div>
+        ${saidas.filter(s=>s.dep).map((s,i)=>`<div style="display:flex;align-items:center;gap:.5rem;font-size:12.5px;padding:2px 0"><span style="flex:1">📄 ${esc(s.nome)} <span style="color:var(--text-faint)">(${(s.u8.length/1048576).toFixed(1)} MB)</span></span><button class="btn btn-sm" onclick="depBaixar(${saidas.indexOf(s)})">⬇</button></div>`).join('')}
+        <button class="btn btn-sm btn-primary" style="margin-top:.4rem" onclick="depBaixarTodos()">⬇ Descarregar todos os do depósito</button>
+        ${saidas.some(s=>!s.dep)?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:.4rem">Arquivados (fora do depósito): ${saidas.filter(s=>!s.dep).map(s=>esc(s.nome)).join(', ')}</div>`:''}</div>`;
+      b.textContent='💾 Gravar outra vez (substitui)';b.disabled=false;
+    }catch(e){showToast('Erro: '+e.message,'error');b.disabled=false;b.textContent='💾 Gravar os documentos separados e descarregar';}
+  };
+  window.depBaixar=i=>{const s=ST.saidas[i];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s.u8],{type:'application/pdf'}));a.download=s.nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);};
+  window.depBaixarTodos=async()=>{const l=ST.saidas.map((s,i)=>s.dep?i:-1).filter(i=>i>=0);for(const i of l){depBaixar(i);await new Promise(r=>setTimeout(r,450));}};
+  window._depTeste={dividir:(paginas)=>{const bak=ST;ST={paginas};dividir();const g=ST.grupos;ST=bak;return g;},tipoTopo,lerFolha:(t)=>{const g={pags:[1]};const bak=ST;ST={paginas:[{texto:t}]};const r=lerFolha(g);ST=bak;return r;},nomear:(tipo,t,nome)=>{const bak=ST;ST={nome:nome||'',paginas:[{texto:t}]};const g={tipo,pags:[1],depositar:true};nomear(g);ST=bak;return g;}};
 })();
 /* ═══════════ RESULTADO DA ANÁLISE REMAX — no Portal (26/10/2026) ═══════════
    Botão «📋 Resultado» nas linhas REMAX · ANÁLISE (como o «📑 Loja» dos CPCV). Abre um
