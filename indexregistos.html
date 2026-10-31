@@ -158,20 +158,7 @@
   <!-- 1 -->
   <h2><span><span class="num">1</span>Identificação do Apresentante</span><span class="hint">fixo — copiar tal como está</span></h2>
   <div class="head ro-lock">
-    <div><span>Nome</span><b>LILIANA BURRICA</b></div>
-    <div><span>e-mail</span>lburrica08733@osae.pt</div>
-    <div><span>Tipo de documento</span>Cédula Profissional</div>
-    <div><span>N.º do documento</span>8733</div>
-    <div><span>Qualidade</span>Solicitador</div>
-    <div><span>NIF</span>519018532</div>
-    <div><span>Residência</span>Rua Domingos Franco de Oliveira nº 16</div>
-    <div><span>Código postal</span>7005-552</div>
-    <div><span>Localidade</span>Évora</div>
-    <div><span>Telemóvel</span>+351960215959</div>
-    <div><span>NIB</span>0035 · 0655 · 00005276730 · 17</div>
-    <div><span>IBAN</span>PT50003506550000527673017</div>
-    <div><span>BIC/SWIFT</span>CGDIPTPL</div>
-    <div><span>e-mail adicional</span>info@lbc-solicitadora.pt</div>
+    <div id="ir-apres" style="display:contents"><div style="grid-column:1/-1;color:#888">A carregar os dados do apresentante…</div></div>
     <div class="data"><label for="dataDoc">Data do Documento</label><input type="date" id="dataDoc"><span class="hint">= data do ato (aaaa-mm-dd)</span></div>
     <div class="legit" style="grid-column:1/-1;margin-top:4px"><span class="hint" style="min-width:130px">Escritura</span>
       <label><input type="radio" name="tipoEsc" value="CGD" checked>CGD (pagamento a cargo da CGD)</label>
@@ -285,6 +272,46 @@
 </div><!-- /app -->
 <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ═══════════ DADOS DO APRESENTANTE (31/10/2026) ═══════════
+   Saíram do código (o repositório é público): ficam na lista «dados_lbc» do site
+   lbcsolicitadora2 — Título «apresentante», coluna «Dados» com o JSON —, tal como as
+   procurações em «proc_bancos». Quem entra lê; só a Liliana os altera (no Portal). */
+(function(){
+  const CAMPOS=[['nome','Nome'],['email','e-mail'],['tipoDoc','Tipo de documento'],['numDoc','N.º do documento'],['qualidade','Qualidade'],['nif','NIF'],
+    ['residencia','Residência'],['cp','Código postal'],['localidade','Localidade'],['telemovel','Telemóvel'],['nib','NIB'],['iban','IBAN'],['bic','BIC/SWIFT'],['email2','e-mail adicional']];
+  const LISTA='dados_lbc';
+  const nrm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  let CACHE=null,PROM=null,LID=null,ITEM=null,COLD='Dados';
+  /* api = {get(url), post(url,body), patch(url,body), base, site} — cada página dá os seus */
+  async function carregar(api,criar){
+    const ls=await api.get(`${api.base}/sites/${api.site}/lists?$select=id,name,displayName&$top=200`);
+    let l=(ls.value||[]).find(x=>nrm(x.name)===LISTA||nrm(x.displayName)===LISTA);
+    if(!l){if(!criar)return null;
+      l=await api.post(`${api.base}/sites/${api.site}/lists`,{displayName:LISTA,list:{template:'genericList'},columns:[{name:'Dados',text:{allowMultipleLines:true,textType:'plain',linesForEditing:6}}]});}
+    LID=l.id;
+    const cs=await api.get(`${api.base}/sites/${api.site}/lists/${LID}/columns?$select=name,displayName`);
+    const c=(cs.value||[]).find(x=>nrm(x.name)==='dados'||nrm(x.displayName)==='dados');if(c)COLD=c.name;
+    const it=await api.get(`${api.base}/sites/${api.site}/lists/${LID}/items?$expand=fields&$top=200`);
+    ITEM=(it.value||[]).find(i=>nrm(i.fields.Title)==='apresentante')||null;
+    if(!ITEM)return null;
+    try{return JSON.parse(ITEM.fields[COLD]||'{}');}catch(_){return null;}
+  }
+  window.lbcApres=(api,criar)=>{if(CACHE)return Promise.resolve(CACHE);if(PROM)return PROM;
+    PROM=carregar(api,criar).then(d=>{CACHE=d;PROM=null;return d;}).catch(e=>{PROM=null;throw e;});return PROM;};
+  window.lbcApresCampos=CAMPOS;
+  window.lbcApresGravar=async(api,dados)=>{
+    if(!LID)await carregar(api,true);
+    const body={Title:'apresentante',[COLD]:JSON.stringify(dados)};
+    if(ITEM)await api.patch(`${api.base}/sites/${api.site}/lists/${LID}/items/${ITEM.id}/fields`,body);
+    else{const r=await api.post(`${api.base}/sites/${api.site}/lists/${LID}/items`,{fields:body});ITEM={id:r.id,fields:body};}
+    CACHE=dados;return dados;};
+  /* linhas no formato do «Mapa de registo» (grelha .head) */
+  window.lbcApresLinhas=d=>d?CAMPOS.filter(([k])=>d[k]).map(([k,r])=>`<div><span>${esc(r)}</span>${k==='nome'?'<b>'+esc(d[k])+'</b>':esc(d[k])}</div>`).join('')
+    :'<div style="grid-column:1/-1;color:#B45309">Os dados do apresentante ainda não foram preenchidos — a Liliana preenche-os no Portal (📤 Depósito › ✏️).</div>';
+})();
+</script>
 <script>
 (function(){
   'use strict';
@@ -705,6 +732,9 @@
   async function carregarTudo(){
     $('#linhas').innerHTML='<tr><td colspan="7" class="carregando" style="border:none;background:transparent">A carregar registos…</td></tr>';
     const site=await gGet(`${GRAPH}/sites/${TENANT_HOST}:/${SITE_PATH}`); siteId=site.id;
+    /* dados do apresentante: lista «dados_lbc» (saíram do código, 31/10/2026) — só leitura aqui */
+    try{const d=await lbcApres({base:GRAPH,site:siteId,get:u=>gGet(u)},false);const el=document.getElementById('ir-apres');if(el)el.innerHTML=lbcApresLinhas(d);}
+    catch(e){const el=document.getElementById('ir-apres');if(el)el.innerHTML='<div style="grid-column:1/-1;color:#B91C1C">Não consegui ler os dados do apresentante.</div>';}
     const listas=await gGetAll(`${GRAPH}/sites/${siteId}/lists?$select=id,name,displayName&$top=200`);
     const acha=n=>listas.find(l=>l.name===n||l.displayName===n)?.id; idPed=acha(LP); const idEsc=acha(LE);
     if(!idPed||!idEsc)throw new Error('Listas não encontradas');
