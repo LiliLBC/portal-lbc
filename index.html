@@ -2,7 +2,9 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lembrete LBC">
 <title>LBC Solicitadora — Portal Interno</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1127,7 +1129,7 @@ tbody tr:hover td{background:#FAFAF8}
         <!-- LEMBRETES RÁPIDOS -->
         <div style="margin-top:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem">
           <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
-            <div style="font-weight:600;font-size:13px">⚡ Lembretes rápidos</div>
+            <div style="font-weight:600;font-size:13px">⚡ Lembretes rápidos <span style="font-weight:400;font-size:11px;color:var(--text-faint)">· só seus · também no telemóvel: lililbc.github.io/portal-lbc/?voz=1</span></div>
             <div style="display:flex;gap:.5rem;flex:1">
               <input class="form-input" id="lembrete-texto" placeholder="Ex: Devolver chamada à Maria..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
               <input class="form-input" id="lembrete-obs" placeholder="Nota (opcional)" style="width:180px;font-size:12px" onkeydown="if(event.key==='Enter')adicionarLembrete()">
@@ -2691,6 +2693,10 @@ tbody tr:hover td{background:#FAFAF8}
 const CLIENT_ID='5cec479e-8bd3-4e4d-ad3c-2931e176d2c0';
 const TENANT_ID='1642f083-ca35-4b92-9b43-21e2c478d5c3';
 const REDIRECT='https://lililbc.github.io/portal-lbc/';
+/* Ecrã de ditado no telemóvel: ?voz=1 (ou a voltar do início de sessão iniciado nesse ecrã). */
+/* Atalho da Siri: ?voz=1&t=<texto ditado> grava logo o lembrete (o texto espera aqui se for preciso entrar primeiro). */
+try{const _t=new URLSearchParams(location.search).get('t');if(_t&&_t.trim())localStorage.setItem('lbc_voz_pendente',JSON.stringify({t:_t.trim(),q:Date.now()}));}catch(_){}
+const VOZ_MODO=(()=>{try{if(new URLSearchParams(location.search).has('voz'))return true;const f=+localStorage.getItem('lbc_voz_login')||0;return Date.now()-f<10*60*1000;}catch(_){return false;}})();
 const GRAPH_SCOPES=['Sites.ReadWrite.All','Files.ReadWrite.All','User.Read','Mail.Send','Mail.ReadWrite','Mail.ReadWrite.Shared'];
 const GRAPH_BASE='https://graph.microsoft.com/v1.0';
 /* Anexos das tarefas. Não se usam os anexos nativos da lista porque o Microsoft
@@ -2761,7 +2767,7 @@ function tentarLogin(){
 }
 async function fazerLogin(){
   const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='A iniciar sessão...';
-  try{await msalApp.loginRedirect({scopes:GRAPH_SCOPES});}
+  try{if(VOZ_MODO){try{localStorage.setItem('lbc_voz_login',String(Date.now()));}catch(_){}}await msalApp.loginRedirect({scopes:GRAPH_SCOPES});}
   catch(e){
     const el=document.getElementById('login-error');el.textContent='Erro: '+e.message;el.style.display='block';
     btn.disabled=false;
@@ -12748,55 +12754,132 @@ function renderRelatorios(){
 
 
 // ─── LEMBRETES RÁPIDOS ────────────────────────────────────────────────────────
-function carregarLembretes(){
-  const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
-  renderLembretes(lista);
+/* ═══════════ LEMBRETES PESSOAIS + DITADO (31/10/2026) ═══════════
+   Os «Lembretes rápidos» passam a ser de cada pessoa e a acompanhá-la (telemóvel e
+   computador): ficam no OneDrive dela, em «Portal LBC › Lembretes», um ficheiro por
+   lembrete — ninguém mais os vê e dois aparelhos a gravar ao mesmo tempo não se apagam.
+   «✓ Feito» não apaga: passa o ficheiro para «Portal LBC › Lembretes feitos».
+   No telemóvel, https://lililbc.github.io/portal-lbc/?voz=1 abre só o ecrã de ditado
+   (sem carregar o resto do Portal). Os lembretes que estavam guardados só neste
+   computador passam para o OneDrive da primeira vez. */
+const LEM_PASTA='Portal LBC/Lembretes',LEM_FEITOS='Portal LBC/Lembretes feitos';
+let LEM=[];
+const lemEnc=p=>p.split('/').map(encodeURIComponent).join('/');
+async function lemListar(){
+  await renovarToken();
+  const r=await fetch(`${GRAPH_BASE}/me/drive/root:/${lemEnc(LEM_PASTA)}:/children?$top=500&$select=id,name,file,createdDateTime&t=${Date.now()}`,{headers:{'Authorization':'Bearer '+graphToken},cache:'no-store'});
+  if(r.status===404)return[];
+  if(!r.ok)throw new Error('OneDrive respondeu '+r.status);
+  const fs=((await r.json()).value||[]).filter(x=>x.file&&/\.json$/i.test(x.name));
+  const out=await Promise.all(fs.map(async f=>{try{const c=await fetch(`${GRAPH_BASE}/me/drive/items/${f.id}/content?t=${Date.now()}`,{headers:{'Authorization':'Bearer '+graphToken},cache:'no-store'});
+    if(!c.ok)return null;const j=await c.json();return{...j,_id:f.id,_criado:f.createdDateTime};}catch(_){return null;}}));
+  return out.filter(Boolean).sort((a,b)=>String(b.quando||b._criado).localeCompare(String(a.quando||a._criado)));
 }
-
+async function lemCriar(texto,obs,origem){
+  await renovarToken();
+  const q=new Date().toISOString();
+  const nome=`${q.replace(/[-:.TZ]/g,'').slice(0,14)}-${Math.random().toString(36).slice(2,7)}.json`;
+  const r=await fetch(`${GRAPH_BASE}/me/drive/root:/${lemEnc(LEM_PASTA+'/'+nome)}:/content`,{method:'PUT',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+    body:JSON.stringify({texto,obs:obs||'',quando:q,origem:origem||'escrito'})});
+  if(!r.ok)throw new Error('não consegui gravar o lembrete ('+r.status+')');
+}
+async function lemArrumar(id){
+  await renovarToken();
+  await fetch(`${GRAPH_BASE}/me/drive/root:/${lemEnc('Portal LBC')}:/children`,{method:'POST',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+    body:JSON.stringify({name:'Lembretes feitos',folder:{},'@microsoft.graph.conflictBehavior':'fail'})}).catch(()=>{});
+  const r=await fetch(`${GRAPH_BASE}/me/drive/items/${id}`,{method:'PATCH',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},
+    body:JSON.stringify({parentReference:{path:'/drive/root:/'+LEM_FEITOS}})});
+  if(!r.ok&&r.status!==404)throw new Error('não consegui arrumar o lembrete ('+r.status+')');
+}
+const lemData=iso=>iso?new Date(iso).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+async function carregarLembretes(){
+  const el=document.getElementById('lembretes-lista');
+  try{
+    /* uma vez: os lembretes que estavam só neste computador passam para o OneDrive */
+    const loc=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
+    if(loc.length&&!localStorage.getItem('lbc_lembretes_migrados')){
+      for(const l of loc.slice().reverse())await lemCriar(l.texto,[l.obs,l.data?'(de '+l.data+')':''].filter(Boolean).join(' '),'escrito');
+      localStorage.setItem('lbc_lembretes_migrados','1');localStorage.setItem('lbc_lembretes_copia',JSON.stringify(loc));localStorage.removeItem('lbc_lembretes');}
+    LEM=await lemListar();renderLembretes(LEM);
+  }catch(e){if(el)el.innerHTML=`<div style="font-size:12px;color:var(--red)">Não consegui ler os lembretes: ${escHtml(e.message)}</div>`;}
+}
 function renderLembretes(lista){
   const el=document.getElementById('lembretes-lista');
   if(!el)return;
-  if(!lista.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--text-faint);padding:.4rem 0">Sem lembretes. Adiciona o primeiro acima.</div>';
-    return;
-  }
+  if(!lista.length){el.innerHTML='<div style="font-size:12px;color:var(--text-faint);padding:.4rem 0">Sem lembretes. Escreva acima ou dite no telemóvel (🎤).</div>';return;}
   el.innerHTML=lista.map((l,i)=>`
     <div class="lembrete-card" id="lem-${i}">
       <div style="flex:1;min-width:0">
-        <div class="lembrete-texto">${escHtml(l.texto)}</div>
+        <div class="lembrete-texto">${l.origem==='voz'?'🎤 ':''}${escHtml(l.texto)}</div>
         ${l.obs?`<div class="lembrete-nota">${escHtml(l.obs)}</div>`:''}
-        <div style="font-size:10px;color:var(--text-faint);margin-top:3px">${l.data||''}</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:3px">${lemData(l.quando||l._criado)}</div>
       </div>
       <button class="btn-concluido" onclick="concluirLembrete(${i})">✓ Feito</button>
     </div>`).join('');
 }
-
-function adicionarLembrete(){
+async function adicionarLembrete(){
   const texto=document.getElementById('lembrete-texto').value.trim();
   if(!texto){document.getElementById('lembrete-texto').focus();return;}
   const obs=document.getElementById('lembrete-obs').value.trim();
-  const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
-  lista.unshift({texto,obs,data:new Date().toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});
-  localStorage.setItem('lbc_lembretes',JSON.stringify(lista));
-  document.getElementById('lembrete-texto').value='';
-  document.getElementById('lembrete-obs').value='';
-  renderLembretes(lista);
-  document.getElementById('lembrete-texto').focus();
+  try{await lemCriar(texto,obs,'escrito');
+    document.getElementById('lembrete-texto').value='';document.getElementById('lembrete-obs').value='';
+    await carregarLembretes();document.getElementById('lembrete-texto').focus();}
+  catch(e){showToast('Erro: '+e.message,'error');}
+}
+function concluirLembrete(idx){
+  const l=LEM[idx];if(!l)return;
+  const card=document.getElementById('lem-'+idx);
+  if(card){card.style.transition='opacity .35s,transform .35s';card.style.opacity='0';card.style.transform='scale(.9)';}
+  lemArrumar(l._id).then(()=>carregarLembretes()).catch(e=>{showToast('Erro: '+e.message,'error');carregarLembretes();});
 }
 
-function concluirLembrete(idx){
-  const card=document.getElementById('lem-'+idx);
-  if(card){
-    card.style.transition='opacity .35s,transform .35s';
-    card.style.opacity='0';card.style.transform='scale(.9)';
-    setTimeout(()=>{
-      const lista=JSON.parse(localStorage.getItem('lbc_lembretes')||'[]');
-      lista.splice(idx,1);
-      localStorage.setItem('lbc_lembretes',JSON.stringify(lista));
-      renderLembretes(lista);
-    },360);
+/* ── Ecrã de ditado (telemóvel) ── */
+async function vozAbrir(){
+  document.getElementById('login-screen').style.display='none';
+  const app=document.getElementById('app');if(app)app.style.display='none';
+  let v=document.getElementById('voz-ecra');
+  if(!v){v=document.createElement('div');v.id='voz-ecra';document.body.appendChild(v);}
+  const temReconh=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  v.innerHTML=`<style>
+    #voz-ecra{position:fixed;inset:0;background:#F7F5F1;z-index:20000;display:flex;flex-direction:column;padding:max(16px,env(safe-area-inset-top)) 16px 16px;font-family:'DM Sans',system-ui,sans-serif;overflow:auto}
+    #voz-ecra h1{font-size:19px;margin:0 0 .2rem;color:#2D2440}#voz-ecra .sub{font-size:13px;color:#6B6770;margin-bottom:.9rem}
+    #voz-txt{width:100%;box-sizing:border-box;min-height:150px;font-family:inherit;font-size:17px;line-height:1.45;padding:12px;border:1px solid #D8D3E6;border-radius:14px;background:#fff;resize:vertical}
+    .voz-bt{width:100%;border:none;border-radius:14px;padding:16px;font-family:inherit;font-weight:600;font-size:17px;margin-top:.7rem;cursor:pointer}
+    #voz-mic{background:#DC2626;color:#fff}#voz-mic.ouvir{background:#7F1D1D;animation:vozp 1.2s infinite}
+    @keyframes vozp{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}70%{box-shadow:0 0 0 14px rgba(220,38,38,0)}}
+    #voz-gravar{background:#5B4C9A;color:#fff}#voz-estado{font-size:13px;color:#166534;min-height:1.2em;margin-top:.6rem}
+    .voz-it{background:#fff;border:1px solid #E5E2DC;border-radius:10px;padding:8px 10px;margin-top:6px;font-size:14px}.voz-it small{color:#8A8590}
+  </style>
+  <h1>🎤 Lembrete</h1><div class="sub">Diga ou escreva quem ligou e o que é preciso. Fica nos seus Lembretes rápidos do Portal — só seus.</div>
+  ${temReconh?'<button class="voz-bt" id="voz-mic">🎤 Carregar e falar</button>':''}
+  <textarea id="voz-txt" placeholder="${temReconh?'Ou escreva aqui — ':''}pode usar o 🎤 do teclado do iPhone para ditar"></textarea>
+  <button class="voz-bt" id="voz-gravar">Guardar lembrete</button>
+  <div id="voz-estado"></div>
+  <div style="margin-top:1rem;font-size:12px;font-weight:600;color:#6B6770">ÚLTIMOS</div><div id="voz-lista"></div>`;
+  const txt=document.getElementById('voz-txt'),est=document.getElementById('voz-estado');
+  const lista=async()=>{try{const l=(await lemListar()).slice(0,8);document.getElementById('voz-lista').innerHTML=l.map(x=>`<div class="voz-it">${x.origem==='voz'?'🎤 ':''}${escHtml(x.texto)}<br><small>${lemData(x.quando||x._criado)}</small></div>`).join('')||'<div style="font-size:13px;color:#8A8590;margin-top:4px">Ainda sem lembretes.</div>';}catch(_){}};
+  /* veio da Siri com o texto já ditado: grava sem tocar em nada */
+  try{const pend=JSON.parse(localStorage.getItem('lbc_voz_pendente')||'null');
+    if(pend&&pend.t&&Date.now()-pend.q<30*60*1000){localStorage.removeItem('lbc_voz_pendente');try{history.replaceState(null,'',location.pathname+'?voz=1');}catch(_){}
+      est.style.color='#6B6770';est.textContent='A guardar o que ditou…';
+      try{await lemCriar(pend.t,'','voz');est.style.color='#166534';est.textContent='✓ Guardado: «'+pend.t+'»';}
+      catch(e){txt.value=pend.t;est.style.color='#B91C1C';est.textContent='Não guardou ('+e.message+') — o texto está na caixa; carregue em Guardar.';}}
+    else if(pend)localStorage.removeItem('lbc_voz_pendente');}catch(_){}
+  lista();
+  document.getElementById('voz-gravar').onclick=async()=>{const t=txt.value.trim();if(!t){txt.focus();return;}
+    est.style.color='#6B6770';est.textContent='A guardar…';
+    try{await lemCriar(t,'',v.dataset.ditado==='1'?'voz':'escrito');txt.value='';v.dataset.ditado='';est.style.color='#166534';est.textContent='✓ Guardado';lista();}
+    catch(e){est.style.color='#B91C1C';est.textContent='Não guardou: '+e.message+' — o texto continua na caixa.';}};
+  if(temReconh){
+    const R=new (window.SpeechRecognition||window.webkitSpeechRecognition)();R.lang='pt-PT';R.interimResults=true;R.continuous=false;
+    const mic=document.getElementById('voz-mic');let base='',aOuvir=false;
+    R.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;txt.value=(base?base+' ':'')+t;v.dataset.ditado='1';};
+    R.onend=()=>{aOuvir=false;mic.classList.remove('ouvir');mic.textContent='🎤 Carregar e falar';};
+    R.onerror=e=>{est.style.color='#B91C1C';est.textContent=e.error==='not-allowed'?'O iPhone não deu acesso ao microfone — use o 🎤 do teclado.':'Não percebi — tente outra vez ou use o 🎤 do teclado.';};
+    mic.onclick=()=>{if(aOuvir){R.stop();return;}base=txt.value.trim();est.textContent='';try{R.start();aOuvir=true;mic.classList.add('ouvir');mic.textContent='⏹ A ouvir… toque para parar';}catch(_){}};
   }
 }
+window.vozAbrir=vozAbrir;
 
 async function init(){
   const s=document.createElement('script');
@@ -12805,13 +12888,14 @@ async function init(){
   s.onload=async()=>{
     msalApp=new msal.PublicClientApplication({
       auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT},
-      cache:{cacheLocation:'sessionStorage'}
+      cache:{cacheLocation:VOZ_MODO?'localStorage':'sessionStorage'}   /* no telemóvel (ditado) a sessão fica guardada */
     });
     await msalApp.initialize();
     const resp=await msalApp.handleRedirectPromise().catch(()=>null);
-    if(resp){contaAtual=resp.account;graphToken=resp.accessToken;window.graphToken=graphToken;lbcGuardarSessao();await mostrarApp();return;}
+    if(VOZ_MODO){try{localStorage.removeItem('lbc_voz_login');history.replaceState(null,'',location.pathname+'?voz=1');}catch(_){}}
+    if(resp){contaAtual=resp.account;graphToken=resp.accessToken;window.graphToken=graphToken;lbcGuardarSessao();if(VOZ_MODO)return vozAbrir();await mostrarApp();return;}
     const contas=msalApp.getAllAccounts();
-    if(contas.length>0){contaAtual=contas[0];await renovarToken();await mostrarApp();}
+    if(contas.length>0){contaAtual=contas[0];await renovarToken();if(VOZ_MODO)return vozAbrir();await mostrarApp();}
   };
 }
 // ═══ JUSTIFICAÇÃO DE PRESENÇA ═══════════════════════════════════════════════
