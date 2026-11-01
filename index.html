@@ -4996,8 +4996,10 @@ function tarValores(i){const L=mtPagLer(i),pag=L.entradas;const vs=parseFloat(i[
 const tarEur=n=>(n||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 function tarFaltaTxt(i){const v=tarValores(i);if(!v.vs&&!v.pago)return'';
   return v.falta>0.005?` · <span style="color:var(--red);font-weight:600">falta ${tarEur(v.falta)}</span>`:` · <span style="color:#166534;font-weight:600">pago</span>`;}
-function tarValoresHTML(i){const v=tarValores(i);if(!v.vs&&!v.pago&&!v.desp)return'';
-  return`<div style="margin-top:.6rem"><div style="font-weight:600;color:var(--text);margin-bottom:.3rem">💶 Valores</div>
+function tarValoresHTML(i){const v=tarValores(i);
+  const bt=`<button class="btn btn-sm" onclick="event.stopPropagation();abrirTarefaModal('${i.id}','valores')" style="padding:2px 8px;font-size:11px;margin-left:.4rem">${v.vs||v.pago||v.desp?'Lançar entrada / editar':'Lançar valores'}</button>`;
+  if(!v.vs&&!v.pago&&!v.desp)return`<div style="margin-top:.6rem"><span style="font-weight:600;color:var(--text)">💶 Conta corrente</span> <span style="color:var(--text-faint)">sem valores</span>${bt}</div>`;
+  return`<div style="margin-top:.6rem"><div style="font-weight:600;color:var(--text);margin-bottom:.3rem">💶 Conta corrente${bt}</div>
     <div style="display:flex;flex-wrap:wrap;gap:.3rem 1.2rem">
       <span><b style="color:var(--text)">Honorários</b> ${tarEur(v.h.total)} <span style="color:var(--text-faint)">(${tarEur(v.h.base)} + IVA ${tarEur(v.h.iva)})</span> · recebido ${tarEur(v.rh)} · falta <b style="color:${v.h.total-v.rh>0.005?'var(--red)':'#166534'}">${tarEur(v.h.total-v.rh)}</b></span>
       ${v.desp||v.rd?`<span><b style="color:var(--text)">Despesas</b> gastas ${tarEur(v.desp)} · reembolsadas ${tarEur(v.rd)} · falta <b style="color:${v.desp-v.rd>0.005?'var(--red)':'#166534'}">${tarEur(v.desp-v.rd)}</b></span>`:''}
@@ -5080,8 +5082,9 @@ function editarTarefa(itemId){
 let modalTarefaId=null;
 let mtCronoEventos=[]; // array de {data, obs} ordenado por data desc
 
-function abrirTarefaModal(itemId){
-  if(!CCL&&listaIdConta){cclCarregar().then(()=>abrirTarefaModal(itemId)).catch(()=>{CCL={};abrirTarefaModal(itemId);});return;}
+function abrirTarefaModal(itemId,secao){
+  if(!CCL&&listaIdConta){cclCarregar().then(()=>abrirTarefaModal(itemId,secao)).catch(()=>{CCL={};abrirTarefaModal(itemId,secao);});return;}
+  if(secao)setTimeout(()=>{const b=document.getElementById(`mt-bloco-${secao}`);if(b&&b.style.display!=='block')toggleMtSeccao(secao);b&&b.scrollIntoView({block:'nearest'});},150);
   const i=todasTarefas.find(t=>t.id===itemId);
   if(!i){showToast('Tarefa não encontrada','error');return;}
   modalTarefaId=itemId;
@@ -13511,7 +13514,7 @@ init();
     <!-- Caixa expansível: Valores -->
     <div style="margin-top:1rem;border:1px solid var(--border-soft);border-radius:8px;overflow:hidden">
       <div onclick="toggleMtSeccao('valores')" style="padding:.6rem .85rem;background:var(--bg-secondary);cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
-        <div style="font-weight:500;font-size:13px">💶 Valores <span id="mt-valores-resumo" style="font-weight:400;color:var(--text-muted);font-size:11px;margin-left:6px"></span></div>
+        <div style="font-weight:500;font-size:13px">💶 Conta corrente (valores e entradas) <span id="mt-valores-resumo" style="font-weight:400;color:var(--text-muted);font-size:11px;margin-left:6px"></span></div>
         <svg id="mt-arr-valores" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .2s"><path d="M4 6l4 4 4-4"/></svg>
       </div>
       <div id="mt-bloco-valores" style="display:none;padding:.85rem;background:var(--bg-primary)">
