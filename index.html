@@ -413,8 +413,8 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('processos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
     </div>
-    <!-- Conta corrente escondida a 01/11/2026 a pedido da Liliana (nunca foi usada); os valores passaram para cada tarefa. -->
-    <div class="nav-item" onclick="nav('contacorrente',this)" style="display:none">
+    <!-- Conta corrente (01/11/2026): passa a ser o resumo dos valores introduzidos nas tarefas. -->
+    <div class="nav-item" onclick="nav('contacorrente',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9H2z"/><path d="M5 4V2h6v2"/><path d="M5 8h6M5 11h4"/></svg></span>Conta corrente
     </div>
     <div class="nav-item" onclick="nav('avencas',this)">
@@ -1570,6 +1570,21 @@ tbody tr:hover td{background:#FAFAF8}
 
       <!-- CONTA CORRENTE -->
       <div class="screen" id="screen-contacorrente">
+        <!-- Resumo dos valores das tarefas (01/11/2026). A conta corrente antiga fica escondida, sem ser apagada. -->
+        <div id="cct">
+          <div class="section-header">
+            <div><div class="section-title">Conta corrente</div><div class="section-sub" id="cct-count">Valores introduzidos nas tarefas</div></div>
+            <div style="display:flex;gap:.5rem"><button class="btn btn-sm" onclick="cctCarregar()">↺ Atualizar</button></div>
+          </div>
+          <div id="cct-totais"></div>
+          <div class="reg-search-bar" style="margin-top:.8rem">
+            <div class="reg-search-wrap"><svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+              <input class="reg-search-input" id="cct-q" placeholder="Pesquisar por tarefa ou cliente..." oninput="cctPintar()"></div>
+            <select class="form-select" id="cct-f" onchange="cctPintar()" style="max-width:230px"><option value="falta">Com valores em falta</option><option value="recibo">Com entradas sem recibo</option><option value="">Todas com valores</option></select>
+          </div>
+          <div id="cct-lista" style="margin-top:.6rem"><div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div></div>
+        </div>
+        <div id="cc-antigo" style="display:none">
         <div class="section-header">
           <div><div class="section-title">Conta corrente</div><div class="section-sub" id="cc-count">A carregar...</div></div>
           <div style="display:flex;gap:.5rem">
@@ -1586,6 +1601,7 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
         <div id="cc-loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>
         <div id="cc-list" style="display:none"></div>
+        </div>
       </div>
 
       <!-- PAINEL CONTA CORRENTE -->
@@ -3211,7 +3227,7 @@ function nav(id,el){
   if(id==='suprimentos')carregarSuprimentos();
   if(id==='tarefas')carregarTarefas();
   if(id==='processos')carregarProcessos();
-  if(id==='contacorrente')carregarContaCorrente();
+  if(id==='contacorrente')cctCarregar();   /* antes: carregarContaCorrente() — conta corrente antiga escondida (01/11/2026) */
   if(id==='contabilidade')carregarContabilidade();
   if(id==='financeiro'){carregarDashboard();carregarAvencasMensais();setTimeout(()=>{if(typeof dashRenderTudo==='function')dashRenderTudo();},150);}
   if(id==='avencas')carregarAvencas();
@@ -3574,8 +3590,7 @@ async function carregarDashboard(){
     const selBase=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     let data;
     try{
-      try{data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras},${T.pagamentos})&$top=200`);}
-      catch(_){data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);}
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);
     }catch(_){
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selBase})&$top=200`);
     }
@@ -4804,8 +4819,7 @@ async function carregarTarefas(){
     const selBase=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     let data;
     try{
-      try{data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras},${T.pagamentos})&$top=200`);}
-      catch(_){data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);}
+      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);
     }catch(_){
       // Fallback: colunas novas ainda não existem no SP
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selBase})&$top=200`);
@@ -4879,6 +4893,7 @@ function renderTarefasDash(lista){
     return;
   }
   if(vazio) vazio.style.display='none';
+  if(!CCL&&listaIdConta){cclCarregar().then(()=>renderTarefasDash(lista)).catch(()=>{CCL={};renderTarefasDash(lista);});}
   el._lista=lista;
   el.innerHTML=lista.map(i=>{
     const prazoTxt=i[T.prazo]?fmtPrazo(i[T.prazo]):'';
@@ -4932,6 +4947,46 @@ function renderTarefasDash(lista){
 /* Notas da tarefa (01/11/2026): são os eventos da «Linha cronológica» da tarefa (data, texto e quem escreveu),
    agora à vista no cartão e com um campo para escrever logo ali. */
 const tarAbertos=new Set();
+/* ═══ CONTA CORRENTE = resumo dos valores das tarefas (01/11/2026) ═══ */
+let CCT=[];
+async function cctCarregar(){
+  const box=document.getElementById('cct-lista');if(box)box.innerHTML='<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>';
+  try{await renovarToken();
+    const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.estado},${T.cliente},${T.valorServico},${T.despesasContaCliente},${T.valorPago},${T.linhaCronologica}`;
+    const d=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=500`);
+    await cclCarregar(true);
+    CCT=(d.value||[]).map(i=>({id:i.id,...i.fields}));
+    /* para o ✏️ abrir a tarefa a partir daqui */
+    CCT.forEach(t=>{const k=todasTarefas.findIndex(x=>String(x.id)===String(t.id));if(k>=0)Object.assign(todasTarefas[k],t);else todasTarefas.push(t);});
+    cctPintar();
+  }catch(e){if(box)box.innerHTML=`<div class="notice notice-error">Erro: ${escHtml(e.message)}</div>`;}
+}
+function cctPintar(){
+  const q=(document.getElementById('cct-q')?.value||'').toLowerCase().trim(),f=document.getElementById('cct-f')?.value||'';
+  const linhas=CCT.map(i=>({i,v:tarValores(i)})).filter(x=>x.v.vs||x.v.desp||x.v.pago);
+  /* totais de todas as tarefas com valores */
+  const S=linhas.reduce((t,{v})=>{const fr=v.h.total?v.rh/v.h.total:0;t.hon+=v.h.total;t.honIva+=v.h.iva;t.rh+=v.rh;t.rhIva+=v.h.iva*fr;t.desp+=v.desp;t.rd+=v.rd;t.semRec+=v.semRecibo;return t;},{hon:0,honIva:0,rh:0,rhIva:0,desp:0,rd:0,semRec:0});
+  const card=(tit,linhasH)=>`<div style="flex:1;min-width:240px;border:1px solid var(--border);border-radius:10px;padding:.7rem .9rem;background:var(--surface)"><div style="font-weight:600;margin-bottom:.3rem">${tit}</div>${linhasH}</div>`;
+  const ln=(r,v,cor)=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:1px 0"><span style="color:var(--text-muted)">${r}</span><b${cor?` style="color:${cor}"`:''}>${tarEur(v)}</b></div>`;
+  document.getElementById('cct-totais').innerHTML=`<div style="display:flex;gap:.7rem;flex-wrap:wrap">
+    ${card('Honorários <span style="font-weight:400;color:var(--text-faint);font-size:11px">(sujeitos a IVA)</span>',ln('A receber (com IVA)',S.hon)+ln('Recebido',S.rh)+ln('… dos quais IVA',S.rhIva)+ln('Recebido sem IVA',S.rh-S.rhIva)+ln('Em falta',S.hon-S.rh,S.hon-S.rh>0.005?'var(--red)':'#166534'))}
+    ${card('Despesas do cliente <span style="font-weight:400;color:var(--text-faint);font-size:11px">(sem IVA)</span>',ln('Gastas pela LBC',S.desp)+ln('Reembolsadas',S.rd)+ln('Em falta',S.desp-S.rd,S.desp-S.rd>0.005?'var(--red)':'#166534'))}
+  </div>${S.semRec?`<div style="font-size:12px;color:#92400E;margin-top:.4rem">⚠ ${S.semRec} entrada${S.semRec>1?'s':''} sem recibo emitido</div>`:''}`;
+  const vis=linhas.filter(({i,v})=>(!q||`${i[T.titulo]||''} ${i[T.cliente]||''}`.toLowerCase().includes(q))&&(f==='falta'?v.falta>0.005:f==='recibo'?v.semRecibo>0:true));
+  document.getElementById('cct-count').textContent=`${linhas.length} tarefa${linhas.length===1?'':'s'} com valores · ${vis.length} à vista`;
+  document.getElementById('cct-lista').innerHTML=vis.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+    <thead><tr style="text-align:left;color:var(--text-faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
+      <th style="padding:.5rem .6rem">Tarefa</th><th>Estado</th><th style="text-align:right">Honorários</th><th style="text-align:right">Recebido</th><th style="text-align:right">Falta</th>
+      <th style="text-align:right">Despesas</th><th style="text-align:right">Reemb.</th><th style="text-align:right">Falta</th><th style="text-align:center">Sem recibo</th><th></th></tr></thead>
+    <tbody>${vis.map(({i,v})=>{const fh=v.h.total-v.rh,fd=v.desp-v.rd;const c=x=>x>0.005?'color:var(--red);font-weight:600':'color:#166534';
+      return`<tr style="border-top:1px solid var(--border)"><td style="padding:.45rem .6rem"><b>${escHtml(i[T.titulo]||'—')}</b>${i[T.cliente]?`<div style="font-size:11px;color:var(--text-faint)">${escHtml(i[T.cliente])}</div>`:''}</td>
+        <td style="font-size:11.5px">${escHtml(i[T.estado]||'')}</td>
+        <td style="text-align:right">${tarEur(v.h.total)}</td><td style="text-align:right">${tarEur(v.rh)}</td><td style="text-align:right;${c(fh)}">${tarEur(fh)}</td>
+        <td style="text-align:right">${tarEur(v.desp)}</td><td style="text-align:right">${tarEur(v.rd)}</td><td style="text-align:right;${c(fd)}">${tarEur(fd)}</td>
+        <td style="text-align:center">${v.semRecibo?`<span style="color:#92400E">⚠ ${v.semRecibo}</span>`:''}</td>
+        <td style="padding-right:.5rem"><button class="btn btn-sm" onclick="abrirTarefaModal('${i.id}')" title="Abrir a tarefa (valores e entradas)">✏️</button></td></tr>`;}).join('')}</tbody></table></div>`
+    :'<div class="notice notice-info">Nenhuma tarefa com valores neste filtro. Os valores introduzem-se em cada tarefa (✏️ Editar › 💶 Valores).</div>';
+}
 /* Valores da tarefa no cartão (01/11/2026) */
 function tarValores(i){const L=mtPagLer(i),pag=L.entradas;const vs=parseFloat(i[T.valorServico])||0,desp=parseFloat(i[T.despesasContaCliente])||0;
   const h=honTotais(vs,L.iva),rh=mtPagSoma(pag,'hon'),rd=mtPagSoma(pag,'desp');
@@ -5023,6 +5078,7 @@ let modalTarefaId=null;
 let mtCronoEventos=[]; // array de {data, obs} ordenado por data desc
 
 function abrirTarefaModal(itemId){
+  if(!CCL&&listaIdConta){cclCarregar().then(()=>abrirTarefaModal(itemId)).catch(()=>{CCL={};abrirTarefaModal(itemId);});return;}
   const i=todasTarefas.find(t=>t.id===itemId);
   if(!i){showToast('Tarefa não encontrada','error');return;}
   modalTarefaId=itemId;
@@ -5134,11 +5190,31 @@ let mtPag=[],mtIva='incluido';
    Na coluna: {iva:'incluido'|'acresce'|'isento', entradas:[{data,valor,tipo:'hon'|'desp',recibo,fatura}]};
    aceita-se ainda a forma antiga (só a lista). */
 const IVA_TAXA=0.23;
-function mtPagLer(i){let o;try{o=JSON.parse(i[T.pagamentos]||'[]');}catch(_){o=[];}
-  let a=Array.isArray(o)?o:(o&&Array.isArray(o.entradas)?o.entradas:[]);const iva=(!Array.isArray(o)&&o&&o.iva)||'incluido';
+/* As entradas ficam na lista que já existe, «Processos_ContaCorrente» (01/11/2026): uma linha por entrada,
+   com «Lancamento» = TAREFA-<id>, Data, Valor_Recebido (e Honorarios ou Gastos_Conta_Cliente com o mesmo valor,
+   conforme é para honorários ou para despesas) e, em Observacoes, o recibo/fatura. A opção de IVA da tarefa
+   fica numa linha de configuração (valor 0). As linhas antigas da conta corrente não são tocadas. */
+let CCL=null,CCLprom=null;
+const cclChave=id=>'TAREFA-'+id;
+async function cclCarregar(forcar){
+  if(CCL&&!forcar)return CCL;if(CCLprom&&!forcar)return CCLprom;
+  CCLprom=(async()=>{const m={};if(!listaIdConta){CCL=m;return m;}
+    const sf=['Lancamento',CC.titulo,'Title',CC.data,CC.honorarios,CC.gastos,CC.recebido,CC.observacoes].join(',');
+    const d=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items?$expand=fields($select=${sf})&$top=500`);
+    (d.value||[]).forEach(it=>{const f=it.fields||{};const L=String(f.Lancamento||'');if(!L.startsWith('TAREFA-'))return;
+      const id=L.slice(7);let o={};try{o=JSON.parse(f[CC.observacoes]||'{}');}catch(_){o={};}
+      const r=m[id]=m[id]||{iva:'incluido',entradas:[],cfg:null};
+      if(o.config){r.cfg=it.id;r.iva=o.iva||'incluido';return;}
+      const hon=parseFloat(f[CC.honorarios])||0,gas=parseFloat(f[CC.gastos])||0;
+      r.entradas.push({spId:it.id,data:String(f[CC.data]||'').slice(0,10),valor:parseFloat(f[CC.recebido])||0,tipo:o.tipo||(gas>0&&!hon?'desp':'hon'),recibo:o.recibo||'',fatura:o.fatura||'',...(o.nota?{nota:o.nota}:{})});});
+    Object.values(m).forEach(r=>r.entradas.sort((a,b)=>String(a.data).localeCompare(String(b.data))));
+    CCL=m;CCLprom=null;return m;})();
+  return CCLprom;
+}
+function mtPagLer(i){const r=CCL&&CCL[String(i.id)];
+  const a=r?r.entradas.map(x=>({...x})):[];const iva=(r&&r.iva)||'incluido';
   const vp=parseFloat(i[T.valorPago])||0;
-  if(!a.length&&vp>0)a=[{data:'',valor:vp,tipo:'hon',recibo:'',fatura:'',nota:'valor já registado antes'}];
-  a.forEach(x=>{if(!x.tipo)x.tipo='hon';});
+  if(!a.length&&vp>0)return{iva,entradas:[{data:'',valor:vp,tipo:'hon',recibo:'',fatura:'',nota:'valor já registado antes'}]};
   return{iva,entradas:a};}
 function mtPagParse(i){return mtPagLer(i).entradas;}
 function mtPagSoma(a,tipo){return(a||[]).filter(x=>!tipo||(x.tipo||'hon')===tipo).reduce((t,x)=>t+(parseFloat(x.valor)||0),0);}
@@ -5171,6 +5247,23 @@ function mtPagTotal(){const s=mtPagSoma(mtPag);const e=document.getElementById('
       <div>Reembolsadas: <b>${tarEur(rd)}</b></div><div>Em falta: <b style="color:${desp-rd>0.005?'var(--red)':'#166534'}">${tarEur(desp-rd)}</b></div></div></div>`;}
 function mtPagAdd(){mtPag.push({data:new Date().toISOString().slice(0,10),valor:'',recibo:'',fatura:''});mtPagRender();
   const ins=document.querySelectorAll('#mt-pag-lista input[type=number]');if(ins.length)ins[ins.length-1].focus();}
+async function cclGravar(tid,titulo,cliente){
+  if(!listaIdConta)throw new Error('não encontrei a lista Processos_ContaCorrente');
+  await cclCarregar();const r=(CCL[String(tid)]=CCL[String(tid)]||{iva:'incluido',entradas:[],cfg:null});
+  const base=`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items`;
+  const ok=mtPag.filter(x=>parseFloat(x.valor)>0||x.fatura);
+  const corpo=x=>{const v=Math.round((parseFloat(x.valor)||0)*100)/100;return{Title:titulo,Lancamento:cclChave(tid),[CC.titulo]:titulo,[CC.cliente]:cliente||'',
+    [CC.data]:x.data?x.data+'T12:00:00Z':null,[CC.recebido]:v,[CC.honorarios]:x.tipo==='desp'?0:v,[CC.gastos]:x.tipo==='desp'?v:0,
+    [CC.observacoes]:JSON.stringify({tarefa:String(tid),tipo:x.tipo||'hon',recibo:x.recibo||'',fatura:x.recibo==='sim'?(x.fatura||''):'',...(x.nota?{nota:x.nota}:{})})};};
+  const ids=new Set(ok.filter(x=>x.spId).map(x=>x.spId));
+  for(const old of r.entradas)if(old.spId&&!ids.has(old.spId))await graphDelete(`${base}/${old.spId}`);
+  for(const x of ok){if(x.spId)await graphPatch(`${base}/${x.spId}/fields`,corpo(x));else{const n=await graphPost(base,{fields:corpo(x)});x.spId=n&&n.id;}}
+  /* opção de IVA */
+  const cfg={Title:titulo,Lancamento:cclChave(tid),[CC.titulo]:titulo,[CC.recebido]:0,[CC.honorarios]:0,[CC.gastos]:0,[CC.observacoes]:JSON.stringify({tarefa:String(tid),config:true,iva:mtIva})};
+  if(r.cfg)await graphPatch(`${base}/${r.cfg}/fields`,cfg);else if(mtIva!=='incluido'){const n=await graphPost(base,{fields:cfg});r.cfg=n&&n.id;}
+  r.iva=mtIva;r.entradas=ok.map(x=>({...x}));
+  /* a entrada «valor já registado antes» passa a linha da conta corrente quando se mexe nela */
+}
 let colPagOk=false;
 async function garantirColunaPagamentos(){
   if(colPagOk)return true;
@@ -5287,10 +5380,9 @@ async function guardarTarefaModal(){
     [T.valorPago]:mtPag.length?Math.round(mtPagSoma(mtPag)*100)/100:numOrNull(document.getElementById('mt-valor-pago').value),
     [T.linhaCronologica]:cronoJson,
   };
-  /* entradas do cliente: só se grava a coluna se ela existir (ou se se conseguir criar) */
-  const pagJson=JSON.stringify({iva:mtIva,entradas:mtPag.filter(x=>parseFloat(x.valor)>0||x.fatura||x.data).map(x=>({data:x.data||'',valor:parseFloat(x.valor)||0,tipo:x.tipo||'hon',recibo:x.recibo||'',fatura:x.recibo==='sim'?(x.fatura||''):'',...(x.nota?{nota:x.nota}:{})}))});
-  try{await garantirColunaPagamentos();body[T.pagamentos]=pagJson;}
-  catch(e){if(mtPag.length>1||(mtPag[0]&&!mtPag[0].nota)){showToast('Não consegui criar a coluna «Pagamentos» na lista de tarefas ('+e.message+'). Só fica gravado o total pago.','error');}}
+  /* entradas do cliente → lista «Processos_ContaCorrente» */
+  try{await cclGravar(modalTarefaId,titulo,body[T.cliente]);}
+  catch(e){showToast('As entradas não ficaram gravadas na conta corrente: '+e.message,'error');return;}
   try{
     await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${modalTarefaId}/fields`,body);
     showToast('Tarefa atualizada!','success');
