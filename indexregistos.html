@@ -158,7 +158,20 @@
   <!-- 1 -->
   <h2><span><span class="num">1</span>Identificação do Apresentante</span><span class="hint">fixo — copiar tal como está</span></h2>
   <div class="head ro-lock">
-    <div id="ir-apres" style="display:contents"><div style="grid-column:1/-1;color:#888">A carregar os dados do apresentante…</div></div>
+    <div><span>Nome</span><b>LILIANA BURRICA</b></div>
+    <div><span>e-mail</span>lburrica08733@osae.pt</div>
+    <div><span>Tipo de documento</span>Cédula Profissional</div>
+    <div><span>N.º do documento</span>8733</div>
+    <div><span>Qualidade</span>Solicitador</div>
+    <div><span>NIF</span>519018532</div>
+    <div><span>Residência</span>Rua Domingos Franco de Oliveira nº 16</div>
+    <div><span>Código postal</span>7005-552</div>
+    <div><span>Localidade</span>Évora</div>
+    <div><span>Telemóvel</span>+351960215959</div>
+    <div><span>NIB</span>0035 · 0655 · 00005276730 · 17</div>
+    <div><span>IBAN</span>PT50003506550000527673017</div>
+    <div><span>BIC/SWIFT</span>CGDIPTPL</div>
+    <div><span>e-mail adicional</span>info@lbc-solicitadora.pt</div>
     <div class="data"><label for="dataDoc">Data do Documento</label><input type="date" id="dataDoc"><span class="hint">= data do ato (aaaa-mm-dd)</span></div>
     <div class="legit" style="grid-column:1/-1;margin-top:4px"><span class="hint" style="min-width:130px">Escritura</span>
       <label><input type="radio" name="tipoEsc" value="CGD" checked>CGD (pagamento a cargo da CGD)</label>
@@ -732,9 +745,6 @@
   async function carregarTudo(){
     $('#linhas').innerHTML='<tr><td colspan="7" class="carregando" style="border:none;background:transparent">A carregar registos…</td></tr>';
     const site=await gGet(`${GRAPH}/sites/${TENANT_HOST}:/${SITE_PATH}`); siteId=site.id;
-    /* dados do apresentante: lista «dados_lbc» (saíram do código, 31/10/2026) — só leitura aqui */
-    try{const d=await lbcApres({base:GRAPH,site:siteId,get:u=>gGet(u)},false);const el=document.getElementById('ir-apres');if(el)el.innerHTML=lbcApresLinhas(d);}
-    catch(e){const el=document.getElementById('ir-apres');if(el)el.innerHTML='<div style="grid-column:1/-1;color:#B91C1C">Não consegui ler os dados do apresentante.</div>';}
     const listas=await gGetAll(`${GRAPH}/sites/${siteId}/lists?$select=id,name,displayName&$top=200`);
     const acha=n=>listas.find(l=>l.name===n||l.displayName===n)?.id; idPed=acha(LP); const idEsc=acha(LE);
     if(!idPed||!idEsc)throw new Error('Listas não encontradas');
