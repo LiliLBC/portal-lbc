@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-10-30.1</span>
+    <span class="page-sub">piloto · v2026-11-01.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -7483,6 +7483,7 @@ function mzPropostas(m){
     const ins=x?(x.inscricoes||[]):[];const aq=[...ins].reverse().find(i=>/Aquisi/i.test(i.tipo)),ph=ins.find(i=>/Propriedade\s+Horizontal/i.test(i.tipo));
     if(x){add(nome,'Conservatória do Registo Predial',A('crp','f-im-crp'),x.conservatoria,o);
       if(!x.descDuvida)add(nome,'N.º da descrição',A('num','f-im-num'),x.descricao,o);
+      {const dp=mzDescricao(x,y);if(dp.texto)add(nome,'⚠ Composição (proposta: certidão + caderneta — rever)',A('descricao','f-im-descricao'),dp.texto,o+(oc?' + '+oc:''));dp.avisos.forEach(a=>avisos.push(`${nome}: ${a}`));}
       add(nome,'Freguesia (descrição)',A('freg','f-im-freg-crp'),x.fregDesc,o);
       add(nome,'Código da certidão permanente',A('cert-cod','f-im-cert-cod'),x.codigo,o);
       add(nome,'Validade da certidão',A('cert-val','f-im-cert-val'),x.validade,o,{mostra:mzDataPT(x.validade)});
@@ -7550,6 +7551,58 @@ function mzPropostas(m){
     add(G,'Montante máximo da hipoteca',{id:'f-mh-hipoteca'},x.maximo!=null?mzPreco(x.maximo):'',o);}
   pessoas.forEach(p=>p.campos=p.campos.filter(c=>c[2]!==undefined&&c[2]!==null&&String(c[2]).trim()!==''));
   return{P,incertos,pessoas,avisos};
+}
+/* ⚠ Composição do prédio (01/11/2026): parte do que está inscrito na certidão, sem as confrontações
+   nem o histórico do registo («Desanexado do n.º…»), sem o equipamento que às vezes aparece
+   (sanitas, lavatórios, banheiras…); acrescenta da caderneta só o que a certidão não diz (afetação,
+   tipologia) e avisa quando as áreas não coincidem. É uma proposta — revê-se sempre antes de usar. */
+const MZ_DIR='(?:Norte|Sul|Nascente|Poente|Leste|Este|Oeste|Levante)';
+const MZ_EQUIP=/sanit|lavat[óo]rio|bid[éeê]|banheira|base de duche|poliban|autoclismo|esquentador|termoacumulador|lou[çc]as?\s+sanit|torneira|lava-loi[çc]a|banca de cozinha|fog[ãa]o|chamin[ée]\s+de\s+fumo/i;
+function mzDescricao(x,y){
+  const av=[];if(!x||!x.composicao)return{texto:'',avisos:av};
+  let t=String(x.composicao).replace(/\s+/g,' ').trim();
+  t=t.replace(/(ch[ãa]o|s[óo]t[ãa]o|andar|cave)(com|e|destinad[oa]s?)\b/gi,'$1 $2');
+  /* tirar confrontações */
+  t=t.split(';').filter(q=>!new RegExp('^\\s*(?:e\\s+)?'+MZ_DIR+'(?:\\s*(?:,|e)\\s*'+MZ_DIR+')*\\s*[:\\-–]','i').test(q)).join(';')
+     .replace(new RegExp('[,.]\\s*'+MZ_DIR+'(?:\\s*(?:,|e)\\s*'+MZ_DIR+')*\\s*[:\\-–][^;]*','gi'),'')
+     .replace(new RegExp(',?\\s*(?:que\\s+)?confronta(?:ndo)?\\s+(?:a|do|de|pelo)?\\s*'+MZ_DIR+'[^;]*','gi'),'');
+  /* tirar o histórico do registo e o equipamento */
+  t=t.split(';').map(q=>q.trim()).filter(q=>q&&!/^(desanexad|anexad|omitid|inscrit[oa]s?\s+na\s+matriz|artigo|matriz|valor)/i.test(q)).join('; ');
+  t=t.replace(/\s+(?:com|equipad[ao]s?\s+com|dotad[ao]s?\s+de|tendo)\s+[^,;]*/gi,m=>MZ_EQUIP.test(m)?'':m);
+  t=t.split(/,(?![^(]*\))/).map(q=>q.trim()).filter(q=>q&&!(MZ_EQUIP.test(q)&&q.split(/\s+/).length<=8&&!/divis|compartiment|cozinha|casa de banho|quarto|sala/i.test(q))).join(', ');
+  t=t.replace(/^\s*compost[oa]s?\s+(?:de|por)\s+/i,'').replace(/\s*[;,.]\s*$/,'').replace(/\s+/g,' ').trim();
+  if(!t)return{texto:'',avisos:av};
+  /* da caderneta, só o que falta */
+  const nn=v=>{const r=mzNum(v);return isNaN(r)||r<=0?NaN:r;};
+  const fA=v=>Number.isInteger(Math.round(v*100)/100)?String(Math.round(v)):v.toFixed(2).replace('.',',');
+  const perto=(a,b)=>Math.abs(a-b)<=Math.max(1,0.05*Math.max(a,b));
+  if(y){
+    if(y.afetacao&&!/destinad|habita|com[ée]rci|servi[çc]|armaz|ind[úu]str|agr[íi]col|garagem|arrecada/i.test(t))t+=`, ${/^(fra[çc][ãa]o|casa|moradia|loja)/i.test(t)?'destinada':'destinado'} a ${String(y.afetacao).toLowerCase()}`;
+    if(y.tipologia&&/^T\d+$/i.test(y.tipologia)&&!/\bT\d+\b/i.test(t))t+=`, de tipologia ${y.tipologia.toUpperCase()}`;
+    if(y.garagem&&!/garage|estacionamento|parqueamento|aparcamento/i.test(t))t+=', com garagem';
+  }
+  /* Áreas (01/11/2026): as da certidão, se as tiver e não divergirem muito da caderneta;
+     senão, as da caderneta — área coberta = área de implantação; descoberta = terreno − implantação
+     (CIMI, art. 40.º, n.º 4: terreno livre = área do terreno − área de implantação). */
+  const fracao=!!(x.fracao||(y&&y.fracao));
+  let tot=nn(x.areaTotal),cob=nn(x.areaCob)||nn(x.ac),des=nn(x.areaDesc)||nn(x.ad);const daCRP=!isNaN(tot)||!isNaN(cob)||!isNaN(des);
+  const cTer=y?nn(y.ater)||nn(y.ati):NaN,cImp=y?nn(y.aimp):NaN,cDes=!isNaN(cTer)&&!isNaN(cImp)&&cTer>cImp?cTer-cImp:NaN;
+  if(daCRP&&y){[['total',tot,cTer],['coberta',cob,cImp],['descoberta',des,cDes]].forEach(([r,a,b])=>{if(!isNaN(a)&&!isNaN(b)&&!perto(a,b))av.push(`área ${r}: certidão ${fA(a)} m2, caderneta ${fA(b)} m2 — mantive a da certidão; confirme a realidade (pode ser preciso harmonizar).`);});}
+  if(!daCRP&&!fracao){tot=cTer;cob=cImp;des=cDes;}
+  const temLog=/logradour|quintal|p[áa]tio|terreno|jardim|horta|quintal/i.test(t);
+  const jaAreas=/[ÁA]REA\s+TOTAL|[áa]rea\s+coberta|[áa]rea\s+descoberta/i.test(t);
+  if(!fracao&&!jaAreas&&(!isNaN(tot)||!isNaN(cob))){
+    const p=[];if(!isNaN(cob))p.push(`${fA(cob)} m2 de área coberta`);if(!isNaN(des))p.push(`${fA(des)} m2 de área descoberta${temLog?'':' (logradouro)'}`);
+    t+=!isNaN(tot)?`, com a área total de ${fA(tot)} m2${p.length?', sendo '+p.join(' e '):''}`:`, com ${p.join(' e ')}`;
+    if(!daCRP)av.push('a certidão não tem áreas — as áreas da proposta são as da caderneta (coberta = implantação; descoberta = terreno − implantação).');
+  }else if(!fracao&&!temLog&&!isNaN(des)&&jaAreas)t+=', e logradouro';
+  if(fracao&&y&&!/[áa]rea/i.test(t)){const ap=nn(y.abp),ad=nn(y.abd);
+    if(!isNaN(ap))t+=`, com a área bruta privativa de ${fA(ap)} m2${!isNaN(ad)?` e área bruta dependente de ${fA(ad)} m2`:''}`;av.push('áreas da fração tiradas da caderneta — confirme.');}
+  if(y){const areasCRP=[...String(x.composicao).matchAll(/([\d.,]+)\s*m\s*[2²]/gi)].map(m=>nn(m[1])).concat([cob]).filter(v=>!isNaN(v));
+    const areasCad=[nn(y.abp),cImp,nn(y.abd),nn(y.abc)].filter(v=>!isNaN(v));
+    if(daCRP===false&&areasCRP.length&&areasCad.length&&!areasCad.some(b=>areasCRP.some(a=>perto(a,b))))
+      av.push(`as áreas da caderneta (${areasCad.map(fA).join(', ')} m2) não coincidem com as da certidão (${[...new Set(areasCRP)].map(fA).join(', ')} m2) — confirme a realidade antes de atualizar a descrição.`);}
+  return{texto:t,avisos:av};
 }
 /* Valor atual no gerador e comparação. */
 function mzAtual(a){
