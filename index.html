@@ -18083,7 +18083,8 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
       if(!pdfs.length){janela(cab(nome)+`<div class="notice notice-warning" style="display:block;margin-top:1rem">Na subpasta DPA não há nenhum PDF por separar.${ja?' Os documentos já separados estão em «DPA › Para depósito».':''}</div>`);return;}
       pdfs.sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
       if(pdfs.length>1){
-        janela(cab(nome,'Há mais do que um PDF na subpasta DPA — qual é o PDF único do depósito?')+`<div style="display:flex;flex-direction:column;gap:.4rem;margin-top:1rem">${pdfs.map((f,i)=>`<button class="btn" style="justify-content:flex-start" onclick="depLer(${i})">📄 ${esc(f.name)} <span style="color:var(--text-faint);font-size:11px;margin-left:.5rem">${(f.size/1048576).toFixed(1)} MB</span></button>`).join('')}</div>`);
+        pdfs.sort((x,y)=>String(x.name).localeCompare(String(y.name),'pt',{numeric:true}));
+        janela(cab(nome,`Há ${pdfs.length} PDF na subpasta DPA. Posso juntá-los num só e separar tudo de uma vez, ou usar só um deles.`)+`<div style="display:flex;flex-direction:column;gap:.4rem;margin-top:1rem"><button class="btn btn-primary" style="justify-content:flex-start" onclick="depLer('todos')">📚 Juntar os ${pdfs.length} PDF e separar <span style="font-size:11px;margin-left:.5rem;opacity:.8">(pela ordem abaixo · ${(pdfs.reduce((t,f)=>t+(f.size||0),0)/1048576).toFixed(1)} MB)</span></button><div style="font-size:11.5px;color:var(--text-muted);margin:.4rem 0 .1rem">ou usar só um:</div>${pdfs.map((f,i)=>`<button class="btn" style="justify-content:flex-start" onclick="depLer(${i})">📄 ${esc(f.name)} <span style="color:var(--text-faint);font-size:11px;margin-left:.5rem">${(f.size/1048576).toFixed(1)} MB</span></button>`).join('')}</div>`);
         ST.pdfs=pdfs;return;}
       ST.pdfs=pdfs;depLer(0);
     }catch(e){janela(cab(nome)+`<div class="notice notice-error" style="display:block;margin-top:1rem">Erro: ${esc(e.message)}</div>`);}
@@ -18097,13 +18098,25 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     let esc=0,n=0;for(let i=0;i<d.length;i+=4){const g=(d[i]+d[i+1]+d[i+2])/3;n++;if(g<190)esc++;}return esc/n<0.0003;}
   function topo(c,frac){const t=document.createElement('canvas');t.width=c.width;t.height=Math.round(c.height*frac);t.getContext('2d').drawImage(c,0,0);return t;}
   window.depLer=async i=>{
-    const f=ST.pdfs[i];ST.ficheiro=f;
+    /* 'todos' = juntar todos os PDF da subpasta DPA num só, pela ordem do nome (31/10/2026) */
+    const todos=i==='todos';
+    const f=todos?{name:`${ST.pdfs.length} PDF juntos`,id:null}:ST.pdfs[i];ST.ficheiro=f;
     janela(cab(ST.nome,`A ler «${esc(f.name)}» — fica tudo neste computador.`)+'<div id="dep-prog"></div>');
     try{
       progresso('A descarregar o PDF…',0.02);
       await renovarToken();
-      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:H()});if(!r.ok)throw new Error('não consegui descarregar o PDF ('+r.status+')');
-      ST.bytes=new Uint8Array(await r.arrayBuffer());
+      const baixar=async x=>{const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${x.id}/content`,{headers:H()});if(!r.ok)throw new Error(`não consegui descarregar «${x.name}» (${r.status})`);return new Uint8Array(await r.arrayBuffer());};
+      if(!todos)ST.bytes=await baixar(f);
+      else{
+        await carregarScriptUma(URL_PDFLIB);
+        const junto=await PDFLib.PDFDocument.create();
+        for(let k=0;k<ST.pdfs.length;k++){
+          progresso(`A juntar ${k+1} de ${ST.pdfs.length}: ${ST.pdfs[k].name}`,0.02+0.03*k/ST.pdfs.length);
+          let doc;try{doc=await PDFLib.PDFDocument.load(await baixar(ST.pdfs[k]),{ignoreEncryption:true});}catch(e){throw new Error(`não consegui abrir «${ST.pdfs[k].name}»: ${e.message}`);}
+          (await junto.copyPages(doc,doc.getPageIndices())).forEach(pg=>junto.addPage(pg));
+        }
+        ST.bytes=await junto.save();
+      }
       progresso('A preparar o leitor…',0.05);
       await carregarScriptUma(URL_PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=URL_PDFJS_W;
       await carregarScriptUma(URL_TESS);
