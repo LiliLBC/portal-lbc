@@ -17082,12 +17082,17 @@ async function sincronizar(avisar){
   const alvo=PEDS.filter(p=>!(conteudo(p).codDPA||'').trim());
   if(!alvo.length){if(avisar)showToast('Todos os registos já têm o código','');return 0;}
   await renovarToken();
+  /* 01/11/2026: os registos ainda sem atos vão já preenchidos com os dados lidos do DPA (📤 Depósito) */
+  let S=null;try{if(window.etqDadoPorNome)S=await etqDadoPorNome('ESCRITURAS',($('painel-ref')?.textContent||'').trim(),'sintese');}catch(_){}
+  let preench=0;
   for(const p of alvo){
-    const m=conteudo(p); m.codDPA=cod;
+    let m=conteudo(p);
+    if(S&&!(m.atos&&m.atos.length)){const base=dadosDaFicha();m=mapaDeSintese(Object.assign({},base,m,{processo:base.processo,cliente:base.cliente,tipoEsc:m.tipoEsc||base.tipoEsc,dataDoc:m.dataDoc||base.dataDoc}),S);preench++;}
+    m.codDPA=cod;
     await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${idListaPed}/items/${p.id}/fields`,
       {[P.atos]:JSON.stringify(m),[P.codigos]:[cod,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')});
   }
-  showToast(alvo.length+(alvo.length===1?' registo enviado':' registos enviados')+' para a lista da colaboradora','success');
+  showToast(alvo.length+(alvo.length===1?' registo enviado':' registos enviados')+' para a lista da colaboradora'+(preench?' — mapa preenchido com os dados do DPA':S?'':' (sem dados do DPA: o mapa vai como está)'),'success');
   await carregar(escId); return alvo.length;
 }
 window.rcSincronizar=()=>sincronizar(true).catch(e=>showToast('Erro: '+e.message,'error'));
@@ -18439,8 +18444,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
    documento pertence cada página. */
 (function(){
   const EU='liliana.cardoso@lbc-solicitadora.pt';
-  /* 01/11/2026: a Andreia também pode separar o PDF do DPA (o depósito no Predial Online continua a ser da Liliana) */
-  const souEu=()=>{try{const c=window.contaAtual||(typeof contaAtual!=='undefined'?contaAtual:null);const u=String(c&&c.username||'').toLowerCase();return u===EU||/^andreia/.test(u);}catch(_){return false;}};
+  const souEu=()=>{try{const c=window.contaAtual||(typeof contaAtual!=='undefined'?contaAtual:null);return String(c&&c.username||'').toLowerCase()===EU;}catch(_){return false;}};
   window.depSouEu=souEu;
   /* os mesmos dados fixos do «Mapa de registo» */
   const APRES=[['Nome','LILIANA BURRICA'],['e-mail','lburrica08733@osae.pt'],['Tipo de documento','Cédula Profissional'],['N.º do documento','8733'],
@@ -18467,7 +18471,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
 
   /* ── abrir: encontra a subpasta DPA e o PDF único ── */
   window.depAbrir=async(itemId,nome)=>{
-    if(!souEu()){showToast('Só a Liliana Cardoso e a Andreia separam o PDF do depósito.','error');return;}
+    if(!souEu()){showToast('Só a Liliana Cardoso faz depósitos.','error');return;}
     ST={itemId,nome,paginas:[],grupos:[],dados:{}};
     janela(cab(nome,'A procurar a subpasta DPA…')+'<div id="dep-prog"></div>');
     try{
