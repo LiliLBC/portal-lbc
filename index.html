@@ -16481,7 +16481,20 @@ const HTML=`<div class="mr" id="mr-mapa" hidden>
   <!-- 1 -->
   <h2><span><span class="num">1</span>Identificação do Apresentante</span><span class="hint">fixo — copiar tal como está</span></h2>
   <div class="head ro-lock">
-    <div id="mr-apres" style="display:contents"><div style="grid-column:1/-1;color:var(--muted)">A carregar os dados do apresentante…</div></div>
+    <div><span>Nome</span><b>LILIANA BURRICA</b></div>
+    <div><span>e-mail</span>lburrica08733@osae.pt</div>
+    <div><span>Tipo de documento</span>Cédula Profissional</div>
+    <div><span>N.º do documento</span>8733</div>
+    <div><span>Qualidade</span>Solicitador</div>
+    <div><span>NIF</span>519018532</div>
+    <div><span>Residência</span>Rua Domingos Franco de Oliveira nº 16</div>
+    <div><span>Código postal</span>7005-552</div>
+    <div><span>Localidade</span>Évora</div>
+    <div><span>Telemóvel</span>+351960215959</div>
+    <div><span>NIB</span>0035 · 0655 · 00005276730 · 17</div>
+    <div><span>IBAN</span>PT50003506550000527673017</div>
+    <div><span>BIC/SWIFT</span>CGDIPTPL</div>
+    <div><span>e-mail adicional</span>info@lbc-solicitadora.pt</div>
     <div class="data"><label for="mr-dataDoc">Data do Documento</label><input type="date" id="mr-dataDoc"><span class="hint">= data do ato (aaaa-mm-dd)</span></div>
     <div class="legit" style="grid-column:1/-1;margin-top:4px"><span class="hint" style="min-width:130px">Escritura</span>
       <label><input type="radio" name="mr-tipoEsc" value="CGD" checked>CGD (pagamento a cargo da CGD)</label>
@@ -16997,7 +17010,6 @@ function montar(){
 function abrirMapa(id){
   const p=PEDS.find(x=>String(x.id)===String(id));if(!p)return;
   montar();pedAberto=p;
-  if(window.lbcApresPortalPintar)lbcApresPortalPintar('mr-apres');
   const base=dadosDaFicha(); const m=conteudo(p);
   const dados=Object.assign({},base,m,{processo:base.processo,cliente:base.cliente}); if(!(m.predios&&m.predios.length))dados.predios=base.predios; if(!m.tipoEsc)dados.tipoEsc=base.tipoEsc;
   mapa.setData(dados); mapa.setModo('portal');
@@ -18376,68 +18388,6 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   };
   window._srTeste={norm};
 })();
-/* ═══════════ DADOS DO APRESENTANTE (31/10/2026) ═══════════
-   Saíram do código (o repositório é público): ficam na lista «dados_lbc» do site
-   lbcsolicitadora2 — Título «apresentante», coluna «Dados» com o JSON —, tal como as
-   procurações em «proc_bancos». Quem entra lê; só a Liliana os altera (no Portal). */
-(function(){
-  const CAMPOS=[['nome','Nome'],['email','e-mail'],['tipoDoc','Tipo de documento'],['numDoc','N.º do documento'],['qualidade','Qualidade'],['nif','NIF'],
-    ['residencia','Residência'],['cp','Código postal'],['localidade','Localidade'],['telemovel','Telemóvel'],['nib','NIB'],['iban','IBAN'],['bic','BIC/SWIFT'],['email2','e-mail adicional']];
-  const LISTA='dados_lbc';
-  const nrm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
-  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  let CACHE=null,PROM=null,LID=null,ITEM=null,COLD='Dados';
-  /* api = {get(url), post(url,body), patch(url,body), base, site} — cada página dá os seus */
-  async function carregar(api,criar){
-    const ls=await api.get(`${api.base}/sites/${api.site}/lists?$select=id,name,displayName&$top=200`);
-    let l=(ls.value||[]).find(x=>nrm(x.name)===LISTA||nrm(x.displayName)===LISTA);
-    if(!l){if(!criar)return null;
-      l=await api.post(`${api.base}/sites/${api.site}/lists`,{displayName:LISTA,list:{template:'genericList'},columns:[{name:'Dados',text:{allowMultipleLines:true,textType:'plain',linesForEditing:6}}]});}
-    LID=l.id;
-    const cs=await api.get(`${api.base}/sites/${api.site}/lists/${LID}/columns?$select=name,displayName`);
-    const c=(cs.value||[]).find(x=>nrm(x.name)==='dados'||nrm(x.displayName)==='dados');if(c)COLD=c.name;
-    const it=await api.get(`${api.base}/sites/${api.site}/lists/${LID}/items?$expand=fields&$top=200`);
-    ITEM=(it.value||[]).find(i=>nrm(i.fields.Title)==='apresentante')||null;
-    if(!ITEM)return null;
-    try{return JSON.parse(ITEM.fields[COLD]||'{}');}catch(_){return null;}
-  }
-  window.lbcApres=(api,criar)=>{if(CACHE)return Promise.resolve(CACHE);if(PROM)return PROM;
-    PROM=carregar(api,criar).then(d=>{CACHE=d;PROM=null;return d;}).catch(e=>{PROM=null;throw e;});return PROM;};
-  window.lbcApresCampos=CAMPOS;
-  window.lbcApresGravar=async(api,dados)=>{
-    if(!LID)await carregar(api,true);
-    const body={Title:'apresentante',[COLD]:JSON.stringify(dados)};
-    if(ITEM)await api.patch(`${api.base}/sites/${api.site}/lists/${LID}/items/${ITEM.id}/fields`,body);
-    else{const r=await api.post(`${api.base}/sites/${api.site}/lists/${LID}/items`,{fields:body});ITEM={id:r.id,fields:body};}
-    CACHE=dados;return dados;};
-  /* linhas no formato do «Mapa de registo» (grelha .head) */
-  window.lbcApresLinhas=d=>d?CAMPOS.filter(([k])=>d[k]).map(([k,r])=>`<div><span>${esc(r)}</span>${k==='nome'?'<b>'+esc(d[k])+'</b>':esc(d[k])}</div>`).join('')
-    :'<div style="grid-column:1/-1;color:#B45309">Os dados do apresentante ainda não foram preenchidos — a Liliana preenche-os no Portal (📤 Depósito › ✏️).</div>';
-})();
-/* Portal: ligação dos dados do apresentante (lista «dados_lbc») ao Mapa de registo e ao Depósito. */
-(function(){
-  window.lbcApiPortal=()=>({base:GRAPH_BASE,site:siteIdDados,get:u=>graphGet(u),post:(u,b)=>graphPost(u,b),patch:(u,b)=>graphPatch(u,b)});
-  const souLili=()=>{try{const c=window.contaAtual||(typeof contaAtual!=='undefined'?contaAtual:null);return String(c&&c.username||'').toLowerCase()==='liliana.cardoso@lbc-solicitadora.pt';}catch(_){return false;}};
-  window.lbcApresPortalPintar=async id=>{const el=document.getElementById(id);if(!el)return;
-    try{const d=await lbcApres(lbcApiPortal(),souLili());el.innerHTML=lbcApresLinhas(d)+(souLili()?'<div style="grid-column:1/-1;text-align:right"><button type="button" class="btn small" onclick="lbcApresEditar()">✏️ Editar dados do apresentante</button></div>':'');}
-    catch(e){el.innerHTML=`<div style="grid-column:1/-1;color:#B91C1C">Não consegui ler os dados do apresentante: ${escHtml(e.message)}</div>`;}};
-  window.lbcApresEditar=async()=>{
-    if(!souLili()){showToast('Só a Liliana altera os dados do apresentante.','error');return;}
-    let d={};try{d=(await lbcApres(lbcApiPortal(),true))||{};}catch(_){}
-    let o=document.getElementById('apres-ov');if(o)o.remove();
-    o=document.createElement('div');o.id='apres-ov';o.className='modal-overlay show';o.style.zIndex='12000';
-    o.innerHTML=`<div class="modal-box" style="max-width:640px;width:95%"><div class="modal-box-title">Dados do apresentante</div>
-      <div style="font-size:12px;color:var(--text-muted);margin:-.3rem 0 .8rem">Usados no Depósito e no Mapa de registo. Ficam na lista «dados_lbc» do SharePoint, não no código do Portal.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem">${lbcApresCampos.map(([k,r])=>`<label style="font-size:11.5px;color:var(--text-muted)">${escHtml(r)}<input class="form-input" data-apres="${k}" value="${escHtml(d[k]||'')}" style="width:100%;font-size:13px"></label>`).join('')}</div>
-      <div class="modal-actions" style="margin-top:1rem"><button class="btn" onclick="document.getElementById('apres-ov').remove()">Cancelar</button><button class="btn btn-primary" id="apres-gravar">Guardar</button></div></div>`;
-    document.body.appendChild(o);
-    document.getElementById('apres-gravar').onclick=async()=>{const n={};o.querySelectorAll('[data-apres]').forEach(i=>{n[i.dataset.apres]=i.value.trim();});
-      try{await lbcApresGravar(lbcApiPortal(),n);o.remove();showToast('Dados do apresentante guardados','success');
-        if(document.getElementById('mr-apres'))lbcApresPortalPintar('mr-apres');
-        if(typeof window.depRepintar==='function')window.depRepintar(n);}
-      catch(e){showToast('Erro: '+e.message,'error');}};
-  };
-})();
 /* ═══════════ DEPÓSITO DO DPA (31/10/2026) ═══════════
    Só para a Liliana (o botão «📤 Depósito» não aparece a mais ninguém).
    A Andreia junta num único PDF digitalizado, na subpasta DPA da escritura, tudo o que vai
@@ -18460,8 +18410,9 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   const souEu=()=>{try{const c=window.contaAtual||(typeof contaAtual!=='undefined'?contaAtual:null);return String(c&&c.username||'').toLowerCase()===EU;}catch(_){return false;}};
   window.depSouEu=souEu;
   /* os mesmos dados fixos do «Mapa de registo» */
-  /* dados do apresentante: vêm da lista «dados_lbc» (já não estão no código, 31/10/2026) */
-  const apresPares=()=>{const d=ST&&ST.apres;return d?window.lbcApresCampos.filter(([k])=>d[k]&&k!=='nib').map(([k,r])=>[r,d[k]]):[];};
+  const APRES=[['Nome','LILIANA BURRICA'],['e-mail','lburrica08733@osae.pt'],['Tipo de documento','Cédula Profissional'],['N.º do documento','8733'],
+    ['Qualidade','Solicitador'],['NIF','519018532'],['Residência','Rua Domingos Franco de Oliveira nº 16'],['Código postal','7005-552'],['Localidade','Évora'],
+    ['Telemóvel','+351960215959'],['IBAN','PT50003506550000527673017'],['BIC/SWIFT','CGDIPTPL'],['e-mail adicional','info@lbc-solicitadora.pt']];
   const URL_PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',URL_PDFJS_W='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const URL_PDFLIB='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',URL_TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
   const $=id=>document.getElementById(id);
@@ -18485,12 +18436,11 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
   window.depAbrir=async(itemId,nome)=>{
     if(!souEu()){showToast('Só a Liliana Cardoso faz depósitos.','error');return;}
     ST={itemId,nome,paginas:[],grupos:[],dados:{}};
-    try{ST.apres=await lbcApres(lbcApiPortal(),true);}catch(_){ST.apres=null;}
     janela(cab(nome,'A procurar a subpasta DPA…')+'<div id="dep-prog"></div>');
     try{
       await renovarToken();
       const filhos=async id=>{const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${id}/children?$top=500&$select=id,name,file,folder,size,lastModifiedDateTime`,{headers:H()});if(!r.ok)throw new Error('SharePoint respondeu '+r.status);return (await r.json()).value||[];};
-      const raiz=await filhos(itemId);const dpa=raiz.find(x=>x.folder&&/^DPA$/i.test(x.name.trim()));
+      const raiz=await filhos(itemId);ST.raiz=raiz;const dpa=raiz.find(x=>x.folder&&/^DPA$/i.test(x.name.trim()));
       if(!dpa){janela(cab(nome)+`<div class="notice notice-warning" style="display:block;margin-top:1rem">Esta pasta não tem a subpasta <b>DPA</b>. Crie-a e ponha lá o PDF único com o que vai a depósito.</div>`);return;}
       ST.dpaId=dpa.id;
       const fs=await filhos(dpa.id);
@@ -18683,8 +18633,8 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
         ${brancos.length?`<details style="font-size:12px"><summary>Páginas retiradas (${brancos.length})</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem">${brancos.map(n=>`<div style="text-align:center"><img src="${ST.paginas[n-1].thumb}" style="height:70px;border:1px solid var(--border);border-radius:3px;cursor:zoom-in" onclick="depVer(${n})"><select style="font-size:10px;max-width:70px;display:block" onchange="depMover(${n},this.value)">${opts(-1)}</select><div style="font-size:10px;color:var(--text-faint)">p. ${n}</div></div>`).join('')}</div></details>`:''}
       </div>
       <div style="position:sticky;top:0">
-        <div style="font-weight:600;font-size:13px;margin-bottom:.3rem">Apresentante <span style="font-weight:400;color:var(--text-faint);font-size:11px">· clique num valor para copiar</span> <button class="btn btn-sm" style="padding:0 7px;font-size:11px" onclick="lbcApresEditar()" title="Editar os dados do apresentante">✏️</button></div>
-        <div style="background:var(--surface2);border-radius:10px;padding:.5rem .7rem;margin-bottom:.9rem">${apresPares().length?apresPares().map(([k,v])=>copia(k,v)).join(''):'<div style="font-size:12.5px;color:#B45309">Ainda sem dados do apresentante — carregue em ✏️ para os preencher (uma vez).</div>'}</div>
+        <div style="font-weight:600;font-size:13px;margin-bottom:.3rem">Apresentante <span style="font-weight:400;color:var(--text-faint);font-size:11px">· clique num valor para copiar</span></div>
+        <div style="background:var(--surface2);border-radius:10px;padding:.5rem .7rem;margin-bottom:.9rem">${APRES.map(([k,v])=>copia(k,v)).join('')}</div>
         <div style="font-weight:600;font-size:13px;margin-bottom:.3rem">Escritura <span style="font-weight:400;color:var(--text-faint);font-size:11px">· lido do título — confirme</span></div>
         <div style="background:var(--surface2);border-radius:10px;padding:.5rem .7rem">
           ${campo('1.º comprador / mutuário','comprador')}${campo('NIF','nif')}${campo('Valor de compra','compra')}${campo('Valor do mútuo','mutuo')}${campo('Valor total da hipoteca','hipoteca')}
@@ -18692,10 +18642,10 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
         </div>
         <div id="dep-fim" style="margin-top:1rem"></div>
         <button class="btn btn-primary" style="width:100%;margin-top:.6rem;padding:10px" id="dep-gerar" onclick="depGerar()">💾 Gravar os documentos separados e descarregar</button>
+        <button class="btn" style="width:100%;margin-top:.4rem;padding:9px" id="dep-matriz" onclick="depMatriz()" title="Folha do depósito + dados para o registo (intervenientes, estado civil, NIF, ónus a cancelar, prédio)">📋 Matriz — depósito e registo (PDF)</button>
         <div style="font-size:11.5px;color:var(--text-muted);margin-top:.4rem">Os do depósito ficam em «DPA › Para depósito»; os outros na pasta da escritura, como «Arquivo – …». O PDF único não é apagado.</div>
       </div></div>`);
   }
-  window.depRepintar=d=>{if(ST&&ST.grupos&&ST.grupos.length){ST.apres=d;pintar();}};
   window.depG=(i,k,v)=>{ST.grupos[i][k]=v;if(k==='depositar')pintar();};
   window.depDado=(k,v)=>{ST.dados[k]=v;};
   window.depCopiar=el=>{const v=(el.value!==undefined?el.value:el.textContent)||'';if(!v||v==='—')return;
@@ -18749,6 +18699,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
       }
       ST.saidas=saidas;
       guardarRegisto(true);
+      depMatriz(true).catch(()=>{});
       fim.innerHTML=`<div style="border:1px solid #16A34A;background:#F0FDF4;border-radius:10px;padding:.6rem .7rem">
         <div style="font-weight:600;font-size:13px;color:#166534;margin-bottom:.3rem">✓ Gravados na pasta. Para anexar no Predial Online:</div>
         ${saidas.filter(s=>s.dep).map((s,i)=>`<div style="display:flex;align-items:center;gap:.5rem;font-size:12.5px;padding:2px 0"><span style="flex:1">📄 ${esc(s.nome)} <span style="color:var(--text-faint)">(${(s.u8.length/1048576).toFixed(1)} MB)</span></span><button class="btn btn-sm" onclick="depBaixar(${saidas.indexOf(s)})">⬇</button></div>`).join('')}
@@ -18788,8 +18739,99 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
       await etqDadoGravar('ESCRITURAS',ST.itemId,ST.nome,'registo',r);}
     catch(e){console.warn('Depósito: não gravei os dados para o registo',e);}
   }
+  /* ── MATRIZ — depósito e registo (01/11/2026) ──
+     Uma folha PDF com: (1) o que se escreve no Predial Online para o depósito; (2) o que o registo precisa —
+     intervenientes (nome, estado civil, NIF), ónus a cancelar (com o NIF da entidade) e os dados do prédio.
+     Intervenientes e ónus vêm do rascunho do Gerador gravado na pasta (RASCUNHO_….json); o resto, do título
+     lido e da matriz do analisador. Grava-se em «DPA» e abre-se. */
+  async function jsonDaPasta(caminho,itemId){try{await renovarToken();const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${itemId||ST.itemId}:/${caminho.split('/').map(encodeURIComponent).join('/')}:/content`,{headers:H()});return r.ok?await r.json():null;}catch(_){return null;}}
+  async function rascunhoGerador(){
+    let raiz=ST.raiz;if(!raiz){try{await renovarToken();const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${ST.itemId}/children?$top=500&$select=id,name,file,lastModifiedDateTime`,{headers:H()});raiz=(await r.json()).value||[];}catch(_){raiz=[];}}
+    const rs=raiz.filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name)&&!/^RASCUNHO_CPCV\.json$/i.test(x.name)).sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
+    if(!rs.length)return null;const d=await jsonDaPasta(rs[0].name);return d?{...d,_ficheiro:rs[0].name,_varios:rs.length}:null;
+  }
+  function pessoaLinhas(p){
+    if(p.tipo&&p.tipo!=='singular'&&(p.denom||p.nipc))return[[p.denom||p.nome||'—',`NIPC ${p.nipc||'—'}`,p.sede||'']];
+    const ec=String(p.ec||'').trim(),cas=/^casad/i.test(ec);
+    const out=[[p.nome||'—',`NIF ${p.nif||'—'}`,ec?(ec+(cas&&p.regime?` no regime de ${p.regime}`:'')):'estado civil por indicar']];
+    if(cas&&(p['conj-nome']||p['conj-nif']))out.push([`   cônjuge: ${p['conj-nome']||'—'}`,`NIF ${p['conj-nif']||'—'}`,'']);
+    return out;
+  }
+  const VIA={fisico:'autorização de cancelamento em papel',codigo:'autorização de cancelamento por código',renuncia:'renúncia à hipoteca anterior'};
+  window.depMatriz=async silencioso=>{
+    const b=$('dep-matriz');if(b){b.disabled=true;b.textContent='A preparar a matriz…';}
+    try{
+      const d=ST.dados||{},ras=await rascunhoGerador(),mz=(await jsonDaPasta('Catalogados/MATRIZ_VERIFICADOR.json'))||null;
+      const C=(ras&&ras.campos)||{};const dr=(window.etqDadoSync&&etqDadoSync('ESCRITURAS',ST.itemId,'registo'))||{};
+      const crpMz=mz&&(mz.documentos||[]).filter(x=>x.tipoLido==='CRP'&&!x.substituido_por).map(x=>x.dados).pop();
+      const cadMz=mz&&(mz.documentos||[]).filter(x=>x.tipoLido==='CAD'&&!x.substituido_por).map(x=>x.dados).pop();
+      await carregarScriptUma(URL_PDFLIB);
+      const {PDFDocument,StandardFonts,rgb}=PDFLib;const pdf=await PDFDocument.create();
+      const F=await pdf.embedFont(StandardFonts.Helvetica),FB=await pdf.embedFont(StandardFonts.HelveticaBold);
+      const W=595.28,Hh=841.89,M=46;let pg=pdf.addPage([W,Hh]),y=Hh-M;
+      const limpa=t=>String(t??'').replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u20AC]/g,'');
+      const nova=()=>{pg=pdf.addPage([W,Hh]);y=Hh-M;};
+      const precisa=h=>{if(y-h<M)nova();};
+      const txt=(t,{f=F,sz=9.5,x=M,cor=rgb(.1,.1,.1),larg=W-2*M}={})=>{const pal=limpa(t).split(' ');let l='';const linhas=[];
+        for(const w of pal){const tt=l?l+' '+w:w;if(f.widthOfTextAtSize(tt,sz)>larg&&l){linhas.push(l);l=w;}else l=tt;}if(l)linhas.push(l);
+        for(const li of linhas){precisa(sz+4);pg.drawText(li,{x,y:y-sz,size:sz,font:f,color:cor});y-=sz+3.5;}};
+      const tit=t=>{y-=8;precisa(26);pg.drawRectangle({x:M,y:y-17,width:W-2*M,height:18,color:rgb(.93,.91,.97)});pg.drawText(limpa(t),{x:M+6,y:y-12.5,size:10.5,font:FB,color:rgb(.29,.24,.5)});y-=24;};
+      const kv=(k,v)=>{if(v==null||v==='')return;precisa(14);pg.drawText(limpa(k),{x:M+4,y:y-9.5,size:9,font:FB,color:rgb(.35,.35,.35)});const y0=y;txt(v,{x:M+150,larg:W-2*M-150});if(y>y0-13)y=y0-13;};
+      const sub=t=>{y-=3;txt(t,{f:FB,sz:9.5});};
+      /* cabeçalho */
+      pg.drawText('MATRIZ — DEPÓSITO E REGISTO',{x:M,y:y-12,size:13,font:FB,color:rgb(.29,.24,.5)});y-=20;
+      txt(`${ST.nome||''} · gerada em ${new Date().toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}`,{sz:9,cor:rgb(.4,.4,.4)});
+      /* 1 — depósito */
+      tit('1. Depósito no Predial Online');
+      sub('Dados do título');
+      kv('1.º comprador / mutuário',d.comprador);kv('NIF',d.nif);kv('Valor de compra',d.compra);kv('Valor do mútuo',d.mutuo);kv('Valor total da hipoteca',d.hipoteca);
+      kv('Prédio',[d.crp?'CRP de '+d.crp:'',d.descricao?'descrição n.º '+d.descricao+(d.fracao?'-'+d.fracao:''):'',d.freguesia?'freguesia de '+d.freguesia:''].filter(Boolean).join(', '));
+      const dep=(ST.saidas||[]).filter(x=>x.dep).map(x=>x.nome);const depG=dep.length?dep:(ST.grupos||[]).filter(g=>g.depositar&&g.pags.length).map(g=>`${g.designacao}${g.data?' — '+isoPT(g.data):''}`);
+      if(depG.length){sub('Documentos a depositar');depG.forEach((n,k)=>txt(`${k+1}. ${n}`,{x:M+8}));}
+      /* 2 — registo */
+      tit('2. Registo');
+      sub('Prédio');
+      kv('Conservatória',C['f-im-crp']||(crpMz&&crpMz.conservatoria)||d.crp);
+      kv('Descrição n.º',(C['f-im-num']||(crpMz&&crpMz.descricao)||d.descricao||'')+((C['f-im-letra']||(crpMz&&crpMz.fracao)||d.fracao)?' — fração '+(C['f-im-letra']||(crpMz&&crpMz.fracao)||d.fracao):''));
+      kv('Freguesia (descrição)',C['f-im-freg-crp']||(crpMz&&crpMz.fregDesc)||d.freguesia);
+      const mats=(ras&&Array.isArray(ras.matrizes)&&ras.matrizes.length)?ras.matrizes.map(m=>[m.nat||m.natureza,m.artigo,m.freg].filter(Boolean).join(' ')).join('; '):'';
+      kv('Artigo(s) matricial(is)',mats||C['f-im-artigo']||(cadMz&&[cadMz.natureza,cadMz.artigo+(cadMz.fracao?'-'+cadMz.fracao:''),cadMz.freguesia].filter(Boolean).join(' '))||dr.matriz&&[dr.matriz.tipo,dr.matriz.artigo].join(' ')||d.artigo);
+      kv('Situado em',C['f-im-sito']||(crpMz&&crpMz.situado));
+      kv('Código da certidão permanente',C['f-im-cert-cod']||(crpMz&&crpMz.codigo)||d.codCRP);
+      sub('Atos e valores');
+      kv('Atos',[d.compra||C['f-preco']?'Aquisição':'',d.mutuo||C['f-mh-montante']?'Hipoteca voluntária':''].filter(Boolean).join(' · ')||dr.produto);
+      kv('Preço',C['f-preco']||d.compra);kv('Montante do mútuo',C['f-mh-montante']||d.mutuo);kv('Montante máximo da hipoteca',C['f-mh-hipoteca']||d.hipoteca);
+      kv('Credor hipotecário',d.entidade==='CGD'?'Caixa Geral de Depósitos, S.A.':d.entidade==='CCAM'?'Caixa de Crédito Agrícola Mútuo do Alentejo Central, CRL':'');
+      if(ras){
+        const comp=(ras.compradores||[]).filter(p=>p.nome||p.denom),vend=(ras.vendedores||[]).filter(p=>p.nome||p.denom);
+        sub('Sujeitos passivos — transmitentes');vend.length?vend.forEach(p=>pessoaLinhas(p).forEach(l=>txt(l.filter(Boolean).join(' · '),{x:M+8}))):txt('—',{x:M+8});
+        sub('Sujeitos ativos — adquirentes / mutuários');comp.length?comp.forEach(p=>pessoaLinhas(p).forEach(l=>txt(l.filter(Boolean).join(' · '),{x:M+8}))):txt('—',{x:M+8});
+        const canc=(ras.onus||[]).filter(o=>o.canc&&o.canc!=='nao'&&o.canc!=='anterior');
+        sub('Ónus a cancelar');
+        if(canc.length)canc.forEach((o,k)=>{txt(`${k+1}. ${[o.desc,o.ap?'('+o.ap+')':''].filter(Boolean).join(' ')}`,{x:M+8});
+          txt(`a favor de ${o.ent||'—'} · NIF ${o.nif||'—'} · ${VIA[o.canc]||o.canc}${o.canc==='codigo'&&o.codigo?' n.º '+o.codigo:''}${o.data?' · emitida em '+o.data:''}`,{x:M+20,sz:9,cor:rgb(.3,.3,.3)});});
+        else txt('Nenhum ónus a cancelar indicado no Gerador.',{x:M+8});
+        txt(`Fonte: ${ras._ficheiro}${ras._varios>1?` (o mais recente de ${ras._varios} rascunhos na pasta)`:''}.`,{sz:8,cor:rgb(.5,.5,.5)});
+      }else{
+        sub('Intervenientes e ónus');
+        txt('Não há rascunho do Gerador nesta pasta — preencher à mão: nomes, estado civil e NIF dos intervenientes e ónus a cancelar (com o NIF da entidade).',{x:M+8,cor:rgb(.7,.35,0)});
+        if(d.comprador)txt(`Do título: ${d.comprador} · NIF ${d.nif||'—'}`,{x:M+8});
+        const insc=crpMz&&(crpMz.inscricoes||[]).filter(i=>/hipoteca|penhora|arresto|usufruto|servid/i.test(i.tipo||''));
+        if(insc&&insc.length){txt('Ónus inscritos na certidão (confirmar quais se cancelam):',{x:M+8,f:FB,sz:9});insc.forEach(i=>txt(`${i.ap||''} — ${i.tipo||''}`,{x:M+16,sz:9}));}
+      }
+      y-=10;txt('Conferir com os documentos antes de submeter. Gerado pelo Portal LBC.',{sz:7.5,cor:rgb(.55,.55,.55)});
+      const u8=await pdf.save();const nome=`Matriz deposito e registo - ${limpaNome(String(ST.nome||'').replace(/^\d{8}\s*/,''))}.pdf`;
+      await renovarToken();
+      const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${ST.dpaId||ST.itemId}:/${encodeURIComponent(nome)}:/content`,{method:'PUT',headers:{...H(),'Content-Type':'application/pdf'},body:u8});
+      if(!r.ok)throw new Error('não consegui gravar a matriz ('+r.status+')');
+      if(!silencioso)window.open(URL.createObjectURL(new Blob([u8],{type:'application/pdf'})),'_blank');
+      showToast(`Matriz gravada em DPA: ${nome}${ras?'':' — sem rascunho do Gerador, intervenientes por preencher'}`,ras?'success':'');
+    }catch(e){showToast('Matriz: '+e.message,'error');}
+    finally{if(b){b.disabled=false;b.textContent='📋 Matriz — depósito e registo (PDF)';}}
+  };
   window.depBaixar=i=>{const s=ST.saidas[i];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s.u8],{type:'application/pdf'}));a.download=s.nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);};
   window.depBaixarTodos=async()=>{const l=ST.saidas.map((s,i)=>s.dep?i:-1).filter(i=>i>=0);for(const i of l){depBaixar(i);await new Promise(r=>setTimeout(r,450));}};
+  window._depTesteST=o=>{ST=o;};
   window._depTeste={dividir:(paginas)=>{const bak=ST;ST={paginas};dividir();const g=ST.grupos;ST=bak;return g;},tipoTopo,lerFolha:(t)=>{const g={pags:[1]};const bak=ST;ST={paginas:[{texto:t}]};const r=lerFolha(g);ST=bak;return r;},nomear:(tipo,t,nome)=>{const bak=ST;ST={nome:nome||'',paginas:[{texto:t}]};const g={tipo,pags:[1],depositar:true};nomear(g);ST=bak;return g;}};
 })();
 /* ═══════════ RESULTADO DA ANÁLISE REMAX — no Portal (26/10/2026) ═══════════
