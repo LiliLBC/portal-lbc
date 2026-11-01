@@ -2771,6 +2771,32 @@ const F={
   finalidade:'Finalidade',
 };
 const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica',pagamentos:'Pagamentos'};
+/* Tarefas visíveis só para o responsável (01/11/2026): cada pessoa vê as suas tarefas e as da «LBC (todos)».
+   Tarefas sem responsável contam como LBC. Atenção: isto esconde no Portal; quem tiver acesso direto à lista
+   no SharePoint continua a poder lê-la. */
+const TAR_TODOS='LBC (todos)';
+function meuNomeLBC(){try{const c=(typeof contaAtual!=='undefined'&&contaAtual)||window.contaAtual||{};const u=String(c.username||'').toLowerCase(),n=String(c.name||'');
+  if(/^liliana/.test(u)||/liliana/i.test(n))return'Liliana Cardoso';if(/andreia/.test(u)||/andreia/i.test(n))return'Andreia Cabanas';
+  if(/^isa\b|isa\.?guerra|guerra/.test(u)||/\bisa\b|guerra/i.test(n))return'Isa Guerra';return n||u;}catch(_){return'';}}
+const tarNormNome=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+function tarEhTodos(r){r=String(r||'').trim();return!r||/^lbc\b|todos/i.test(r);}
+function tarVisivel(i){const r=i&&i[T.responsavel];if(tarEhTodos(r))return true;const eu=tarNormNome(meuNomeLBC());
+  const a=tarNormNome(r);if(!eu)return false;if(a===eu)return true;const pe=eu.split(' '),pa=a.split(' ');return pe[0]===pa[0]&&pe[pe.length-1]===pa[pa.length-1];}
+/* Se a coluna «Responsavel» for de escolha, acrescenta «LBC (todos)» / «Isa Guerra» às opções (uma vez). */
+let tarEscolhasOk={};
+async function tarGarantirEscolha(v){
+  if(!v||tarEscolhasOk[v]||!listaIdTarefas)return;
+  try{const c=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/columns?$select=id,name,choice`);
+    const col=(c.value||[]).find(x=>x.name===T.responsavel);
+    if(col&&col.choice&&!col.choice.allowTextEntry&&!(col.choice.choices||[]).includes(v))
+      await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/columns/${col.id}`,{choice:{...col.choice,choices:[...(col.choice.choices||[]),v]}});
+    tarEscolhasOk[v]=true;}catch(e){console.warn('Responsável: não consegui acrescentar a opção',e);}
+}
+function tarRespOpcoes(id,atual){const el=document.getElementById(id);if(!el)return;const eu=meuNomeLBC();
+  const ops=[[eu,`Eu — ${eu}`],[TAR_TODOS,'LBC — todos']];
+  if(atual&&!tarEhTodos(atual)&&tarNormNome(atual)!==tarNormNome(eu))ops.push([atual,atual]);
+  el.innerHTML=ops.map(([v,t])=>`<option value="${escHtml(v)}">${escHtml(t)}</option>`).join('');
+  el.value=atual?(tarEhTodos(atual)?TAR_TODOS:(tarNormNome(atual)===tarNormNome(eu)?eu:atual)):eu;}
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
@@ -3595,7 +3621,7 @@ async function carregarDashboard(){
     }catch(_){
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selBase})&$top=200`);
     }
-    todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(tarVisivel);
     const pendentes=todasTarefas.filter(i=>i[T.estado]!=='Concluída');
     const urgentes=pendentes.filter(i=>i[T.prioridade]==='Urgente');
     const tBadge=document.getElementById('tarefas-badge');
@@ -4825,7 +4851,7 @@ async function carregarTarefas(){
       // Fallback: colunas novas ainda não existem no SP
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selBase})&$top=200`);
     }
-    todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    todasTarefas=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(tarVisivel);
     document.getElementById('tar-loading').style.display='none';renderTarefas(todasTarefas.filter(i=>i[T.estado]!=='Concluída'));
   }catch(e){document.getElementById('tar-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
 }
@@ -4872,6 +4898,7 @@ function renderTarefas(lista){
 }
 
 function toggleFormTarefaDash(){
+  tarRespOpcoes('dash-tar-responsavel','');
   const f=document.getElementById('dash-tarefa-form');
   f.style.display=f.style.display==='none'?'block':'none';
   if(f.style.display==='block') document.getElementById('dash-tar-titulo').focus();
@@ -4904,7 +4931,7 @@ function renderTarefasDash(lista){
       <div style="display:flex;align-items:center;gap:.5rem">
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600">${escHtml(i[T.titulo]||'—')}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${prazoTxt?' · '+prazoTxt:''}${obsTxt?' · <em>'+escHtml(obsTxt)+'</em>':''}${tarNotas(i).length?` · 📝 ${tarNotas(i).length}`:''}${tarFaltaTxt(i)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${prazoTxt?' · '+prazoTxt:''}${obsTxt?' · <em>'+escHtml(obsTxt)+'</em>':''}${tarNotas(i).length?` · 📝 ${tarNotas(i).length}`:''}<span data-tar-contn="${i.id}"></span>${tarFaltaTxt(i)}</div>
           <div data-lig-lista="TAREFAS|${i.id}" onclick="event.stopPropagation()" style="margin-top:3px"></div>
         </div>
         <button class="btn btn-sm" data-lig-btn="TAREFAS|${i.id}" onclick="event.stopPropagation();ligAbrir('TAREFAS','${i.id}',decodeURIComponent('${encodeURIComponent(i[T.titulo]||'')}'),'')" title="Ligar a pastas" style="padding:3px 8px;font-size:11px">🔗</button>
@@ -4924,6 +4951,7 @@ function renderTarefasDash(lista){
           ${obsTxt?`<div style="grid-column:1/-1"><span style="font-weight:600;color:var(--text)">Observações:</span> ${escHtml(obsTxt)}</div>`:''}
         </div>
         ${tarValoresHTML(i)}
+        <div data-tar-cont="${i.id}" onclick="event.stopPropagation()" style="margin-top:.6rem"></div>
         <div style="margin-top:.6rem" onclick="event.stopPropagation()">
           <div style="font-weight:600;color:var(--text);margin-bottom:.3rem">📝 Notas</div>
           ${tarNotas(i).map(n=>`<div style="display:flex;gap:.6rem;padding:.35rem .5rem;border-left:2px solid var(--accent);background:var(--bg-secondary);margin-bottom:.25rem;border-radius:0 6px 6px 0">
@@ -4943,7 +4971,46 @@ function renderTarefasDash(lista){
   }).join('');
   /* reabrir os que estavam abertos e pintar as pastas ligadas */
   tarAbertos.forEach(id=>{const d=document.getElementById(`tdash-detail-${id}`),a=document.getElementById(`tdash-arr-${id}`);if(d){d.style.display='block';if(a)a.style.transform='rotate(180deg)';}});
-  if(window.etqPintar)window.etqPintar().catch(()=>{});
+  if(window.etqPintar)window.etqPintar().then(tarContPintar).catch(()=>{});else tarContPintar();
+}
+/* Contactos da tarefa (01/11/2026): até 5 (nome, telefone, e-mail). Ficam na lista «Etiquetas», no registo
+   da tarefa (como as pastas ligadas) — sem colunas novas. */
+const TAR_CONT_MAX=5;
+function tarCont(id){const c=window.etqDadoSync?etqDadoSync('TAREFAS',String(id),'contactos'):null;return Array.isArray(c)?c:[];}
+function tarContPintar(){
+  document.querySelectorAll('[data-tar-cont]').forEach(el=>{const id=el.dataset.tarCont,c=tarCont(id);
+    const bt=`<button class="btn btn-sm" onclick="event.stopPropagation();tarContEditar('${id}')" style="padding:2px 8px;font-size:11px;margin-left:.4rem">${c.length?'Editar contactos':'Adicionar contactos'}</button>`;
+    el.innerHTML=`<div><span style="font-weight:600;color:var(--text)">📇 Contactos</span>${c.length?'':' <span style="color:var(--text-faint)">sem contactos</span>'}${bt}</div>`+
+      c.map(x=>`<div style="display:flex;flex-wrap:wrap;gap:.2rem .9rem;padding:.2rem 0 .2rem .2rem;color:var(--text)">
+        <span style="font-weight:600;min-width:140px">${escHtml(x.nome||'—')}</span>
+        ${x.tel?`<a href="tel:${escHtml(String(x.tel).replace(/[^\d+]/g,''))}" style="color:var(--accent);text-decoration:none">📞 ${escHtml(x.tel)}</a>`:''}
+        ${x.email?`<a href="mailto:${escHtml(x.email)}" style="color:var(--accent);text-decoration:none">✉️ ${escHtml(x.email)}</a>`:''}</div>`).join('');});
+  document.querySelectorAll('[data-tar-contn]').forEach(el=>{const n=tarCont(el.dataset.tarContn).length;el.textContent=n?` · 📇 ${n}`:'';});
+}
+function tarContEditar(id){
+  const t=(todasTarefas||[]).find(x=>String(x.id)===String(id));const c=tarCont(id);
+  document.getElementById('tar-cont-ov')?.remove();
+  const linha=k=>{const x=c[k]||{};return`<div style="display:grid;grid-template-columns:1.2fr 1fr 1.3fr;gap:.35rem;margin-bottom:.35rem">
+    <input class="form-input" data-tc="nome" data-k="${k}" placeholder="Nome" value="${escHtml(x.nome||'')}" style="font-size:12px">
+    <input class="form-input" data-tc="tel" data-k="${k}" placeholder="Telefone" value="${escHtml(x.tel||'')}" inputmode="tel" style="font-size:12px">
+    <input class="form-input" data-tc="email" data-k="${k}" placeholder="E-mail" value="${escHtml(x.email||'')}" inputmode="email" style="font-size:12px"></div>`;};
+  document.body.insertAdjacentHTML('beforeend',`<div id="tar-cont-ov" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">
+    <div style="background:var(--surface,#fff);border-radius:14px;max-width:640px;width:100%;padding:1.1rem 1.2rem;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+      <div style="font-weight:600;font-size:15px">📇 Contactos</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:.8rem">${escHtml(t?t[T.titulo]||'':'')} · até ${TAR_CONT_MAX} contactos</div>
+      ${Array.from({length:TAR_CONT_MAX},(_,k)=>linha(k)).join('')}
+      <div style="display:flex;gap:.5rem;margin-top:.7rem"><button class="btn" style="flex:1" onclick="document.getElementById('tar-cont-ov').remove()">Cancelar</button>
+        <button class="btn btn-primary" style="flex:2" id="tar-cont-gravar" onclick="tarContGravar('${id}')">Guardar contactos</button></div>
+    </div></div>`);
+  setTimeout(()=>document.querySelector('#tar-cont-ov [data-tc="nome"]')?.focus(),50);
+}
+async function tarContGravar(id){
+  const ov=document.getElementById('tar-cont-ov');if(!ov)return;
+  const arr=Array.from({length:TAR_CONT_MAX},(_,k)=>{const g=c=>(ov.querySelector(`[data-tc="${c}"][data-k="${k}"]`)?.value||'').trim();return{nome:g('nome'),tel:g('tel'),email:g('email')};}).filter(x=>x.nome||x.tel||x.email);
+  const mauEmail=arr.find(x=>x.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x.email));if(mauEmail){showToast(`E-mail inválido: ${mauEmail.email}`,'error');return;}
+  const t=(todasTarefas||[]).find(x=>String(x.id)===String(id));const b=document.getElementById('tar-cont-gravar');if(b){b.disabled=true;b.textContent='A guardar…';}
+  try{await etqDadoGravar('TAREFAS',String(id),(t&&t[T.titulo])||'Tarefa','contactos',arr);ov.remove();tarContPintar();showToast('Contactos guardados','success');}
+  catch(e){showToast('Não consegui guardar os contactos: '+e.message,'error');if(b){b.disabled=false;b.textContent='Guardar contactos';}}
 }
 /* Notas da tarefa (01/11/2026): são os eventos da «Linha cronológica» da tarefa (data, texto e quem escreveu),
    agora à vista no cartão e com um campo para escrever logo ali. */
@@ -4956,7 +5023,7 @@ async function cctCarregar(){
     const sel=`${T.titulo},${T.responsavel},${T.prazo},${T.estado},${T.cliente},${T.valorServico},${T.despesasContaCliente},${T.valorPago},${T.linhaCronologica}`;
     const d=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=500`);
     await cclCarregar(true);
-    CCT=(d.value||[]).map(i=>({id:i.id,...i.fields}));
+    CCT=(d.value||[]).map(i=>({id:i.id,...i.fields})).filter(tarVisivel);
     /* para o ✏️ abrir a tarefa a partir daqui */
     CCT.forEach(t=>{const k=todasTarefas.findIndex(x=>String(x.id)===String(t.id));if(k>=0)Object.assign(todasTarefas[k],t);else todasTarefas.push(t);});
     cctPintar();
@@ -5058,6 +5125,7 @@ async function criarTarefaDash(ligar){
   if(obs) body[T.observacoes]=obs;
   body[T.estado]='Por fazer';
   try{
+    await tarGarantirEscolha(body[T.responsavel]);
     const nova=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items`,{fields:body});
     showToast('Tarefa criada!','success');
     /* ligar logo às pastas (01/11/2026) */
@@ -5071,7 +5139,7 @@ async function criarTarefaDash(ligar){
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
-function toggleFormTarefa(){const f=document.getElementById('tarefa-form');f.style.display=f.style.display==='none'?'block':'none';}
+function toggleFormTarefa(){tarRespOpcoes('tar-responsavel','');const f=document.getElementById('tarefa-form');f.style.display=f.style.display==='none'?'block':'none';}
 
 function editarTarefa(itemId){
   // Compatibilidade — redireciona para o novo modal
@@ -5091,7 +5159,7 @@ function abrirTarefaModal(itemId,secao){
   carregarAnexosTarefa();
   document.getElementById('mt-titulo').value=i[T.titulo]||'';
   document.getElementById('mt-cliente').value=i[T.cliente]||'';
-  document.getElementById('mt-responsavel').value=i[T.responsavel]||'';
+  tarRespOpcoes('mt-responsavel',i[T.responsavel]||TAR_TODOS);
   document.getElementById('mt-prazo').value=i[T.prazo]?i[T.prazo].substring(0,10):'';
   document.getElementById('mt-prioridade').value=i[T.prioridade]||'Normal';
   document.getElementById('mt-estado').value=i[T.estado]||'Por fazer';
@@ -5386,6 +5454,7 @@ async function guardarTarefaModal(){
     [T.valorPago]:mtPag.length?Math.round(mtPagSoma(mtPag)*100)/100:numOrNull(document.getElementById('mt-valor-pago').value),
     [T.linhaCronologica]:cronoJson,
   };
+  await tarGarantirEscolha(body[T.responsavel]);
   /* entradas do cliente → lista «Processos_ContaCorrente» */
   try{await cclGravar(modalTarefaId,titulo,body[T.cliente]);}
   catch(e){showToast('As entradas não ficaram gravadas na conta corrente: '+e.message,'error');return;}
@@ -5474,6 +5543,7 @@ async function criarTarefa(){
   if(!titulo){showToast('Preenche a descrição.','error');return;}
   const body={[T.titulo]:titulo,[T.responsavel]:document.getElementById('tar-responsavel').value,[T.prazo]:document.getElementById('tar-prazo').value||null,[T.prioridade]:document.getElementById('tar-prioridade').value,[T.estado]:'Por fazer',[T.observacoes]:document.getElementById('tar-obs').value};
   try{
+    await tarGarantirEscolha(body[T.responsavel]);
     await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items`,{fields:body});
     showToast('Tarefa criada!','success');toggleFormTarefa();
     ['tar-titulo','tar-prazo','tar-obs'].forEach(id=>document.getElementById(id).value='');
@@ -5569,7 +5639,7 @@ async function carregarCalendario(){
     if(listaIdTarefas){
       const sel=`${T.titulo},${T.prazo},${T.prioridade},${T.estado},${T.responsavel}`;
       const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
-      todasTarefasCal=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>i[T.prazo]&&i[T.estado]!=='Concluída');
+      todasTarefasCal=(data.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>i[T.prazo]&&i[T.estado]!=='Concluída').filter(tarVisivel);
     }
     renderCalendario();
   }catch(e){console.error('Erro calendário:',e);}
@@ -10360,6 +10430,7 @@ async function servicosInit(){
     const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields&$top=500`);
     const tarefas=(r.value||[])
       .map(i=>({id:i.id,...i.fields}))
+      .filter(tarVisivel)
       .filter(i=>i[T.estado]!=='Concluída'&&i[T.estado]!=='Cancelada')
       .sort((a,b)=>new Date(a[T.prazo]||'9999')-new Date(b[T.prazo]||'9999'));
     servicosRender(tarefas);
@@ -10874,7 +10945,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
      parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
   const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
-  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha;
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length);
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 
@@ -11344,6 +11415,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   };
   window.etqInit=async()=>{await carregar();etqPesquisar();};
   /* Dados de uma pasta guardados por outros módulos (ex.: «registo», lido pelo 📤 Depósito) (01/11/2026) */
+  window.etqDadoSync=(lib,itemId,campo)=>{const it=ITENS[chave(lib,itemId)];return it?it[campo]:undefined;};
   window.etqDadoLer=async(lib,itemId,campo)=>{await carregar(true);const it=ITENS[chave(lib,itemId)];return it?it[campo]:undefined;};
   window.etqDadoGravar=async(lib,itemId,nome,campo,valor)=>{await carregar(true);if(!LID)throw new Error('falta a lista Etiquetas');
     const it=ITENS[chave(lib,itemId)];const d={...extra(it),lib,itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};d[campo]=valor;await gravarReg(lib,itemId,nome,d);};
