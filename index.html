@@ -413,7 +413,8 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="nav-item" onclick="nav('processos',this)">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/><path d="M5 8h6M5 11h4"/></svg></span>Processos
     </div>
-    <div class="nav-item" onclick="nav('contacorrente',this)">
+    <!-- Conta corrente escondida a 01/11/2026 a pedido da Liliana (nunca foi usada); os valores passaram para cada tarefa. -->
+    <div class="nav-item" onclick="nav('contacorrente',this)" style="display:none">
       <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9H2z"/><path d="M5 4V2h6v2"/><path d="M5 8h6M5 11h4"/></svg></span>Conta corrente
     </div>
     <div class="nav-item" onclick="nav('avencas',this)">
@@ -2752,7 +2753,7 @@ const F={
   contactos:'Contactos',
   finalidade:'Finalidade',
 };
-const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica'};
+const T={titulo:'Title',responsavel:'Responsavel',prazo:'Prazo',prioridade:'Prioridade',estado:'Estado',observacoes:'Observacoes',cliente:'Cliente',valorServico:'ValorServico',despesasContaCliente:'DespesasContaCliente',valorPago:'ValorPago',linhaCronologica:'LinhaCronologica',pagamentos:'Pagamentos'};
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
 const LISTA_AGENDA='Agenda_Escritorio';
 
@@ -3573,7 +3574,8 @@ async function carregarDashboard(){
     const selBase=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     let data;
     try{
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);
+      try{data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras},${T.pagamentos})&$top=200`);}
+      catch(_){data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);}
     }catch(_){
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selBase})&$top=200`);
     }
@@ -4802,7 +4804,8 @@ async function carregarTarefas(){
     const selBase=`${T.titulo},${T.responsavel},${T.prazo},${T.prioridade},${T.estado},${T.observacoes}`;
     let data;
     try{
-      data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);
+      try{data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras},${T.pagamentos})&$top=200`);}
+      catch(_){data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selComExtras})&$top=200`);}
     }catch(_){
       // Fallback: colunas novas ainda não existem no SP
       data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${selBase})&$top=200`);
@@ -4876,6 +4879,7 @@ function renderTarefasDash(lista){
     return;
   }
   if(vazio) vazio.style.display='none';
+  el._lista=lista;
   el.innerHTML=lista.map(i=>{
     const prazoTxt=i[T.prazo]?fmtPrazo(i[T.prazo]):'';
     const obsTxt=i[T.observacoes]||'';
@@ -4884,8 +4888,10 @@ function renderTarefasDash(lista){
       <div style="display:flex;align-items:center;gap:.5rem">
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600">${escHtml(i[T.titulo]||'—')}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${prazoTxt?' · '+prazoTxt:''}${obsTxt?' · <em>'+escHtml(obsTxt)+'</em>':''}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${escHtml(i[T.responsavel]||'—')}${prazoTxt?' · '+prazoTxt:''}${obsTxt?' · <em>'+escHtml(obsTxt)+'</em>':''}${tarNotas(i).length?` · 📝 ${tarNotas(i).length}`:''}${tarFaltaTxt(i)}</div>
+          <div data-lig-lista="TAREFAS|${i.id}" onclick="event.stopPropagation()" style="margin-top:3px"></div>
         </div>
+        <button class="btn btn-sm" data-lig-btn="TAREFAS|${i.id}" onclick="event.stopPropagation();ligAbrir('TAREFAS','${i.id}',decodeURIComponent('${encodeURIComponent(i[T.titulo]||'')}'),'')" title="Ligar a pastas" style="padding:3px 8px;font-size:11px">🔗</button>
         <select class="td-select" style="width:90px;font-size:10px" onclick="event.stopPropagation()" onchange="mudarEstadoTarefaDash('${i.id}',this.value)">
           <option ${i[T.estado]==='Por fazer'?'selected':''}>Por fazer</option>
           <option ${i[T.estado]==='Em curso'?'selected':''}>Em curso</option>
@@ -4901,6 +4907,17 @@ function renderTarefasDash(lista){
           <div><span style="font-weight:600;color:var(--text)">Estado:</span> ${escHtml(i[T.estado]||'—')}</div>
           ${obsTxt?`<div style="grid-column:1/-1"><span style="font-weight:600;color:var(--text)">Observações:</span> ${escHtml(obsTxt)}</div>`:''}
         </div>
+        ${tarValoresHTML(i)}
+        <div style="margin-top:.6rem" onclick="event.stopPropagation()">
+          <div style="font-weight:600;color:var(--text);margin-bottom:.3rem">📝 Notas</div>
+          ${tarNotas(i).map(n=>`<div style="display:flex;gap:.6rem;padding:.35rem .5rem;border-left:2px solid var(--accent);background:var(--bg-secondary);margin-bottom:.25rem;border-radius:0 6px 6px 0">
+            <div style="flex:0 0 78px;font-weight:600;color:var(--text)">${escHtml(n.data?fmtData(n.data+'T12:00:00'):'')}</div>
+            <div style="flex:1;white-space:pre-wrap;color:var(--text)">${escHtml(n.obs||'')}${n.por?` <span style="color:var(--text-faint)">— ${escHtml(n.por)}</span>`:''}</div></div>`).join('')||'<div style="color:var(--text-faint);font-style:italic;margin-bottom:.3rem">Ainda sem notas.</div>'}
+          <div style="display:flex;gap:6px;align-items:flex-end">
+            <textarea id="tnota-${i.id}" class="form-input" rows="2" placeholder="Escrever uma nota…" style="flex:1;font-size:12px;resize:vertical" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){tarNotaAdd('${i.id}')}"></textarea>
+            <button class="btn btn-sm btn-primary" onclick="tarNotaAdd('${i.id}')">Guardar nota</button>
+          </div>
+        </div>
         <div style="margin-top:.5rem;display:flex;gap:6px;justify-content:flex-end">
           <button class="btn btn-sm" onclick="event.stopPropagation();abrirTarefaModal('${i.id}')" title="Editar tarefa">✏️ Editar</button>
           <button class="btn btn-sm" onclick="event.stopPropagation();apagarTarefa('${i.id}')" style="color:var(--red)" title="Apagar">🗑</button>
@@ -4908,6 +4925,41 @@ function renderTarefasDash(lista){
       </div>
     </div>`;
   }).join('');
+  /* reabrir os que estavam abertos e pintar as pastas ligadas */
+  tarAbertos.forEach(id=>{const d=document.getElementById(`tdash-detail-${id}`),a=document.getElementById(`tdash-arr-${id}`);if(d){d.style.display='block';if(a)a.style.transform='rotate(180deg)';}});
+  if(window.etqPintar)window.etqPintar().catch(()=>{});
+}
+/* Notas da tarefa (01/11/2026): são os eventos da «Linha cronológica» da tarefa (data, texto e quem escreveu),
+   agora à vista no cartão e com um campo para escrever logo ali. */
+const tarAbertos=new Set();
+/* Valores da tarefa no cartão (01/11/2026) */
+function tarValores(i){const L=mtPagLer(i),pag=L.entradas;const vs=parseFloat(i[T.valorServico])||0,desp=parseFloat(i[T.despesasContaCliente])||0;
+  const h=honTotais(vs,L.iva),rh=mtPagSoma(pag,'hon'),rd=mtPagSoma(pag,'desp');
+  const pago=pag.length?rh+rd:(parseFloat(i[T.valorPago])||0);
+  return{pag,vs,desp,pago,h,rh,rd,iva:L.iva,falta:(h.total+desp)-pago,semRecibo:pag.filter(x=>(parseFloat(x.valor)||0)>0&&x.recibo!=='sim'&&!x.nota).length};}
+const tarEur=n=>(n||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+function tarFaltaTxt(i){const v=tarValores(i);if(!v.vs&&!v.pago)return'';
+  return v.falta>0.005?` · <span style="color:var(--red);font-weight:600">falta ${tarEur(v.falta)}</span>`:` · <span style="color:#166534;font-weight:600">pago</span>`;}
+function tarValoresHTML(i){const v=tarValores(i);if(!v.vs&&!v.pago&&!v.desp)return'';
+  return`<div style="margin-top:.6rem"><div style="font-weight:600;color:var(--text);margin-bottom:.3rem">💶 Valores</div>
+    <div style="display:flex;flex-wrap:wrap;gap:.3rem 1.2rem">
+      <span><b style="color:var(--text)">Honorários</b> ${tarEur(v.h.total)} <span style="color:var(--text-faint)">(${tarEur(v.h.base)} + IVA ${tarEur(v.h.iva)})</span> · recebido ${tarEur(v.rh)} · falta <b style="color:${v.h.total-v.rh>0.005?'var(--red)':'#166534'}">${tarEur(v.h.total-v.rh)}</b></span>
+      ${v.desp||v.rd?`<span><b style="color:var(--text)">Despesas</b> gastas ${tarEur(v.desp)} · reembolsadas ${tarEur(v.rd)} · falta <b style="color:${v.desp-v.rd>0.005?'var(--red)':'#166534'}">${tarEur(v.desp-v.rd)}</b></span>`:''}
+      ${v.semRecibo?`<span style="color:#92400E">⚠ ${v.semRecibo} entrada${v.semRecibo>1?'s':''} sem recibo emitido</span>`:''}</div>
+    ${v.pag.length?`<div style="margin-top:.3rem">${v.pag.map(x=>`<div style="display:flex;gap:.6rem"><span style="min-width:78px">${x.data?fmtData(x.data+'T12:00:00'):'—'}</span><span style="min-width:80px;color:var(--text)">${tarEur(parseFloat(x.valor)||0)}</span><span style="min-width:72px">${x.tipo==='desp'?'despesas':'honorários'}</span><span>${x.recibo==='sim'?'recibo/fatura '+escHtml(x.fatura||'(sem n.º)'):(x.nota?escHtml(x.nota):'sem recibo')}</span></div>`).join('')}</div>`:''}
+  </div>`;}
+function tarNotas(i){return mtParseCronologica(i[T.linhaCronologica]||'');}
+async function tarNotaAdd(id){
+  const ta=document.getElementById(`tnota-${id}`);const txt=(ta?.value||'').trim();if(!txt){ta&&ta.focus();return;}
+  const i=todasTarefas.find(x=>String(x.id)===String(id));if(!i)return;
+  let por='';try{por=(contaAtual&&(contaAtual.name||contaAtual.username))||'';}catch(_){}
+  const lista=mtParseCronologica(i[T.linhaCronologica]||'');lista.push({data:new Date().toISOString().slice(0,10),obs:txt,por});
+  const json=JSON.stringify(lista);
+  try{await renovarToken();await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${id}/fields`,{[T.linhaCronologica]:json});
+    i[T.linhaCronologica]=json;tarAbertos.add(String(id));
+    renderTarefasDash(document.getElementById('dash-tar-lista')?._lista||todasTarefas.filter(x=>x[T.estado]!=='Concluída'));
+    showToast('Nota guardada','success');}
+  catch(e){showToast('Não consegui guardar a nota: '+e.message,'error');}
 }
 
 function expandTarefaDash(id, e){
@@ -4917,6 +4969,7 @@ function expandTarefaDash(id, e){
   if(!detail)return;
   const open=detail.style.display==='block';
   detail.style.display=open?'none':'block';
+  if(open)tarAbertos.delete(String(id));else tarAbertos.add(String(id));
   if(arr)arr.style.transform=open?'':'rotate(180deg)';
 }
 
@@ -4985,6 +5038,7 @@ function abrirTarefaModal(itemId){
   document.getElementById('mt-valor-servico').value=i[T.valorServico]||'';
   document.getElementById('mt-despesas').value=i[T.despesasContaCliente]||'';
   document.getElementById('mt-valor-pago').value=i[T.valorPago]||'';
+  {const L=mtPagLer(i);mtPag=L.entradas;mtIva=L.iva;const si=document.getElementById('mt-iva');if(si)si.value=mtIva;}mtPagRender();
   atualizarMtFalta();
   // Linha cronológica
   mtCronoEventos=mtParseCronologica(i[T.linhaCronologica]||'');
@@ -5072,11 +5126,64 @@ function toggleMtSeccao(qual){
   if(arr)arr.style.transform=aberto?'':'rotate(180deg)';
 }
 
+/* Mapa de valores da tarefa (01/11/2026): várias entradas do cliente (data, valor, se foi emitido
+   recibo/fatura e o n.º). O «Valor Pago» é a soma; o «Em falta» calcula-se como antes. Gravado na
+   coluna «Pagamentos» da lista de tarefas (criada automaticamente na primeira gravação). */
+let mtPag=[],mtIva='incluido';
+/* Honorários (sujeitos a IVA) e despesas do cliente (reembolso, sem IVA) separados (01/11/2026).
+   Na coluna: {iva:'incluido'|'acresce'|'isento', entradas:[{data,valor,tipo:'hon'|'desp',recibo,fatura}]};
+   aceita-se ainda a forma antiga (só a lista). */
+const IVA_TAXA=0.23;
+function mtPagLer(i){let o;try{o=JSON.parse(i[T.pagamentos]||'[]');}catch(_){o=[];}
+  let a=Array.isArray(o)?o:(o&&Array.isArray(o.entradas)?o.entradas:[]);const iva=(!Array.isArray(o)&&o&&o.iva)||'incluido';
+  const vp=parseFloat(i[T.valorPago])||0;
+  if(!a.length&&vp>0)a=[{data:'',valor:vp,tipo:'hon',recibo:'',fatura:'',nota:'valor já registado antes'}];
+  a.forEach(x=>{if(!x.tipo)x.tipo='hon';});
+  return{iva,entradas:a};}
+function mtPagParse(i){return mtPagLer(i).entradas;}
+function mtPagSoma(a,tipo){return(a||[]).filter(x=>!tipo||(x.tipo||'hon')===tipo).reduce((t,x)=>t+(parseFloat(x.valor)||0),0);}
+/* honorários: total a receber, base e IVA conforme a opção da tarefa */
+function honTotais(vs,iva){if(iva==='acresce')return{base:vs,iva:vs*IVA_TAXA,total:vs*(1+IVA_TAXA)};
+  if(iva==='isento')return{base:vs,iva:0,total:vs};const base=vs/(1+IVA_TAXA);return{base,iva:vs-base,total:vs};}
+function mtPagRender(){
+  const el=document.getElementById('mt-pag-lista');if(!el)return;
+  el.innerHTML=mtPag.length?mtPag.map((x,k)=>`<div style="display:grid;grid-template-columns:118px 110px 90px 104px 1fr 24px;gap:.35rem;margin-bottom:.3rem;align-items:center">
+    <input type="date" class="form-input" style="padding:4px 6px;font-size:12px" value="${escHtml(x.data||'')}" onchange="mtPag[${k}].data=this.value">
+    <select class="form-select" style="padding:4px 6px;font-size:12px" onchange="mtPag[${k}].tipo=this.value;mtPagTotal()"><option value="hon">Honorários</option><option value="desp"${x.tipo==='desp'?' selected':''}>Despesas</option></select>
+    <input type="number" step="0.01" min="0" class="form-input" style="padding:4px 6px;font-size:12px" value="${x.valor!=null&&x.valor!==''?escHtml(String(x.valor)):''}" placeholder="0.00" oninput="mtPag[${k}].valor=this.value;mtPagTotal()">
+    <select class="form-select" style="padding:4px 6px;font-size:12px" onchange="mtPag[${k}].recibo=this.value;mtPagRender()"><option value="">Não emitido</option><option value="sim"${x.recibo==='sim'?' selected':''}>Emitido</option></select>
+    <input class="form-input" style="padding:4px 6px;font-size:12px${x.recibo==='sim'?'':';visibility:hidden'}" value="${escHtml(x.fatura||'')}" placeholder="Ex: FR 2026/123" oninput="mtPag[${k}].fatura=this.value">
+    <button type="button" onclick="mtPag.splice(${k},1);mtPagRender()" title="Retirar entrada" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:15px">×</button>
+  </div>${x.nota?`<div style="font-size:10px;color:var(--text-faint);margin:-.2rem 0 .3rem 2px">${escHtml(x.nota)}</div>`:''}`).join('')
+    :'<div style="font-size:11px;color:var(--text-faint);font-style:italic;padding:.3rem 2px">Sem entradas. Use «+ Entrada» para registar cada pagamento do cliente.</div>';
+  mtPagTotal();
+}
+function mtPagTotal(){const s=mtPagSoma(mtPag);const e=document.getElementById('mt-valor-pago');if(e)e.value=s?s.toFixed(2):'';atualizarMtFalta();
+  const r=document.getElementById('mt-pag-resumo');if(!r)return;
+  const vs=parseFloat(document.getElementById('mt-valor-servico').value)||0,desp=parseFloat(document.getElementById('mt-despesas').value)||0;
+  const h=honTotais(vs,mtIva),rh=mtPagSoma(mtPag,'hon'),rd=mtPagSoma(mtPag,'desp');
+  r.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.6rem">
+    <div style="border:1px solid var(--border);border-radius:8px;padding:.5rem .6rem"><div style="font-weight:600;margin-bottom:.2rem">Honorários <span style="font-weight:400;color:var(--text-faint)">(com IVA)</span></div>
+      <div>A receber: <b>${tarEur(h.total)}</b> <span style="color:var(--text-faint)">= ${tarEur(h.base)} + IVA ${tarEur(h.iva)}</span></div>
+      <div>Recebido: <b>${tarEur(rh)}</b></div><div>Em falta: <b style="color:${h.total-rh>0.005?'var(--red)':'#166534'}">${tarEur(h.total-rh)}</b></div></div>
+    <div style="border:1px solid var(--border);border-radius:8px;padding:.5rem .6rem"><div style="font-weight:600;margin-bottom:.2rem">Despesas do cliente <span style="font-weight:400;color:var(--text-faint)">(sem IVA)</span></div>
+      <div>Gastas pela LBC: <b>${tarEur(desp)}</b></div>
+      <div>Reembolsadas: <b>${tarEur(rd)}</b></div><div>Em falta: <b style="color:${desp-rd>0.005?'var(--red)':'#166534'}">${tarEur(desp-rd)}</b></div></div></div>`;}
+function mtPagAdd(){mtPag.push({data:new Date().toISOString().slice(0,10),valor:'',recibo:'',fatura:''});mtPagRender();
+  const ins=document.querySelectorAll('#mt-pag-lista input[type=number]');if(ins.length)ins[ins.length-1].focus();}
+let colPagOk=false;
+async function garantirColunaPagamentos(){
+  if(colPagOk)return true;
+  const c=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/columns?$select=name,displayName`);
+  if((c.value||[]).some(x=>x.name===T.pagamentos)){colPagOk=true;return true;}
+  await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/columns`,{name:T.pagamentos,displayName:'Pagamentos',text:{allowMultipleLines:true,linesForEditing:6}});
+  colPagOk=true;return true;
+}
 function atualizarMtFalta(){
   const vs=parseFloat(document.getElementById('mt-valor-servico').value)||0;
   const desp=parseFloat(document.getElementById('mt-despesas').value)||0;
   const vp=parseFloat(document.getElementById('mt-valor-pago').value)||0;
-  const falta=(vs+desp)-vp;
+  const falta=(honTotais(vs,mtIva).total+desp)-vp;
   const el=document.getElementById('mt-em-falta');
   el.value=falta.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   // Cor: vermelho se em falta, verde se pago/excedido
@@ -5177,9 +5284,13 @@ async function guardarTarefaModal(){
     [T.observacoes]:document.getElementById('mt-obs').value,
     [T.valorServico]:numOrNull(document.getElementById('mt-valor-servico').value),
     [T.despesasContaCliente]:numOrNull(document.getElementById('mt-despesas').value),
-    [T.valorPago]:numOrNull(document.getElementById('mt-valor-pago').value),
+    [T.valorPago]:mtPag.length?Math.round(mtPagSoma(mtPag)*100)/100:numOrNull(document.getElementById('mt-valor-pago').value),
     [T.linhaCronologica]:cronoJson,
   };
+  /* entradas do cliente: só se grava a coluna se ela existir (ou se se conseguir criar) */
+  const pagJson=JSON.stringify({iva:mtIva,entradas:mtPag.filter(x=>parseFloat(x.valor)>0||x.fatura||x.data).map(x=>({data:x.data||'',valor:parseFloat(x.valor)||0,tipo:x.tipo||'hon',recibo:x.recibo||'',fatura:x.recibo==='sim'?(x.fatura||''):'',...(x.nota?{nota:x.nota}:{})}))});
+  try{await garantirColunaPagamentos();body[T.pagamentos]=pagJson;}
+  catch(e){if(mtPag.length>1||(mtPag[0]&&!mtPag[0].nota)){showToast('Não consegui criar a coluna «Pagamentos» na lista de tarefas ('+e.message+'). Só fica gravado o total pago.','error');}}
   try{
     await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${modalTarefaId}/fields`,body);
     showToast('Tarefa atualizada!','success');
@@ -10839,7 +10950,8 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
     else{const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${LID}/items`,{fields:body});ITENS[k]={spId:r.id,nome:body.Title,...d};}
   }
   async function ligarPar(a,b,juntar){
-    for(const [x,y] of [[a,b],[b,a]]){
+    /* Tarefa → pasta (01/11/2026): a ligação fica só na tarefa; a pasta não ganha uma «pasta» que é uma tarefa. */
+    for(const [x,y] of (a.lib==='TAREFAS'?[[a,b]]:[[a,b],[b,a]])){
       const it=ITENS[chave(x.lib,x.itemId)];
       const d={...extra(it),lib:x.lib,itemId:x.itemId,tipo:it?.tipo||'pasta',pasta:it?.pasta||'',tags:it?.tags||[]};
       const l=(d.ligacoes||[]).filter(z=>!(z.lib===y.lib&&z.itemId===y.itemId));
@@ -10852,7 +10964,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   function pintarLig(){
     const it=ITENS[chave(ligEd.lib,ligEd.itemId)],l=it?.ligacoes||[];
     abrir(`<div class="modal-box-title">🔗 Pastas ligadas · ${esc(ligEd.nome)}</div>
-      <div style="font-size:11px;color:var(--text-faint);margin:-.4rem 0 .8rem">${esc(LIBS[ligEd.lib]?.nome||ligEd.lib)}. Ligue as pastas do mesmo assunto, em qualquer biblioteca (por exemplo, o CPCV da REMAX e as cartas aos confinantes). A ligação vê-se nas duas pastas.</div>
+      <div style="font-size:11px;color:var(--text-faint);margin:-.4rem 0 .8rem">${ligEd.lib==='TAREFAS'?'Tarefa. Ligue-a às pastas de que precisa, em Escrituras, Processos ou Avenças — ficam a abrir diretamente na tarefa.</div><div style="display:none">':''}${esc(LIBS[ligEd.lib]?.nome||ligEd.lib)}. Ligue as pastas do mesmo assunto, em qualquer biblioteca (por exemplo, o CPCV da REMAX e as cartas aos confinantes). A ligação vê-se nas duas pastas.</div>
       <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">${l.length?l.map((x,i)=>`
         <div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
           <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);min-width:72px">${esc(LIBS[x.lib]?.nome||x.lib)}</span>
@@ -13311,22 +13423,33 @@ init();
         <div class="form-grid-2" style="display:grid;gap:.6rem">
           <div class="form-group">
             <label class="form-label">Valor do Serviço (€)</label>
-            <input class="form-input" id="mt-valor-servico" type="number" step="0.01" min="0" placeholder="0.00" oninput="atualizarMtFalta()">
+            <input class="form-input" id="mt-valor-servico" type="number" step="0.01" min="0" placeholder="0.00" oninput="mtPagTotal()">
           </div>
           <div class="form-group">
             <label class="form-label">Despesas Conta Cliente (€)</label>
-            <input class="form-input" id="mt-despesas" type="number" step="0.01" min="0" placeholder="0.00" oninput="atualizarMtFalta()">
+            <input class="form-input" id="mt-despesas" type="number" step="0.01" min="0" placeholder="0.00" oninput="mtPagTotal()">
           </div>
           <div class="form-group">
             <label class="form-label">Valor Pago (€)</label>
-            <input class="form-input" id="mt-valor-pago" type="number" step="0.01" min="0" placeholder="0.00" oninput="atualizarMtFalta()">
+            <input class="form-input" id="mt-valor-pago" type="number" step="0.01" min="0" placeholder="0.00" readonly style="background:var(--bg-secondary);font-weight:600" title="Soma das entradas abaixo">
           </div>
           <div class="form-group">
             <label class="form-label">Em Falta (€) <span style="font-weight:400;color:var(--text-faint);font-size:10px">— calculado</span></label>
             <input class="form-input" id="mt-em-falta" type="text" readonly style="background:var(--bg-secondary);font-weight:600">
           </div>
         </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:.3rem;font-style:italic">Em Falta = (Valor do Serviço + Despesas) − Valor Pago</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:.3rem;font-style:italic">Em Falta = (honorários a receber + despesas) − Valor Pago · o Valor Pago é a soma das entradas</div>
+        <div style="margin-top:.8rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">
+            <div style="font-weight:600;font-size:12px">Entradas do cliente</div>
+            <button type="button" class="btn btn-sm" onclick="mtPagAdd()">+ Entrada</button>
+          </div>
+          <div class="form-group" style="margin-bottom:.5rem"><label class="form-label">IVA nos honorários (Valor do Serviço)</label>
+            <select class="form-select" id="mt-iva" onchange="mtIva=this.value;mtPagTotal()" style="max-width:320px"><option value="incluido">IVA (23%) incluído no valor</option><option value="acresce">Acresce IVA (23%) ao valor</option><option value="isento">Sem IVA / isento</option></select></div>
+          <div style="display:grid;grid-template-columns:118px 110px 90px 104px 1fr 24px;gap:.35rem;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;padding:0 2px"><span>Data</span><span>É para</span><span>Valor €</span><span>Recibo/fatura</span><span>N.º</span><span></span></div>
+          <div id="mt-pag-lista"></div>
+          <div id="mt-pag-resumo" style="font-size:12px"></div>
+        </div>
       </div>
     </div>
 
