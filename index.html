@@ -12422,6 +12422,34 @@ function avRenderLista(lista){
    vezes origem a um CPCV e, mais tarde, a uma escritura. A lista guarda só o endereço da
    pasta; o id da pasta resolve-se em lotes ($batch) e guarda-se em memória. */
 const AV_PASTA_ID={};
+/* Pasta de um processo de avença, mesmo quando a ligação guardada está errada (01/11/2026):
+   processos antigos da REMAX sem loja escolhida, ou pastas mudadas para a loja ou para «Anterior a…».
+   Procura: caminho guardado → Fornecedor/Loja/nome → Fornecedor/nome → cada subpasta do fornecedor →
+   pesquisa no SharePoint. Quando a encontra noutro sítio, corrige a ligação (e a loja) no processo. */
+const AV_SUBS={};
+async function avResolverPasta(i){
+  if(!i||!driveIdAvencas)return null;
+  if(AV_PASTA_ID[i.id]&&AV_PASTA_ID[i.id].id)return AV_PASTA_ID[i.id];
+  const nome=decodeURIComponent(String(i[AP.pasta]||'').split('?')[0].split('/').pop()||'');if(!nome)return null;
+  const forn=i[AP.fornecedor]||'';await renovarToken();
+  const H_={headers:{'Authorization':'Bearer '+graphToken}};
+  const porCaminho=async cam=>{try{const r=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${cam}/${encodeURIComponent(nome)}?$select=id,name,webUrl,parentReference`,H_);return r.ok?await r.json():null;}catch(_){return null;}};
+  let it=null,loja='';
+  if(forn){it=await porCaminho(avSubPath(forn,i[AP.loja]));
+    if(!it&&i[AP.loja])it=await porCaminho(encodeURIComponent(forn));
+    if(!it){if(!AV_SUBS[forn]){try{const d=await graphGetAll(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(forn)}:/children?$top=500&$select=id,name,folder`);AV_SUBS[forn]=(d.value||[]).filter(x=>x.folder&&!/^\d{8}\b/.test(x.name)).map(x=>x.name);}catch(_){AV_SUBS[forn]=[];}}
+      for(const sub of AV_SUBS[forn]){if(sub===i[AP.loja])continue;it=await porCaminho(encodeURIComponent(forn)+'/'+encodeURIComponent(sub));if(it){loja=sub;break;}}}}
+  if(!it){try{const r=await graphGet(`${GRAPH_BASE}/drives/${driveIdAvencas}/root/search(q='${encodeURIComponent(nome.replace(/'/g,"''"))}')?$select=id,name,folder,webUrl,parentReference&$top=50`);
+    it=(r.value||[]).find(x=>x.folder&&x.name.trim().toLowerCase()===nome.trim().toLowerCase())||null;
+    if(it){const pp=decodeURIComponent(((it.parentReference||{}).path||'').split('root:')[1]||'');const seg=pp.split('/').filter(Boolean);if(seg[0]===forn&&seg[1])loja=seg[1];}}catch(_){}}
+  if(!it)return null;
+  AV_PASTA_ID[i.id]=it;
+  /* corrigir a ligação guardada (e a loja, se estava vazia e a pasta está numa loja REMAX) */
+  const corr={};if(it.webUrl&&it.webUrl!==i[AP.pasta])corr[AP.pasta]=it.webUrl;
+  if(!i[AP.loja]&&loja&&typeof REMAX_LOJAS!=='undefined'&&REMAX_LOJAS.includes(loja))corr[AP.loja]=loja;
+  if(Object.keys(corr).length&&listaIdAvencasProc){try{await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items/${i.id}/fields`,corr);Object.assign(i,corr);}catch(e){console.warn('[Avenças] não corrigi a ligação',e);}}
+  return it;
+}
 async function avLigResolver(lista){
   if(!driveIdAvencas)return;
   const nomeDe=i=>decodeURIComponent((i[AP.pasta]||'').split('/').pop()||'');
@@ -12436,6 +12464,9 @@ async function avLigResolver(lista){
       const j=await r.json();
       (j.responses||[]).forEach(x=>{if(x.status===200&&x.body&&x.body.id)AV_PASTA_ID[lote[+x.id].id]=x.body;});
     }
+    /* as que não estão no sítio guardado: procurar (poucas de cada vez) */
+    const ainda=falta.filter(i=>!AV_PASTA_ID[i.id]).slice(0,25);
+    for(let k=0;k<ainda.length;k+=5)await Promise.all(ainda.slice(k,k+5).map(i=>avResolverPasta(i).catch(()=>null)));
     if(window.vistoCarregar)await window.vistoCarregar();
   }catch(e){console.warn('[Avenças] ligações:',e);}
   document.querySelectorAll('[data-av-lig]').forEach(sp=>{const p=AV_PASTA_ID[sp.dataset.avLig];if(!p)return;
@@ -12453,15 +12484,8 @@ async function avAbrirPasta(id){
   const w=window.open('about:blank','_blank');
   try{w.document.write('<!doctype html><meta charset="utf-8"><body style="font:15px system-ui,sans-serif;color:#444;padding:40px">A abrir a pasta…</body>');w.document.close();}catch(_){}
   let url=AV_PASTA_ID[id]&&AV_PASTA_ID[id].webUrl;
-  if(!url&&i&&driveIdAvencas){
-    try{await renovarToken();
-      const nome=decodeURIComponent(String(guardado||'').split('/').pop()||'');
-      const r=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nome)}?$select=id,name,webUrl`,{headers:{'Authorization':'Bearer '+graphToken}});
-      if(r.ok){const it=await r.json();AV_PASTA_ID[id]=it;url=it.webUrl;}
-    }catch(_){}
-  }
-  url=url||guardado;
-  if(!url){try{w&&w.close();}catch(_){}showToast('Esta avença não tem pasta associada','error');return;}
+  if(!url&&i&&driveIdAvencas){try{const it=await avResolverPasta(i);if(it)url=it.webUrl;}catch(_){}}
+  if(!url){try{w&&w.close();}catch(_){}showToast(guardado?'Não encontrei a pasta deste processo (pode ter mudado de nome). Use «Alterar» no processo para a escolher.':'Esta avença não tem pasta associada','error');return;}
   if(w)w.location=embedSP(url);else window.open(embedSP(url),'_blank');
 }
 let listaIdAvencasProc=null;
@@ -12629,6 +12653,7 @@ function fecharPainelAvenca(){
 /* Botão da pasta dentro do painel. Tinha o mesmo nome que avAbrirPasta(id) da lista e substituía-a:
    na lista, abria a pasta do último painel aberto em vez da do processo (01/11/2026). */
 function avAbrirPastaPainel(){
+  if(avPainelItemId){return avAbrirPasta(avPainelItemId);}
   const url=document.getElementById('av-p-pasta-link')._url;
   if(url)window.open(embedSP(url),'_blank');
 }
@@ -18800,12 +18825,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     if(!r.ok)throw new Error(`O site REMAX Partilha não está acessível (${r.status}).`);return PDRIVE=(await r.json()).id;}
   async function pdfLib(){if(!window.PDFLib)await new Promise((res,rej)=>{const s=document.createElement('script');s.src=PDFLIB_URL;s.onload=res;s.onerror=()=>rej(new Error('Não consegui carregar o gerador de PDF.'));document.head.appendChild(s);});return window.PDFLib;}
   async function pastaDoProcesso(i){
-    if(typeof AV_PASTA_ID!=='undefined'&&AV_PASTA_ID[i.id]&&AV_PASTA_ID[i.id].id)return AV_PASTA_ID[i.id];
-    await renovarToken();
-    const nome=decodeURIComponent(String(i[AP.pasta]||'').split('/').pop()||'');
-    const r=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nome)}?$select=id,name,webUrl`,{headers:H()});
-    if(!r.ok)throw new Error(`não encontrei a pasta do processo (${r.status})`);
-    const it=await r.json();if(typeof AV_PASTA_ID!=='undefined')AV_PASTA_ID[i.id]=it;return it;}
+    const it=await avResolverPasta(i);if(!it)throw new Error('não encontrei a pasta do processo');return it;}
   async function lerPublicado(i){
     try{const d=await pdrive();await renovarToken();
       const r=await fetch(`${GRAPH_BASE}/drives/${d}/root:/${enc(`${i[AP.loja]}/Analises/${idAnalise(i)}.json`)}:/content`,{headers:H()});
