@@ -2243,7 +2243,7 @@ tbody tr:hover td{background:#FAFAF8}
               <!-- Pasta SP -->
               <div class="field-group field-full" id="av-p-pasta-wrap" style="display:none">
                 <div class="field-label">Pasta SharePoint</div>
-                <button onclick="avAbrirPasta()" style="display:flex;align-items:center;gap:.5rem;width:100%;padding:.6rem .9rem;background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;color:var(--accent-dark);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">
+                <button onclick="avAbrirPastaPainel()" style="display:flex;align-items:center;gap:.5rem;width:100%;padding:.6rem .9rem;background:var(--accent-light);border:1px solid var(--accent);border-radius:7px;color:var(--accent-dark);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/></svg>
                   <span id="av-p-pasta-link">Abrir pasta no SharePoint</span>
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-left:auto;flex-shrink:0"><path d="M4 8h8M9 5l3 3-3 3"/></svg>
@@ -12344,7 +12344,9 @@ function fecharPainelAvenca(){
   document.getElementById('av-painel').classList.remove('open');
 }
 
-function avAbrirPasta(){
+/* Botão da pasta dentro do painel. Tinha o mesmo nome que avAbrirPasta(id) da lista e substituía-a:
+   na lista, abria a pasta do último painel aberto em vez da do processo (01/11/2026). */
+function avAbrirPastaPainel(){
   const url=document.getElementById('av-p-pasta-link')._url;
   if(url)window.open(embedSP(url),'_blank');
 }
