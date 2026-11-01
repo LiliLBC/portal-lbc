@@ -1410,6 +1410,7 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
               <div style="display:flex;gap:.4rem">
                 <button class="btn btn-primary btn-sm" style="flex:1" onclick="criarTarefaDash()">Criar</button>
+                <button class="btn btn-sm" onclick="criarTarefaDash(true)" title="Cria a tarefa e abre logo a procura das pastas (Escrituras, Processos, Avenças)">Criar e ligar pastas 🔗</button>
                 <button class="btn btn-sm" onclick="toggleFormTarefaDash()">Cancelar</button>
               </div>
             </div>
@@ -5041,7 +5042,7 @@ async function mudarEstadoTarefaDash(itemId,estado){
   }catch(e){showToast('Erro: '+e.message,'error');}
 }
 
-async function criarTarefaDash(){
+async function criarTarefaDash(ligar){
   const titulo=document.getElementById('dash-tar-titulo').value.trim();
   if(!titulo){showToast('Preenche a descrição','error');return;}
   const body={[T.titulo]:titulo};
@@ -5055,8 +5056,10 @@ async function criarTarefaDash(){
   if(obs) body[T.observacoes]=obs;
   body[T.estado]='Por fazer';
   try{
-    await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items`,{fields:body});
+    const nova=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items`,{fields:body});
     showToast('Tarefa criada!','success');
+    /* ligar logo às pastas (01/11/2026) */
+    if(ligar&&nova&&nova.id&&window.ligAbrir)setTimeout(()=>ligAbrir('TAREFAS',String(nova.id),titulo,''),300);
     ['dash-tar-titulo','dash-tar-prazo','dash-tar-obs'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('dash-tar-responsavel').selectedIndex=0;
     document.getElementById('dash-tar-prioridade').selectedIndex=0;
