@@ -599,6 +599,7 @@ tbody tr:hover td{background:#FAFAF8}
               <div><div style="font-size:13px;font-weight:600">Listagem</div><div style="font-size:11px;color:var(--text-faint)" id="reg-count">A carregar...</div></div>
               <div style="display:flex;gap:.4rem">
                 <button class="btn btn-sm" onclick="carregarRegistos()">↺</button>
+                <button class="btn btn-sm" id="reg-isa-btn" onclick="regIsaAlternar()" style="display:none" title="Abrir ou fechar à Isa o portal dos Registos prediais"></button>
                 <button class="btn btn-sm" onclick="exportarMapaRegistos()" title="Extrair mapa do filtro atual para Excel">⬇ Exportar</button>
                 <button class="btn btn-primary btn-sm" onclick="abrirPainelNovo()">+ Novo</button>
               </div>
@@ -3251,6 +3252,7 @@ function nav(id,el){
   fecharSidebar(); // fechar menu em mobile ao navegar
   if(id==='pastas'&&!pastasCarregadas)carregarPastas();
   if(id==='registo'&&!registosCarregados)carregarRegistos();
+  if(id==='registo')regIsaPintar();
   if(id==='suprimentos')carregarSuprimentos();
   if(id==='tarefas')carregarTarefas();
   if(id==='processos')carregarProcessos();
@@ -5015,6 +5017,20 @@ async function tarContGravar(id){
 /* Notas da tarefa (01/11/2026): são os eventos da «Linha cronológica» da tarefa (data, texto e quem escreveu),
    agora à vista no cartão e com um campo para escrever logo ali. */
 const tarAbertos=new Set();
+/* ═══ Acesso da Isa ao portal dos Registos prediais (02/11/2026) ═══
+   Interruptor só da Liliana. Fechado: a Isa vê a lista mas não abre nem grava registos.
+   Fica na lista «Etiquetas» (registo SISTEMA|registos, campo «bloqueio»). */
+async function regIsaEstado(){try{return(window.etqDadoLer&&await etqDadoLer('SISTEMA','registos','bloqueio'))||{fechado:false};}catch(_){return{fechado:false};}}
+async function regIsaPintar(){const b=document.getElementById('reg-isa-btn');if(!b)return;
+  const eu=(typeof meuNomeLBC==='function'&&meuNomeLBC()==='Liliana Cardoso');b.style.display=eu?'':'none';if(!eu)return;
+  const st=await regIsaEstado();b.textContent=st.fechado?'🔒 Isa: fechado':'🔓 Isa: aberto';
+  b.style.color=st.fechado?'var(--red)':'';b.style.borderColor=st.fechado?'var(--red)':'';
+  b.title=st.fechado?`Portal dos Registos fechado à Isa desde ${new Date(st.quando).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})} — carregar para abrir`:'A Isa pode trabalhar nos Registos prediais — carregar para fechar';}
+window.regIsaAlternar=async()=>{const st=await regIsaEstado();const fechar=!st.fechado;
+  if(fechar&&!confirm('Fechar à Isa o portal dos Registos prediais?\n\nEla continua a ver a lista, mas não consegue abrir nem gravar registos até voltar a abrir.'))return;
+  try{await etqDadoGravar('SISTEMA','registos','Registos prediais — acesso da Isa','bloqueio',{fechado:fechar,por:meuNomeLBC(),quando:new Date().toISOString()});
+    showToast(fechar?'Registos fechados à Isa':'Registos abertos à Isa','success');await regIsaPintar();}
+  catch(e){showToast('Não consegui mudar o acesso: '+e.message,'error');}};
 /* ═══ CONTA CORRENTE = resumo dos valores das tarefas (01/11/2026) ═══ */
 let CCT=[];
 async function cctCarregar(){
@@ -10945,7 +10961,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
      parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
   const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
-  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length);
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio;
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 

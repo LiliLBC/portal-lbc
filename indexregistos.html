@@ -137,6 +137,7 @@
 <div class="toast" id="toast"></div>
 <div class="lista" id="lista">
   <h1>Registos prediais</h1>
+  <div id="avisoFechado" hidden style="background:#FDECEA;border:1px solid #E7A39B;color:#8A2A1E;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-weight:600"></div>
   <div class="filtros">
     <div><label for="fTexto">Cliente / referência / prédio</label><input type="text" id="fTexto" placeholder="pesquisar…"></div>
     <div><label for="fDe"><select id="fTipoData" style="width:auto;padding:0 4px;border:none;background:transparent;font:inherit;font-size:11px;font-weight:600;color:var(--muted)"><option value="esc">Data da escritura</option><option value="sub">Data de submissão</option></select> de</label><input type="date" id="fDe"></div>
@@ -285,46 +286,6 @@
 </div><!-- /app -->
 <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script>
-/* ═══════════ DADOS DO APRESENTANTE (31/10/2026) ═══════════
-   Saíram do código (o repositório é público): ficam na lista «dados_lbc» do site
-   lbcsolicitadora2 — Título «apresentante», coluna «Dados» com o JSON —, tal como as
-   procurações em «proc_bancos». Quem entra lê; só a Liliana os altera (no Portal). */
-(function(){
-  const CAMPOS=[['nome','Nome'],['email','e-mail'],['tipoDoc','Tipo de documento'],['numDoc','N.º do documento'],['qualidade','Qualidade'],['nif','NIF'],
-    ['residencia','Residência'],['cp','Código postal'],['localidade','Localidade'],['telemovel','Telemóvel'],['nib','NIB'],['iban','IBAN'],['bic','BIC/SWIFT'],['email2','e-mail adicional']];
-  const LISTA='dados_lbc';
-  const nrm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
-  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  let CACHE=null,PROM=null,LID=null,ITEM=null,COLD='Dados';
-  /* api = {get(url), post(url,body), patch(url,body), base, site} — cada página dá os seus */
-  async function carregar(api,criar){
-    const ls=await api.get(`${api.base}/sites/${api.site}/lists?$select=id,name,displayName&$top=200`);
-    let l=(ls.value||[]).find(x=>nrm(x.name)===LISTA||nrm(x.displayName)===LISTA);
-    if(!l){if(!criar)return null;
-      l=await api.post(`${api.base}/sites/${api.site}/lists`,{displayName:LISTA,list:{template:'genericList'},columns:[{name:'Dados',text:{allowMultipleLines:true,textType:'plain',linesForEditing:6}}]});}
-    LID=l.id;
-    const cs=await api.get(`${api.base}/sites/${api.site}/lists/${LID}/columns?$select=name,displayName`);
-    const c=(cs.value||[]).find(x=>nrm(x.name)==='dados'||nrm(x.displayName)==='dados');if(c)COLD=c.name;
-    const it=await api.get(`${api.base}/sites/${api.site}/lists/${LID}/items?$expand=fields&$top=200`);
-    ITEM=(it.value||[]).find(i=>nrm(i.fields.Title)==='apresentante')||null;
-    if(!ITEM)return null;
-    try{return JSON.parse(ITEM.fields[COLD]||'{}');}catch(_){return null;}
-  }
-  window.lbcApres=(api,criar)=>{if(CACHE)return Promise.resolve(CACHE);if(PROM)return PROM;
-    PROM=carregar(api,criar).then(d=>{CACHE=d;PROM=null;return d;}).catch(e=>{PROM=null;throw e;});return PROM;};
-  window.lbcApresCampos=CAMPOS;
-  window.lbcApresGravar=async(api,dados)=>{
-    if(!LID)await carregar(api,true);
-    const body={Title:'apresentante',[COLD]:JSON.stringify(dados)};
-    if(ITEM)await api.patch(`${api.base}/sites/${api.site}/lists/${LID}/items/${ITEM.id}/fields`,body);
-    else{const r=await api.post(`${api.base}/sites/${api.site}/lists/${LID}/items`,{fields:body});ITEM={id:r.id,fields:body};}
-    CACHE=dados;return dados;};
-  /* linhas no formato do «Mapa de registo» (grelha .head) */
-  window.lbcApresLinhas=d=>d?CAMPOS.filter(([k])=>d[k]).map(([k,r])=>`<div><span>${esc(r)}</span>${k==='nome'?'<b>'+esc(d[k])+'</b>':esc(d[k])}</div>`).join('')
-    :'<div style="grid-column:1/-1;color:#B45309">Os dados do apresentante ainda não foram preenchidos — a Liliana preenche-os no Portal (📤 Depósito › ✏️).</div>';
-})();
-</script>
 <script>
 (function(){
   'use strict';
@@ -673,6 +634,9 @@
   }
 
   function abrir(id){
+    /* acesso fechado pela Liliana (02/11/2026): a colaboradora vê a lista mas não abre registos */
+    if(MODO==='colaboradora'&&window.__regFechado){alert('A Liliana fechou o acesso aos registos por agora. Pode ver a lista, mas não abrir registos até ela voltar a abrir.');return;}
+    window.__abertoComAcesso=!window.__regFechado;
     atual = ITEMS.find(i=>i.id===id); if(!atual) return;
     const m = Object.assign({tipoEsc: tipoEsc(atual.entidade), ref: atual.ref||''}, atual.mapa, {processo: atual.processo||'', cliente: atual.cliente||''});
     window.MapaRegisto.setData(m); window.MapaRegisto.setModo(MODO);
@@ -760,9 +724,26 @@
       return {id:x.id, escrituraId:f[P.escrituraId], cliente:f[P.cliente]||e[E.nome]||'', entidade:e[E.entidade]||'', dataEscritura:(e[E.data]||m.dataDoc||'').substring(0,10), ref:(e[E.titulo]?e[E.titulo]+' · ':'')+(f[P.titulo]||''), processo:e[E.processo]||'', mapa:m};
     }).filter(it=>(it.mapa.codDPA||'').trim());   /* só entra na lista depois de ter código de depósito */
     window.RegistosLista.setItems(items);
+    idEtq=acha('Etiquetas')||null;verBloqueio();
+  }
+  /* ── Acesso aberto/fechado pela Liliana no Portal (02/11/2026) ── */
+  let idEtq=null,tBloq=null;
+  async function verBloqueio(){
+    clearTimeout(tBloq);
+    try{if(idEtq&&window.__modoColab){
+      const its=await gGetAll(`${GRAPH}/sites/${siteId}/lists/${idEtq}/items?$expand=fields($select=Title,Dados)&$top=999`);
+      let st={fechado:false};
+      its.forEach(x=>{try{const d=JSON.parse((x.fields||{}).Dados||'{}');if(d.lib==='SISTEMA'&&d.itemId==='registos'&&d.bloqueio)st=d.bloqueio;}catch(_){}} );
+      window.__regFechado=!!st.fechado;
+      const av=$('#avisoFechado');
+      if(st.fechado){av.hidden=false;av.textContent='🔒 A Liliana está a trabalhar nos registos — acesso fechado'+(st.quando?' desde '+new Date(st.quando).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'')+'. Pode ver a lista, mas não abrir nem gravar registos.'+(atual&&window.__abertoComAcesso?' O registo que tem aberto ainda pode ser guardado.':'');}
+      else av.hidden=true;}}
+    catch(e){console.warn('bloqueio',e);}
+    tBloq=setTimeout(verBloqueio,30000);
   }
 
   window.RegistosLista.onSave(async it=>{
+    if(window.RegistosLista&&window.__modoColab&&window.__regFechado&&!window.__abertoComAcesso){toast('Acesso fechado pela Liliana — não gravado.',true);return;}
     const d=it.mapa;
     const b={[P.regime]:d.isencao==='outras'?'Isento':'Normal',[P.estado]:d.submetido?'Submetido':'Por submeter',
       [P.codigos]:[d.codDPA,...(d.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),
@@ -775,7 +756,8 @@
   async function entrar(){
     $('#login').hidden=true; $('#app').hidden=false;
     $('#hdrUser').textContent=conta.username;
-    window.RegistosLista.setModo(COLABORADORAS.includes((conta.username||'').toLowerCase())?'colaboradora':'portal');
+    window.__modoColab=COLABORADORAS.includes((conta.username||'').toLowerCase());
+    window.RegistosLista.setModo(window.__modoColab?'colaboradora':'portal');
     try{ await carregarTudo(); }catch(e){ toast(e.message,true); $('#linhas').innerHTML='<tr><td colspan="7" class="carregando" style="border:none;background:transparent">'+e.message+'</td></tr>'; }
   }
   (async function init(){
