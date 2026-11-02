@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-01.2</span>
+    <span class="page-sub">piloto · v2026-11-02.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -3825,7 +3825,9 @@ function comporMH(variante){
   contrato.push({id:P+'c-e',T:'E',X:txtSegundaCurto});
   if(quartos.length)contrato.push({id:P+'c-terceiros',T:'E',X:txtTerceirosCurto,
     negrito:quartos.map(q=>q.nome).filter(Boolean)});
-  contrato.push({id:P+'c-preambulo',T:'',X:`É celebrado o presente contrato de ${tipoNome} sobre imóvel, que se rege pelas seguintes disposições:`});
+  contrato.push({id:P+'c-preambulo',T:'',X:creditoBonificado()
+    ?`É celebrado o presente contrato de ${tipoNome} ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho${LEI_BONIF}, sobre imóvel, que se rege pelas seguintes disposições:`   /* ⚠ redação nova (02/11/2026) */
+    :`É celebrado o presente contrato de ${tipoNome} sobre imóvel, que se rege pelas seguintes disposições:`});
 
   /* ── MÚTUO ── */
   contrato.push({id:P+'c-mutuo',T:'MÚTUO',X:
@@ -5785,7 +5787,7 @@ function compor(){
   if(!ehCVMH)contrato.push({id:'c-entre',T:'',X:`Entre os Contratantes acima identificados é celebrado o presente contrato de compra e venda, que se rege pelas cláusulas seguintes:`});
   /* ── TRATO SUCESSIVO · narrativa do óbito e dos herdeiros (corpo) ── */
   /* O preâmbulo não é cláusula — abre o contrato e fica sem título. */
-  if(ehCVMH)contrato.push({id:'c-preambulo',T:'',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho, sobre imóvel, que se rege pelas seguintes disposições:`});
+  if(ehCVMH)contrato.push({id:'c-preambulo',T:'',X:`É celebrado o presente contrato de compra e venda e mútuo com hipoteca ao abrigo do Decreto-Lei n.º 74-A/2017, de 23 de junho${creditoBonificado()?LEI_BONIF:''}, sobre imóvel, que se rege pelas seguintes disposições:`});
   /* A narrativa do óbito abre a cláusula do objeto: explica de onde vem o
      direito antes de se dizer o que se vende. */
   /* Os ónus fecham a cláusula do objeto, logo a seguir ao registo de aquisição:
@@ -9544,6 +9546,10 @@ function renderEspeciais(){
   const dois=typeof docsMH==='function'&&docsMH().length>1;
   const w=document.getElementById('esp-onde-wrap');if(w)w.style.display=dois?'':'none';
 }
+/* ⚠ Crédito bonificado (02/11/2026): com a cláusula «Ónus de inalienabilidade (crédito bonificado)» marcada,
+   o preâmbulo passa a citar também a Lei n.º 64/2014, de 26 de agosto. */
+function creditoBonificado(){return Object.keys(especiais).some(id=>id==='lbc-inalienabilidade'||/bonificad/i.test((especiais[id]&&especiais[id].titulo)||''));}
+const LEI_BONIF=', e da Lei n.º 64/2014, de 26 de agosto';
 function marcarEspecial(id,on){
   const c=acharClausula(id)||(especiais[id]&&{titulo:especiais[id].titulo,texto:especiais[id].texto});
   if(on&&c)especiais[id]={titulo:c.titulo,texto:c.texto};else delete especiais[id];
