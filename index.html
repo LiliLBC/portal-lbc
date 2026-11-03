@@ -3657,7 +3657,7 @@ function renderPastas(lista){
   if(!lista.length){el.innerHTML='<div class="notice notice-info">Nenhuma pasta encontrada.</div>';el.style.display='block';return;}
   el.innerHTML=lista.map(p=>`
     <div class="pasta-card">
-      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div>${pastaEhHoje(p.name)?`<div class="anl-hoje-msg" data-anl-msg="ESCRITURAS|${p.id}">⚠ Escritura hoje — carregar CRP, CPU e BC emitidos hoje</div>`:''}<div data-lig-lista="ESCRITURAS|${p.id}"></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
+      <div style="flex:1;min-width:0"><div class="pasta-ref">${escHtml(p.name||'—')}</div><div class="pasta-meta">Modificado: ${fmtData(p.lastModifiedDateTime)} <span data-etq="ESCRITURAS|${p.id}"></span></div>${(ANALISADOR_ATIVO&&pastaEhHoje(p.name))?`<div class="anl-hoje-msg" data-anl-msg="ESCRITURAS|${p.id}">⚠ Escritura hoje — carregar CRP, CPU e BC emitidos hoje</div>`:''}<div data-lig-lista="ESCRITURAS|${p.id}"></div><div data-nota="ESCRITURAS|${p.id}" onclick="notaEditar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" style="cursor:pointer"></div></div>
       <div class="pasta-actions">
         <button class="btn btn-sm visto-velha" data-visto-btn="ESCRITURAS|${p.id}" data-mod="${escHtml(p.lastModifiedDateTime||'')}" onclick="vistoAlternar('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Visto da Liliana" style="padding:4px 8px">✓</button>
         <button class="btn btn-sm" data-lig-btn="ESCRITURAS|${p.id}" onclick="ligAbrir('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Pastas ligadas" style="padding:4px 8px">🔗</button>
@@ -3668,10 +3668,10 @@ function renderPastas(lista){
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         ${/* Verificador e Matriz retirados (30/10/2026): o verificador deixou de se usar. */''}
         <span data-ficha="ESCRITURAS|${p.id}"></span>
-        ${(window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
-        <button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>
+        ${(DEPOSITO_ATIVO&&window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
+        ${ANALISADOR_ATIVO?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>`:''}
         <button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>
-        <button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras — preenche o que o 📤 Depósito leu dos documentos">Registar</button>
+        <button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras">Registar</button>
       </div>
     </div>`).join('');
   el.style.display='block';
@@ -3684,8 +3684,13 @@ function renderPastas(lista){
 const VERIFICADOR_URL='https://lililbc.github.io/verificador-lbc/verificador.html';
 /* Analisador predial (24/10/2026): certidões permanentes × cadernetas, com relatório
    gravado na subpasta «Análises». Serve escrituras, processos e avenças. */
+/* Analisador (CRP/CPU) e Depósito automático (separação do DPA) DESATIVADOS a 03/11/2026, a pedido da Liliana:
+   não reconheciam bem os documentos, demoravam e baralhavam. O código fica, desligado; os documentos tratam-se à mão.
+   Para voltar a ligar: pôr estas constantes a true. */
+const ANALISADOR_ATIVO=false,DEPOSITO_ATIVO=false;
 const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html';
 function abrirAnalisador(lib,itemId,nome){
+  if(!ANALISADOR_ATIVO){showToast('O analisador está desativado.','');return;}
   const drive=lib==='PROCESSOS'?bibliotecaProcessosId:lib==='AVENCAS'?driveIdAvencas:bibliotecaId;
   if(!drive||!itemId){showToast('Biblioteca ainda não carregada.','error');return;}
   lbcGuardarSessao();lbcAbrir(`lbc-analisador-${itemId}`,`${ANALISADOR_URL}?pasta=${encodeURIComponent(drive+'|'+itemId)}&nome=${encodeURIComponent(nome||'')}&lib=${encodeURIComponent(lib||'')}`);
@@ -3693,6 +3698,7 @@ function abrirAnalisador(lib,itemId,nome){
 /* Processo REMAX de análise → Analisador com o painel «Relatório para a REMAX»
    (loja, linha da lista e título seguem no endereço; os documentos continuam a ser lidos só no navegador). */
 async function abrirAnalisadorAv(itemId){
+  if(!ANALISADOR_ATIVO){showToast('O analisador está desativado.','');return;}
   const i=todosProcessosAv.find(r=>r.id===itemId);if(!i)return;
   if(!i[AP.pasta]){showToast('Este processo não tem pasta associada','error');return;}
   if(!i[AP.loja]){showToast('Indique a loja REMAX no processo antes de analisar','error');return;}
@@ -7053,7 +7059,7 @@ function renderProcessos(lista){
         <button class="btn btn-sm" data-lig-btn="PROCESSOS|${p.id}" onclick="ligAbrir('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Pastas ligadas">🔗</button>
         <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),'pasta','')" title="Etiquetas">🏷</button>
         <button class="btn btn-sm" onclick="toggleProcessosCliente('${p.id}','${safeNome}')" title="Ver processos">📂 Processos</button>
-        <button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Analisador predial">🔎</button>
+        ${ANALISADOR_ATIVO?`<button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Analisador predial">🔎</button>`:''}
         <button class="btn btn-sm" onclick="editarPastaCliente('${p.id}','${safeNome}')" title="Editar nome">✏️</button>
         <button class="btn btn-sm" onclick="apagarPastaCliente('${p.id}','${safeNome}')" title="Apagar pasta" style="color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm">Abrir</a>
@@ -7148,7 +7154,7 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
           <button class="btn btn-sm visto-velha" data-visto-btn="PROCESSOS|${s.id}" data-mod="${escHtml(s.lastModifiedDateTime||'')}" onclick="vistoAlternar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Visto da Liliana" style="padding:2px 6px;font-size:10px">✓</button>
           <button class="btn btn-sm" data-lig-btn="PROCESSOS|${s.id}" onclick="ligAbrir('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),decodeURIComponent('${encodeURIComponent(s.webUrl||'')}'))" title="Pastas ligadas" style="padding:2px 6px;font-size:10px">🔗</button>
           <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),'pasta',decodeURIComponent('${encodeURIComponent(nomeCliente||'')}'))" title="Etiquetas" style="padding:2px 6px;font-size:10px">🏷</button>
-          <button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Analisador predial" style="padding:2px 6px;font-size:10px">🔎</button>
+          ${ANALISADOR_ATIVO?`<button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Analisador predial" style="padding:2px 6px;font-size:10px">🔎</button>`:''}
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
         </div>`;
@@ -12421,7 +12427,7 @@ function avRenderLista(lista){
         ${cron}
         ${(i[AP.fornecedor]==='REMAX'&&String(i[AP.servico]||'').toUpperCase()==='CPCV'&&i[AP.loja]&&i[AP.pasta])?`<span data-cpcv-rel="${i.id}"></span><button onclick="event.stopPropagation();cpcvAbrir('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Publicar, receber e comparar versões com a loja">📑 Loja</button>`:''}
         ${i[AP.pasta]?`<span data-av-lig="${i.id}" onclick="event.stopPropagation()"></span>`:''}
-        ${(i[AP.fornecedor]==='REMAX'&&/^AN[AÁ]LISE$/i.test(i[AP.servico]||'')&&i[AP.pasta])?`<button onclick="event.stopPropagation();abrirAnalisadorAv('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Analisador predial — com relatório para a REMAX">🔎 Analisar</button>`:''}
+        ${(ANALISADOR_ATIVO&&i[AP.fornecedor]==='REMAX'&&/^AN[AÁ]LISE$/i.test(i[AP.servico]||'')&&i[AP.pasta])?`<button onclick="event.stopPropagation();abrirAnalisadorAv('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Analisador predial — com relatório para a REMAX">🔎 Analisar</button>`:''}
         ${(i[AP.fornecedor]==='REMAX'&&/^AN[AÁ]LISE$/i.test(i[AP.servico]||'')&&i[AP.pasta])?`<button onclick="event.stopPropagation();anrAbrir('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Escrever o resultado (OK / intermédio / questões), gravar o PDF na pasta e publicar na Área REMAX">📋 Resultado</button>`:''}
         ${cpcvBtn}
         ${pastaBtn}
@@ -12884,7 +12890,7 @@ function avRenderPastas(lista){
             ${p.id?`<span onclick="event.stopPropagation()" style="display:inline-flex;gap:.3rem">
               <button class="btn btn-sm visto-velha" data-visto-btn="AVENCAS|${p.id}" data-mod="${escHtml(p.modificado||'')}" onclick="vistoAlternar('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Visto da Liliana" style="padding:2px 8px;font-size:11px">✓</button>
               <button class="btn btn-sm" data-nota-btn="AVENCAS|${p.id}" onclick="notaEditar('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Notas da pasta" style="padding:2px 8px;font-size:11px">📝</button>
- <button class="btn btn-sm" onclick="abrirAnalisador('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Analisador predial" style="padding:2px 8px;font-size:11px">🔎</button>
+ ${ANALISADOR_ATIVO?`<button class="btn btn-sm" onclick="abrirAnalisador('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'))" title="Analisador predial" style="padding:2px 8px;font-size:11px">🔎</button>`:''}
               <button class="btn btn-sm" data-lig-btn="AVENCAS|${p.id}" onclick="ligAbrir('AVENCAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.nome||'')}'),decodeURIComponent('${encodeURIComponent(p.url||'')}'))" title="Pastas ligadas" style="padding:2px 8px;font-size:11px">🔗</button>
             </span>`:''}
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><path d="M1 4h14v10H1zM1 4l3-3h5l2 3"/></svg>
