@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-04.3</span>
+    <span class="page-sub">piloto · v2026-11-04.5</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -5075,12 +5075,18 @@ function comporDCC(){
   const nat=naturezaDCC();
   if(nat.casal)
     numeros.push(`${num('')}Que foram entre si casados sob o regime da ${v('f-div-regime')||'comunhão de adquiridos'}, tendo o seu casamento sido dissolvido por divórcio decretado por sentença de ${dPT(v('f-div-sentenca'))}, transitada em julgado em ${dPT(v('f-div-transito'))}, proferida no divórcio${v('f-div-tipo')==='litigioso'?' sem consentimento do outro cônjuge':', por mútuo consentimento'}, que correu seus termos sob o número ${v('f-div-proc')||'…'}, no ${v('f-div-tribunal')||'…'}, conforme certidão que fica arquivada.`);
-  const quotasLst=cop.map((o,k)=>`${comOrd(k,true)} a quota ideal de ${o.quota||(cop.length===2?'metade (1/2)':`1/${cop.length}`)}`);
+  /* Redação da Liliana (04/11/2026): «…na proporção de metade para cada um, cabendo ao PRIMEIRO OUTORGANTE a quota
+     ideal de 1/2 e à SEGUNDA OUTORGANTE a quota ideal de 1/2, e que são responsáveis pelas dívidas igualmente
+     adiante identificadas, na proporção de metade para cada um.» ⚠ Quotas desiguais ou mais de dois: adaptação minha. */
+  const quotaDe=(o)=>o.quota||`1/${cop.length}`;
+  const iguais=cop.every(o=>String(quotaDe(o)).replace(/\s/g,'')===String(quotaDe(cop[0])).replace(/\s/g,''));
+  const proporcao=iguais?(cop.length===2?'na proporção de metade para cada um':'em partes iguais'):'';
+  const quotasLst=cop.map((o,k)=>`${comOrd(k,true)} a quota ideal de ${quotaDe(o)}`);
   const quotasTxt=quotasLst.length>1?quotasLst.slice(0,-1).join(', ')+' e '+quotasLst[quotasLst.length-1]:quotasLst[0];
   /* As verbas do passivo entram na mesma numeração, mas não se dizem
      «bens de que são comproprietários»: dizem-se dívidas por que respondem. */
   const temDiv=bens.some(b=>b.tipo==='divida');
-  numeros.push(`${num('')}Que são comproprietários d${varios?'os bens':'o bem'} adiante identificad${varios?'os':'o'}${temDiv?', e responsáveis pelas dívidas igualmente adiante identificadas':''}, cabendo ${quotasTxt}:\n`
+  numeros.push(`${num('')}Que são comproprietários d${varios?'os bens':'o bem'} adiante identificad${varios?'os':'o'}${proporcao?', '+proporcao:''}, cabendo ${quotasTxt}${temDiv?`, e que são responsáveis pelas dívidas igualmente adiante identificadas${proporcao?', '+proporcao:', na proporção das respetivas quotas'}`:''}.\n`
     +bens.map((b,k)=>b.tipo==='divida'
       ?`${verba(k)} - ${textoBem(b)}, no montante em dívida de ${eur(b.passivo)};`
       :`${verba(k)} - ${textoBem(b)}, a que os outorgantes atribuem o valor de ${eur(b.ativo)};`).join('\n'));
@@ -5094,8 +5100,8 @@ function comporDCC(){
     +bens.map((b,k)=>{
       const q=isNaN(b.adj)?0:b.adj;
       if(b.tipo==='divida')
-        return`a ${verba(k)} é assumida integralmente ${comOrd(q,true)}, que se obriga a satisfazê-la junto d${b.credor?'e '+b.credor:'a entidade credora'};`;
-      return`${varios?`a ${verba(k)}`:'o bem identificado'} é adjudicado na sua totalidade ${comOrd(q,true)}, que fica a ser ${femDeCop(q)?'dona e legítima possuidora':'dono e legítimo possuidor'} da sua totalidade, com efeitos a partir desta data;`;
+        return`a ${verba(k)} é assumida integralmente ${femDeCop(q)?'pela':'pelo'} ${ordDe(q)} OUTORGANTE;`;   /* 04/11/2026: menos repetição */
+      return`${varios?`a ${verba(k)}`:'o bem identificado'} é ${varios?'adjudicada':'adjudicado'} na sua totalidade ${comOrd(q,true)}, que fica a ser ${femDeCop(q)?'dona e legítima possuidora':'dono e legítimo possuidor'} da sua totalidade, com efeitos a partir desta data;`;
     }).join('\n'));
 
   /* ── MEAÇÕES E PAGAMENTOS ──
@@ -5110,34 +5116,28 @@ function comporDCC(){
       +(ap.passivo?`\nQue, também no que concerne ao referido passivo de ${eur(ap.passivo)}, é `
         +cop.map((o,k)=>`${comOrd(k)} responsável pelo pagamento de ${eur(ap.passivoCabe[k])}`).join(', e ')+'.':''));
 
+    /* ⚠ 04/11/2026 — a Liliana achou o contrato repetitivo: saem o «Para pagamento da quota-parte…» (repetia a
+       adjudicação) e os dois parágrafos da compensação (diziam o mesmo de cada lado). Fica uma frase por quem
+       paga tornas: o que leva a mais em ativo, o que assume a mais em passivo, e o saldo. */
     const linhasPag=[];
+    const Quem=k=>comOrd(k).replace(/^([ao]) /,(m,a)=>a.toUpperCase()+' ');
+    const lista=ks=>ks.length>1?ks.slice(0,-1).join(', ')+' e '+ks[ks.length-1]:(ks[0]||'');
+    const recebem=cop.map((_,k)=>k).filter(k=>ap.dif[k]<-0.005);
     cop.forEach((o,k)=>{
-      const suas=bens.map((b,x)=>({b,x})).filter(({b})=>(isNaN(b.adj)?0:b.adj)===k);
-      if(!suas.length)return;
-      const dividas=suas.filter(({b})=>b.passivo>0);
-      linhasPag.push(`Para pagamento d${nat.casal?'a meação':'a quota-parte'} ${ordDe_(k)}, ${(o.nome||'…').toUpperCase()}, ${suas.length>1?'são-lhe adjudicadas e ficam a pertencer-lhe':'é-lhe adjudicada e fica a pertencer-lhe'} ${suas.filter(({b})=>b.tipo!=='divida').map(({b,x})=>`a ${verba(x)}, no valor atribuído de ${eur(b.ativo)}`).join(', e ')}`
-        +(dividas.length?`, ficand${femDeCop(k)?'o a mesma':'o o mesmo'} com a obrigação de efetuar o pagamento integral da dívida ${[...new Set(dividas.map(({b})=>b.credor||'…'))].map(aoCredor).join(' e ')}`:'')+'.');
+      const excA=ap.ativoLeva[k]-ap.ativoCabe[k],excP=ap.passivoAssume[k]-ap.passivoCabe[k],saldo=ap.dif[k];
+      if(excA<=0.005)return;
+      const outros=cop.map((_,x)=>x).filter(x=>x!==k);
+      let t=`Assim, ${comOrd(k)}, que leva a mais, em ativo, ${eur(excA)}`;
+      if(excP>0.005)t+=`, e assume a mais, em passivo, ${eur(excP)}, que competia${outros.length>1?'m':''} ${lista(outros.map(x=>comOrd(x,true)))}`;
+      if(saldo>0.005){
+        const rs=recebem.filter(x=>x!==k);
+        t+=`, paga ${rs.length===1?(femDeCop(rs[0])?'a esta':'a este'):''} tornas no montante de ${eur(saldo)}`
+          +(rs.length>1?`, a receber ${rs.map(x=>`${comOrd(x,true).replace(/^à /,'pela ').replace(/^ao /,'pelo ')} (${eur(-ap.dif[x])})`).join(' e ')}`:'')
+          +(excP>0.005?', diferença entre aqueles valores':'')
+          +`, ficando ${lista(rs.map(x=>comOrd(x)))} ${rs.length>1?'inteirados e pagos':(rs.length&&femDeCop(rs[0])?'inteirada e paga':'inteirado e pago')} d${rs.length>1?'as suas quotas-partes':'a sua quota-parte'} com o recebimento das mesmas.`;
+      }else t+=`, pelo que não há lugar a tornas, ficando ${outros.length>1?'todos os outorgantes inteirados e pagos':'ambos os outorgantes inteirados e pagos'} das suas ${nat.casal?'meações':'quotas-partes'}.`;
+      linhasPag.push(t);
     });
-
-    /* A compensação, outorgante a outorgante. */
-    cop.forEach((o,k)=>{
-      const excA=ap.ativoLeva[k]-ap.ativoCabe[k];
-      const excP=ap.passivoAssume[k]-ap.passivoCabe[k];
-      const saldo=ap.dif[k];
-      if(Math.abs(excA)<0.005&&Math.abs(excP)<0.005)return;
-      if(excA>0.005){
-        linhasPag.push(`Que, assim, ${comOrd(k)} leva a mais, em relação ao valor da sua ${nat.casal?'meação':'quota-parte'}, em ativo, ${eur(excA)}`
-          +(excP>0.005
-            ?`, como porém tem de pagar ${[...new Set(bens.filter(b=>(isNaN(b.adj)?0:b.adj)===k&&b.passivo>0).map(b=>b.credor||'…'))].map(aoCredor).join(' e ')} a quantia de ${eur(ap.passivoAssume[k])}, na qual se inclui o montante de ${eur(excP)} que competia ${cop.map((_,x)=>x).filter(x=>x!==k).map(x=>comOrd(x,true)).join(' e ')}, ${Math.abs(saldo)<0.005?`não são assim, ${ordPor(k)}, devidas quaisquer tornas`:`sendo por isso devidas tornas na importância de ${eur(saldo)}`}.`
-            :`, sendo por isso devidas tornas na importância de ${eur(saldo)}.`));
-      }else{
-        linhasPag.push(`Em pagamento d${nat.casal?'a meação':'a quota-parte'} ${ordDe_(k)}, est${femDeCop(k)?'a':'e'} tem direito, em ativo, a receber tornas na importância de ${eur(-excA)}`
-          +(excP<-0.005
-            ?`, no entanto, e como fica ${femDeCop(k)?'desobrigada':'desobrigado'}, por este ato, ao cumprimento da parte que lhe competia pagar a título de dívida, ou seja, ${eur(-excP)}, ${Math.abs(saldo)<0.005?`não recebe por isso quaisquer tornas, ficando deste modo, ${femDeCop(k)?'inteirada e paga':'inteirado e pago'}`:`recebe apenas tornas na importância de ${eur(-saldo)}`}.`
-            :`.`));
-      }
-    });
-
     const paga=cop.map((_,k)=>k).filter(k=>ap.dif[k]>0.005);
     if(paga.length){
       const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
@@ -5157,7 +5157,7 @@ function comporDCC(){
       const fora=cop.map((_,x)=>x).filter(x=>x!==q);
       const quem=comOrd(q).replace(/^([ao]) /,(m,a)=>a.toUpperCase()+' ');
       const onde=`na ${verba(k)}`;
-      return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${onde}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')} ${fora.length>1?'exonerados':(fora.length&&femDeCop(fora[0])?'exonerada':'exonerado')} de toda e qualquer responsabilidade perante ${b.tipo==='divida'?'o credor':'o credor hipotecário'}`;
+      return`${quem} assume integralmente a responsabilidade pelo pagamento do passivo identificado ${onde}, no montante de ${eur(b.passivo)}, obrigando-se a satisfazer a respetiva dívida junto da entidade credora, ficando ${fora.map(x=>comOrd(x)).join(' e ')}, nas relações entre os outorgantes, ${fora.length>1?'desonerados':(fora.length&&femDeCop(fora[0])?'desonerada':'desonerado')} do respetivo pagamento`;   /* ⚠ 04/11/2026: sem o credor no ato, a exoneração perante ele exige o seu consentimento (art. 595.º, n.º 2, CC) */
     }).join('. ')+'.');
   }
 
@@ -5165,7 +5165,7 @@ function comporDCC(){
      e não o saldo da partilha, que a AT tributa. */
   const adjs=cop.map((_,k)=>k).filter(k=>ap.excessoIm[k]>0.005);
   if(adjs.length)
-    numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que, sobre o excesso da quota-parte nos bens imóveis por si adquirido, ${adjs.length>1?`nos valores de ${adjs.map(k=>`${eur(ap.excessoIm[k])} quanto ${comOrd(k,true)}`).join(' e ')}`:`no valor de ${eur(ap.excessoIm[adjs[0]])}`}, liquida${adjs.length>1?'m':''} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':''}, bem como o Imposto do Selo devido nos termos da verba 1.1 da Tabela Geral.`);
+    numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que${v('f-dcc-destino')==='secundaria'?'':` destina${adjs.length>1?'m':''} o imóvel ora adjudicado a sua habitação própria e permanente e que`}, sobre o excesso da quota-parte nos bens imóveis por si adquirido, ${adjs.length>1?`nos valores de ${adjs.map(k=>`${eur(ap.excessoIm[k])} quanto ${comOrd(k,true)}`).join(' e ')}`:`no valor de ${eur(ap.excessoIm[adjs[0]])}`}, liquida${adjs.length>1?'m':''} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':', à taxa aplicável a prédio urbano destinado exclusivamente a habitação própria e permanente'}, bem como o Imposto do Selo devido nos termos da verba 1.1 da Tabela Geral.`);
 
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
   /* A licença de utilização e o certificado energético saíram deste ato: numa
