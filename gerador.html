@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-04.5</span>
+    <span class="page-sub">piloto · v2026-11-04.6</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -727,6 +727,12 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="posterior">Em data posterior à outorga</option>
           <option value="neste">Neste ato</option>
         </select></div>
+      <div id="g-dcc-cheque" style="display:contents">
+        <div class="form-group"><label class="form-label">Cheque sacado sobre</label>
+          <input class="form-input" id="f-dcc-cheque-banco" oninput="atualizar()" placeholder="Ex: CAIXA GERAL DE DEPÓSITOS, S.A."></div>
+        <div class="form-group"><label class="form-label">N.º do cheque</label>
+          <input class="form-input" id="f-dcc-cheque-num" oninput="atualizar()" placeholder="Ex: 1234567890"></div>
+      </div>
       <div class="form-group form-full" style="margin-top:.3rem">
         <div class="toggle-row" style="margin:0">
           <span class="toggle-label" style="font-size:12px">Emitir procuração para liquidação das guias</span>
@@ -5102,7 +5108,11 @@ function comporDCC(){
       if(b.tipo==='divida')
         return`a ${verba(k)} é assumida integralmente ${femDeCop(q)?'pela':'pelo'} ${ordDe(q)} OUTORGANTE;`;   /* 04/11/2026: menos repetição */
       return`${varios?`a ${verba(k)}`:'o bem identificado'} é ${varios?'adjudicada':'adjudicado'} na sua totalidade ${comOrd(q,true)}, que fica a ser ${femDeCop(q)?'dona e legítima possuidora':'dono e legítimo possuidor'} da sua totalidade, com efeitos a partir desta data;`;
-    }).join('\n'));
+    }).join('\n')
+    /* Destino do imóvel declarado logo a seguir à adjudicação (04/11/2026, como a Liliana o escreveu) */
+    +(()=>{const qs=[...new Set(bens.filter(b=>b.tipo==='imovel').map(b=>isNaN(b.adj)?0:b.adj))];if(!qs.length)return'';
+      const hpp=v('f-dcc-destino')!=='secundaria';
+      return '\n'+qs.map(q=>`Declara ${comOrd(q)} que destina o imóvel a ${hpp?'sua habitação própria permanente':'habitação secundária'}.`).join('\n');})());
 
   /* ── MEAÇÕES E PAGAMENTOS ──
      ⚠ Estrutura e redação adaptadas da escritura do notário Paulo Xavier,
@@ -5141,9 +5151,11 @@ function comporDCC(){
     const paga=cop.map((_,k)=>k).filter(k=>ap.dif[k]>0.005);
     if(paga.length){
       const quando=v('f-dcc-tornas-quando')==='neste'?'neste ato':'em data posterior à outorga do presente contrato';
-      linhasPag.push(`As tornas são pagas mediante ${v('f-dcc-tornas-meio')||'cheque bancário'} ${quando}.`);
+      const meio=v('f-dcc-tornas-meio')||'cheque bancário',ehCheque=/cheque/i.test(meio);
+      setDisp('g-dcc-cheque',ehCheque?'contents':'none');
+      linhasPag.push(`As tornas são pagas mediante ${meio} ${quando}${ehCheque?`, sacado sobre ${v('f-dcc-cheque-banco')?(/^caixa/i.test(v('f-dcc-cheque-banco'))?'a ':'o ')+v('f-dcc-cheque-banco'):'o …'}, com o número ${v('f-dcc-cheque-num')||'…'}`:''}.`);
     }
-    linhasPag.push(`Que, nos termos expostos, dão por concluída a presente ${nat.casal?'partilha':'divisão'}.`);
+    /* «dão por concluída» passou para o fim do contrato (04/11/2026) */
     numeros.push(`${num('Pagamentos')}\n`+linhasPag.join('\n'));
   }
 
@@ -5165,8 +5177,9 @@ function comporDCC(){
      e não o saldo da partilha, que a AT tributa. */
   const adjs=cop.map((_,k)=>k).filter(k=>ap.excessoIm[k]>0.005);
   if(adjs.length)
-    numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que${v('f-dcc-destino')==='secundaria'?'':` destina${adjs.length>1?'m':''} o imóvel ora adjudicado a sua habitação própria e permanente e que`}, sobre o excesso da quota-parte nos bens imóveis por si adquirido, ${adjs.length>1?`nos valores de ${adjs.map(k=>`${eur(ap.excessoIm[k])} quanto ${comOrd(k,true)}`).join(' e ')}`:`no valor de ${eur(ap.excessoIm[adjs[0]])}`}, liquida${adjs.length>1?'m':''} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':', à taxa aplicável a prédio urbano destinado exclusivamente a habitação própria e permanente'}, bem como o Imposto do Selo devido nos termos da verba 1.1 da Tabela Geral.`);
+    numeros.push(`${num('IMT e Imposto do Selo')}Declara${adjs.length>1?'m':''} ${adjs.map(k=>comOrd(k)).join(' e ')} que, sobre o excesso da quota-parte nos bens imóveis por si adquirido, ${adjs.length>1?`nos valores de ${adjs.map(k=>`${eur(ap.excessoIm[k])} quanto ${comOrd(k,true)}`).join(' e ')}`:`no valor de ${eur(ap.excessoIm[adjs[0]])}`}, liquida${adjs.length>1?'m':''} o Imposto Municipal sobre as Transmissões Onerosas de Imóveis devido${v('f-dcc-destino')==='secundaria'?', à taxa aplicável a prédio urbano destinado a habitação que não seja própria e permanente':', à taxa aplicável a prédio urbano destinado exclusivamente a habitação própria e permanente'}, bem como o Imposto do Selo devido nos termos da verba 1.1 da Tabela Geral.`);
 
+  if(ap.bens.length&&cop.length)numeros.push(`Que, nos termos expostos, dão por concluída a presente ${nat.casal?'partilha':'divisão'}.`);
   contrato.push({id:'c-numeros',T:'',X:numeros.join('\n')});
   /* A licença de utilização e o certificado energético saíram deste ato: numa
      partilha ou divisão não são exigidos, e os campos deixaram de existir. */
