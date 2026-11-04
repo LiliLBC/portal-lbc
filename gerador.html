@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-04.2</span>
+    <span class="page-sub">piloto · v2026-11-04.3</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6374,8 +6374,10 @@ function nomearBloco(card,nome,desc){
 function naturezaDCC(){
   const bens=lerBens();
   const heranca=v('f-dcc-tipo')==='partilha-heranca';
-  const casal=bens.some(b=>b.origem==='casamento');
-  const comum=bens.some(b=>b.origem==='comum');
+  /* As verbas de dívida não têm «Como foi adquirido» (o campo está escondido e ficava em «casamento»,
+     o que transformava uma divisão de coisa comum em partilha) — não contam (04/11/2026). */
+  const casal=bens.some(b=>b.tipo!=='divida'&&b.origem==='casamento');
+  const comum=bens.some(b=>b.tipo!=='divida'&&b.origem==='comum');
   if(heranca)return{cod:'PARTILHA_H',casal:false,comum:false,
     rot:'Partilha — herdeiros',nome:'PARTILHA'};
   if(casal&&comum)return{cod:'PARTILHA_DCC',casal:true,comum:true,
