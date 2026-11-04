@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-04.6</span>
+    <span class="page-sub">piloto · v2026-11-04.8</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2958,7 +2958,7 @@ function fraseHipAnterior(suj,daBanco,aQuem){
    APB; cada um dá uma alínea na cláusula do preço. O antigo 6.3 (um só APB) continua a
    valer para rascunhos antigos que o tenham ligado. */
 function apbLista(){
-  const l=lerOnus().filter(o=>o.liq==='apb'&&(o.canc==='fisico'||o.canc==='codigo'))
+  const l=(ehTOIC()?[]:lerOnus()).filter(o=>o.liq==='apb'&&(o.canc==='fisico'||o.canc==='codigo'))
     .map(o=>({valor:o['apb-valor'],origem:o['apb-origem'],iban:o['apb-iban'],banco:o['apb-banco']||o.ent,ap:o.ap}));
   if(chk('t-apb'))l.push({valor:v('f-apb-valor'),origem:v('f-apb-origem'),iban:v('f-apb-iban'),banco:v('f-apb-banco')||bancoACancelar(),ap:'',antigo:true});
   return l;
@@ -3278,6 +3278,7 @@ function addOnus(dados,contentor){
           <option value="apb">Transferência ao abrigo do protocolo APB</option>
           <option value="cheque">Cheque bancário</option>
         </select></div>
+      <div class="form-group form-full onus-apb-toic" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">No TOIC, os dados da transferência (montante e contas) preenchem-se uma só vez, no 10.5 · Liquidação em OIC.</div></div>
       <div class="form-group form-full onus-apb" style="display:none;margin-top:.2rem"><div style="font-size:10.5px;color:var(--text-faint)">Entra na cláusula do preço, como alínea: «Na presente data e ao abrigo do protocolo APB, a CAIXA transfere o montante de … da conta dos mutuários com o número …, para a conta com o IBAN …, titulada pelo banco …»</div></div>
       <div class="form-group onus-apb" style="display:none"><label class="form-label">Montante (€)</label>
         <input class="form-input" id="${id}-apb-valor" oninput="atualizar()" placeholder="Ex: 142350,22"></div>
@@ -3374,7 +3375,10 @@ function aplicarOnus(){
     const cancela=c==='fisico'||c==='codigo',lq=document.getElementById(`${b.id}-liq`)?.value||'';
     b.querySelectorAll('.onus-liqsel').forEach(e=>e.style.display=cancela?'block':'none');
     b.querySelectorAll('.onus-liq').forEach(e=>e.style.display=cancela&&lq==='cheque'?'block':'none');
-    b.querySelectorAll('.onus-apb').forEach(e=>e.style.display=cancela&&lq==='apb'?'block':'none');
+    /* TOIC (04/11/2026): a transferência APB pede-se só no 10.5; aqui ficava repetida. */
+    const tc=ehTOIC();
+    b.querySelectorAll('.onus-apb').forEach(e=>e.style.display=cancela&&lq==='apb'&&!tc?'block':'none');
+    b.querySelectorAll('.onus-apb-toic').forEach(e=>e.style.display=cancela&&lq==='apb'&&tc?'block':'none');
   });
 }
 /* Ligado, há ónus; desligado, o imóvel vai livre. */
@@ -4943,9 +4947,11 @@ function comporProcuracaoGuias(mandante){
     {id:'p-procuradora',T:'',X:`constitui sua bastante procuradora ${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, portadora da cédula profissional n.º ${sol.cedula} da Ordem dos Solicitadores e dos Agentes de Execução, com domicílio profissional na ${sol.domicilio},`},
     {id:'p-poderes',T:'',X:`a quem confere poderes para, em seu nome e em sua representação, junto da Autoridade Tributária e Aduaneira e de quaisquer outros serviços, repartições ou entidades competentes, por via presencial ou por via digital, proceder à liquidação de quaisquer impostos e requerer e obter as respetivas guias de pagamento, podendo, para o efeito e dentro destes estritos limites, apresentar e assinar requerimentos e declarações, prestar e solicitar informações e elementos, juntar e levantar documentos, efetuar pagamentos e praticar todos os demais atos necessários ao bom e integral cumprimento do presente mandato.`},
     {id:'p-data',T:'',X:`Évora, ${dPT(v('f-data-ato')).replace(/^(\d{2})\/(\d{2})\/(\d{4})$/,(_,d,m,a)=>`${Number(d)} de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][Number(m)-1]} de ${a}`)}.`},
-    {id:'p-assin',T:'',X:`\n\n${fem?'A Mandante':'O Mandante'}\n(${(mandante.nome||'…').toUpperCase()})`}
+    {id:'p-assin',T:'',X:`${fem?'A Mandante':'O Mandante'}`}
   ];
-  return{termo:[],contrato:blocos,anexo:[],cod:'PROC',rot:'Procuração'};
+  /* 04/11/2026: a procuração leva só a assinatura da mandante — sem termo, sem a folha da entidade
+     autenticadora e sem os nomes dos outros outorgantes. */
+  return{termo:[],contrato:blocos,anexo:[],cod:'PROC',rot:'Procuração',assinaSo:[(mandante.nome||'…').toUpperCase()]};
 }
 /* Descrição de cada bem, para o número que os enumera. */
 function textoBem(b){
@@ -6061,7 +6067,7 @@ function render(){
       +(d.termo&&d.termo.length?`<div class="termo-pagina">`+seq(d.termo)+assin+`</div><hr class="quebra-pagina">`:'')
       +(R.cpcv&&v('f-pcv-resumo')!=='nao'?resumoCPCVHTML():(R.cpcv?`<div style="text-align:center;font-weight:700;margin-bottom:.8rem">CONTRATO DE PROMESSA DE COMPRA E VENDA SOBRE IMÓVEL</div>`:''))
       +seq(d.contrato)
-      +(R.cpcv?assinCPCVHTML():(d.termo&&d.termo.length?'':assin))
+      +(R.cpcv?assinCPCVHTML():(d.assinaSo?d.assinaSo.map(n=>`<div style="margin-top:1.4rem">________________________________________<br>${esc(n)}</div>`).join(''):(d.termo&&d.termo.length?'':assin)))
       +((d.anexo&&d.anexo.length)?`<hr class="quebra-pagina">`+seq(d.anexo):'')
     ).join('');
   const colarTexto=el=>el.addEventListener('paste',e=>{
@@ -6722,6 +6728,16 @@ function funilMH(){
   {const gIS=document.getElementById('f-mh-calculo-is')?.closest('.form-group');if(gIS)gIS.style.display=contratoMH()==='acc'?'none':'';}
   if(conexo)encheSelo('f-uno-calculo-is','nota-is-uno','f-uno',false);
   setDisp('blk-oic',toic?'block':'none');
+  /* Um só sítio para o APB no TOIC (04/11/2026): o que estiver no ónus passa
+     para o 10.5, só para campos vazios — o que escreveres no 10.5 prevalece. */
+  if(toic){
+    const oa=lerOnus().find(o=>o.liq==='apb'&&(o.canc==='fisico'||o.canc==='codigo'));
+    if(oa){
+      if(!v('f-oic-forma'))setProp('f-oic-forma','value','apb');
+      [['f-oic-apb-valor','apb-valor'],['f-oic-apb-origem','apb-origem'],['f-oic-apb-destino','apb-iban']]
+        .forEach(([f,k])=>{if(!v(f)&&oa[k])setProp(f,'value',oa[k]);});
+    }
+  }
   const fo=v('f-oic-forma');
   document.querySelectorAll('.oic-apb').forEach(e=>e.style.display=fo==='apb'?'block':'none');
   document.querySelectorAll('.oic-chq').forEach(e=>e.style.display=fo==='cheque'?'block':'none');
@@ -8049,7 +8065,8 @@ function blocosFinais(i){
     return[...partes,...cadeiaDados(b.id)];
   });
   return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temTermo:termo.length>0,temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||''),
-    ...(()=>{const a=signatarios();return{AssinTermo:a,AssinContrato:a,temAssin:a.length>0};})()};
+    ...(()=>{if(D.assinaSo)return{AssinTermo:[],AssinContrato:D.assinaSo.map(n=>({Assin:n})),temAssin:true,Assin_Nome:'',Assin_Cargo:''};
+      const a=signatarios();return{AssinTermo:a,AssinContrato:a,temAssin:a.length>0};})()};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
@@ -8208,6 +8225,11 @@ async function gerarWord(){
       const zipI=new (window.PizZip)(buf);
       const docI=new DocxClass(zipI,{paragraphLoop:true,linebreaks:true,nullGetter:()=>''});
       docI.render(blocosFinais(i));
+      if(R0.docs&&R0.docs[i]&&R0.docs[i].assinaSo){try{
+        const z=docI.getZip(),xml=z.file('word/document.xml').asText();
+        const ini=xml.indexOf('<w:body>')+'<w:body>'.length,sp=xml.indexOf('<w:sectPr',ini),fimP=sp>0?xml.indexOf('</w:p>',sp):-1;
+        if(ini>8&&fimP>0&&xml.indexOf('<w:sectPr',fimP)>0)z.file('word/document.xml',xml.slice(0,ini)+xml.slice(fimP+6));
+      }catch(e){console.warn('[procuração] não tirei a folha do termo',e);}}
       const blob=docI.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const cod=(R0.docs&&R0.docs[i]&&R0.docs[i].cod)||tipoDeduzido().cod;
       const nomeFich=`${cod}_${sufNome}`.replace(/_+$/,'')+'.docx';
