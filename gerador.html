@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-03.1</span>
+    <span class="page-sub">piloto · v2026-11-04.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -621,6 +621,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.55rem" id="sub-bens-int"></div>
       <div id="bens-container"></div>
       <button class="add-btn" type="button" onclick="addBem();atualizar()" id="btn-add-bem">+ Acrescentar bem</button>
+      <button class="add-btn" type="button" onclick="addBem({tipo:'divida'});atualizar()" id="btn-add-divida" title="Dívida que onera os bens (ex.: crédito à habitação) — credor, montante, AP. da hipoteca e quem a assume">+ Acrescentar dívida (passivo)</button>
     </div>
   </div>
 
@@ -5771,7 +5772,8 @@ function compor(){
 
   /* ── CONTRATO ── */
   const contrato=[];
-  contrato.push({id:'c-cab',T:'COMPRA E VENDA',X:''});
+  /* Com mútuo e hipoteca o título tem de dizer os dois atos (04/11/2026 — a falta deu um suprimento). */
+  contrato.push({id:'c-cab',T:ehCVMH?'COMPRA E VENDA E MÚTUO COM HIPOTECA':'COMPRA E VENDA',X:''});
   /* Os mesmos títulos do termo — PRIMEIROS, SEGUNDOS, TERCEIRA, QUARTOS —, com
      a identificação simplificada por baixo. Sem eles não se sabe quem é quem. */
   contrato.push({id:'c-primeiro',T:v('f-desig-vend')||'PRIMEIRO',X:txtPrimeiroCurto,negrito:negritoVend});
@@ -6400,7 +6402,7 @@ function funilDoacao(){
   setProp('sub-bens','textContent','O que se doa, e a quem');
   setProp('ttl-bens-int','textContent','Bens doados');
   setProp('sub-bens-int','textContent','Cada bem leva o seu valor atribuído e a quem é doado. Não atribuindo valor, o Imposto do Selo calcula-se sobre o VPT.');
-  setProp('btn-add-bem','textContent','+ Acrescentar bem doado');
+  setProp('btn-add-bem','textContent','+ Acrescentar bem doado');setDisp('btn-add-divida','none');
   renumerarVerbas();
   if(!document.querySelectorAll('.bem-block').length)addBem();
   {
@@ -6455,7 +6457,7 @@ function funilDCC(){
   setProp('sub-bens','textContent','O que se divide, e a quem é adjudicado');
   setProp('ttl-bens-int','textContent','Bens a dividir');
   setProp('sub-bens-int','textContent','Cada bem leva o seu valor atribuído, a dívida que o onera e a quem é adjudicado. Sem dívida, deixa a zero.');
-  setProp('btn-add-bem','textContent','+ Acrescentar bem');
+  setProp('btn-add-bem','textContent','+ Acrescentar bem');setDisp('btn-add-divida','');
   const ts=document.getElementById('t-trato-suc');
   if(ts&&ts.closest('.cond-block'))ts.closest('.cond-block').style.display='';
   ['f-desig-vend'].forEach(id=>{const g=document.getElementById(id);
