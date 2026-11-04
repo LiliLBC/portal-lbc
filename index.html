@@ -12387,6 +12387,11 @@ function avCronometro(i){
   return `<span title="${tit}" style="border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;${cor}">⏱ ${avDuracaoTxt(ms)}${parado?' ✓':''}</span>`;
 }
 function avRenderLista(lista){
+  /* Do mais recente para o mais antigo (04/11/2026): data de início, depois hora de entrada, depois o mais
+     recentemente criado; os que não têm data vão para o fim. */
+  lista=[...lista].sort((a,b)=>{const da=String(a[AP.inicio]||'').slice(0,10),db=String(b[AP.inicio]||'').slice(0,10);
+    if(!da!==!db)return da?-1:1;
+    return db.localeCompare(da)||String(b[AP.hora]||'').localeCompare(String(a[AP.hora]||''))||(parseInt(b.id)||0)-(parseInt(a.id)||0);});
   document.getElementById('av-loading').style.display='none';
   const el=document.getElementById('av-list');
   el.style.display='block';
