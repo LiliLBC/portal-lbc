@@ -10973,7 +10973,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
      parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
   const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
-  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio;
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio&&!d.crono;
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 
@@ -12309,8 +12309,11 @@ async function carregarAvencas(){
     const sel=Object.values(AP).join(',');
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items?$expand=fields($select=${sel})&$top=300`);
     todosProcessosAv=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    /* Ciclos do cronómetro (05/11/2026) vivem nas Etiquetas: carregar antes de pintar. */
+    try{if(window.etqDadoLer)await etqDadoLer('AVENCAS','0','crono');}catch(_){}
     filtroEstadoAv='activos'; // padrão: Em curso ao carregar
     avFiltrar();
+    if(window.avRepararTempos)window.avRepararTempos(todosProcessosAv).catch(e=>console.warn('[Cronómetro] reparação:',e));
   }catch(e){document.getElementById('av-loading').innerHTML=`<div class="notice notice-error">Erro: ${e.message}</div>`;}
 }
 
@@ -12369,6 +12372,45 @@ function avInicioMs(i){
   const t=new Date(`${dia}T${hora}:00`).getTime();
   return isNaN(t)?null:t;
 }
+/* ── Ciclos do cronómetro (05/11/2026) ──
+   Conta-se só o tempo em que a análise está do lado da LBC: da entrada do e-mail
+   à 1.ª conclusão e, se o processo for REABERTO, da reabertura à nova conclusão.
+   Corrigir um relatório já concluído sem reabrir não volta a contar.
+   Guarda-se nas Etiquetas (AVENCAS|id, campo «crono»): {ciclos:[{entrada,enviado}], reaberto}. */
+function avEhAnaliseRemax(i){return i&&i[AP.fornecedor]==='REMAX'&&!!i[AP.loja]&&/^AN[AÁ]LISE$/i.test(i[AP.servico]||'');}
+/* 1.ª publicação, lida das notas («[05/11/2026, 11:39] Resultado da análise publicado…»). */
+function avPublicacoesNotas(i){
+  const re=/\[(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})\]\s*Resultado da análise publicado/g;const out=[];let m;
+  const t=String(i[AP.notas]||'');while((m=re.exec(t))){const d=new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5]);if(!isNaN(d))out.push(d.toISOString());}
+  return out.sort();
+}
+function avCronoGuardado(i){try{return window.etqDadoSync?etqDadoSync('AVENCAS',i.id,'crono')||null:null;}catch(_){return null;}}
+/* Ciclos fechados conhecidos: os guardados; senão, os que se deduzem do histórico. */
+function avCiclosBase(i){
+  const g=avCronoGuardado(i);
+  if(g&&Array.isArray(g.ciclos)&&g.ciclos.length)return g.ciclos;
+  const ini=avInicioMs(i);if(ini==null)return [];
+  const pubs=avPublicacoesNotas(i);
+  if(pubs.length)return [{entrada:new Date(ini).toISOString(),enviado:pubs[0]}];
+  if((i[AP.estado]==='Concluído')&&i[AP.conclusao])return [{entrada:new Date(ini).toISOString(),enviado:String(i[AP.conclusao]).substring(0,10)+'T12:00:00'}];
+  return [];
+}
+async function avCronoGravar(i,crono){
+  if(!window.etqDadoGravar)return;
+  try{await etqDadoGravar('AVENCAS',i.id,i[AP.titulo]||('Avença '+i.id),'crono',crono);}catch(e){console.warn('[Cronómetro]',e);}
+}
+/* Chamado quando o estado muda (painel). De Concluído para outro → reabre; para Concluído → fecha o ciclo aberto. */
+async function avCronoMudouEstado(i,antes,depois){
+  if(!avEhAnaliseRemax(i)||antes===depois)return;
+  const g=avCronoGuardado(i)||{};
+  const base=avCiclosBase({...i,[AP.estado]:antes});
+  if(antes==='Concluído'&&depois!=='Concluído'&&depois!=='Cancelado'){
+    if(g.reaberto)return;
+    await avCronoGravar(i,{ciclos:base,reaberto:new Date().toISOString()});
+  }else if(depois==='Concluído'&&g.reaberto){
+    await avCronoGravar(i,{ciclos:[...base,{entrada:g.reaberto,enviado:new Date().toISOString()}],reaberto:null});
+  }
+}
 function avCronometro(i){
   if(i[AP.fornecedor]!=='REMAX'||!i[AP.loja])return '';
   if(!/^AN[AÁ]LISE$/i.test(i[AP.servico]||''))return '';
@@ -12376,15 +12418,25 @@ function avCronometro(i){
   const estado=i[AP.estado]||'Em curso';
   if(estado==='Cancelado')return '';
   const parado=estado==='Concluído';
-  let fim=Date.now();
-  if(parado){
-    if(!i[AP.conclusao])return '';
-    fim=new Date(String(i[AP.conclusao]).substring(0,10)+'T12:00:00').getTime();
+  const g=avCronoGuardado(i)||{};
+  const ciclos=avCiclosBase(i);
+  const dur=c=>Math.max(0,Date.parse(c.enviado)-Date.parse(c.entrada))||0;
+  let ms,atual,tit;
+  if(ciclos.length&&(parado||g.reaberto)){
+    /* Soma dos ciclos; reaberto, soma também o tempo desde a reabertura. */
+    atual=!parado&&g.reaberto?Date.now()-Date.parse(g.reaberto):0;
+    ms=ciclos.reduce((t,c)=>t+dur(c),0)+atual;
+    const partes=ciclos.map((c,k)=>`${k+1}.º: ${avDuracaoTxt(dur(c))}`);if(atual)partes.push(`reaberto: ${avDuracaoTxt(atual)}`);
+    tit=(parado?'Tempo de trabalho da LBC':'A contar desde a reabertura')+(partes.length>1||atual?' — '+partes.join(' · '):'');
+  }else{
+    let fim=Date.now();
+    if(parado){if(!i[AP.conclusao])return '';fim=new Date(String(i[AP.conclusao]).substring(0,10)+'T12:00:00').getTime();}
+    ms=fim-ini;atual=ms;tit=parado?'Tempo até à conclusão':'A contar desde a entrada do e-mail';
   }
-  const ms=fim-ini,h=ms/3600000;
+  const h=(parado?ms:atual)/3600000;
   const cor=parado?'background:var(--surface2);color:var(--text-muted)':h<=24?'background:#E3F2E9;color:#1F5E3A':h<=72?'background:#FBEFD5;color:#7A4F0C':'background:#FBE3E1;color:#8E2A22';
-  const tit=parado?'Tempo até à conclusão':'A contar desde a entrada do e-mail';
-  return `<span title="${tit}" style="border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;${cor}">⏱ ${avDuracaoTxt(ms)}${parado?' ✓':''}</span>`;
+  const reab=ciclos.length>1||(g.reaberto&&!parado);
+  return `<span title="${tit}" style="border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;${cor}">⏱ ${avDuracaoTxt(ms)}${reab?' ↻':''}${parado?' ✓':''}</span>`;
 }
 function avRenderLista(lista){
   /* Do mais recente para o mais antigo (04/11/2026): data de início, depois hora de entrada, depois o mais
@@ -12730,7 +12782,9 @@ async function guardarProcessoAvenca(){
       // Editar processo existente
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items/${avPainelItemId}/fields`,body);
       const idx=todosProcessosAv.findIndex(i=>i.id===avPainelItemId);
+      const estAntes=idx>-1?(todosProcessosAv[idx][AP.estado]||'Em curso'):null;
       if(idx>-1)Object.assign(todosProcessosAv[idx],body);
+      if(idx>-1)await avCronoMudouEstado(todosProcessosAv[idx],estAntes,body[AP.estado]);
       showToast('Guardado!','success');
     }else{
       // Novo processo — criar pasta na biblioteca AVENCAS primeiro (obrigatório)
@@ -19125,7 +19179,7 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     d.showModal();pintarResultado();
     /* Já publicado antes? Repõe o texto para corrigir. */
     const nota=d.querySelector('#anr-nota');nota.textContent='A ver se já há resultado publicado…';
-    const ant=await lerPublicado(i);
+    const ant=await lerPublicado(i);i._ant=ant||null;
     if(ant&&document.getElementById('anr-dlg')===d){
       d.querySelector('#anr-ok').value=(ant.conforme||[]).join('\n');d.querySelector('#anr-int').value=(ant.complemento||[]).join('\n');
       d.querySelector('#anr-imp').value=(ant.impeditivo||[]).join('\n');i._rec=ant.recomendacoes||[];
@@ -19146,6 +19200,15 @@ ${nota?`<div style="margin:12px 0;padding:10px 12px;border-left:4px solid #C9821
     const i=ATUAL;if(!i)return;const n=document.getElementById('anr-nota'),btn=document.getElementById('anr-gravar');
     const d=dados();if(!d.conforme.length&&!d.complemento.length&&!d.impeditivo.length){n.textContent='Escreva pelo menos um ponto num dos três campos.';return;}
     const quando=new Date(),p=pacote(quando);
+    /* Ciclos (05/11/2026): só conta o tempo do lado da LBC. Reaberto → novo ciclo desde a
+       reabertura; já concluído e só corrigido → o tempo não muda, nem a data de conclusão. */
+    const gC=avCronoGuardado(i)||{},ant=i._ant;
+    const prev=(gC.ciclos&&gC.ciclos.length)?gC.ciclos:(ant&&Array.isArray(ant.ciclos)&&ant.ciclos.length)?ant.ciclos
+      :(avPublicacoesNotas(i).length?avCiclosBase(i):(ant&&ant.entrada&&ant.enviado?[{entrada:ant.entrada,enviado:ant.enviado}]:[]));
+    const soCorrige=!!prev.length&&!gC.reaberto;
+    const ciclos=!prev.length?(p.entrada?[{entrada:p.entrada,enviado:p.enviado}]:[])
+      :gC.reaberto?[...prev,{entrada:gC.reaberto,enviado:p.enviado}]:prev;
+    if(ciclos.length){p.ciclos=ciclos;p.entrada=ciclos[0].entrada;}
     const nomePDF=`${`${p.imovel}${p.cidade?', '+p.cidade:''}`.replace(/[\\/:*?"<>|#%]/g,'').replace(/\s+/g,' ').trim().slice(0,90)} – Análise ${quando.toISOString().slice(0,10)}.pdf`;
     const extra=String(document.getElementById('anr-extra').value||'').split(/[;,\s]+/).filter(Boolean);
     if(extra.some(e=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))){n.textContent='Verifique o «Outro e-mail».';return;}
@@ -19185,13 +19248,35 @@ ${lista('✕ Impeditivo de escritura',p.impeditivo,'#8E2A22')}${lista('⚠ Recom
         const dpt=quando.toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'});
         const rot=d.resultado==='impeditivo'?'✕ impeditivo de escritura':d.resultado==='complemento'?'⚠ recomendação':'✓ OK';
         await graphPatch(`${base}/fields`,{[AP.notas]:[i[AP.notas]||'',`[${dpt}] Resultado da análise publicado na Área REMAX (${rot})${mail?' e enviado por e-mail a '+para.join(', '):''} — ${p.porLBC}`].filter(Boolean).join('\n'),
-          [AP.estado]:'Concluído',[AP.conclusao]:quando.toISOString().slice(0,10)+'T12:00:00Z'});}
+          [AP.estado]:'Concluído',...(soCorrige&&i[AP.conclusao]?{}:{[AP.conclusao]:quando.toISOString().slice(0,10)+'T12:00:00Z'})});}
       catch(e){console.warn('[Análise] linha do processo:',e);}
+      if(ciclos.length)await avCronoGravar(i,{ciclos,reaberto:null});
       anrFechar();showToast(`Resultado gravado na pasta e publicado na Área REMAX (${i[AP.loja]})${mail?' · e-mail enviado':''}`,'success');
       if(typeof carregarAvencas==='function')carregarAvencas();
     }catch(e){n.textContent=(publicado?'':'Erro: ')+e.message;btn.disabled=false;}
   };
   window._anrTeste={nomeAnalise,idAnalise,linhas,pdfRelatorioREMAX};
+  /* Reparação (05/11/2026): análises corrigidas depois de concluídas, antes dos ciclos,
+     ficaram a contar da entrada à última publicação. Repõe-se o tempo até à 1.ª
+     publicação (das notas), na Área REMAX e nas Etiquetas. Uma vez por processo. */
+  let reparando=false;
+  window.avRepararTempos=async lista=>{
+    if(reparando)return;reparando=true;
+    try{for(const i of lista||[]){
+      if(!ehAnaliseRemax(i)||i[AP.estado]!=='Concluído')continue;
+      const g=avCronoGuardado(i);if(g&&Array.isArray(g.ciclos)&&g.ciclos.length)continue;
+      const pubs=avPublicacoesNotas(i);if(pubs.length<2)continue;
+      const ciclos=avCiclosBase(i);if(!ciclos.length)continue;
+      const d=await pdrive();await renovarToken();
+      const url=`${GRAPH_BASE}/drives/${d}/root:/${enc(`${i[AP.loja]}/Analises/${idAnalise(i)}.json`)}:/content`;
+      const r=await fetch(url,{headers:H()});
+      if(r.ok){const p=await r.json();
+        if(!Array.isArray(p.ciclos)||!p.ciclos.length){p.ciclos=ciclos;p.entrada=ciclos[0].entrada;
+          const w=await fetch(url,{method:'PUT',headers:{...H(),'Content-Type':'application/json'},body:JSON.stringify(p,null,2)});
+          if(!w.ok){console.warn('[Cronómetro] não reparei',idAnalise(i),w.status);continue;}}}
+      await avCronoGravar(i,{ciclos,reaberto:null});
+    }}finally{reparando=false;}
+  };
 })();
 </script>
 </body>
