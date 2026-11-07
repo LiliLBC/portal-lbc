@@ -12527,7 +12527,9 @@ async function avResolverPasta(i){
     if(!it){if(!AV_SUBS[forn]){try{const d=await graphGetAll(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${encodeURIComponent(forn)}:/children?$top=500&$select=id,name,folder`);AV_SUBS[forn]=(d.value||[]).filter(x=>x.folder&&!/^\d{8}\b/.test(x.name)).map(x=>x.name);}catch(_){AV_SUBS[forn]=[];}}
       for(const sub of AV_SUBS[forn]){if(sub===i[AP.loja])continue;it=await porCaminho(encodeURIComponent(forn)+'/'+encodeURIComponent(sub));if(it){loja=sub;break;}}}}
   if(!it){try{const r=await graphGet(`${GRAPH_BASE}/drives/${driveIdAvencas}/root/search(q='${encodeURIComponent(nome.replace(/'/g,"''"))}')?$select=id,name,folder,webUrl,parentReference&$top=50`);
-    it=(r.value||[]).find(x=>x.folder&&x.name.trim().toLowerCase()===nome.trim().toLowerCase())||null;
+    /* (07/11/2026) Só pastas do mesmo fornecedor: uma pasta com o mesmo nome noutro sítio não serve. */
+    const doForn=x=>{if(!forn)return true;const pp=decodeURIComponent(((x.parentReference||{}).path||'').split('root:')[1]||'');return pp.split('/').filter(Boolean)[0]===forn;};
+    it=(r.value||[]).find(x=>x.folder&&x.name.trim().toLowerCase()===nome.trim().toLowerCase()&&doForn(x))||null;
     if(it){const pp=decodeURIComponent(((it.parentReference||{}).path||'').split('root:')[1]||'');const seg=pp.split('/').filter(Boolean);if(seg[0]===forn&&seg[1])loja=seg[1];}}catch(_){}}
   if(!it)return null;
   AV_PASTA_ID[i.id]=it;
@@ -12545,7 +12547,7 @@ async function avLigResolver(lista){
     await renovarToken();
     for(let k=0;k<falta.length;k+=20){
       const lote=falta.slice(k,k+20);
-      const requests=lote.map((i,n)=>({id:String(n),method:'GET',url:`/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nomeDe(i))}?$select=id,name,webUrl`}));
+      const requests=lote.map((i,n)=>({id:String(n),method:'GET',url:`/drives/${driveIdAvencas}/root:/${avSubPath(i[AP.fornecedor],i[AP.loja])}/${encodeURIComponent(nomeDe(i))}?$select=id,name,webUrl,parentReference`}));
       const r=await fetch(`${GRAPH_BASE}/$batch`,{method:'POST',headers:{'Authorization':'Bearer '+graphToken,'Content-Type':'application/json'},body:JSON.stringify({requests})});
       if(!r.ok)continue;
       const j=await r.json();
@@ -12682,7 +12684,8 @@ function abrirPainelAvenca(itemId){
     fornecedor:i[AP.fornecedor]||'',
     loja:i[AP.loja]||'',
     titulo:i[AP.titulo]||'',
-    nomePasta:i[AP.pasta]?decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' '):''
+    nomePasta:i[AP.pasta]?decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' '):'',
+    avId:i.id
   };
   document.getElementById('av-overlay').style.display='block';
   document.getElementById('av-painel').classList.add('open');
@@ -12705,7 +12708,8 @@ async function gerarCPCVDaListagem(itemId){
     fornecedor:i[AP.fornecedor]||'',
     loja:i[AP.loja]||'',
     titulo:i[AP.titulo]||'',
-    nomePasta:decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' ')
+    nomePasta:decodeURIComponent(i[AP.pasta].split('/').pop()||'').replace(/%20/g,' '),
+    avId:i.id
   };
   await abrirCPCVRemax(dados,null);
 }
@@ -12717,11 +12721,15 @@ async function abrirCPCVRemax(dados,btn){
   try{
     if(!driveIdAvencas)throw new Error('Biblioteca AVENCAS não disponível');
     await renovarToken();
+    /* (07/11/2026) Pela avença, a mesma pasta que o botão «Pasta» abre. */
+    const av=dados.avId&&typeof todosProcessosAv!=='undefined'?todosProcessosAv.find(r=>String(r.id)===String(dados.avId)):null;
+    let item=av?await avResolverPasta(av):null;
+    if(!item){
     const resolveRes=await fetch(`${GRAPH_BASE}/drives/${driveIdAvencas}/root:/${avSubPath(dados.fornecedor,dados.loja)}/${encodeURIComponent(dados.nomePasta)}`,{
       headers:{'Authorization':'Bearer '+graphToken}
     });
     if(!resolveRes.ok)throw new Error(`Não consegui localizar pasta ${dados.fornecedor}${dados.loja?'/'+dados.loja:''}/${dados.nomePasta} (${resolveRes.status})`);
-    const item=await resolveRes.json();
+    item=await resolveRes.json();}
     /* (25/10/2026) O CPCV faz-se no gerador (ato 9), já com a pasta da avença. */
     lbcGuardarSessao();
     lbcAbrir(`lbc-gerador-${item.id}`,`gerador.html?pasta=${encodeURIComponent(driveIdAvencas+'|'+item.id)}&nome=${encodeURIComponent(item.name||dados.nomePasta)}&ato=cpcv&titulo=${encodeURIComponent(dados.titulo||'')}`);
@@ -18073,8 +18081,9 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
   window.cpcvEstado=estadoCPCV;
 
   /* pasta do cliente e cópias */
-  async function pastaCliente(i){const nome=decodeURIComponent(i[AP.pasta].split('/').pop()||'');
-    const m=await meta(driveIdAvencas,`${i[AP.fornecedor]}/${i[AP.loja]}/${nome}`);if(!m)throw new Error('Não encontrei a pasta do processo.');return m;}
+  /* (07/11/2026) A mesma pasta que o botão «Pasta» abre: antes ia por caminho (fornecedor/loja/nome)
+     e o «Pasta» pelo resolvedor, e podiam não coincidir. */
+  async function pastaCliente(i){const m=await avResolverPasta(i);if(!m||!m.id)throw new Error('Não encontrei a pasta do processo. Use «Alterar» no processo para a escolher.');return m;}
   async function copias(pasta){const sub=(await filhos(driveIdAvencas,pasta.id)).find(x=>x.folder&&x.name==='CPCV');
     if(!sub)return[];return(await filhos(driveIdAvencas,sub.id)).filter(x=>x.file&&/\.v(\d+)\.docx$/i.test(x.name))
       .map(x=>({...x,n:+x.name.match(/\.v(\d+)\.docx$/i)[1]})).sort((a,b)=>a.n-b.n);}
@@ -18130,6 +18139,9 @@ if(document.readyState!=='loading')instalar();else document.addEventListener('DO
         <div class="modal-box-title" id="cpcv-tit">CPCV · ${escHtml(i[AP.titulo]||'')} <span style="font-weight:400;color:var(--text-muted)">· Loja de ${escHtml(i[AP.loja])}</span></div>
         <div style="font-size:12.5px;margin-bottom:.8rem">${!est?'✏ Em edição — ainda não enviado à loja.':(s=>s.estado==='concluido'?(s.concluidoPor==='REMAX'?`✓ Concluído pela loja — versão final carregada em ${dh(s.desde)}${s.por?' por '+escHtml(s.por):''}.`:`✓ Concluído — enviado à loja em ${dh(s.desde)}. A loja pode descarregar e trabalhar.`):`✏ Em edição na LBC desde ${dh(s.desde)}${s.por?' (versão de '+escHtml(s.por)+')':''}. A loja não deve descarregar até voltar a concluir.`)(estadoCPCV(est))}</div>
         <div style="display:flex;flex-direction:column;gap:.55rem;font-size:13px">
+          <div style="font-size:12px;color:var(--text-muted);background:var(--surface2);border-radius:8px;padding:.45rem .65rem">📂 Pasta do processo: <b style="color:var(--text)">${escHtml(pasta.name||'')}</b>${(()=>{const pp=decodeURIComponent(((pasta.parentReference||{}).path||'').split('root:')[1]||'').split('/').filter(Boolean).join(' › ');return pp?' · em '+escHtml(pp):'';})()}
+            ${pasta.webUrl?`<button class="btn btn-sm" style="margin-left:.4rem" onclick="lbcAbrirPastaJanela(embedSP(decodeURIComponent('${encodeURIComponent(pasta.webUrl)}')),decodeURIComponent('${encodeURIComponent(pasta.name||'')}'))">Abrir</button>`:''}
+            <div style="font-size:11px;margin-top:2px">É aqui que ficam os Word que carregar e as cópias vN (subpasta «CPCV»).</div></div>
           <b>Concluir a versão da LBC e enviar à loja</b>
           ${wds.length?`<select class="form-select" id="cpcv-fich" onchange="document.getElementById('cpcv-pc-wrap').style.display=this.value?'none':''">${wds.map(x=>`<option value="${x.id}">${escHtml(x.name)} · alterado ${dh(x.lastModifiedDateTime)}</option>`).join('')}<option value="">— escolher do computador —</option></select>`:'<input type="hidden" id="cpcv-fich" value="">'}
           <div id="cpcv-pc-wrap" style="${wds.length?'display:none':''}">${wds.length?'':'<span style="font-size:12px;color:var(--text-muted)">Não há Word na pasta do processo — escolha o ficheiro no computador: </span>'}<input type="file" id="cpcv-fich-pc" accept=".docx"></div>
