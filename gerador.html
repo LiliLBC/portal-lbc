@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-09.1</span>
+    <span class="page-sub">piloto · v2026-11-09.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -470,6 +470,36 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     </div>
     <div id="compradores-container"></div>
     <button class="add-btn" type="button" onclick="addComprador()">+ Adicionar comprador</button>
+    <!-- LOCAÇÃO FINANCEIRA · locatário e reconhecimento (09/11/2026) — só com a CAIXA compradora -->
+    <div class="cond-block" id="g-locatario" style="display:none;margin-top:.7rem">
+      <div class="cond-block-title">Locação financeira — locatário e reconhecimento de assinaturas</div>
+      <div style="font-size:11px;color:var(--text-faint);margin-bottom:.45rem">Entra na cláusula do destino do imóvel e na folha do reconhecimento de assinaturas do contrato de locação.</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Locatário</label>
+          <select class="form-select" id="f-loc-tipo" onchange="locFin();atualizar()">
+            <option value="sociedade">Sociedade</option><option value="particular">Particular</option></select></div>
+        <div class="form-group"><label class="form-label">N.º do contrato de locação financeira</label>
+          <input class="form-input" id="f-loc-num" oninput="atualizar()" placeholder="Ex: 100174045"></div>
+        <div class="form-group form-full"><label class="form-label">Nome / denominação</label>
+          <input class="form-input" id="f-loc-nome" oninput="atualizar()" style="text-transform:uppercase"></div>
+        <div class="form-group"><label class="form-label">NIPC / NIF</label>
+          <input class="form-input" id="f-loc-nipc" oninput="atualizar()"></div>
+        <div class="form-group"><label class="form-label">Sede / morada</label>
+          <input class="form-input" id="f-loc-sede" oninput="atualizar()"></div>
+        <div class="form-group loc-soc"><label class="form-label">Certidão permanente — código</label>
+          <input class="form-input" id="f-loc-crc" oninput="atualizar()" placeholder="Ex: 1234-5678-9012"></div>
+        <div class="form-group loc-soc"><label class="form-label">Válida até</label>
+          <input type="date" class="form-input" id="f-loc-crc-val" onchange="atualizar()"></div>
+        <div class="form-group loc-soc"><label class="form-label">Ata n.º <span style="font-weight:400;color:var(--text-faint)">(se houver)</span></label>
+          <input class="form-input" id="f-loc-ata-num" oninput="atualizar()"></div>
+        <div class="form-group loc-soc"><label class="form-label">Data da ata</label>
+          <input type="date" class="form-input" id="f-loc-ata-data" onchange="atualizar()"></div>
+      </div>
+      <div style="font-size:11.5px;font-weight:600;margin:.6rem 0 .3rem">Quem assina pelo locatário</div>
+      <div id="loc-sigs"></div>
+      <input type="hidden" id="f-loc-sigs" value="">
+      <button class="add-btn" type="button" onclick="locSigAdd();locSigGuardar()">+ Adicionar signatário</button>
+    </div>
   </div>
 
   <div class="section-card" id="card-b5">
@@ -2127,6 +2157,14 @@ function procSolCGD(q){
   /* A CAIXA como compradora é a entrada do leasing: cita-se sempre a procuração do leasing. */
   const s=SOLICITADORAS[q]||{};
   return s.codProcuracaoLeasing||s.procuracaoLeasing||LEASING_PROC_LBC[q]||'';
+}
+/* Código e data da procuração de quem representa a CAIXA. Se o código vier sem data (p. ex. do
+   CONFIG), vai-se buscar a data e hora conhecidas dessa solicitadora. */
+function procCGDDe(o){
+  const q=o&&o['cgd-quem'];
+  const pc=partesProcuracao((o&&o['cgd-proc-cod'])||(q?procSolCGD(q):CGD_PROCURACAO)||'');
+  if(q&&!pc.data){const f=partesProcuracao(LEASING_PROC_LBC[q]||'');if(f.cod&&f.cod===pc.cod)pc.data=f.data;}
+  return pc;
 }
 function onCgdQuem(id,mudou){
   const q=document.getElementById(`${id}-cgd-quem`)?.value||'';
@@ -5700,7 +5738,7 @@ function compor(){
      Redação fixada pela Liliana: junta-se à linha da identidade. */
   const cgdOut=[...vend,...comps].find(o=>o.tipo==='cgd');
   const linhaCGD=cgdOut&&cgdOut['cgd-quem']
-    ? (()=>{const pc=partesProcuracao(cgdOut['cgd-proc-cod']||procSolCGD(cgdOut['cgd-quem']));
+    ? (()=>{const pc=procCGDDe(cgdOut);
         return ` e a qualidade e poderes de quem representa a CAIXA pela procuração, conjugada com a consulta do substabelecimento, depositadas em www.procuracoesonline.mj.pt através do código de acesso ${pc.cod||'…'}${pc.data?`, de ${pc.data}`:''}`;})()
     : cgdOut
     ? ` bem como a qualidade e poderes dos outorgantes em representação da CAIXA, mediante consulta da procuração depositada em www.procuracoesonline.mj.pt através dos códigos de acesso ${cgdOut['cgd-proc-cod']||'…'} nos termos ${cgdOut['cgd-proc-poderes']||'…'}`
@@ -5719,7 +5757,7 @@ function compor(){
      Faltava por inteiro neste ramo: a CAIXA entra como Terceira Contratante e
      os seus poderes não eram verificados em lado nenhum. Mesma redação do
      tronco do mútuo. */
-  const linhaCertidaoCGD=(ehCVMH&&v('f-mutuante')==='cgd')
+  const linhaCertidaoCGD=((ehCVMH&&v('f-mutuante')==='cgd')||cgdOut)
     ? `— Os poderes de representação da ${bancoAtual().denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}${bancoAtual().rcbe?', verificando-se ainda a exclusão da '+bancoAtual().denom+' do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do referido Regime Jurídico':''};`
     : '';
   /* A linha do município já cobre a identidade dos outorgantes, pelo que
@@ -5974,7 +6012,10 @@ function compor(){
      cujo destino foi preenchido (⚠ por validar, 22/10/2026). */
   {
     const ex=lerPrediosExtra();
-    if(!ex.length){
+    /* Com a CAIXA compradora (locação financeira) o destino é o da cláusula própria, mais abaixo:
+       não sai duas vezes (09/11/2026). */
+    if(compCGD){}
+    else if(!ex.length){
       if(v('f-destino'))contrato.push({id:'c-destino',T:clausula('Destino do Imóvel'),X:`Declara a PARTE COMPRADORA que destina o imóvel ora adquirido a ${v('f-destino')}.`});
     }else{
       const ds=[v('f-destino'),...ex.map(p=>p.destino)].map((d,i)=>d?`o prédio identificado em ${CARD_PRED[i]||i+1} a ${d}`:'').filter(Boolean);
@@ -6018,11 +6059,36 @@ function compor(){
   const anexo=[];
   if(compCGD){
   anexo.push({id:'a-cab',T:'RECONHECIMENTO DE ASSINATURAS',X:''});
-  const rep=`${v('f-locrep-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}${v('f-locrep-nif')?`, e número de identificação fiscal ${v('f-locrep-nif')}`:''}`;
-  anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de ${p1||'…'} e de ${p2||'…'}, feitas pelo próprio punho, na qualidade de Procuradores e em representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${v('f-proc-codigo')||'…'}; e de ${locParticular?`${v('f-loc-nome')||'…'}${v('f-locrep-ec')?`, ${v('f-locrep-ec')}`:''}${v('f-locrep-natural')?`, natural da ${v('f-locrep-natural')}`:''}${v('f-locrep-cc')?`, titular do Cartão de Cidadão n.º ${v('f-locrep-cc')}`:''}${v('f-locrep-ccval')?`, válido até ${v('f-locrep-ccval')}`:''}, e número de identificação fiscal ${v('f-loc-nipc')||'…'}, feita pelo próprio punho, na qualidade de Locatário`:`${rep}, feita pelo próprio punho, na qualidade de ${v('f-locrep-qual')||'gerente'} e em representação de ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`}, apostas no «CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}», relativo ao Imóvel atrás identificado, que tem a Licença de Utilização (alvará) n.º ${v('f-lu-num')||'…'}, emitida em ${v('f-lu-data')||'…'} pela Câmara Municipal de ${v('f-lu-camara')||'…'}.`});
+  /* ── (09/11/2026) Reescrito a partir do modelo da Liliana: um parágrafo por quem assina.
+     A CAIXA sai do bloco da compradora (a Liliana, a Andreia ou os procuradores do banco),
+     com a procuração e a certidão comercial; o locatário sai do bloco «Locação financeira». */
+  const cgdC=comps.find(o=>o.tipo==='cgd')||{};
+  const pcR=procCGDDe(cgdC);
+  const nomesCGD=(cgdC.reps||[]).map(r=>(r.nome||'').toUpperCase()).filter(Boolean);
+  const plCGD=nomesCGD.length>1,femCGD=!plCGD&&(cgdC.reps||[])[0]&&(cgdC.reps[0].genero==='F'||cgdC.reps[0]._sol);
+  const listaCGD=nomesCGD.length?(plCGD?nomesCGD.slice(0,-1).join(', ')+' e '+nomesCGD[nomesCGD.length-1]:nomesCGD[0]):'…';
+  const crcCGD=v('f-mut-crc-cod')||CGD_CRC||'…';
+  const linhasRec=[`${listaCGD}, feita${plCGD?'s':''} pelo próprio punho, na qualidade de ${plCGD?'Procuradores':(femCGD?'Procuradora':'Procurador')} em nome e representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${pcR.cod||'…'}${pcR.data?`, de ${pcR.data}`:''} e certidão de registo comercial com o código ${crcCGD};`];
+  const sigs=(()=>{try{return JSON.parse(v('f-loc-sigs')||'[]');}catch(_){return [];}})().filter(x=>x&&x.nome);
+  let jaNomeada=false;
+  const entLoc=()=>{const t=jaNomeada?`da já mencionada sociedade ${v('f-loc-nome')||'…'}`:`da sociedade ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`;jaNomeada=true;return t;};
+  (sigs.length?sigs:[{nome:'',qual:locParticular?'locatário':'gerente'}]).forEach(x=>{
+    const id=`${(x.nome||'…').toUpperCase()}${x.cc?`, titular do cartão de cidadão n.º ${x.cc}${x.ccval?`, válido até ${dPT(x.ccval)}`:''}`:''}${x.nif?`, número de identificação fiscal ${x.nif}`:''}`;
+    const q=x.qual||(locParticular?'locatário':'gerente');
+    if(locParticular||/^locat/.test(q))linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q}${x.aval?' e ainda por si enquanto avalista':''};`);
+    else if(/^s[óo]ci[oa]$/.test(q))linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q}${x.aval?' e ainda por si enquanto avalista':''} ${entLoc()};`);
+    else linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q}${x.aval?', e ainda por si enquanto avalista,':''} em nome e representação ${entLoc()};`);
+  });
+  const tuTipo=v('f-tu-tipo')||'alvará de licença de utilização';
+  const txtLic=/licença de utilização/.test(tuTipo)
+    ?`que tem a Licença de Utilização (alvará) n.º ${v('f-tu-num')||'…'}, emitida em ${v('f-tu-data')?dPT(v('f-tu-data')):'…'} pela Câmara Municipal de ${v('f-tu-camara')||'…'}`
+    :`que tem ${tuTipo} n.º ${v('f-tu-num')||'…'}, de ${v('f-tu-data')?dPT(v('f-tu-data')):'…'}, da Câmara Municipal de ${v('f-tu-camara')||'…'}`;
+  anexo.push({id:'a-corpo',T:'',X:`Reconheço as assinaturas de:\n${linhasRec.join('\n')}\napostas no documento em anexo que é um CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}, relativo ao Imóvel atrás identificado, ${txtLic}.`});
+  const ataD=v('f-loc-ata-data');
+  const ataExt=ataD?(()=>{const e=dataExtenso(ataD);return /^um /.test(e)?'ao primeiro dia '+e.replace(/^um /,''):'aos '+e.replace(/ de /,' dias de ');})():'';
   const txtVerif=locParticular
     ?`Verifiquei ainda a identidade dos signatários pela exibição dos respetivos documentos de identificação, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`
-    :`Verifiquei ainda a qualidade e os poderes de representação da locatária pela consulta da respetiva certidão permanente, que se encontra em conformidade e válida, bem como que se encontram cumpridas as obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da mesma Lei.`;
+    :`Verifiquei ainda a identidade dos signatários pela exibição dos respetivos documentos de identificação, a qualidade e os poderes de representação da locatária pela consulta da respetiva certidão permanente${v('f-loc-crc')?` com o código de acesso ${v('f-loc-crc')}`:''}${v('f-loc-crc-val')?`, válida até ${dPT(v('f-loc-crc-val'))}`:''}, que se encontra em conformidade e válida${v('f-loc-ata-num')?`, a ata n.º ${v('f-loc-ata-num')}${ataExt?`, emitida ${ataExt}`:''}`:''}, bem como que se encontram cumpridas as obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da mesma Lei.`;
   anexo.push({id:'a-verif',T:'',X:txtVerif});
   anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
   }
@@ -6823,6 +6889,40 @@ function desfazerFunilMH(){
   document.querySelectorAll('.campo-recon').forEach(e=>e.style.display='none');
   setDisp('g-confinantes',temMatrizRustica()?'block':'none');
 }
+/* ── LOCAÇÃO FINANCEIRA · signatários do locatário (09/11/2026) ──
+   Linhas repetíveis; guardam-se em JSON no campo escondido f-loc-sigs, que vai no rascunho. */
+function locSigAdd(d){
+  d=d||{};const c=document.getElementById('loc-sigs');if(!c)return;
+  const r=document.createElement('div');r.className='outorgante-block loc-sig';r.style.marginBottom='.45rem';
+  const op=(v,t)=>`<option value="${v}"${d.qual===v?' selected':''}>${t}</option>`;
+  r.innerHTML=`<div class="outorgante-header"><span class="outorgante-title">Signatário</span>
+      <button class="remove-btn" type="button" onclick="this.closest('.loc-sig').remove();locSigGuardar();atualizar()">×</button></div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group form-full"><label class="form-label">Nome</label><input class="form-input ls-nome" style="text-transform:uppercase" value="${esc(d.nome||'')}"></div>
+      <div class="form-group"><label class="form-label">Qualidade</label><select class="form-select ls-qual">
+        ${op('sócio e gerente','Sócio e gerente')}${op('sócia e gerente','Sócia e gerente')}${op('gerente','Gerente')}${op('sócio','Sócio (não gerente)')}${op('sócia','Sócia (não gerente)')}${op('administrador','Administrador')}${op('administradora','Administradora')}${op('procurador','Procurador')}${op('procuradora','Procuradora')}${op('locatário','Locatário (particular)')}${op('locatária','Locatária (particular)')}</select></div>
+      <div class="form-group"><label class="form-label">Avalista</label><select class="form-select ls-aval">
+        <option value=""${!d.aval?' selected':''}>Não</option><option value="sim"${d.aval?' selected':''}>Sim — assina também por si</option></select></div>
+      <div class="form-group"><label class="form-label">Cartão de cidadão n.º</label><input class="form-input ls-cc" value="${esc(d.cc||'')}"></div>
+      <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input ls-ccval" value="${esc(d.ccval||'')}"></div>
+      <div class="form-group"><label class="form-label">NIF</label><input class="form-input ls-nif" value="${esc(d.nif||'')}"></div>
+    </div>`;
+  r.addEventListener('input',()=>{locSigGuardar();atualizar();});r.addEventListener('change',()=>{locSigGuardar();atualizar();});
+  c.appendChild(r);
+}
+function lerLocSigs(){
+  return[...document.querySelectorAll('#loc-sigs .loc-sig')].map(r=>{const g=c=>(r.querySelector(c)?.value||'').trim();
+    return{nome:g('.ls-nome'),qual:g('.ls-qual'),aval:g('.ls-aval')==='sim',cc:g('.ls-cc'),ccval:g('.ls-ccval'),nif:g('.ls-nif')};});
+}
+function locSigGuardar(){const h=document.getElementById('f-loc-sigs');if(h)h.value=JSON.stringify(lerLocSigs());}
+function locFin(){
+  const soc=(document.getElementById('f-loc-tipo')?.value||'sociedade')!=='particular';
+  document.querySelectorAll('#g-locatario .loc-soc').forEach(e=>e.style.display=soc?'':'none');
+  const c=document.getElementById('loc-sigs');
+  /* Rascunho reposto: as linhas renascem do JSON. */
+  if(c&&!c.children.length){let a=[];try{a=JSON.parse(document.getElementById('f-loc-sigs')?.value||'[]');}catch(_){}
+    (a.length?a:[{}]).forEach(x=>locSigAdd(x));}
+}
 function atualizar(){
   sincOnus();
   {const w=document.getElementById('esp-onde-wrap');if(w)w.style.display=(typeof docsMH==='function'&&docsMH().length>1)?'':'none';}
@@ -6855,6 +6955,7 @@ function atualizar(){
   setDisp('card-cgd',compCGD?'block':'none');
   setDisp('card-compradores',compCGD?'none':'block');
   setDisp('g-locatario',compCGD?'block':'none');
+  if(compCGD)locFin();
   setDisp('trato-suc-fields',chk('t-trato-suc')?'block':'none');
   /* «Direito de Superfície» força o direito transmitido no painel do imóvel. */
   if(ehCV&&subtipoCV()==='superficie'){
