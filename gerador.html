@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-09.4</span>
+    <span class="page-sub">piloto · v2026-11-09.5</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6070,27 +6070,42 @@ function compor(){
   const plCGD=nomesCGD.length>1,femCGD=!plCGD&&(cgdC.reps||[])[0]&&(cgdC.reps[0].genero==='F'||cgdC.reps[0]._sol);
   const listaCGD=nomesCGD.length?(plCGD?nomesCGD.slice(0,-1).join(', ')+' e '+nomesCGD[nomesCGD.length-1]:nomesCGD[0]):'…';
   const crcCGD=v('f-mut-crc-cod')||CGD_CRC||'…';
-  const linhasRec=[`${listaCGD}, feita${plCGD?'s':''} pelo próprio punho, na qualidade de ${plCGD?'Procuradores':(femCGD?'Procuradora':'Procurador')} em nome e representação de CAIXA GERAL DE DEPÓSITOS, S.A., qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${pcR.cod||'…'}${pcR.data?`, de ${pcR.data}`:''} e certidão de registo comercial com o código ${crcCGD};`];
+  /* (09/11/2026, 2.ª) Organização validada pela Liliana: alíneas, cada signatário com a sua
+     identificação; primeiro a representação e o papel no contrato, depois o aval; o
+     «Verifiquei ainda» em travessões. */
+  const idPessoa=(nome,cc,ccval,nif)=>`${(nome||'…').toUpperCase()}${cc?`, titular do cartão de cidadão n.º ${cc}${ccval?`, válido até ${/^\d{4}-/.test(ccval)?dPT(ccval):ccval}`:''}`:''}${nif?`, número de identificação fiscal ${nif}`:''}`;
+  const idCGD=(cgdC.reps||[]).filter(r=>r.nome).map(r=>{
+    if(r._sol){const S=SOLICITADORAS[r._sol]||{},t=String(S.textoProcuradora||'');
+      const mc=t.match(/com o número\s+([^,]+?),\s*válido até\s+([0-9/.-]+)/i),mn=t.match(/identificação fiscal\s+([\d.]+)/i);
+      return idPessoa(r.nome,S.cc||(mc&&mc[1]),S.ccValidade||(mc&&mc[2]),S.nif||(mn&&mn[1]));}
+    return idPessoa(r.nome,r.cc,r.ccval,r.nif);});
+  const listaIdCGD=idCGD.length?(idCGD.length>1?idCGD.slice(0,-1).join(', ')+' e '+idCGD[idCGD.length-1]:idCGD[0]):'…';
+  const valCRC=v('f-mut-crc-val')||CGD_CRC_VAL;
+  const linhasRec=[`${listaIdCGD}, feita${plCGD?'s':''} pelo próprio punho, na qualidade de ${plCGD?'procuradores':(femCGD?'procuradora':'procurador')} e em representação da CAIXA GERAL DE DEPÓSITOS, S.A., na qualidade de LOCADORA, qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${pcR.cod||'…'}${pcR.data?`, de ${pcR.data}`:''}, e da certidão de registo comercial com o código ${crcCGD}${valCRC?`, válida até ${dPT(valCRC)}`:''};`];
   const sigs=(()=>{try{return JSON.parse(v('f-loc-sigs')||'[]');}catch(_){return [];}})().filter(x=>x&&x.nome);
   let jaNomeada=false;
-  const entLoc=()=>{const t=jaNomeada?`da já mencionada sociedade ${v('f-loc-nome')||'…'}`:`da sociedade ${v('f-loc-nome')||'…'}, com o NIPC ${v('f-loc-nipc')||'…'}`;jaNomeada=true;return t;};
+  const entLoc=()=>{const t=jaNomeada?'da já mencionada LOCATÁRIA':`da sociedade ${v('f-loc-nome')||'…'}, NIPC ${v('f-loc-nipc')||'…'}, na qualidade de LOCATÁRIA`;jaNomeada=true;return t;};
   (sigs.length?sigs:[{nome:'',qual:locParticular?'locatário':'gerente'}]).forEach(x=>{
-    const id=`${(x.nome||'…').toUpperCase()}${x.cc?`, titular do cartão de cidadão n.º ${x.cc}${x.ccval?`, válido até ${dPT(x.ccval)}`:''}`:''}${x.nif?`, número de identificação fiscal ${x.nif}`:''}`;
+    const id=idPessoa(x.nome,x.cc,x.ccval,x.nif);
     const q=x.qual||(locParticular?'locatário':'gerente');
-    if(locParticular||/^locat/.test(q))linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q}${x.aval?' e ainda por si enquanto avalista':''};`);
-    else if(/^s[óo]ci[oa]$/.test(q))linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q}${x.aval?' e ainda por si enquanto avalista':''} ${entLoc()};`);
-    else linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q}${x.aval?', e ainda por si enquanto avalista,':''} em nome e representação ${entLoc()};`);
+    const aval=x.aval?', e ainda por si, na qualidade de avalista':'';
+    if(locParticular||/^locat/.test(q))linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${/a$/.test(q)?'LOCATÁRIA':'LOCATÁRIO'}${aval};`);
+    else if(/^s[óo]ci[oa]$/.test(q))linhasRec.push(x.aval
+      ?`${id}, feita pelo próprio punho, por si, na qualidade de avalista;`
+      :`${id}, feita pelo próprio punho, na qualidade de ${q} ${entLoc()};`);
+    else linhasRec.push(`${id}, feita pelo próprio punho, na qualidade de ${q} e em representação ${entLoc()}${aval};`);
   });
+  const ALIN='abcdefghijklmnopqrstuvwxyz';
   const tuTipo=v('f-tu-tipo')||'alvará de licença de utilização';
   const txtLic=/licença de utilização/.test(tuTipo)
     ?`que tem a Licença de Utilização (alvará) n.º ${v('f-tu-num')||'…'}, emitida em ${v('f-tu-data')?dPT(v('f-tu-data')):'…'} pela Câmara Municipal de ${v('f-tu-camara')||'…'}`
     :`que tem ${tuTipo} n.º ${v('f-tu-num')||'…'}, de ${v('f-tu-data')?dPT(v('f-tu-data')):'…'}, da Câmara Municipal de ${v('f-tu-camara')||'…'}`;
-  anexo.push({id:'a-corpo',T:'',X:`Reconheço as assinaturas de:\n${linhasRec.join('\n')}\napostas no documento em anexo que é um CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}, relativo ao Imóvel atrás identificado, ${txtLic}.`});
+  anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de:\n${linhasRec.map((t,i)=>`${ALIN[i]}) ${t}`).join('\n')}\napostas no documento anexo, que é o CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}, relativo ao Imóvel atrás identificado, ${txtLic}.`});
   const ataD=v('f-loc-ata-data');
-  const ataExt=ataD?(()=>{const e=dataExtenso(ataD);return /^um /.test(e)?'ao primeiro dia '+e.replace(/^um /,''):'aos '+e.replace(/ de /,' dias de ');})():'';
+  const ataTxt=ataD?(()=>{const [y,m,d]=ataD.split('-').map(Number);return `, de ${d} de ${MESES[m-1]} de ${y}`;})():'';
   const txtVerif=locParticular
-    ?`Verifiquei ainda a identidade dos signatários pela exibição dos respetivos documentos de identificação, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`
-    :`Verifiquei ainda a identidade dos signatários pela exibição dos respetivos documentos de identificação, a qualidade e os poderes de representação da locatária pela consulta da respetiva certidão permanente${v('f-loc-crc')?` com o código de acesso ${v('f-loc-crc')}`:''}${v('f-loc-crc-val')?`, válida até ${dPT(v('f-loc-crc-val'))}`:''}, que se encontra em conformidade e válida${v('f-loc-ata-num')?`, a ata n.º ${v('f-loc-ata-num')}${ataExt?`, emitida ${ataExt}`:''}`:''}, bem como que se encontram cumpridas as obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao RCBE, nos termos do artigo 4.º da mesma Lei.`;
+    ?`Verifiquei ainda:\n— a identidade dos signatários, pela exibição dos respetivos documentos de identificação;\n— encontrar-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao Registo Central do Beneficiário Efetivo, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`
+    :`Verifiquei ainda:\n— a identidade dos signatários, pela exibição dos respetivos documentos de identificação;\n— a qualidade e os poderes de representação da LOCATÁRIA, pela consulta da certidão permanente${v('f-loc-crc')?` com o código de acesso ${v('f-loc-crc')}`:''}${v('f-loc-crc-val')?`, válida até ${dPT(v('f-loc-crc-val'))}`:''}${v('f-loc-ata-num')?`, e da ata n.º ${v('f-loc-ata-num')}${ataTxt}`:''};\n— o cumprimento, pela LOCATÁRIA, das obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída dessa obrigação, nos termos do artigo 4.º da mesma Lei.`;
   anexo.push({id:'a-verif',T:'',X:txtVerif});
   anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
   }
