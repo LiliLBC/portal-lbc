@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-09.2</span>
+    <span class="page-sub">piloto · v2026-11-09.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -544,6 +544,8 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         <input type="date" class="form-input" id="f-im-cert-val" onchange="atualizar()"></div>
       <div class="form-group form-full"><label class="form-label">Destino deste prédio <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint)">(facultativo)</span></label>
         <input class="form-input" id="f-destino" oninput="atualizar()" placeholder="Ex: habitação própria e permanente — em branco, o contrato não fala do destino"></div>
+      <div class="form-group form-full" id="g-destino-lf" style="display:none;font-size:11.5px;background:var(--surface2);border-radius:6px;padding:.5rem .6rem;color:var(--text-muted)">
+        Destino: <b>cedência em locação financeira</b> ao locatário — sai da secção «Locação financeira», no bloco do comprador. O campo «Destino deste prédio» não se usa com a CAIXA compradora.</div>
       <div class="form-group valhip" style="display:none"><label class="form-label">Valor atribuído na hipoteca (€) <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint)">(facultativo)</span></label>
         <input class="form-input" id="f-im-valor-hip" oninput="atualizar()" placeholder="Ex: 150000"></div>
       <div class="form-group" id="g-im-artigo"><label class="form-label">Artigo matricial <span>*</span></label><input class="form-input" id="f-im-artigo" placeholder="Ex: 1681"></div>
@@ -5758,7 +5760,7 @@ function compor(){
      os seus poderes não eram verificados em lado nenhum. Mesma redação do
      tronco do mútuo. */
   const linhaCertidaoCGD=((ehCVMH&&v('f-mutuante')==='cgd')||cgdOut)
-    ? `— Os poderes de representação da ${bancoAtual().denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}${bancoAtual().rcbe?', verificando-se ainda a exclusão da '+bancoAtual().denom+' do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do referido Regime Jurídico':''};`
+    ? `— Os poderes de representação da ${bancoAtual().denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}${bancoAtual().rcbe?', verificando-se ainda a exclusão da '+bancoAtual().denom+' do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do '+(ehCVMH?'referido Regime Jurídico':'Regime Jurídico do Registo Central do Beneficiário Efetivo, aprovado pela Lei n.º 89/2017, de 21 de agosto'):''};`
     : '';
   /* A linha do município já cobre a identidade dos outorgantes, pelo que
      substitui a abertura genérica — mas só essa. As procurações, os assentos,
@@ -6918,10 +6920,14 @@ function locSigGuardar(){const h=document.getElementById('f-loc-sigs');if(h)h.va
 function locFin(){
   const soc=(document.getElementById('f-loc-tipo')?.value||'sociedade')!=='particular';
   document.querySelectorAll('#g-locatario .loc-soc').forEach(e=>e.style.display=soc?'':'none');
-  const c=document.getElementById('loc-sigs');
-  /* Rascunho reposto: as linhas renascem do JSON. */
-  if(c&&!c.children.length){let a=[];try{a=JSON.parse(document.getElementById('f-loc-sigs')?.value||'[]');}catch(_){}
-    (a.length?a:[{}]).forEach(x=>locSigAdd(x));}
+  const c=document.getElementById('loc-sigs'),h=document.getElementById('f-loc-sigs');
+  /* Rascunho reposto: se o campo escondido não coincide com as linhas à vista, as linhas
+     renascem dele (antes só renasciam com a lista vazia, e um rascunho puxado depois de
+     a secção já estar aberta ficava sem os signatários). */
+  if(!c)return;
+  let a=[];try{a=JSON.parse(h?.value||'[]');}catch(_){}
+  if(a.length&&h.value!==JSON.stringify(lerLocSigs())){c.innerHTML='';a.forEach(x=>locSigAdd(x));}
+  else if(!c.children.length)locSigAdd({});
 }
 function atualizar(){
   sincOnus();
@@ -6956,6 +6962,9 @@ function atualizar(){
   setDisp('card-compradores',compCGD?'none':'block');
   setDisp('g-locatario',compCGD?'block':'none');
   if(compCGD)locFin();
+  /* Com a CAIXA compradora o destino é a locação: o campo geral esconde-se (09/11/2026). */
+  {const fd=document.getElementById('f-destino');const gd=fd&&fd.closest('.form-group');if(gd)gd.style.display=compCGD?'none':'';
+   setDisp('g-destino-lf',compCGD?'block':'none');}
   setDisp('trato-suc-fields',chk('t-trato-suc')?'block':'none');
   /* «Direito de Superfície» força o direito transmitido no painel do imóvel. */
   if(ehCV&&subtipoCV()==='superficie'){
