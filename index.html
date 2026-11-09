@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-09.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-09.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -245,7 +245,7 @@ tbody tr:hover td{background:#FAFAF8}
 .cal-day.other-month .cal-day-num{color:var(--text-faint)}
 .cal-day-num{font-size:11px;font-weight:500;margin-bottom:.3rem;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .cal-day.today .cal-day-num{background:var(--accent);color:#fff}
-.ev-pronta-selo{float:right;margin-left:4px;background:#085041;color:#E1F5EE;font-size:9px;font-weight:700;letter-spacing:.03em;border-radius:3px;padding:0 4px;line-height:14px}
+.ev-pronta-selo{float:right;margin-left:4px;background:#0B4D3B;color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.02em;border-radius:4px;padding:0 5px;line-height:15px}
 .ev-falta-selo{float:right;margin-left:4px;color:#A32D2D;font-size:10px;font-weight:700}
 .cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font-weight:500;border-left:3px solid transparent}
 .cal-event-escritura{background:#D4EDDA;color:#1E6E3A;border-left-color:#1E6E3A}
@@ -5760,13 +5760,12 @@ function evEhEscritura(e){return !!e&&(e[A.tipo]||e._tipo)==='Escritura';}
 function evDiasAte(e){const d=String(e[A.data]||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return null;
   const [y,m,dd]=d.split('-').map(Number),h=new Date();h.setHours(0,0,0,0);return Math.round((new Date(y,m-1,dd)-h)/864e5);}
 function evProntaDeco(e){
-  if(!evEhEscritura(e))return null;
-  if(evPronta(e))return{style:'outline:2px solid #085041;outline-offset:-2px',selo:'<span class="ev-pronta-selo">✓ PRONTA</span>',
-    tit:' — ✓ Pronta'+(e.ProntaEm?' desde '+new Date(e.ProntaEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'')};
-  const d=evDiasAte(e);
-  if(d!=null&&d>=0&&d<=PRONTA_DIAS)return{style:'outline:2px dashed #A32D2D;outline-offset:-2px',selo:`<span class="ev-falta-selo">🕒 ${d} d</span>`,
-    tit:` — Ainda não marcada como pronta (${d===0?'é hoje':d===1?'falta 1 dia':'faltam '+d+' dias'})`};
-  return null;
+  /* (09/11/2026, 2.ª) Só muda quando está OK: contorno escuro da cor do bloco e o selo «✓ OK».
+     Sem OK fica como antes — sem tracejado nem contagem. */
+  if(!evEhEscritura(e)||!evPronta(e))return null;
+  const emA=e[A.emailAgendamento],azul=(e[A.entidade]==='CGD')&&String(e[A.numProcesso]||'').trim()&&(emA===true||emA==='true'||emA===1||emA==='1');
+  return{style:`outline:2px solid ${azul?'#1E3A8A':'#2F5A1C'};outline-offset:-2px`,selo:'<span class="ev-pronta-selo">✓ OK</span>',
+    tit:' — ✓ OK (pronta)'+(e.ProntaEm?' desde '+new Date(e.ProntaEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'')};
 }
 /* A pasta da escritura: a da Escrituras com a data no início do nome e, havendo várias, a que
    mais palavras partilha com o título do evento. */
@@ -5797,11 +5796,11 @@ function evProntaPintar(e){
   if(!e||!evEhEscritura(e)){box.style.display='none';box.innerHTML='';return;}
   const pr=evPronta(e);
   const quando=e.ProntaEm?new Date(e.ProntaEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'';
-  const est=pr?`<span class="ev-pronta-selo" style="float:none;margin:0 .4rem 0 0">✓ PRONTA</span>marcada${e.ProntaPor?' por '+escHtml(e.ProntaPor):''}${quando?' em '+quando:''}`
-    :`<span style="color:var(--text-muted)">Ainda não marcada como pronta para outorga.</span>`;
+  const est=pr?`<span class="ev-pronta-selo" style="float:none;margin:0 .4rem 0 0">✓ OK</span>verificada${e.ProntaPor?' por '+escHtml(e.ProntaPor):''}${quando?' em '+quando:''}`
+    :`<span style="color:var(--text-muted)">Ainda sem OK — não marcada como pronta para outorga.</span>`;
   box.style.display='flex';
   box.innerHTML=`<div style="flex:1;font-size:12px">${est}</div>`+(prontaSouEu()
-    ?`<button class="btn btn-sm" id="ev-btn-pronta" onclick="evProntaAlternar()" style="${pr?'':'background:#085041;border-color:#085041;color:#fff'}">${pr?'Retirar pronta':'✓ Marcar como pronta'}</button>`
+    ?`<button class="btn btn-sm" id="ev-btn-pronta" onclick="evProntaAlternar()" style="${pr?'':'background:#0B4D3B;border-color:#0B4D3B;color:#fff'}">${pr?'Retirar OK':'✓ Marcar como OK'}</button>`
     :'<span style="font-size:11px;color:var(--text-faint)">Só a Liliana marca ou retira.</span>');
 }
 async function evProntaGravar(id,campos){
@@ -5810,13 +5809,13 @@ async function evProntaGravar(id,campos){
   return e;
 }
 async function evProntaAlternar(){
-  if(!prontaSouEu()){showToast('Só a Liliana pode marcar ou retirar «Pronta».','error');return;}
+  if(!prontaSouEu()){showToast('Só a Liliana pode marcar ou retirar o OK.','error');return;}
   const id=evItemId,e=(todosEventos||[]).find(x=>x.id===id);if(!e)return;
   const btn=document.getElementById('ev-btn-pronta');if(btn){btn.disabled=true;btn.textContent='A verificar…';}
   try{
     if(evPronta(e)){
       await evProntaGravar(id,{Pronta:false,ProntaEm:null,ProntaPor:''});
-      showToast('«Pronta» retirada.','success');
+      showToast('OK retirado.','success');
     }else{
       /* Avisos — não impedem: «marcar mesmo assim?» */
       const pasta=await evPastaDaEscritura(e);
@@ -5832,7 +5831,7 @@ async function evProntaAlternar(){
         if(!word&&!confirm(`Não foi encontrado o Word da escritura na pasta «${pasta.name}».\n\nMarcar mesmo assim?`))return;
       }
       await evProntaGravar(id,{Pronta:true,ProntaEm:new Date().toISOString(),ProntaPor:String((contaAtual&&contaAtual.username)||'')});
-      showToast('✓ Escritura marcada como pronta.','success');
+      showToast('✓ Escritura marcada como OK.','success');
     }
     renderCalendario();
   }catch(err){
@@ -5849,7 +5848,7 @@ async function evProntaVerPerda(ant,novo){
   const mudou=PRONTA_CAMPOS().filter(([k])=>k in novo&&v(k,ant)!==v(k,novo)).map(([,n])=>n);
   if(!mudou.length)return;
   try{await evProntaGravar(ant.id,{Pronta:false,ProntaEm:null,ProntaPor:''});
-    showToast(`O visto «Pronta» caiu (mudou: ${mudou.join(', ')}). É preciso confirmar de novo.`,'');}
+    showToast(`O OK caiu (mudou: ${mudou.join(', ')}). É preciso confirmar de novo.`,'');}
   catch(e){console.warn('[Pronta] não consegui retirar:',e);}
 }
 
