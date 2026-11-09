@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
+<meta name="versao" content="Portal LBC · piloto · v2026-11-09.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -244,6 +245,8 @@ tbody tr:hover td{background:#FAFAF8}
 .cal-day.other-month .cal-day-num{color:var(--text-faint)}
 .cal-day-num{font-size:11px;font-weight:500;margin-bottom:.3rem;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .cal-day.today .cal-day-num{background:var(--accent);color:#fff}
+.ev-pronta-selo{float:right;margin-left:4px;background:#085041;color:#E1F5EE;font-size:9px;font-weight:700;letter-spacing:.03em;border-radius:3px;padding:0 4px;line-height:14px}
+.ev-falta-selo{float:right;margin-left:4px;color:#A32D2D;font-size:10px;font-weight:700}
 .cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font-weight:500;border-left:3px solid transparent}
 .cal-event-escritura{background:#D4EDDA;color:#1E6E3A;border-left-color:#1E6E3A}
 .cal-event-cpcv{background:#FFF3CD;color:#856404;border-left-color:#856404}
@@ -1381,6 +1384,7 @@ tbody tr:hover td{background:#FAFAF8}
 
             <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
           </div>
+          <div id="ev-pronta-box" style="display:none;align-items:center;gap:.6rem;margin:.6rem 0 0;padding:.55rem .7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2)"></div>
           <div class="modal-actions" style="justify-content:space-between">
             <button class="btn" id="ev-btn-eliminar" onclick="eliminarEvento()" style="display:none;color:var(--red);border-color:var(--red)">🗑 Eliminar</button>
             <div style="display:flex;gap:.5rem;margin-left:auto">
@@ -5648,6 +5652,10 @@ async function carregarCalendario(){
       const selSemObs=`${A.titulo},${A.data},${A.hora},${A.horaFim},${A.tipo},${A.responsavel}`;
       const selSemFim=`${A.titulo},${A.data},${A.hora},${A.tipo},${A.responsavel},${A.observacoes}`;
       let data;
+      /* Visto «Pronta» (09/11/2026): colunas Pronta, ProntaEm, ProntaPor. Sem elas, lê como antes. */
+      try{
+        data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD},Pronta,ProntaEm,ProntaPor)&$top=500`);
+      }catch(_pr){
       try{
         data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selComCGD})&$top=500`);
       }catch(_cgd){
@@ -5661,6 +5669,7 @@ async function carregarCalendario(){
             data=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items?$expand=fields($select=${selSemFim})&$top=500`);
           }
         }
+      }
       }
       todosEventos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     }
@@ -5738,6 +5747,112 @@ function eventosNoDia(dateStr){
   });
 }
 
+/* ── VISTO «PRONTA» NA AGENDA (09/11/2026) ──
+   Diferente do visto da pasta: diz que a escritura está pronta para outorga, com o Word
+   gerado. Só a Liliana marca ou retira; as outras veem. Fica na própria linha da agenda
+   (colunas Pronta, ProntaEm, ProntaPor da Agenda_Escritorio) e cai sozinho se mudar a
+   data, a hora, o cliente, o tipo de ato, a entidade ou o n.º de processo. */
+const PRONTA_EMAIL='liliana.cardoso@lbc-solicitadora.pt',PRONTA_DIAS=4;
+const PRONTA_CAMPOS=()=>[[A.data,'data'],[A.hora,'hora'],[A.titulo,'cliente'],[A.tipo,'tipo de ato'],[A.entidade,'entidade'],[A.numProcesso,'n.º de processo']];
+function prontaSouEu(){try{return String((contaAtual&&contaAtual.username)||'').toLowerCase()===PRONTA_EMAIL;}catch(_){return false;}}
+function evPronta(e){const v=e&&e.Pronta;return v===true||v==='true'||v===1||v==='1';}
+function evEhEscritura(e){return !!e&&(e[A.tipo]||e._tipo)==='Escritura';}
+function evDiasAte(e){const d=String(e[A.data]||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return null;
+  const [y,m,dd]=d.split('-').map(Number),h=new Date();h.setHours(0,0,0,0);return Math.round((new Date(y,m-1,dd)-h)/864e5);}
+function evProntaDeco(e){
+  if(!evEhEscritura(e))return null;
+  if(evPronta(e))return{style:'outline:2px solid #085041;outline-offset:-2px',selo:'<span class="ev-pronta-selo">✓ PRONTA</span>',
+    tit:' — ✓ Pronta'+(e.ProntaEm?' desde '+new Date(e.ProntaEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'')};
+  const d=evDiasAte(e);
+  if(d!=null&&d>=0&&d<=PRONTA_DIAS)return{style:'outline:2px dashed #A32D2D;outline-offset:-2px',selo:`<span class="ev-falta-selo">🕒 ${d} d</span>`,
+    tit:` — Ainda não marcada como pronta (${d===0?'é hoje':d===1?'falta 1 dia':'faltam '+d+' dias'})`};
+  return null;
+}
+/* A pasta da escritura: a da Escrituras com a data no início do nome e, havendo várias, a que
+   mais palavras partilha com o título do evento. */
+async function evPastaDaEscritura(e){
+  const d=String(e[A.data]||'').slice(0,10).replace(/-/g,'');if(d.length!==8||!bibliotecaId)return null;
+  let pastas=(typeof todasPastas!=='undefined'&&todasPastas&&todasPastas.length)?todasPastas:null;
+  if(!pastas)pastas=((await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/root/children?$top=500&$select=id,name,folder,webUrl,lastModifiedDateTime`)).value||[]).filter(i=>i.folder);
+  const norm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  const cand=pastas.filter(p=>String(p.name||'').startsWith(d));
+  if(!cand.length)return null;
+  const pal=norm(e[A.titulo]).split(/[^A-Z0-9]+/).filter(w=>w.length>=3);
+  const num=String(e[A.numProcesso]||'').trim();
+  const pontos=p=>{const n=norm(p.name);return pal.filter(w=>n.includes(w)).length+(num&&n.includes(norm(num))?3:0);};
+  const ord=cand.map(p=>({p,s:pontos(p)})).sort((a,b)=>b.s-a.s);
+  if(ord[0].s>0&&(ord.length===1||ord[0].s>ord[1].s))return ord[0].p;
+  return cand.length===1?cand[0]:null;
+}
+async function evTemWord(pasta){
+  const filhos=async id=>((await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${id}/children?$top=500&$select=id,name,folder,file`)).value||[]);
+  const ehWord=x=>x.file&&/\.docx$/i.test(x.name||'')&&!/^~\$/.test(x.name||'');
+  const raiz=await filhos(pasta.id);
+  if(raiz.some(ehWord))return true;
+  for(const sub of raiz.filter(x=>x.folder)){try{if((await filhos(sub.id)).some(ehWord))return true;}catch(_){}}
+  return false;
+}
+function evProntaPintar(e){
+  const box=document.getElementById('ev-pronta-box');if(!box)return;
+  if(!e||!evEhEscritura(e)){box.style.display='none';box.innerHTML='';return;}
+  const pr=evPronta(e);
+  const quando=e.ProntaEm?new Date(e.ProntaEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'';
+  const est=pr?`<span class="ev-pronta-selo" style="float:none;margin:0 .4rem 0 0">✓ PRONTA</span>marcada${e.ProntaPor?' por '+escHtml(e.ProntaPor):''}${quando?' em '+quando:''}`
+    :`<span style="color:var(--text-muted)">Ainda não marcada como pronta para outorga.</span>`;
+  box.style.display='flex';
+  box.innerHTML=`<div style="flex:1;font-size:12px">${est}</div>`+(prontaSouEu()
+    ?`<button class="btn btn-sm" id="ev-btn-pronta" onclick="evProntaAlternar()" style="${pr?'':'background:#085041;border-color:#085041;color:#fff'}">${pr?'Retirar pronta':'✓ Marcar como pronta'}</button>`
+    :'<span style="font-size:11px;color:var(--text-faint)">Só a Liliana marca ou retira.</span>');
+}
+async function evProntaGravar(id,campos){
+  await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items/${id}/fields`,campos);
+  const e=(todosEventos||[]).find(x=>x.id===id);if(e)Object.assign(e,campos);
+  return e;
+}
+async function evProntaAlternar(){
+  if(!prontaSouEu()){showToast('Só a Liliana pode marcar ou retirar «Pronta».','error');return;}
+  const id=evItemId,e=(todosEventos||[]).find(x=>x.id===id);if(!e)return;
+  const btn=document.getElementById('ev-btn-pronta');if(btn){btn.disabled=true;btn.textContent='A verificar…';}
+  try{
+    if(evPronta(e)){
+      await evProntaGravar(id,{Pronta:false,ProntaEm:null,ProntaPor:''});
+      showToast('«Pronta» retirada.','success');
+    }else{
+      /* Avisos — não impedem: «marcar mesmo assim?» */
+      const pasta=await evPastaDaEscritura(e);
+      if(!pasta){
+        if(!confirm('Não encontrei a pasta desta escritura em Escrituras (com a data no início do nome), por isso não consigo confirmar o visto nem o Word.\n\nMarcar mesmo assim?'))return;
+      }else{
+        try{if(window.vistoCarregar)await window.vistoCarregar();}catch(_){}
+        const st=window.vistoEstado?window.vistoEstado('ESCRITURAS',pasta.id,pasta.lastModifiedDateTime):'';
+        if(st!=='ok'&&!confirm(st==='alt'
+          ?`A pasta «${pasta.name}» tem visto, mas foi alterada depois dele.\n\nMarcar mesmo assim?`
+          :`Pasta sem visto de documentos («${pasta.name}»).\n\nMarcar mesmo assim?`))return;
+        let word=false;try{word=await evTemWord(pasta);}catch(_){}
+        if(!word&&!confirm(`Não foi encontrado o Word da escritura na pasta «${pasta.name}».\n\nMarcar mesmo assim?`))return;
+      }
+      await evProntaGravar(id,{Pronta:true,ProntaEm:new Date().toISOString(),ProntaPor:String((contaAtual&&contaAtual.username)||'')});
+      showToast('✓ Escritura marcada como pronta.','success');
+    }
+    renderCalendario();
+  }catch(err){
+    const m=(err&&err.message)||'';
+    showToast(/400|Pronta|field|column/i.test(m)
+      ?'Faltam as colunas na lista Agenda_Escritorio: Pronta (Sim/Não), ProntaEm (Data e hora) e ProntaPor (Texto).'
+      :'Não consegui gravar: '+m,'error');
+  }finally{evProntaPintar((todosEventos||[]).find(x=>x.id===id));}
+}
+/* Depois de gravar um evento: se estava «Pronta» e mudou um dos campos-chave, o visto cai. */
+async function evProntaVerPerda(ant,novo){
+  if(!ant||!evPronta(ant))return;
+  const v=(k,x)=>k===A.data?String(x[k]||'').slice(0,10):String(x[k]==null?'':x[k]).trim();
+  const mudou=PRONTA_CAMPOS().filter(([k])=>k in novo&&v(k,ant)!==v(k,novo)).map(([,n])=>n);
+  if(!mudou.length)return;
+  try{await evProntaGravar(ant.id,{Pronta:false,ProntaEm:null,ProntaPor:''});
+    showToast(`O visto «Pronta» caiu (mudou: ${mudou.join(', ')}). É preciso confirmar de novo.`,'');}
+  catch(e){console.warn('[Pronta] não consegui retirar:',e);}
+}
+
 // Pill na vista mês — mais compacta com hora destacada
 function renderEvt(e){
   const cls=COR_EVENTO[e._tipo]||'cal-event-outro';
@@ -5772,8 +5887,11 @@ function renderEvt(e){
     styleExtra=' style="background:#DBEAFE;color:#1E40AF;border-left:3px solid #3B82F6;font-weight:500"';
     extraTitulo=' — ✉️ Email de Agendamento enviado';
   }
+  /* Visto «Pronta» (09/11/2026): contorno por cima das cores, que se mantêm. */
+  const pr=evProntaDeco(e);
+  if(pr){styleExtra=styleExtra?styleExtra.replace(/"$/,';'+pr.style+'"'):` style="${pr.style}"`;extraTitulo+=pr.tit;}
   const titleAttr=`${e._hora||''}${e._horaFim?'-'+e._horaFim:''} ${titulo}${extraTitulo}`.trim();
-  return `<div class="cal-event ${cls}"${styleExtra} title="${escHtml(titleAttr)}" onclick="abrirEventoExistente('${e.id}',event)">${avisoCGD}${hora}${titulo}</div>`;
+  return `<div class="cal-event ${cls}"${styleExtra} title="${escHtml(titleAttr)}" onclick="abrirEventoExistente('${e.id}',event)">${pr?pr.selo:''}${avisoCGD}${hora}${titulo}</div>`;
 }
 
 function abrirTarefaDoCalendario(tarefaId,ev){
@@ -5908,8 +6026,9 @@ function renderEvtTimeline(e,colWidth){
     :`abrirEventoExistente('${e.id}',event)`;
   const horaTxt=e._horaFim?`${e._hora}–${e._horaFim}`:e._hora;
   const titulo=escHtml(e[A.titulo]||e[T.titulo]||'—');
-  return `<div class="cal-tl-event ${cor}" style="top:${top}px;height:${altura}px" onclick="event.stopPropagation();${onclick}" title="${horaTxt} ${titulo}">
-    <div class="cal-tl-event-time">${horaTxt}</div>
+  const pr=e._tipo==='tarefa'?null:evProntaDeco(e);
+  return `<div class="cal-tl-event ${cor}" style="top:${top}px;height:${altura}px;${pr?pr.style:''}" onclick="event.stopPropagation();${onclick}" title="${horaTxt} ${titulo}${pr?escHtml(pr.tit):''}">
+    <div class="cal-tl-event-time">${pr?pr.selo:''}${horaTxt}</div>
     <div>${titulo}</div>
   </div>`;
 }
@@ -6649,6 +6768,7 @@ function abrirModalEvento(dateStr){
   // Toggle CGD começa em "Não" (estado default seguro)
   setEvIsCGD(false);
   document.getElementById('ev-btn-eliminar').style.display='none';
+  {const pb=document.getElementById('ev-pronta-box');if(pb){pb.style.display='none';pb.innerHTML='';}}
   document.getElementById('modal-evento-titulo').textContent=`Novo evento — ${fmtData(dateStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
 }
@@ -6712,6 +6832,7 @@ function abrirEventoExistente(eventoId,ev){
     if(elOutra)onEvEntidadeOutraChange();
   }
   document.getElementById('ev-btn-eliminar').style.display='inline-flex';
+  evProntaPintar(e);
   document.getElementById('modal-evento-titulo').textContent=`Editar evento — ${fmtData(dataStr+'T00:00:00')}`;
   document.getElementById('modal-evento').classList.add('show');
 }
@@ -6758,9 +6879,11 @@ async function guardarEvento(){
   const bodySemFim={...body};delete bodySemFim[A.horaFim];
   const bodyBaseSemFim={...bodyBase};delete bodyBaseSemFim[A.horaFim];
 
+  const evAntes=evItemId?{...((todosEventos||[]).find(x=>x.id===evItemId)||{})}:null;
   const tentar=async b=>{
     if(evItemId){
       await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items/${evItemId}/fields`,b);
+      await evProntaVerPerda(evAntes,b);
     }else{
       const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items`,{fields:b});
       // Capturar o id do item criado para sync com Excel
