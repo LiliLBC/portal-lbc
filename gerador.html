@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-04.8</span>
+    <span class="page-sub">piloto · v2026-11-09.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2078,14 +2078,20 @@ function addOutorgante(pref,dados){
       <div class="form-group form-full cond-block-title" style="margin:0">${pref==='comp'?'4.1':'3.1'} · CGD</div>
       <div class="form-group form-full" style="font-size:11.5px;color:var(--text-faint);background:var(--surface2);border-radius:6px;padding:.5rem .6rem">
         Identificação da CGD automática (sede, matrícula, NIPC e capital social). Falta indicar quem a representa, em baixo.</div>
+      <div class="form-group form-full"><label class="form-label">Representada por</label>
+        <select class="form-select" id="${id}-cgd-quem" onchange="onCgdQuem('${id}',true);atualizar()">
+          <option value=""${sel(dados['cgd-quem'],'')}>Procuradores da CAIXA — identificar em baixo</option>
+          <option value="liliana"${sel(dados['cgd-quem'],'liliana')}>Liliana Burrica Cardoso — procuração própria</option>
+          <option value="andreia"${sel(dados['cgd-quem'],'andreia')}>Andreia Pessegueiro Cabanas — procuração própria</option>
+        </select></div>
       <div class="form-group form-full"><label class="form-label">Código(s) de acesso da procuração</label>
         <div style="display:flex;gap:.35rem;align-items:stretch">
-          <input class="form-input" id="${id}-cgd-proc-cod" oninput="atualizar()" value="${dados['cgd-proc-cod']||CGD_PROCURACAO}" style="flex:1;min-width:0">
+          <input class="form-input" id="${id}-cgd-proc-cod" oninput="this.dataset.tocado='1';atualizar()" value="${dados['cgd-proc-cod']||CGD_PROCURACAO}" style="flex:1;min-width:0">
           <button type="button" class="btn btn-sm" title="Abrir as Procurações Online"
             onclick="window.open('https://www.procuracoesonline.pt/ProcuracoesOnline/','_blank','noopener')"
             style="flex-shrink:0;padding:0 .6rem">🔍</button>
         </div></div>
-      <div class="form-group form-full"><label class="form-label">Poderes invocados</label>
+      <div class="form-group form-full ${id}-cgd-pod"><label class="form-label">Poderes invocados</label>
         <input class="form-input" id="${id}-cgd-proc-poderes" oninput="atualizar()" value="${dados['cgd-proc-poderes']||CGD_PODERES[pref]||''}" placeholder="${pref==='vend'?'Alínea da venda — por indicar':'Poderes invocados'}"></div>
       <div class="form-group form-full" style="font-size:10.5px;color:var(--text-faint)">A procuração é sempre a mesma; os poderes mudam conforme a CAIXA compre ou venda.</div>
     </div>
@@ -2111,7 +2117,26 @@ function onVendTipo(id){
   mostra('rep', comRep,'block');
   if(comRep&&!document.querySelectorAll(`.${id}-repblock`).length)addRepresentante(id);
   onMunDoc(id);onRcbe(id);onQualMunicipio(id);onObjetoSocial(id);
-  onGenero(id);onRepresentacao(id);
+  onGenero(id);onRepresentacao(id);onCgdQuem(id,false);
+}
+/* ── CGD representada pela Liliana ou pela Andreia (09/11/2026) ──
+   Como no mútuo: cada uma com a sua procuração, por substabelecimento. No leasing
+   a procuração é outra — o mesmo código para as duas, distinguido pela data e hora. */
+const LEASING_PROC_LBC={liliana:'PR-64255-10636-78045 (02/01/2026 05:01)',andreia:'PR-64255-10636-78045 (21/01/2026 15:31)'};
+function procSolCGD(q){
+  /* A CAIXA como compradora é a entrada do leasing: cita-se sempre a procuração do leasing. */
+  const s=SOLICITADORAS[q]||{};
+  return s.codProcuracaoLeasing||s.procuracaoLeasing||LEASING_PROC_LBC[q]||'';
+}
+function onCgdQuem(id,mudou){
+  const q=document.getElementById(`${id}-cgd-quem`)?.value||'';
+  const t=document.getElementById(`${id}-tipo`)?.value;
+  const sol=t==='cgd'&&!!q;
+  if(t==='cgd')document.querySelectorAll(`.${id}-rep`).forEach(e=>e.style.display=sol?'none':'block');
+  document.querySelectorAll(`.${id}-cgd-pod`).forEach(e=>e.style.display=sol?'none':'');
+  const c=document.getElementById(`${id}-cgd-proc-cod`);
+  /* Ao trocar de procurador o código muda, salvo se tiver sido escrito à mão. */
+  if(c&&t==='cgd'&&(mudou||(sol&&!c.value)||(sol&&c.value===CGD_PROCURACAO))&&!c.dataset.tocado)c.value=sol?procSolCGD(q):CGD_PROCURACAO;
 }
 /* Casado(a) abre os dados do cônjuge. Solteiro(a), divorciado(a) e viúvo(a) terminam aí. */
 /* Uma sociedade pode obrigar-se com mais do que uma assinatura; um município
@@ -2368,7 +2393,11 @@ function lerOutorgantes(pref){
       'mun-mandato':g(`${id}-mun-mandato`),'mun-ata':g(`${id}-mun-ata`),
       'mun-doc':g(`${id}-mun-doc`)||'arquivo','mun-codigo':g(`${id}-mun-codigo`),
       qualidade:g(`${id}-qualidade`),
-      reps:lerRepresentantes(id)
+      'cgd-quem':g(`${id}-cgd-quem`),
+      reps:(()=>{const q=g(`${id}-tipo`)==='cgd'?g(`${id}-cgd-quem`):'';
+        if(!q)return lerRepresentantes(id);
+        const S=SOLICITADORAS[q]||{};
+        return[{qual:'Procuradora substabelecida',nome:S.nome||'…',natural:S.naturalidade||'',genero:'F',nif:S.nif||'',ec:'',morada:'',_sol:q}];})()
     };
   });
 }
@@ -2440,6 +2469,15 @@ function textoVendedor(v){
   }
   if(v.tipo==='empresa')
     return`${juntar(reps,'empresa','')} da ${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}${v.capital?`, com o capital social de ${v.capital} Euros`:''}`;
+  if(v.tipo==='cgd'&&v['cgd-quem']){
+    /* A Liliana ou a Andreia, como no mútuo: «…, a qual outorga na qualidade de
+       procuradora substabelecida, em nome e em representação da…». */
+    const S=SOLICITADORAS[v['cgd-quem']]||{};
+    const b=bancoAtual(),prep=b.prep||'em';
+    const nipcPt=b.nipc.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    const cap=`€${String(b.capital).replace(/\./g,' ')} (${valorExtenso(b.capital).toLowerCase()})`;
+    return`${S.textoProcuradora||S.nome||'…'}, a qual outorga na qualidade de procuradora substabelecida, em nome e em representação da ${b.denom}, com sede ${prep} ${b.sede}, matriculada na Conservatória de Registo Comercial sob o número único de matrícula e pessoa coletiva ${nipcPt}, capital social de ${cap}`;
+  }
   if(v.tipo==='cgd'){
     /* ── 4.1 · CGD ── redação fixada pela Liliana.
        Ordem própria: nome, estado civil, naturalidade, cartão de cidadão,
@@ -2517,7 +2555,7 @@ function textoVendedorCurto(v){
      Sem regime de bens: no contrato não interessa. */
   const repCurto=o=>{
     const rs=(o.reps&&o.reps.length)?o.reps:[{}];
-    const p=rs.map(r=>`${r.nome||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
+    const p=rs.map(r=>r._sol?idCurta(r.nome,r.natural,r.nif):`${r.nome||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
     return p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
   };
   if(v.tipo==='cgd')
@@ -5661,7 +5699,10 @@ function compor(){
   /* ── 4.1 · CGD — verificação dos poderes ──
      Redação fixada pela Liliana: junta-se à linha da identidade. */
   const cgdOut=[...vend,...comps].find(o=>o.tipo==='cgd');
-  const linhaCGD=cgdOut
+  const linhaCGD=cgdOut&&cgdOut['cgd-quem']
+    ? (()=>{const pc=partesProcuracao(cgdOut['cgd-proc-cod']||procSolCGD(cgdOut['cgd-quem']));
+        return ` e a qualidade e poderes de quem representa a CAIXA pela procuração, conjugada com a consulta do substabelecimento, depositadas em www.procuracoesonline.mj.pt através do código de acesso ${pc.cod||'…'}${pc.data?`, de ${pc.data}`:''}`;})()
+    : cgdOut
     ? ` bem como a qualidade e poderes dos outorgantes em representação da CAIXA, mediante consulta da procuração depositada em www.procuracoesonline.mj.pt através dos códigos de acesso ${cgdOut['cgd-proc-cod']||'…'} nos termos ${cgdOut['cgd-proc-poderes']||'…'}`
     : (ehCVMH&&v('f-mutuante')==='cgd'
       ? (()=>{
@@ -7793,7 +7834,7 @@ function restaurarEstado(d){
   const migrarConj=x=>{if(x&&x['conj-out']==='sim')x['conj-out']='ambos';return x;};
   /* Os representantes são criados depois do bloco existir. */
   const reporReps=(bloco,x)=>{
-    if(!x.reps||!x.reps.length)return;
+    if(!x.reps||!x.reps.length||x.reps.every(r=>r&&r._sol))return;
     const c=document.getElementById(`${bloco}-reps`);
     if(c)c.innerHTML='';
     repCnt[bloco]=0;
