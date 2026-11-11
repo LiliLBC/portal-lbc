@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-09.5</span>
+    <span class="page-sub">piloto · v2026-11-11.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -422,6 +422,30 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group form-full" id="g-local-morada" style="display:none"><label class="form-label">Morada da outorga <span>*</span></label>
         <input class="form-input" id="f-local-morada" placeholder="Ex: Rua 5 de Outubro, n.º 22, R/C, Agência Remax, em Beja" oninput="atualizar()">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Fora do escritório, o cabeçalho passa a indicar esta morada e acrescenta o teu domicílio profissional.</div></div>
+      <!-- INTÉRPRETE (11/11/2026) — art. 65.º do Código do Notariado -->
+      <div class="form-group form-full">
+        <div class="toggle-row" style="margin-top:.2rem">
+          <span class="toggle-label">Intervenção de intérprete</span>
+          <label class="toggle-switch"><input type="checkbox" id="t-interp" onchange="atualizar()"><span class="toggle-slider"></span></label>
+        </div></div>
+      <div class="form-group form-full cond-block" id="g-interp" style="display:none">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-bottom:.4rem">No termo: o intérprete entra a seguir aos outorgantes, o compromisso de honra antes da leitura e explicação, e assina o termo.</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-full"><label class="form-label">Nome completo</label><input class="form-input" id="f-int-nome" oninput="atualizar()" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">Género</label><select class="form-select" id="f-int-genero" onchange="atualizar()"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="form-group"><label class="form-label">Naturalidade</label><input class="form-input" id="f-int-natural" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Documento</label><select class="form-select" id="f-int-doc" onchange="atualizar()"><option value="cc">Cartão de cidadão</option><option value="passaporte">Passaporte</option></select></div>
+          <div class="form-group"><label class="form-label">N.º do documento</label><input class="form-input" id="f-int-docnum" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Válido até</label><input type="date" class="form-input" id="f-int-docval" onchange="atualizar()"></div>
+          <div class="form-group"><label class="form-label">NIF</label><input class="form-input" id="f-int-nif" oninput="atualizar()"></div>
+          <div class="form-group form-full"><label class="form-label">Residência</label><input class="form-input" id="f-int-morada" oninput="atualizar()"></div>
+          <div class="form-group"><label class="form-label">Escolhido por</label><select class="form-select" id="f-int-quem" onchange="atualizar()">
+            <option>PRIMEIRO OUTORGANTE</option><option>PRIMEIRA OUTORGANTE</option><option>PRIMEIROS OUTORGANTES</option><option>PRIMEIRAS OUTORGANTES</option>
+            <option>SEGUNDO OUTORGANTE</option><option>SEGUNDA OUTORGANTE</option><option>SEGUNDOS OUTORGANTES</option><option>SEGUNDAS OUTORGANTES</option>
+            <option>TERCEIRO OUTORGANTE</option><option>TERCEIRA OUTORGANTE</option><option>QUARTO OUTORGANTE</option><option>QUARTA OUTORGANTE</option></select></div>
+          <div class="form-group"><label class="form-label">Língua da tradução</label><input class="form-input" id="f-int-lingua" oninput="atualizar()" placeholder="Ex: inglesa"></div>
+        </div>
+      </div>
     </div>
     </div>
 
@@ -5493,7 +5517,43 @@ function comporDoacao(){
   }
   return{termo,contrato,anexo:[],docs};
 }
+/* ── INTÉRPRETE (11/11/2026) ── redação proposta pela Liliana, arts. 46.º, 65.º e 68.º do
+   Código do Notariado. Entra em qualquer ato com termo: a identificação a seguir aos
+   outorgantes (antes do «apresentaram…»), o compromisso antes da leitura e explicação. */
+function interpreteAtivo(){return chk('t-interp')&&atoEscolhido()!=='cpcv';}
+function blocosInterprete(){
+  const F=v('f-int-genero')==='F',quem=v('f-int-quem')||'PRIMEIRO OUTORGANTE';
+  const pl=/OUTORGANTES$/.test(quem),fq=/^\S+AS?\s/.test(quem);
+  const art=pl?(fq?'pelas':'pelos'):(fq?'pela':'pelo'),dem=pl?(fq?'estas':'estes'):(fq?'esta':'este');
+  const decl=pl?'declararem':'declarar',a=pl?(fq?'às':'aos'):(fq?'à':'ao'),deste=pl?(fq?'destas':'destes'):(fq?'desta':'deste');
+  const doc=v('f-int-doc')==='passaporte'?'passaporte':'cartão de cidadão';
+  const val=v('f-int-docval')?dPT(v('f-int-docval')):'…';
+  const id=`${(v('f-int-nome')||'…').toUpperCase()}, natural de ${v('f-int-natural')||'…'}, portador${F?'a':''} do ${doc} n.º ${v('f-int-docnum')||'…'}, válido até ${val}, número de identificação fiscal ${v('f-int-nif')||'…'}, residente em ${v('f-int-morada')||'…'}, que intervém neste ato na qualidade de intérprete escolhid${F?'a':'o'} ${art} ${quem}, por ${dem} ${decl} não compreender a língua portuguesa, nos termos do n.º 1 do artigo 65.º do Código do Notariado.`;
+  const comp=`${F?'A intérprete':'O intérprete'} prestou perante mim compromisso de honra de bem desempenhar as suas funções, tendo traduzido verbalmente para a língua ${v('f-int-lingua')||'…'} o documento anexo e o presente termo de autenticação ${a} ${quem}, e transmitido a mim a declaração de vontade ${deste}, nos termos dos artigos 46.º, n.º 1, alínea i), e 65.º do Código do Notariado. Verifiquei a idoneidade ${F?'da intérprete':'do intérprete'}, não se verificando a seu respeito nenhum dos impedimentos previstos no artigo 68.º do mesmo Código.`;
+  return{id,comp};
+}
+function injetarInterprete(termo){
+  if(!interpreteAtivo()||!Array.isArray(termo)||termo.some(b=>/t-interprete$/.test(b.id||'')))return;
+  const B=blocosInterprete();
+  let iA=termo.findIndex(b=>/t-apresentaram$/.test(b.id||''));
+  if(iA<0)iA=termo.findIndex(b=>/apresentou|apresentaram/.test(String(b.X||'').slice(0,120)));
+  const pre=iA>=0?String(termo[iA].id||'').replace(/t-apresentaram$/,''):'';
+  const bId={id:pre+'t-interprete',T:'INTÉRPRETE',X:B.id};
+  if(iA>=0)termo.splice(iA,0,bId);else termo.splice(Math.min(termo.length,2),0,bId);
+  let iL=termo.findIndex(b=>/^A leitura e explicação/.test(String(b.X||'')));
+  if(iL<0)iL=termo.findIndex(b=>/leitura e explica/i.test(String(b.X||'')));
+  const bC={id:pre+'t-interprete-comp',T:'',X:B.comp};
+  if(iL>=0)termo.splice(iL,0,bC);else termo.push(bC);
+}
 function compor(){
+  const R=comporBase();
+  if(interpreteAtivo()&&R){
+    const vistos=new Set();
+    [R.termo,...((R.docs||[]).map(d=>d&&d.termo))].forEach(t=>{if(t&&!vistos.has(t)){vistos.add(t);injetarInterprete(t);}});
+  }
+  return R;
+}
+function comporBase(){
   if(atoEscolhido()==='cpcv')return comporCPCV();
   if(atoEscolhido()==='doacao')return comporDoacao();
   if(atoEscolhido()==='partilhas')return comporDCC();
@@ -6945,6 +7005,7 @@ function locFin(){
   else if(!c.children.length)locSigAdd({});
 }
 function atualizar(){
+  {const gi=document.getElementById('g-interp');if(gi)gi.style.display=chk('t-interp')?'block':'none';}
   sincOnus();
   {const w=document.getElementById('esp-onde-wrap');if(w)w.style.display=(typeof docsMH==='function'&&docsMH().length>1)?'':'none';}
   // ── funil ──
@@ -8232,7 +8293,10 @@ function blocosFinais(i){
   });
   return{BlocosTermo:expandir(termo),BlocosContrato:expandir(contrato),BlocosAnexo:expandir(anexo),temTermo:termo.length>0,temAnexo:anexo.length>0,Assin_Nome:(solicitadoraAtual().assinNome||solicitadoraAtual().nomeAbrev||''),Assin_Cargo:(solicitadoraAtual().cargo||''),
     ...(()=>{if(D.assinaSo)return{AssinTermo:[],AssinContrato:D.assinaSo.map(n=>({Assin:n})),temAssin:true,Assin_Nome:'',Assin_Cargo:''};
-      const a=signatarios();return{AssinTermo:a,AssinContrato:a,temAssin:a.length>0};})()};
+      const a=signatarios();
+      /* O intérprete assina o termo, não o contrato. */
+      const aT=interpreteAtivo()&&v('f-int-nome')?[...a,{Assin:v('f-int-nome').toUpperCase()}]:a;
+      return{AssinTermo:aT,AssinContrato:a,temAssin:a.length>0};})()};
 }
 function pendentesValidacao(){
   const nNotas=Object.keys(notas).length;
