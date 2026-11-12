@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-09.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-12.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4757,7 +4757,8 @@ function regPreencherAuto(nome,dep,ag){
     if(e.tagName==='SELECT'&&![...e.options].some(o=>o.value===v||o.text===v))return;e.value=v;feitos.push(rot);e.style.background='#FEF9C3';(window._regAmarelos=window._regAmarelos||[]).push(e);};
   const mm=String(nome).match(/^(\d{4})(\d{2})(\d{2})\s+(.+)$/);
   if(mm){por('p-nome',mm[4].trim(),'nome');por('p-data',`${mm[1]}-${mm[2]}-${mm[3]}`,'data');}
-  if(ag){por('p-numProcesso',ag.numProcesso,'n.º de processo');por('p-entidade',ag.entidade,'entidade');}
+  /* (12/11/2026) O n.º de processo já não se preenche sozinho: vinha errado. Escreve-se à mão. */
+  if(ag){por('p-entidade',ag.entidade,'entidade');}
   if(dep){
     por('p-entidade',dep.entidade,'entidade');
     por('p-finalidade',dep.finalidade==='habitação própria permanente'?'HPP':(dep.finalidade?'Outros':''),'finalidade');
