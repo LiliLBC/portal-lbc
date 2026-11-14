@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.19">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.20">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3911,7 +3911,7 @@ function fechoRender(msg){
       <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
       <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
       <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button>
-      ${eu?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" title="Apaga a lista, os estados e os dados do Fecho desta pasta (não apaga ficheiros, registos nem pedidos)" onclick="fechoApagarDados()">🗑</button>`:''}</div>`;
+      ${eu?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" title="Apagar: só os dados do Fecho, ou tudo (pasta de teste)" onclick="fechoApagarDados()">🗑</button>`:''}</div>`;
   /* As escrituras da pasta aparecem nos blocos 1 e 2; o «+» de qualquer um junta mais uma
      (mais um depósito = mais uma linha no Registo de escrituras). */
   const chips=(mais,rot)=>`<span style="display:inline-flex;gap:.35rem;flex-wrap:wrap;font-weight:400" onclick="event.stopPropagation()">${c.ordem.map(k=>{const x=c.esc[k];const s1=dpzEstado({v:2,esc:{a:x}},FECHO.nome);
@@ -3929,6 +3929,50 @@ function fechoRender(msg){
   if(FECHO.regK!==FECHO.k&&!FECHO._aCarregarReg)fxCarregarRegisto(FECHO.k);
 }
 function fechoAbrirFechar(n){FECHO.abertos[n]=!FECHO.abertos[n];fechoRender();}
+/* 🗑 do Fecho (só a Liliana). Duas opções:
+   · DADOS — só os dados do Fecho desta pasta (lista, estados, valores);
+   · TUDO  — para pastas de teste: também os pedidos de registo (Portal Registos), as linhas do
+     Registo de escrituras, os ficheiros da subpasta DPA e, se confirmar, a própria pasta
+     (vai para a reciclagem do SharePoint, de onde ainda se recupera). */
+async function fechoApagarDados(){
+  const c=FECHO&&FECHO.cont;if(!c)return;
+  const regs=[...new Set(c.ordem.map(k=>c.esc[k].registoId).filter(Boolean).map(String))];
+  const op=(prompt(`Apagar desta pasta:\n«${FECHO.nome}»\n\nEscreve:\n  DADOS — só os dados do Fecho (lista de documentos, estados, valores)\n  TUDO — pasta de teste: também os pedidos no Portal Registos, ${regs.length} linha(s) no Registo de escrituras e os ficheiros da pasta DPA`,'')||'').trim().toUpperCase();
+  if(op!=='DADOS'&&op!=='TUDO'){if(op)showToast('Nada apagado.','');return;}
+  const res=[];
+  try{
+    await renovarToken();
+    const H={Authorization:'Bearer '+graphToken};
+    const del=async u=>{const r=await fetch(u,{method:'DELETE',headers:H});if(!r.ok&&r.status!==204&&r.status!==404)throw new Error('Erro '+r.status);};
+    let apagarPasta=false;
+    if(op==='TUDO'){
+      if(!confirm(`Confirmas que «${FECHO.nome}» é uma pasta de TESTE?\n\nVai apagar:\n• os pedidos de registo desta pasta (desaparecem do Portal Registos)\n• ${regs.length} linha(s) do Registo de escrituras\n• a subpasta DPA com os ficheiros\n• os dados do Fecho\n\nNão se pode desfazer (exceto ficheiros, que vão para a reciclagem).`))return;
+      apagarPasta=confirm(`Apagar também a própria pasta «${FECHO.nome}» (com rascunhos e documentos)?\n\nVai para a reciclagem do SharePoint.\n\nOK = apagar a pasta · Cancelar = deixar a pasta`);
+      /* 1. Pedidos de registo: os ligados ao Fecho e qualquer outro destas escrituras. */
+      const L=await fechoListaPed();
+      const peds=new Set((c.pedidos||[]).map(p=>p.pedidoId).filter(Boolean).map(String));
+      if(regs.length){try{const todos=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items?$expand=fields($select=EscrituraId)&$top=500`);
+        (todos.value||todos||[]).forEach(it=>{if(regs.includes(String((it.fields||{}).EscrituraId||'')))peds.add(String(it.id));});}catch(e){console.warn('[Fecho] pedidos:',e);}}
+      for(const id of peds)await del(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${id}`);
+      res.push(`${peds.size} pedido(s) de registo`);
+      /* 2. Linhas do Registo de escrituras. */
+      for(const id of regs)await del(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${id}`);
+      if(typeof todosRegistosReg!=='undefined')todosRegistosReg=todosRegistosReg.filter(i=>!regs.includes(String(i.id)));
+      res.push(`${regs.length} registo(s) de escritura`);
+      /* 3. Ficheiros: a pasta inteira, ou só a subpasta DPA. */
+      if(apagarPasta){await del(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}`);res.push('a pasta');}
+      else{const r=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/DPA`,{headers:H});
+        if(r.ok){const j=await r.json();await del(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${j.id}`);res.push('a subpasta DPA');}}
+    }else if(!confirm('Apagar os dados do Fecho desta pasta (lista de documentos, estados, valores)?\n\nOs ficheiros na pasta DPA, os registos de escritura e os pedidos de registo NÃO são apagados.'))return;
+    /* 4. Dados do Fecho (Etiquetas). */
+    for(const campo of ['deposito','registo','sintese'])await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,campo,null);
+    res.push('os dados do Fecho');
+    FECHO.sujo=false;FECHO.cont={v:2,ordem:[],esc:{},pedidos:[]};
+    showToast('Apagado: '+res.join(', ')+'.','success');
+    try{if(window.opener&&window.opener.dpzPintarBotoes){window.opener.etqRecarregar&&await window.opener.etqRecarregar();window.opener.dpzPintarBotoes();}}catch(_){}
+    fechoRender('Apagado: '+res.join(', ')+'. Pode fechar este separador.');
+  }catch(e){showToast('Parei a meio — já apagado: '+(res.join(', ')||'nada')+'. Erro: '+e.message,'error');}
+}
 function fechoTab(k){FECHO.k=k;fechoRender();}
 function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
   const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.esc[k].labelManual=true;FECHO.cont.esc[k].sujeito={nome:dpzCliente(FECHO.nome)};FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
