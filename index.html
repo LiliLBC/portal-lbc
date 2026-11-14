@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.8">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.19">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3672,7 +3672,7 @@ function renderPastas(lista){
         <button class="btn btn-sm" onclick="eliminarPasta('${p.id}','${escHtml(p.name||'').replace(/'/g,'&#39;')}')" title="Eliminar pasta" style="padding:4px 8px;color:var(--red);border-color:var(--red)">🗑</button>
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         ${/* Verificador e Matriz retirados (30/10/2026): o verificador deixou de se usar. */''}
-        <span data-ficha="ESCRITURAS|${p.id}"></span>
+        ${FICHA_ATIVA?`<span data-ficha="ESCRITURAS|${p.id}"></span>`:''}
         ${FICHA_ATIVA?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirFichaEscritura('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ficha da escritura — uma folha com a certidão permanente, a caderneta e o boletim, para conferir antes do ato">🖨 Ficha</button>`:''}
         ${(DEPOSITO_ATIVO&&window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
         ${ANALISADOR_ATIVO?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>`:''}
@@ -3734,10 +3734,19 @@ const DPZ_COR={vazio:'',laranja:'background:#FBEFD5;border-color:#E3B25B;color:#
 const DPZ_TIT={vazio:'Depósito — ainda sem lista de documentos',laranja:'Depósito — faltam documentos por digitalizar',verde:'Depósito — tudo digitalizado, pronto a depositar',
   azul:'Depósito — completo',rosa:'Depósito — faltam documentos essenciais (a juntar no registo)'};
 function dpzPintarBotoes(){
+  /* (14/11/2026) Cores fortes e o que falta escrito no botão — as cores claras não se distinguiam. */
+  const COR={laranja:'background:#F59E0B;border-color:#F59E0B;color:#fff',verde:'background:#16A34A;border-color:#16A34A;color:#fff',
+    azul:'background:#2563EB;border-color:#2563EB;color:#fff',rosa:'background:#B5838D;border-color:#B5838D;color:#fff',vazio:''};
   document.querySelectorAll('[data-dpz]').forEach(b=>{const id=b.dataset.dpz,nome=b.dataset.nome||'';
     let d;try{d=window.etqDadoSync?etqDadoSync('ESCRITURAS',id,'deposito'):null;}catch(_){d=null;}
-    const st=dpzEstado(d,nome);b.setAttribute('style',(b.dataset.base||'')+';'+DPZ_COR[st]);b.title=DPZ_TIT[st];
-    b.textContent=st==='azul'?'📥 Depósito ✓':'📥 Depósito';});
+    const st=dpzEstado(d,nome);const docs=dpzTodasDocs(dpzContentor(d,nome));
+    const faltaFich=docs.filter(x=>!x.fileId).length,faltaDep=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg').length;
+    b.setAttribute('style',(b.dataset.base||'')+';'+COR[st]);
+    /* Ao passar o cursor: o estado e o que falta, por nome. */
+    const nomes=l=>l.map(x=>'• '+(x.desc||'documento')).join('\n');
+    const semF=docs.filter(x=>!x.fileId),semD=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg');
+    b.title=DPZ_TIT[st];
+    b.textContent=st==='laranja'?`📥 Falta${faltaFich>1?'m':''} ${faltaFich}`:st==='verde'?'📥 Pronto a depositar':st==='azul'?'📥 Depósito ✓':st==='rosa'?`📥 Falta${faltaDep>1?'m':''} ${faltaDep} (registo)`:'📥 Depósito';});
 }
 /* Botão da pasta: abre a página do fecho num separador próprio. */
 function dpzAbrir(pastaId,nome){
@@ -3830,15 +3839,24 @@ async function fechoAbrir(pastaId,nome){
     if(!k&&cont.ordem.length===1&&cont.esc[cont.ordem[0]]&&!cont.esc[cont.ordem[0]].rascunho){k=cont.ordem[0];cont.esc[k].rascunho=f.name;cont.esc[k].label=dpzRotuloRasc(f.name);}
     if(!k){k='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);cont.esc[k]=dpzNovaEsc(dpzRotuloRasc(f.name),f.name,dia);cont.ordem.push(k);}
     const g=await dpzDoGerador(f.id,nome);FECHO.ger[k]=g;dpzAplicarGerador(cont.esc[k],g);
+    /* Nome do separador: o produto (CVMH, MH…), não o nome do rascunho — esse leva o apelido
+       do vendedor, que confunde. Só se mantém um nome escrito à mão. */
+    const e=cont.esc[k];if(!e.labelManual&&g&&g.produto){e._prod=g.produto==='PARTILHAS'?(dpzRotuloRasc(f.name).split(/\s+/)[0]||'PARTILHA').toUpperCase():g.produto;e._resto=dpzRotuloRasc(f.name).replace(new RegExp('^'+e._prod+'\\b\\s*','i'),'').trim();}
   }
+  /* Produtos repetidos na pasta (dois MH): junta-se o resto do nome do rascunho, ou um número. */
+  {const conta={};cont.ordem.forEach(k=>{const p=cont.esc[k]._prod;if(p)conta[p]=(conta[p]||0)+1;});const n={};
+   cont.ordem.forEach(k=>{const e=cont.esc[k];if(!e._prod)return;
+     n[e._prod]=(n[e._prod]||0)+1;e.label=conta[e._prod]>1?`${e._prod} ${e._resto||n[e._prod]}`:e._prod;delete e._prod;delete e._resto;});}
   if(!cont.ordem.length){const k='principal';cont.esc[k]=dpzNovaEsc('Escritura','',dia);cont.ordem.push(k);}
+  /* O sujeito é o cliente da pasta: vem já escrito; muda-se só se se editar (14/11/2026). */
+  cont.ordem.forEach(k=>{const e=cont.esc[k];e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(nome);});
   FECHO.k=cont.ordem[0];
   fechoRender();
 }
 function fechoEsc(){return FECHO&&FECHO.cont.esc[FECHO.k];}
 function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){const o=el.textContent;el.textContent='✓';setTimeout(()=>el.textContent=o,700);}}catch(_){}}
 function dpzGet(path){return path.split('.').reduce((o,k)=>o==null?o:o[k],fechoEsc());}
-function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;}
+function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;fxSyncRegisto();}
 function dpzCampo(rot,path,ph){
   const v=dpzGet(path)||'';
   return `<div class="fx-l"><span class="fx-r">${rot}</span>
@@ -3856,47 +3874,65 @@ function dpzIndice(k){const d=fechoEsc().docs;let i=0;for(let j=0;j<=k;j++)if(!d
 
 function fechoRender(msg){
   let el=document.getElementById('fecho');
-  if(!el){document.body.insertAdjacentHTML('beforeend',`<div id="fecho"></div>`);el=document.getElementById('fecho');}
+  if(!el){document.body.insertAdjacentHTML('beforeend',`<div id="fecho"><div class="fx-w"><div id="fx-top"></div><div id="fx-b1"></div>
+      <div id="fx-b2" class="fx-card"><div id="fx-b2h"></div><div id="fx-reg-host"></div></div><div id="fx-b3"></div></div></div>`);el=document.getElementById('fecho');
+    document.body.classList.add('fx-modo');}
   if(!document.getElementById('fecho-css')){document.head.insertAdjacentHTML('beforeend',`<style id="fecho-css">
     #fecho{position:fixed;inset:0;z-index:250;background:var(--bg,#f7f6f3);overflow:auto}
     #fecho .fx-w{max-width:1100px;margin:0 auto;padding:1rem 1.2rem 3rem}
     #fecho .fx-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;margin:.7rem 0}
-    #fecho .fx-h{font-weight:700;font-size:13.5px;margin-bottom:.4rem;display:flex;align-items:center;gap:.5rem}
+    #fecho .fx-h{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;cursor:pointer;user-select:none}
     #fecho .fx-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent,#7C6FAE);color:#fff;font-size:11.5px}
     #fecho .fx-l{display:flex;align-items:center;gap:.35rem;margin:.18rem 0}
     #fecho .fx-r{width:170px;font-size:11.5px;color:var(--text-muted)}
     #fecho .fx-i{flex:1;padding:4px 8px;font-size:12.5px}
     #fecho .fx-c{padding:2px 8px;font-size:11px}
-    #fecho .fx-tab{border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:5px 12px;font-size:12.5px;cursor:pointer}
+    #fecho .fx-tab{border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:4px 11px;font-size:12px;cursor:pointer;font-weight:500}
     #fecho .fx-tab.on{background:var(--accent,#7C6FAE);color:#fff;border-color:transparent}
     #fecho table td,#fecho table th{padding:3px 4px;vertical-align:middle}
+    /* A ficha do Registo de escrituras, dentro da página (bloco 2) */
+    body.fx-modo #reg-overlay{display:none!important}
+    #fx-reg-host #reg-painel{position:static!important;transform:none!important;width:100%!important;max-width:none!important;height:auto!important;
+      border:1px solid var(--border);border-radius:10px;box-shadow:none!important;z-index:auto!important;margin-top:.5rem;display:flex}
+    #fx-reg-host #reg-painel .side-panel-close{display:none}
+    #fx-reg-host #reg-painel .side-panel-body{overflow:visible!important;max-height:none!important}
     @media(max-width:760px){#fecho .fx-g2{grid-template-columns:1fr!important}#fecho .fx-r{width:120px}}
   </style>`);}
-  if(msg||!FECHO||!FECHO.k){el.innerHTML=`<div class="fx-w"><div class="fx-card">${dpzEsc(msg||'A carregar…')}</div></div>`;return;}
+  const top=document.getElementById('fx-top');
+  if(msg||!FECHO||!FECHO.k){top.innerHTML=`<div class="fx-card">${dpzEsc(msg||'A carregar…')}</div>`;
+    ['fx-b1','fx-b3'].forEach(i=>document.getElementById(i).innerHTML='');document.getElementById('fx-b2').style.display='none';return;}
+  document.getElementById('fx-b2').style.display='';
   const c=FECHO.cont,e=fechoEsc(),eu=(typeof prontaSouEu==='function'&&prontaSouEu());
+  FECHO.abertos=FECHO.abertos||{1:true,2:true,3:true};
   const st=dpzEstado(c,FECHO.nome);
-  const tabs=c.ordem.map(k=>{const x=c.esc[k];const s1=dpzEstado({v:2,esc:{a:x}},FECHO.nome);
-    return `<button class="fx-tab${k===FECHO.k?' on':''}" onclick="fechoTab('${k}')"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;${(DPZ_COR[s1]||'').replace(/color:[^;]+/,'')};border:1px solid #bbb"></span>${dpzEsc(x.label)}${x.proc&&x.proc.entidade?` · ${dpzEsc(x.proc.entidade)}`:''}</button>`;}).join('');
-  el.innerHTML=`<div class="fx-w">
-    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+  top.innerHTML=`<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
       <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:16px">Fecho da escritura</div>
         <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted)">${dpzEsc(FECHO.nome)}</div></div>
       <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
       <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
-      <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button></div>
-    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem;align-items:center">${tabs}
-      <button class="btn btn-sm" onclick="fechoNovaEscritura()">+ Escritura</button>
-      ${dpzMulti()?`<button class="btn btn-sm" style="color:var(--text-muted)" onclick="fechoRenomear()">✏️ Nome</button>`:''}</div>
-    ${fechoBlocoDeposito(e,eu)}
-    ${fechoBlocoRegisto(e)}
-    ${fechoBlocoRegistos()}
-  </div>`;
-  dpzEntidade();
+      <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button>
+      ${eu?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" title="Apaga a lista, os estados e os dados do Fecho desta pasta (não apaga ficheiros, registos nem pedidos)" onclick="fechoApagarDados()">🗑</button>`:''}</div>`;
+  /* As escrituras da pasta aparecem nos blocos 1 e 2; o «+» de qualquer um junta mais uma
+     (mais um depósito = mais uma linha no Registo de escrituras). */
+  const chips=(mais,rot)=>`<span style="display:inline-flex;gap:.35rem;flex-wrap:wrap;font-weight:400" onclick="event.stopPropagation()">${c.ordem.map(k=>{const x=c.esc[k];const s1=dpzEstado({v:2,esc:{a:x}},FECHO.nome);
+      return `<button class="fx-tab${k===FECHO.k?' on':''}" onclick="fechoTab('${k}')"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;${(DPZ_COR[s1]||'').replace(/color:[^;]+/,'')};border:1px solid #bbb"></span>${dpzEsc(x.label)}${x.proc&&x.proc.entidade?` · ${dpzEsc(x.proc.entidade)}`:''}</button>`;}).join('')}
+      <button class="btn btn-sm fx-c" title="${rot}" onclick="fechoNovaEscritura()">${mais}</button>
+      <button class="btn btn-sm fx-c" style="color:var(--text-muted)" title="Mudar o nome desta escritura" onclick="fechoRenomear()">✏️</button></span>`;
+  const cab=(n,tit,extra)=>`<div class="fx-h" onclick="fechoAbrirFechar(${n})"><span style="color:var(--text-muted);width:12px">${FECHO.abertos[n]?'▾':'▸'}</span><span class="fx-n">${n}</span> ${tit} ${extra||''}</div>`;
+  document.getElementById('fx-b1').innerHTML=`<div class="fx-card">${cab(1,'Depósito',chips('+ Depósito','Mais uma escritura nesta pasta (mais um depósito)'))}
+    ${FECHO.abertos[1]?fechoBlocoDeposito(e,eu):''}</div>`;
+  document.getElementById('fx-b2h').innerHTML=cab(2,'Registo de escritura',chips('+ Registo de escritura','Mais uma escritura nesta pasta (mais uma linha no Registo de escrituras)')+fechoEstadoRegisto(e));
+  document.getElementById('fx-reg-host').style.display=FECHO.abertos[2]?'':'none';
+  document.getElementById('fx-b3').innerHTML=`<div class="fx-card">${cab(3,'Registos prediais','<span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">— toda a pasta</span><button class="btn btn-sm fx-c" onclick="event.stopPropagation();fechoNovoPedido()">+ Registo</button>')}
+    ${FECHO.abertos[3]?fechoBlocoRegistos():''}</div>`;
+  if(FECHO.abertos[1])dpzEntidade();
+  if(FECHO.regK!==FECHO.k&&!FECHO._aCarregarReg)fxCarregarRegisto(FECHO.k);
 }
-function fechoTab(k){FECHO.k=k;fechoRender();window.scrollTo(0,0);}
+function fechoAbrirFechar(n){FECHO.abertos[n]=!FECHO.abertos[n];fechoRender();}
+function fechoTab(k){FECHO.k=k;fechoRender();}
 function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
-  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
-function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();FECHO.sujo=true;fechoRender();}}
+  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.esc[k].labelManual=true;FECHO.cont.esc[k].sujeito={nome:dpzCliente(FECHO.nome)};FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
+function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();e.labelManual=true;FECHO.sujo=true;fechoRender();}}
 function fechoFechar(){if(FECHO&&FECHO.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;
   window.close();setTimeout(()=>{document.getElementById('fecho')?.remove();FECHO=null;},150);}
 
@@ -3913,14 +3949,14 @@ function fechoBlocoDeposito(e,eu){
       <td><button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoEsc().docs[${k}].desc,this)">Copiar</button></td>
       <td style="font-size:11.5px;white-space:nowrap">${eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="fechoEsc().docs[${k}].estado=this.value;FECHO.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
       <td style="white-space:nowrap">${x.fileId?`<a class="btn btn-sm fx-c" href="${dpzEsc(x.webUrl||'#')}" target="_blank" title="${dpzEsc(x.ficheiro||'')}">📄</a>`:''}
-        <label class="btn btn-sm fx-c" style="cursor:pointer">⬆ Puxar<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0])"></label>
+        <label class="btn btn-sm fx-c" style="cursor:pointer" title="${x.fileId?'Puxar outra vez — substitui o ficheiro anterior':'Puxar o ficheiro'}">${x.fileId?'🔄 Substituir':'⬆ Puxar'}<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0]);this.value=''"></label>
         ${x.fixo?'':`<button class="btn btn-sm fx-c" style="color:var(--red)" onclick="dpzRemover(${k})">×</button>`}</td></tr>`;}).join('');
   const pred=(e.predios||[]).map((p,k)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:.4rem .55rem;margin:.3rem 0">
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Prédio ${k+1} · sempre os dados da CRP (nunca da matriz)</div>
       ${dpzCampo('Distrito','predios.'+k+'.distrito')}${dpzCampo('Concelho','predios.'+k+'.concelho')}${dpzCampo('Freguesia','predios.'+k+'.freguesia')}
       ${dpzCampo('N.º de ficha / prédio','predios.'+k+'.ficha')}${dpzCampo('Fração autónoma','predios.'+k+'.fracao')}</div>`).join('');
   const ger=FECHO.ger[FECHO.k];
-  return `<div class="fx-card"><div class="fx-h"><span class="fx-n">1</span> Depósito${e.depositadoEm?` <span style="font-weight:400;font-size:11.5px;color:#1F5E3A">✓ pedido de pagamento enviado ${new Date(e.depositadoEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}</span>`:''}</div>
+  return `<div style="margin-top:.5rem">${e.depositadoEm?`<div style="font-size:11.5px;color:#1F5E3A;margin-bottom:.3rem">✓ pedido de pagamento enviado ${new Date(e.depositadoEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}</div>`:''}
     ${ger?`<div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Sugestões do gerador (${dpzEsc(e.rascunho)}) nos campos que estavam vazios — confirma ou corrige.</div>`:''}
     <div class="fx-g2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
      <div>
@@ -3933,7 +3969,7 @@ function fechoBlocoDeposito(e,eu){
       ${dpzCampo('N.º de processo','proc.numProcesso','escreve à mão')}
       ${dpzCampo('Código da certidão predial','proc.codCRP')}
       ${dpzCampo('Código do depósito','proc.codDeposito','depois de submeter')}
-      ${dpzCampo('Código do DPA a relacionar','proc.codRel','só se houver')}
+      ${fechoCodRels(e)}
      </div>
      <div>
       <div class="cond-block-title" style="margin-top:.2rem">Detalhes do ato</div>
@@ -3991,12 +4027,22 @@ async function dpzEnviar(x,i,file){
   const url=`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/${sub}/${encodeURIComponent(nome)}:/content?@microsoft.graph.conflictBehavior=replace`;
   const r=await fetch(url,{method:'PUT',headers:{Authorization:'Bearer '+graphToken,'Content-Type':file.type||'application/pdf'},body:file});
   if(!r.ok)throw new Error('upload '+r.status);
-  const j=await r.json();x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;if(!x.estado||x.estado==='marcado')x.estado='digit';
+  const j=await r.json();
+  /* (14/11/2026) Puxar outra vez o mesmo documento substitui o anterior. Com o mesmo nome o
+     ficheiro é substituído logo; se o nome mudou (descrição ou número), o antigo é apagado
+     para não ficarem dois na pasta DPA. */
+  const antigo=x.fileId;
+  if(antigo&&antigo!==j.id){try{await graphDelete(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${antigo}`);}catch(e){console.warn('[Fecho] apagar antigo:',e);}}
+  x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;
+  if(antigo){x.substituidoEm=new Date().toISOString();x.estado='digit';}else if(!x.estado||x.estado==='marcado')x.estado='digit';
 }
 async function dpzPuxar(k,file){
   if(!file)return;const x=fechoEsc().docs[k];
+  const jaDep=x.fileId&&(x.estado==='dep'||x.estado==='reg');
+  if(x.fileId&&!confirm(`Este documento já tem ficheiro na pasta DPA:\n«${x.ficheiro||x.desc}»\n\nSubstituir pelo novo?`+(jaDep?'\n\nAtenção: estava marcado como depositado — volta a «digitalizado» até depositares o novo.':'')))return;
+  const repor=!!x.fileId;
   try{showToast('A gravar…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
-    await dpzEnviar(x,dpzIndice(k),file);FECHO.sujo=true;await dpzGravar(true);fechoRender();showToast('✓ '+x.ficheiro,'success');}
+    await dpzEnviar(x,dpzIndice(k),file);FECHO.sujo=true;await dpzGravar(true);fechoRender();showToast((repor?'✓ Substituído: ':'✓ ')+x.ficheiro,'success');}
   catch(e){showToast('Não consegui gravar: '+e.message,'error');}
 }
 /* Vários de uma vez: cada ficheiro vai para o próximo documento marcado sem ficheiro;
@@ -4125,34 +4171,79 @@ async function dpzDescarregarTudo(){
   }catch(e){showToast('Não consegui descarregar: '+e.message,'error');}
 }
 
-/* ── 2 · Registo de escritura ── */
-function fechoBlocoRegisto(e){
-  const reg=dpzRegDe(e);
+/* Códigos de outros DPA a relacionar (p. ex. três distrates, cada um com o seu código).
+   Vão todos para o mapa de registo, na lista de documentos (14/11/2026). */
+function fechoCodRelsDe(e){const p=e.proc=e.proc||{};
+  if(!Array.isArray(p.codRels)){p.codRels=p.codRel?[{id:'r'+Date.now().toString(36),codigo:p.codRel,descricao:''}]:[];delete p.codRel;}
+  return p.codRels;}
+function fechoCodRels(e){
+  const l=fechoCodRelsDe(e);
+  const linhas=l.map((r,i)=>`<div class="fx-l"><span class="fx-r">${i?'':'Códigos de DPA a relacionar'}</span>
+      <input class="form-input fx-i" style="flex:.9" placeholder="Código" value="${dpzEsc(r.codigo||'')}" oninput="fechoCodRelsDe(fechoEsc())[${i}].codigo=this.value;FECHO.sujo=true">
+      <input class="form-input fx-i" style="flex:1.1" placeholder="O que é (ex.: Distrate CGD)" value="${dpzEsc(r.descricao||'')}" oninput="fechoCodRelsDe(fechoEsc())[${i}].descricao=this.value;FECHO.sujo=true">
+      <button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoCodRelsDe(fechoEsc())[${i}].codigo,this)">Copiar</button>
+      <button class="btn btn-sm fx-c" style="color:var(--red)" onclick="fechoCodRelsDe(fechoEsc()).splice(${i},1);FECHO.sujo=true;fechoRender()">×</button></div>`).join('');
+  return `${linhas||'<div class="fx-l"><span class="fx-r">Códigos de DPA a relacionar</span><span style="font-size:11.5px;color:var(--text-faint)">nenhum</span></div>'}
+    <div class="fx-l"><span class="fx-r"></span><button class="btn btn-sm fx-c" onclick="fechoCodRelsDe(fechoEsc()).push({id:'r'+Date.now().toString(36),codigo:'',descricao:''});FECHO.sujo=true;fechoRender()">+ Código a relacionar</button></div>`;
+}
+
+/* ── 2 · Registo de escritura ──
+   A ficha do Registo de escrituras fica dentro da página. Abre preenchida com o que se sabe
+   (a amarelo); tudo é editável e vale o que lá ficar escrito. O que se escreve no bloco 1
+   passa para a ficha enquanto o campo da ficha estiver vazio ou ainda com a sugestão anterior. */
+function fechoEstadoRegisto(e){
   const i=e.registoId&&typeof todosRegistosReg!=='undefined'?todosRegistosReg.find(x=>String(x.id)===String(e.registoId)):null;
   const num=i&&(i['Num_Ordem']||i['NumOrdem']);
-  const linhas=[['N.º de processo',reg.numProcesso],['Entidade',(e.proc||{}).entidade],['Produto',reg.produto],['Prédio',reg.predio],['Freguesia / concelho',[reg.freguesia,reg.concelho].filter(Boolean).join(' / ')],
-    ['Montante do crédito',reg.montCredito],['Código CRP',reg.codCRP],['Código do depósito',reg.codDeposito]]
-    .map(([a,b])=>`<div style="display:flex;gap:.5rem;font-size:12px;margin:.1rem 0"><span style="width:170px;color:var(--text-muted)">${a}</span><span>${dpzEsc(b||'—')}</span></div>`).join('');
-  return `<div class="fx-card"><div class="fx-h"><span class="fx-n">2</span> Registo de escritura
-      ${e.registoId?`<span style="font-weight:400;font-size:11.5px;color:#1F5E3A">✓ gravado${num?' · n.º de arquivo '+dpzEsc(num):''}</span>`:'<span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">ainda por gravar</span>'}</div>
-    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Vai para a ficha do Registo de escrituras (a amarelo). Confirmas, completas o que falta e gravas uma vez.</div>
-    ${linhas}
-    <div style="margin-top:.5rem"><button class="btn btn-primary btn-sm" onclick="fechoRegistar()">${e.registoId?'Abrir o registo desta escritura':'Criar o registo desta escritura'}</button></div></div>`;
+  return e.registoId?`<span style="font-weight:400;font-size:11.5px;color:#1F5E3A">✓ gravado${num?' · n.º de arquivo '+dpzEsc(num):''}</span>`
+    :'<span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">ainda por gravar — confirma e carrega em Guardar, no fim da ficha</span>';
 }
-async function fechoRegistar(){
-  const e=fechoEsc();if(FECHO.sujo)await dpzGravar(true);
-  try{if(!registosCarregados||!todosRegistosReg.length){registosCarregados=false;await carregarRegistos();}}catch(_){}
-  FECHO.aguardaReg=FECHO.k;
-  const reg=dpzRegDe(e);
-  if(e.registoId&&todosRegistosReg.some(x=>String(x.id)===String(e.registoId))){
-    abrirPainelRegisto(e.registoId);setTimeout(()=>regPreencherAuto(FECHO.nome,reg,null),500);
-  }else registarDePastaNova(FECHO.nome,reg,null);
+const FX_MAPA_REG=[['p-numProcesso','numProcesso'],['p-entidade','entidade'],['p-produto','produto'],['p-predio','predio'],['p-freguesia','freguesia'],
+  ['p-concelho','concelho'],['p-codCRP','codCRP'],['p-montCredito','montCredito'],['p-codDeposito','codDeposito']];
+function fxMontarPainel(){
+  const host=document.getElementById('fx-reg-host'),p=document.getElementById('reg-painel');
+  if(host&&p&&p.parentNode!==host)host.appendChild(p);
+  if(p)p.classList.add('open');
 }
-/* Chamado depois de se gravar a ficha do registo, quando foi aberta a partir daqui. */
+async function fxCarregarRegisto(k){
+  const e=FECHO.cont.esc[k];if(!e)return;
+  FECHO._aCarregarReg=true;FECHO.regK=k;FECHO.aguardaReg=k;
+  try{
+    fxMontarPainel();
+    try{if(!registosCarregados||!todosRegistosReg.length){registosCarregados=false;await carregarRegistos();}}catch(_){}
+    if(e.registoId&&todosRegistosReg.some(x=>String(x.id)===String(e.registoId))){abrirPainelRegisto(e.registoId);}
+    else{
+      if(!pastasPainel.length){try{await carregarPastasPainel();}catch(_){}}
+      abrirPainelNovo();
+      const pasta=pastasPainel.find(x=>x.nome===FECHO.nome);
+      if(pasta)selecionarPastaPainel(pasta);else{const n=document.getElementById('p-nome');if(n)n.value=dpzCliente(FECHO.nome);}
+    }
+    fxMontarPainel();
+    await new Promise(r=>setTimeout(r,250));
+    regPreencherAuto(FECHO.nome,dpzRegDe(e),null,true);
+    /* Guarda o que foi sugerido, para se saber o que ainda se pode atualizar sozinho. */
+    const reg=dpzRegDe(e);FECHO.sug=FECHO.sug||{};FECHO.sug[k]={};
+    FX_MAPA_REG.forEach(([id,campo])=>{const el=document.getElementById(id);if(el&&reg[campo]&&el.value===String(reg[campo]))FECHO.sug[k][id]=el.value;});
+  }finally{FECHO._aCarregarReg=false;}
+}
+let _fxSyncT=null;
+function fxSyncRegisto(){clearTimeout(_fxSyncT);_fxSyncT=setTimeout(()=>{
+  if(!FECHO||FECHO.regK!==FECHO.k)return;const k=FECHO.k,reg=dpzRegDe(fechoEsc());FECHO.sug=FECHO.sug||{};const sg=FECHO.sug[k]=FECHO.sug[k]||{};
+  FX_MAPA_REG.forEach(([id,campo])=>{const el=document.getElementById(id);if(!el)return;const v=reg[campo]==null?'':String(reg[campo]);
+    if(!(el.value===''||el.value===sg[id]))return;   /* escrito à mão na ficha: fica */
+    if(el.tagName==='SELECT'&&v&&![...el.options].some(o=>o.value===v))return;
+    if(el.value!==v){el.value=v;el.style.background=v?'#FEF9C3':'';}sg[id]=v;});
+},350);}
+/* Depois de Guardar a ficha: fica ligada a esta escritura e volta a abrir já gravada
+   (para uma segunda gravação não criar outra linha). */
 async function fechoDepoisDeGravarRegisto(id){
   if(!FECHO||!FECHO.aguardaReg||!id)return;
-  const e=FECHO.cont.esc[FECHO.aguardaReg];FECHO.aguardaReg=null;if(!e)return;
-  e.registoId=String(id);await dpzGravar(true);fechoRender();
+  const k=FECHO.aguardaReg,e=FECHO.cont.esc[k];if(!e)return;
+  e.registoId=String(id);
+  /* O que ficou escrito na ficha volta para o Fecho (vale o último escrito). */
+  e.proc=e.proc||{};[['p-codDeposito','codDeposito'],['p-numProcesso','numProcesso'],['p-codCRP','codCRP']].forEach(([i,c])=>{
+    const el=document.getElementById(i);const v=el?String(el.value||'').trim():'';if(v)e.proc[c]=v;});
+  await dpzGravar(true);
+  setTimeout(()=>{FECHO.regK=null;fxCarregarRegisto(k).then(()=>fechoRender());},400);
 }
 
 /* ── 3 · Registos prediais ── */
@@ -4164,7 +4255,7 @@ function fechoGrupos(){
       if(!p){p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),entidade:ent,escs:[]};c.pedidos.push(p);}p.escs.push(k);}});
   /* Uma escritura que mudou de entidade sai do pedido da outra. */
   c.pedidos.forEach(p=>{p.escs=p.escs.filter(k=>c.esc[k]&&(((c.esc[k].proc||{}).entidade||'Particular')===p.entidade));});
-  c.pedidos=c.pedidos.filter(p=>p.escs.length||p.pedidoId);
+  c.pedidos=c.pedidos.filter(p=>p.escs.length||p.pedidoId||p.manual);
   return c.pedidos;
 }
 function fechoBlocoRegistos(){
@@ -4177,22 +4268,25 @@ function fechoBlocoRegistos(){
     const outros=c.ordem.filter(k=>((c.esc[k].proc||{}).entidade||'Particular')===p.entidade&&!p.escs.includes(k));
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;margin:.4rem 0">
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b style="font-size:12.5px">Pedido de registo ${gi+1} · ${dpzEsc(p.entidade)}</b>
-        ${p.pedidoId?'<span style="font-size:11px;color:#1F5E3A">✓ criado</span>':''}
-        ${falta?`<span style="font-size:11px;color:#7A4F0C">faltam ${falta} código(s) de depósito — ainda não vai para a Isa</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
+        ${p.pedidoId?`<span style="font-size:11px;color:#1F5E3A">✓ ${cods[0]?'no Portal Registos':'criado'}</span>`:''}
+        ${!cods[0]?`<span style="font-size:11px;color:#7A4F0C">falta o código de depósito principal (${dpzEsc(escs[0]?escs[0].label:'')}) — ainda não foi para o Portal Registos</span>`:falta?`<span style="font-size:11px;color:#1F5E3A">já foi para o Portal Registos · faltam ${falta} código(s) das outras escrituras</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
       <div style="font-size:12px;margin:.25rem 0">${escs.map((e,j)=>`<span style="display:inline-block;margin-right:.6rem">• ${dpzEsc(e.label)} <span style="color:var(--text-muted)">${dpzEsc(cods[j]||'sem código')}</span>
         ${p.escs.length>1&&!p.pedidoId?`<button class="btn btn-sm fx-c" title="Tirar para um pedido à parte (outra conservatória)" onclick="fechoSeparar('${p.id}','${p.escs[j]}')">↗ separar</button>`:''}</span>`).join('')}</div>
       ${frac.length?`<div style="font-size:11.5px;background:#FEF9C3;border-radius:6px;padding:.25rem .45rem;display:inline-block">Fração: ${dpzEsc(frac.join(', '))} — no mapa vai com ficha e fração em separado</div>`:''}
       ${outros.length&&!p.pedidoId?`<div style="font-size:11.5px;margin-top:.25rem">Juntar: ${outros.map(k=>`<button class="btn btn-sm fx-c" onclick="fechoJuntar('${p.id}','${k}')">+ ${dpzEsc(c.esc[k].label)}</button>`).join(' ')}</div>`:''}
       <div style="margin-top:.4rem">${semReg?`<span style="font-size:11.5px;color:var(--text-muted)">Grava primeiro o registo de escritura de ${semReg===1?'uma escritura':semReg+' escrituras'} deste pedido (bloco 2).</span>`
         :`<button class="btn btn-primary btn-sm" onclick="fechoMapa('${p.id}')">${p.pedidoId?'Abrir o mapa de registo':'Criar o mapa de registo'}</button>`}</div></div>`;}).join('');
-  return `<div class="fx-card"><div class="fx-h"><span class="fx-n">3</span> Registos prediais <span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">— toda a pasta</span></div>
-    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as.</div>
+  return `<div style="margin-top:.4rem">
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as. Vai para o Portal Registos quando tiver o código de depósito principal.</div>
     ${cx||'<div style="font-size:12px;color:var(--text-faint)">Sem escrituras.</div>'}</div>`;
 }
+function fechoNovoPedido(){const ent=prompt('Entidade deste registo: CGD ou Particular?','CGD');if(!ent)return;
+  const e=/^c/i.test(ent.trim())?'CGD':'Particular';(FECHO.cont.pedidos=FECHO.cont.pedidos||[]).push({id:'p'+Date.now().toString(36),entidade:e,escs:[],dividido:true,manual:true});
+  FECHO.sujo=true;FECHO.abertos[3]=true;fechoRender();}
 function fechoSeparar(pid,k){const c=FECHO.cont;const p=c.pedidos.find(x=>x.id===pid);if(!p)return;
   p.escs=p.escs.filter(x=>x!==k);c.pedidos.push({id:'p'+Date.now().toString(36),entidade:p.entidade,escs:[k],dividido:true});p.dividido=true;FECHO.sujo=true;fechoRender();}
 function fechoJuntar(pid,k){const c=FECHO.cont;c.pedidos.forEach(x=>{x.escs=x.escs.filter(y=>y!==k);});
-  const p=c.pedidos.find(x=>x.id===pid);if(p)p.escs.push(k);c.pedidos=c.pedidos.filter(x=>x.escs.length||x.pedidoId);FECHO.sujo=true;fechoRender();}
+  const p=c.pedidos.find(x=>x.id===pid);if(p)p.escs.push(k);c.pedidos=c.pedidos.filter(x=>x.escs.length||x.pedidoId||x.manual);FECHO.sujo=true;fechoRender();}
 let _fechoListaPed=null;
 async function fechoListaPed(){
   if(_fechoListaPed)return _fechoListaPed;
@@ -4219,9 +4313,15 @@ function fechoMontarMapa(p,ant){
     escs.forEach(e=>(e.predios||[]).forEach(x=>{const k=(x.ficha||'')+'|'+(x.fracao||'');if(!x.ficha||vistos.has(k))return;vistos.add(k);
       base.predios.push({id:id(),concelho:x.concelho||'',freguesia:x.freguesia||'',numero:x.ficha,fracao:!!x.fracao,letra:x.fracao||''});}));
   }
-  const outros=(base.docs||[]).filter(dd=>!cods.includes(String(dd.codigo||'').trim()));
-  base.codDPA=completos?cods[0]:'';
-  base.docs=[...(completos?cods.slice(1).map(cd=>({id:id(),codigo:cd,descricao:'Documento Particular Autenticado'})):[]),...outros];
+  /* Códigos relacionados (distrates, etc.) de todas as escrituras do pedido. */
+  const rels=escs.flatMap(e=>fechoCodRelsDe(e)).filter(r=>String(r.codigo||'').trim()).map(r=>({codigo:String(r.codigo).trim(),descricao:r.descricao||'Documento relacionado'}));
+  const meus=new Set([...cods,...rels.map(r=>r.codigo)]);
+  const outros=(base.docs||[]).filter(dd=>!meus.has(String(dd.codigo||'').trim()));
+  /* (14/11/2026) Como antes no mapa: é o código de depósito principal (o da escritura principal
+     do pedido) que o põe na lista da Isa; os outros juntam-se quando existirem. */
+  base.codDPA=cods[0]||'';
+  base.docs=[...cods.slice(1).filter(Boolean).map(cd=>({id:id(),codigo:cd,descricao:'Documento Particular Autenticado'})),
+    ...rels.map(r=>({id:id(),codigo:r.codigo,descricao:r.descricao})),...outros];
   return base;
 }
 async function fechoMapa(pid){
@@ -4248,15 +4348,32 @@ async function fechoMapa(pid){
 }
 /* Os códigos de depósito chegam depois: quando aparecem, atualizam os pedidos já criados. */
 async function fechoPedidosSincronizar(){
-  const c=FECHO.cont;if(!(c.pedidos||[]).some(p=>p.pedidoId))return;
+  const c=FECHO.cont;fechoGrupos();
+  const novos=(c.pedidos||[]).filter(p=>!p.pedidoId&&p.escs.length&&((c.esc[p.escs[0]].proc||{}).codDeposito||'').trim());
+  if(!(c.pedidos||[]).some(p=>p.pedidoId)&&!novos.length)return;
   const L=await fechoListaPed();
+  /* (14/11/2026) O código de depósito principal desencadeia o pedido: cria-o já na lista
+     da Isa, sem ser preciso carregar em «Criar o mapa de registo». */
+  let criados=0;
+  for(const p of novos){
+    const m=fechoMontarMapa(p,null),e0=c.esc[p.escs[0]],mesma=c.pedidos.filter(x=>x.entidade===p.entidade);
+    const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items`,{fields:{
+      Title:`Registo ${p.entidade}${mesma.length>1?' '+(mesma.indexOf(p)+1):''}`,EscrituraId:parseInt(e0.registoId)||0,Cliente:dpzCliente(FECHO.nome),
+      Regime:'Normal',EstadoPedido:'Por submeter',CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),AtosJSON:JSON.stringify(m)}});
+    if(r&&r.id){p.pedidoId=String(r.id);criados++;}
+  }
+  if(criados){await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'deposito',c);FECHO.base=JSON.parse(JSON.stringify(c));
+    showToast(criados===1?'Pedido de registo enviado para o Portal Registos.':`${criados} pedidos de registo enviados para o Portal Registos.`,'success');}
   for(const p of c.pedidos.filter(x=>x.pedidoId)){
     const it=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}?$expand=fields`);
     let ant={};try{ant=JSON.parse((it.fields||{}).AtosJSON||'{}');}catch(_){}
     const m=fechoMontarMapa(p,ant);
-    if((ant.codDPA||'')===(m.codDPA||'')&&JSON.stringify(ant.docs||[])===JSON.stringify(m.docs||[]))continue;
-    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}/fields`,
-      {AtosJSON:JSON.stringify(m),CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')});
+    const escId=parseInt((c.esc[p.escs[0]]||{}).registoId)||0,f0=it.fields||{};
+    const mudouEsc=escId&&String(f0.EscrituraId||'')!==String(escId);
+    if(!mudouEsc&&(ant.codDPA||'')===(m.codDPA||'')&&JSON.stringify(ant.docs||[])===JSON.stringify(m.docs||[]))continue;
+    const pf={AtosJSON:JSON.stringify(m),CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')};
+    if(mudouEsc)pf.EscrituraId=escId;
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}/fields`,pf);
   }
 }
 /* Arranque: index.html?fecho=<pasta>&n=<nome> — espera pelo login e abre. */
@@ -5346,7 +5463,7 @@ async function agendaDaPasta(nome){
   const c=(data.value||[]).map(i=>i.fields).filter(f=>String(f[A.data]||'').slice(0,10)===dia&&pal.every(w=>sem(f[A.titulo]).includes(w)));
   return c.length===1?{entidade:c[0][A.entidade]||'',numProcesso:c[0][A.numProcesso]||''}:null;
 }
-function regPreencherAuto(nome,dep,ag){
+function regPreencherAuto(nome,dep,ag,silencio){
   const el=id=>document.getElementById(id);const feitos=[];
   const por=(id,v,rot)=>{const e=el(id);if(!e||v==null||v==='')return;if(String(e.value||'').trim())return;
     if(e.tagName==='SELECT'&&![...e.options].some(o=>o.value===v||o.text===v))return;e.value=v;feitos.push(rot);e.style.background='#FEF9C3';(window._regAmarelos=window._regAmarelos||[]).push(e);};
@@ -5375,6 +5492,7 @@ function regPreencherAuto(nome,dep,ag){
   const prod=el('p-produto')?.value||'';
   if(prod)por('p-valorServico',String(VALOR_SERVICO[prod]??300),'valor do serviço');
   if(typeof calcMargemLiq==='function')try{calcMargemLiq();}catch(_){}
+  if(silencio)return feitos;   /* Fecho da escritura: os valores estão à vista na página */
   if(feitos.length)showToast(`Preenchido a partir dos documentos: ${feitos.join(', ')} (a amarelo). Confirme e Guardar.`,'success');
   else if(!dep)showToast('Ainda não há dados do depósito desta escritura.','');
   regConfirmarValores();
