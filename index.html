@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.16">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.17">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4260,8 +4260,8 @@ function fechoBlocoRegistos(){
     const outros=c.ordem.filter(k=>((c.esc[k].proc||{}).entidade||'Particular')===p.entidade&&!p.escs.includes(k));
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;margin:.4rem 0">
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b style="font-size:12.5px">Pedido de registo ${gi+1} · ${dpzEsc(p.entidade)}</b>
-        ${p.pedidoId?`<span style="font-size:11px;color:#1F5E3A">✓ ${cods[0]?'na lista da Isa':'criado'}</span>`:''}
-        ${!cods[0]?`<span style="font-size:11px;color:#7A4F0C">falta o código de depósito principal (${dpzEsc(escs[0]?escs[0].label:'')}) — ainda não vai para a Isa</span>`:falta?`<span style="font-size:11px;color:#1F5E3A">já vai para a Isa · faltam ${falta} código(s) das outras escrituras</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
+        ${p.pedidoId?`<span style="font-size:11px;color:#1F5E3A">✓ ${cods[0]?'no Portal Registos':'criado'}</span>`:''}
+        ${!cods[0]?`<span style="font-size:11px;color:#7A4F0C">falta o código de depósito principal (${dpzEsc(escs[0]?escs[0].label:'')}) — ainda não foi para o Portal Registos</span>`:falta?`<span style="font-size:11px;color:#1F5E3A">já foi para o Portal Registos · faltam ${falta} código(s) das outras escrituras</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
       <div style="font-size:12px;margin:.25rem 0">${escs.map((e,j)=>`<span style="display:inline-block;margin-right:.6rem">• ${dpzEsc(e.label)} <span style="color:var(--text-muted)">${dpzEsc(cods[j]||'sem código')}</span>
         ${p.escs.length>1&&!p.pedidoId?`<button class="btn btn-sm fx-c" title="Tirar para um pedido à parte (outra conservatória)" onclick="fechoSeparar('${p.id}','${p.escs[j]}')">↗ separar</button>`:''}</span>`).join('')}</div>
       ${frac.length?`<div style="font-size:11.5px;background:#FEF9C3;border-radius:6px;padding:.25rem .45rem;display:inline-block">Fração: ${dpzEsc(frac.join(', '))} — no mapa vai com ficha e fração em separado</div>`:''}
@@ -4269,7 +4269,7 @@ function fechoBlocoRegistos(){
       <div style="margin-top:.4rem">${semReg?`<span style="font-size:11.5px;color:var(--text-muted)">Grava primeiro o registo de escritura de ${semReg===1?'uma escritura':semReg+' escrituras'} deste pedido (bloco 2).</span>`
         :`<button class="btn btn-primary btn-sm" onclick="fechoMapa('${p.id}')">${p.pedidoId?'Abrir o mapa de registo':'Criar o mapa de registo'}</button>`}</div></div>`;}).join('');
   return `<div style="margin-top:.4rem">
-    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as. Entra na lista da Isa quando tiver o código de depósito principal.</div>
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as. Vai para o Portal Registos quando tiver o código de depósito principal.</div>
     ${cx||'<div style="font-size:12px;color:var(--text-faint)">Sem escrituras.</div>'}</div>`;
 }
 function fechoNovoPedido(){const ent=prompt('Entidade deste registo: CGD ou Particular?','CGD');if(!ent)return;
@@ -4355,7 +4355,7 @@ async function fechoPedidosSincronizar(){
     if(r&&r.id){p.pedidoId=String(r.id);criados++;}
   }
   if(criados){await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'deposito',c);FECHO.base=JSON.parse(JSON.stringify(c));
-    showToast(criados===1?'Pedido de registo enviado para a Isa.':`${criados} pedidos de registo enviados para a Isa.`,'success');}
+    showToast(criados===1?'Pedido de registo enviado para o Portal Registos.':`${criados} pedidos de registo enviados para o Portal Registos.`,'success');}
   for(const p of c.pedidos.filter(x=>x.pedidoId)){
     const it=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}?$expand=fields`);
     let ant={};try{ant=JSON.parse((it.fields||{}).AtosJSON||'{}');}catch(_){}
