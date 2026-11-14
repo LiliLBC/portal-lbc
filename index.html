@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.9">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.10">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3830,7 +3830,14 @@ async function fechoAbrir(pastaId,nome){
     if(!k&&cont.ordem.length===1&&cont.esc[cont.ordem[0]]&&!cont.esc[cont.ordem[0]].rascunho){k=cont.ordem[0];cont.esc[k].rascunho=f.name;cont.esc[k].label=dpzRotuloRasc(f.name);}
     if(!k){k='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);cont.esc[k]=dpzNovaEsc(dpzRotuloRasc(f.name),f.name,dia);cont.ordem.push(k);}
     const g=await dpzDoGerador(f.id,nome);FECHO.ger[k]=g;dpzAplicarGerador(cont.esc[k],g);
+    /* Nome do separador: o produto (CVMH, MH…), não o nome do rascunho — esse leva o apelido
+       do vendedor, que confunde. Só se mantém um nome escrito à mão. */
+    const e=cont.esc[k];if(!e.labelManual&&g&&g.produto){e._prod=g.produto==='PARTILHAS'?(dpzRotuloRasc(f.name).split(/\s+/)[0]||'PARTILHA').toUpperCase():g.produto;e._resto=dpzRotuloRasc(f.name).replace(new RegExp('^'+e._prod+'\\b\\s*','i'),'').trim();}
   }
+  /* Produtos repetidos na pasta (dois MH): junta-se o resto do nome do rascunho, ou um número. */
+  {const conta={};cont.ordem.forEach(k=>{const p=cont.esc[k]._prod;if(p)conta[p]=(conta[p]||0)+1;});const n={};
+   cont.ordem.forEach(k=>{const e=cont.esc[k];if(!e._prod)return;
+     n[e._prod]=(n[e._prod]||0)+1;e.label=conta[e._prod]>1?`${e._prod} ${e._resto||n[e._prod]}`:e._prod;delete e._prod;delete e._resto;});}
   if(!cont.ordem.length){const k='principal';cont.esc[k]=dpzNovaEsc('Escritura','',dia);cont.ordem.push(k);}
   FECHO.k=cont.ordem[0];
   fechoRender();
@@ -3886,7 +3893,7 @@ function fechoRender(msg){
       <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button></div>
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem;align-items:center">${tabs}
       <button class="btn btn-sm" onclick="fechoNovaEscritura()">+ Escritura</button>
-      ${dpzMulti()?`<button class="btn btn-sm" style="color:var(--text-muted)" onclick="fechoRenomear()">✏️ Nome</button>`:''}</div>
+      <button class="btn btn-sm" style="color:var(--text-muted)" onclick="fechoRenomear()">✏️ Nome</button></div>
     ${fechoBlocoDeposito(e,eu)}
     ${fechoBlocoRegisto(e)}
     ${fechoBlocoRegistos()}
@@ -3895,8 +3902,8 @@ function fechoRender(msg){
 }
 function fechoTab(k){FECHO.k=k;fechoRender();window.scrollTo(0,0);}
 function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
-  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
-function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();FECHO.sujo=true;fechoRender();}}
+  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.esc[k].labelManual=true;FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
+function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();e.labelManual=true;FECHO.sujo=true;fechoRender();}}
 function fechoFechar(){if(FECHO&&FECHO.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;
   window.close();setTimeout(()=>{document.getElementById('fecho')?.remove();FECHO=null;},150);}
 
