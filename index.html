@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.12">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.13">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3734,10 +3734,15 @@ const DPZ_COR={vazio:'',laranja:'background:#FBEFD5;border-color:#E3B25B;color:#
 const DPZ_TIT={vazio:'Depósito — ainda sem lista de documentos',laranja:'Depósito — faltam documentos por digitalizar',verde:'Depósito — tudo digitalizado, pronto a depositar',
   azul:'Depósito — completo',rosa:'Depósito — faltam documentos essenciais (a juntar no registo)'};
 function dpzPintarBotoes(){
+  /* (14/11/2026) Cores fortes e o que falta escrito no botão — as cores claras não se distinguiam. */
+  const COR={laranja:'background:#F59E0B;border-color:#F59E0B;color:#fff',verde:'background:#16A34A;border-color:#16A34A;color:#fff',
+    azul:'background:#2563EB;border-color:#2563EB;color:#fff',rosa:'background:#DB2777;border-color:#DB2777;color:#fff',vazio:''};
   document.querySelectorAll('[data-dpz]').forEach(b=>{const id=b.dataset.dpz,nome=b.dataset.nome||'';
     let d;try{d=window.etqDadoSync?etqDadoSync('ESCRITURAS',id,'deposito'):null;}catch(_){d=null;}
-    const st=dpzEstado(d,nome);b.setAttribute('style',(b.dataset.base||'')+';'+DPZ_COR[st]);b.title=DPZ_TIT[st];
-    b.textContent=st==='azul'?'📥 Depósito ✓':'📥 Depósito';});
+    const st=dpzEstado(d,nome);const docs=dpzTodasDocs(dpzContentor(d,nome));
+    const faltaFich=docs.filter(x=>!x.fileId).length,faltaDep=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg').length;
+    b.setAttribute('style',(b.dataset.base||'')+';'+COR[st]);b.title=DPZ_TIT[st];
+    b.textContent=st==='laranja'?`📥 Falta${faltaFich>1?'m':''} ${faltaFich}`:st==='verde'?'📥 Pronto a depositar':st==='azul'?'📥 Depósito ✓':st==='rosa'?`📥 Falta${faltaDep>1?'m':''} ${faltaDep} (registo)`:'📥 Depósito';});
 }
 /* Botão da pasta: abre a página do fecho num separador próprio. */
 function dpzAbrir(pastaId,nome){
