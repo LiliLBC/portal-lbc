@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.7">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3818,7 +3818,9 @@ async function fechoAbrir(pastaId,nome){
   try{if(window.etqDadoLer)await etqDadoLer('ESCRITURAS',pastaId,'deposito');}catch(_){}
   let raw=null;try{raw=etqDadoSync('ESCRITURAS',pastaId,'deposito');}catch(_){}
   const cont=dpzContentor(raw?JSON.parse(JSON.stringify(raw)):null,nome);
-  FECHO={pastaId,nome,cont,k:null,ger:{},aguardaReg:null};
+  /* «base» = o que estava gravado quando se abriu: serve para juntar, ao gravar, o que a
+     outra pessoa gravou entretanto (trabalho em simultâneo, 14/11/2026). */
+  FECHO={pastaId,nome,cont,k:null,ger:{},aguardaReg:null,base:JSON.parse(JSON.stringify(cont))};
   fechoRender('A ler os rascunhos do gerador…');
   /* Uma escritura por rascunho do gerador; os que já existem mantêm-se. */
   let rasc=[];try{rasc=await dpzRascunhos(pastaId);}catch(e){console.warn(e);}
@@ -4018,12 +4020,70 @@ function dpzRegDe(e){
   if(e.depositadoEm){reg.estado='Depositado';reg.quando=e.depositadoEm;}
   return reg;
 }
+/* ── Trabalho em simultâneo ──
+   Junta três versões: a base (o que se abriu), a minha e a que está gravada agora. Fica o que
+   cada uma mudou; se as duas mudaram o mesmo campo, fica o meu. Listas com «id» (documentos,
+   pedidos) juntam-se linha a linha; a ordem das escrituras soma as de ambas. */
+function fxIgual(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function fxJuntar(base,minha,deles){
+  if(fxIgual(minha,base))return deles===undefined?minha:deles;
+  if(deles===undefined||fxIgual(deles,base))return minha;
+  if(Array.isArray(minha)&&Array.isArray(deles)){
+    const temId=x=>x&&typeof x==='object'&&x.id!=null;
+    if(minha.every(temId)&&deles.every(temId)){
+      const B=Object.fromEntries((Array.isArray(base)?base:[]).filter(temId).map(x=>[x.id,x]));
+      const M=Object.fromEntries(minha.map(x=>[x.id,x])),D=Object.fromEntries(deles.map(x=>[x.id,x]));
+      const out=[];
+      const ids=[...deles.map(x=>x.id),...minha.map(x=>x.id).filter(i=>!(i in D))];
+      ids.forEach(i=>{
+        if(i in M&&i in D)out.push(fxJuntar(B[i],M[i],D[i]));
+        else if(i in M){if(!(i in B))out.push(M[i]);else if(!fxIgual(M[i],B[i]))out.push(M[i]);}      /* eles apagaram e eu não mexi → sai */
+        else if(i in D){if(!(i in B))out.push(D[i]);else if(!fxIgual(D[i],B[i]))out.push(D[i]);}      /* eu apaguei e eles não mexeram → sai */
+      });
+      return out;
+    }
+    if(minha.every(x=>typeof x==='string')&&deles.every(x=>typeof x==='string'))return[...deles,...minha.filter(x=>!deles.includes(x))];
+    return minha;
+  }
+  if(minha&&deles&&typeof minha==='object'&&typeof deles==='object'&&!Array.isArray(minha)&&!Array.isArray(deles)){
+    const out={},b=(base&&typeof base==='object')?base:{};
+    new Set([...Object.keys(deles),...Object.keys(minha)]).forEach(k=>{
+      if(!(k in minha)){if(k in b&&fxIgual(deles[k],b[k]))return;out[k]=deles[k];return;}
+      out[k]=fxJuntar(b[k],minha[k],deles[k]);});
+    return out;
+  }
+  return minha;
+}
+async function fxLerGravado(){
+  let raw=null;try{raw=await etqDadoLer('ESCRITURAS',FECHO.pastaId,'deposito');}catch(_){}
+  return raw?dpzContentor(JSON.parse(JSON.stringify(raw)),FECHO.nome):null;
+}
+/* De 45 em 45 s, sem alterações por gravar, vai buscar o que a outra pessoa gravou. */
+async function fxAtualizar(){
+  if(!FECHO||FECHO.sujo||FECHO._ocupado||document.hidden)return;
+  const ae=document.activeElement;if(ae&&ae.closest&&ae.closest('#fecho')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName))return;
+  const g=await fxLerGravado();if(!g||fxIgual(g,FECHO.base))return;
+  FECHO.cont=fxJuntar(FECHO.base,FECHO.cont,g);FECHO.base=JSON.parse(JSON.stringify(g));
+  if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];
+  fechoRender();showToast('Atualizado com o que foi gravado entretanto.','');
+}
+setInterval(()=>{fxAtualizar().catch(()=>{});},45000);
 async function dpzGravar(silencio){
+  if(FECHO._ocupado){await new Promise(r=>setTimeout(r,400));}
+  FECHO._ocupado=true;
+  try{const g=await fxLerGravado();
+    if(g&&!fxIgual(g,FECHO.base)){FECHO.cont=fxJuntar(FECHO.base,FECHO.cont,g);if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];FECHO._juntou=true;}
+  }catch(e){console.warn('[Fecho] juntar:',e);}
+  try{return await dpzGravarJa(silencio);}finally{FECHO._ocupado=false;
+    if(FECHO._juntou){FECHO._juntou=false;fechoRender();if(!silencio)showToast('Juntei o que a outra pessoa gravou entretanto.','');}}
+}
+async function dpzGravarJa(silencio){
   const c=FECHO.cont;
   c.ordem.forEach(k=>{const e=c.esc[k];e.dia=e.dia||dpzDiaPasta(FECHO.nome);e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(FECHO.nome);
     (e.docs||[]).forEach(x=>{if(x.fileId&&(!x.estado||x.estado==='marcado'))x.estado='digit';});});
   try{
     await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'deposito',c);
+    FECHO.base=JSON.parse(JSON.stringify(c));
     /* Compatibilidade com o «Registar» da pasta e com o mapa: quando há uma só escritura,
        o «registo» e a «síntese» da pasta são os dela. */
     if(c.ordem.length===1){const e=c.esc[c.ordem[0]];
