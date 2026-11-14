@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.20">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.21">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17990,7 +17990,7 @@ function montar(){
 }
 /* Mapa de registo preenchido a partir do DPA (01/11/2026): o 📤 Depósito lê do título os intervenientes
    (sem a Liliana nem a Andreia), o estado civil, os ónus a cancelar e o prédio, e guarda-os («síntese»).
-   Ao abrir um mapa ainda sem atos, monta-se: Aquisição (passivos → ativos, com os cancelamentos) e Hipoteca
+   Ao abrir um mapa ainda sem atos, monta-se: Aquisição (passivos → ativos), Cancelamento (ato à parte) e Hipoteca
    (mutuários → credor). Só preenche o que está vazio; o que já foi escrito no mapa fica. É o mesmo mapa que a
    Isa vê nos Registos prediais. */
 function mapaDeSintese(dados,S){
@@ -18006,10 +18006,13 @@ function mapaDeSintese(dados,S){
   const canc=(S.onusCancelar||[]).map(o=>{const m=String(o.ap||'').match(/AP\.?\s*(\d+)\s+de\s+(\d{4})\/(\d{2})\/(\d{2})/i);
     return{id:id(),ap:m?m[1]:String(o.ap||''),data:m?`${m[2]}-${m[3]}-${m[4]}`:'',facto:String(o.tipo||'hipoteca').toLowerCase(),valor:''};});
   if(S.valores&&S.valores.compra||!(S.onusRegistar||[]).length){
-    atos.push({id:id(),facto:'Aquisição Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:canc.length>0,cancs:canc,
+    atos.push({id:id(),facto:'Aquisição Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:false,cancs:[],
       sujeitos:[...(S.passivos||[]).map(x=>suj(x,'Passivo',S.passivos)),...(S.ativos||[]).map(x=>suj(x,'Ativo',S.ativos))]});}
+  /* (14/11/2026) O cancelamento é um ato diferente e autónomo: nunca vai dentro da aquisição
+     nem da hipoteca. Os sujeitos ficam por preencher. */
+  if(canc.length)atos.push({id:id(),facto:'Cancelamento',data:d.dataDoc||'',valor:'',cancelamentos:true,cancs:canc,sujeitos:[]});
   (S.onusRegistar||[]).forEach((h,k)=>{const cred={nome:h.favor,nif:h.nif,ec:''};
-    atos.push({id:id(),facto:'Hipoteca Voluntária Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:!atos.length&&canc.length>0,cancs:!atos.length?canc:[],
+    atos.push({id:id(),facto:'Hipoteca Voluntária Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:false,cancs:[],
       sujeitos:[...(S.ativos||[]).map(x=>suj(x,'Passivo',S.ativos)),...(h.nif?[suj(cred,'Ativo',[])]:[{id:id(),tipo:'Ativo',nif:'',estado:'',regime:'',nifConjuge:'',_col:true}])]});});
   d.atos=atos;
   const P=S.predio||{};
