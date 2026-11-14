@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-12.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.3">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -584,6 +584,7 @@ tbody tr:hover td{background:#FAFAF8}
             <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
             <input class="search-input" id="search-pastas" placeholder="Pesquisar por nome do cliente..." oninput="filtrarPastas()">
           </div>
+          <button class="btn btn-sm" style="white-space:nowrap" title="Pastas das escrituras de hoje, com a cor do depósito" onclick="(()=>{const d=new Date();const i=document.getElementById('search-pastas');i.value=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;filtrarPastas();})()">📥 Depósitos de hoje</button>
           <button class="btn-limpar-filtros" data-limpar-filtros="search-pastas|" onclick="limparFiltrosPastas()">✕ Limpar</button>
           <button class="btn btn-primary" onclick="carregarPastas()">↺ Atualizar</button>
         </div>
@@ -3672,16 +3673,258 @@ function renderPastas(lista){
         <a href="${embedSP(p.webUrl)}" target="lbc-pasta" class="btn btn-sm btn-pasta">📂 Abrir pasta</a>
         ${/* Verificador e Matriz retirados (30/10/2026): o verificador deixou de se usar. */''}
         <span data-ficha="ESCRITURAS|${p.id}"></span>
-        <button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirFichaEscritura('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ficha da escritura — uma folha com a certidão permanente, a caderneta e o boletim, para conferir antes do ato">🖨 Ficha</button>
+        ${FICHA_ATIVA?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirFichaEscritura('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Ficha da escritura — uma folha com a certidão permanente, a caderneta e o boletim, para conferir antes do ato">🖨 Ficha</button>`:''}
         ${(DEPOSITO_ATIVO&&window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
         ${ANALISADOR_ATIVO?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>`:''}
+        <button class="btn btn-sm" data-dpz="${p.id}" data-nome="${escHtml(p.name||'')}" data-base="font-weight:600" onclick="dpzAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Depósito">📥 Depósito</button>
         <button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>
         <button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras">Registar</button>
       </div>
     </div>`).join('');
   el.style.display='block';
-  if(window.etqPintar)etqPintar();
+  if(window.etqPintar)Promise.resolve(etqPintar()).then(()=>dpzPintarBotoes()).catch(()=>{});
 }
+/* ══════════ PORTAL DE DEPÓSITOS (14/11/2026) ══════════
+   Uma janela por escritura, aberta pelo botão «📥 Depósito» da pasta (Liliana e Andreia).
+   Junta numa lista os documentos a depositar (marcado → digitalizado → depositado / junto ao
+   registo), grava os ficheiros na subpasta DPA com o nome final, e reúne o que o pedido de
+   depósito no Predial Online pede: data e descrição de cada documento, preço, mútuo e hipoteca
+   (montante máximo), o sujeito (o cliente da pasta) e os prédios (sempre da CRP).
+   Os dados vêm do último rascunho do gerador na pasta e prevalece o que se escrever aqui.
+   Fica nas Etiquetas (ESCRITURAS|pasta, campo «deposito») e passa para o «registo», de onde o
+   «Registar» os vai buscar (n.º de processo, código do depósito, entidade, mútuo, prédio). */
+const DPZ_SUB='DPA';
+const DPZ_EMAILS={CGD:'dpacx@costafreitas.pt',Particular:'liliana.cardoso@lbc-solicitadora.pt'};
+let DPZ=null; /* {pastaId,nome,d} aberto */
+function dpzHojeISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function dpzDiaPasta(nome){const m=String(nome||'').match(/^(\d{4})(\d{2})(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:'';}
+function dpzCliente(nome){return String(nome||'').replace(/^\d{8}\s*/,'').trim();}
+function dpzEsc(s){return escHtml(String(s==null?'':s));}
+/* Estado da pasta para a cor do botão. */
+function dpzEstado(d,nome){
+  const docs=(d&&d.docs)||[];if(!docs.length)return 'vazio';
+  const dia=dpzDiaPasta(nome)||(d&&d.dia)||'',passou=dia&&dia<dpzHojeISO();
+  if(!passou)return docs.every(x=>x.fileId)?'verde':'laranja';
+  return docs.every(x=>x.estado==='dep'||x.estado==='reg')?'azul':'rosa';
+}
+const DPZ_COR={vazio:'',laranja:'background:#FBEFD5;border-color:#E3B25B;color:#7A4F0C',verde:'background:#E3F2E9;border-color:#5FA77D;color:#1F5E3A',
+  azul:'background:#E3EDFB;border-color:#6E9BD8;color:#1E3A8A',rosa:'background:#FBE3EE;border-color:#D98AAE;color:#8E2A55'};
+const DPZ_TIT={vazio:'Depósito — ainda sem lista de documentos',laranja:'Depósito — faltam documentos por digitalizar',verde:'Depósito — tudo digitalizado, pronto a depositar',
+  azul:'Depósito — completo',rosa:'Depósito — faltam documentos essenciais (a juntar no registo)'};
+function dpzPintarBotoes(){
+  document.querySelectorAll('[data-dpz]').forEach(b=>{const id=b.dataset.dpz,nome=b.dataset.nome||'';
+    let d;try{d=window.etqDadoSync?etqDadoSync('ESCRITURAS',id,'deposito'):null;}catch(_){d=null;}
+    const st=dpzEstado(d,nome);b.setAttribute('style',(b.dataset.base||'')+';'+DPZ_COR[st]);b.title=DPZ_TIT[st];
+    b.textContent=st==='azul'?'📥 Depósito ✓':'📥 Depósito';});
+}
+/* Último rascunho do gerador na pasta → sugestões. */
+async function dpzDoGerador(pastaId,nome){
+  try{
+    const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${pastaId}/children?$top=200&$select=id,name,file,lastModifiedDateTime`);
+    const f=(r.value||[]).filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name)&&!/^RASCUNHO_CPCV/i.test(x.name))
+      .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)))[0];
+    if(!f)return null;
+    await renovarToken();
+    const res=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+graphToken}});
+    if(!res.ok)return null;const g=await res.json();const c=g.campos||{};
+    const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const cli=norm(dpzCliente(nome));
+    const pessoas=[...(g.vendedores||[]),...(g.compradores||[]),...(g.quartos||[])].flatMap(o=>{
+      const l=[];if(o.nome)l.push({nome:o.nome,nif:o.nif||''});if(o.denom)l.push({nome:o.denom,nif:o.nipc||''});
+      if(o['conj-nome'])l.push({nome:o['conj-nome'],nif:o['conj-nif']||''});return l;});
+    const quem=pessoas.find(p=>norm(p.nome)===cli)||pessoas.find(p=>cli&&norm(p.nome).includes(cli))||pessoas.find(p=>cli&&cli.includes(norm(p.nome)));
+    const concDe=t=>String(t||'').replace(/^.*Registo Predial( de)?\s*/i,'').trim();
+    const predios=[];
+    if(c['f-im-num'])predios.push({ficha:c['f-im-num'],fracao:c['f-im-letra']||'',freguesia:c['f-im-freg-crp']||'',concelho:concDe(c['f-im-crp']),distrito:''});
+    (g.prediosExtra||[]).forEach(p=>{if(p.num)predios.push({ficha:p.num,fracao:p.letra||'',freguesia:p.freg||'',concelho:concDe(p.crp),distrito:''});});
+    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,rascunho:f.name};
+  }catch(e){console.warn('[Depósito] gerador:',e);return null;}
+}
+async function dpzAbrir(pastaId,nome){
+  try{if(window.etqDadoLer)await etqDadoLer('ESCRITURAS',pastaId,'deposito');}catch(_){}
+  let d=null;try{d=etqDadoSync('ESCRITURAS',pastaId,'deposito');}catch(_){}
+  d=d?JSON.parse(JSON.stringify(d)):{docs:[],proc:{},ato:{},sujeito:{},predios:[]};
+  d.dia=d.dia||dpzDiaPasta(nome);
+  if(!d.docs.some(x=>x.fixo==='dpa'))d.docs.unshift({id:'dpa',fixo:'dpa',desc:'Documento Particular Autenticado',data:d.dia,estado:'marcado',obrig:true});
+  DPZ={pastaId,nome,d,ger:null};
+  dpzRender();
+  /* Sugestões do gerador só para campos vazios. */
+  const g=await dpzDoGerador(pastaId,nome);DPZ.ger=g;
+  if(g){const a=d.ato;if(!a.preco&&g.preco)a.preco=g.preco;if(!a.mutuo&&g.mutuo)a.mutuo=g.mutuo;if(!a.hipoteca&&g.hipoteca)a.hipoteca=g.hipoteca;
+    if(!d.sujeito.nif&&g.sujeitoNif)d.sujeito.nif=g.sujeitoNif;if(!d.predios.length&&g.predios.length)d.predios=g.predios;dpzRender();}
+}
+function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){el.textContent='✓';setTimeout(()=>el.textContent='Copiar',700);}}catch(_){}}
+function dpzCampo(rot,path,ph,ro){
+  const v=dpzGet(path)||'';
+  return `<div style="display:flex;align-items:center;gap:.35rem;margin:.18rem 0"><span style="width:150px;font-size:11.5px;color:var(--text-muted)">${rot}</span>
+    <input class="form-input" style="flex:1;padding:4px 8px;font-size:12.5px" value="${dpzEsc(v)}" placeholder="${dpzEsc(ph||'')}" ${ro?'readonly':''} oninput="dpzSet('${path}',this.value)">
+    <button class="btn btn-sm" style="padding:2px 8px;font-size:11px" onclick="dpzCopiar(dpzGet('${path}'),this)">Copiar</button></div>`;
+}
+function dpzGet(path){return path.split('.').reduce((o,k)=>o==null?o:o[k],DPZ.d);}
+function dpzSet(path,val){const ks=path.split('.');let o=DPZ.d;ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;DPZ.sujo=true;}
+function dpzNomeFicheiro(x,i){
+  const n=String(x.fixo==='dpa'?0:i).padStart(2,'0');
+  return `${n} - ${String(x.desc||'Documento').replace(/[\\/:*?"<>|#%]/g,'-').trim()}.pdf`;
+}
+function dpzRender(){
+  document.getElementById('dpz-ov')?.remove();
+  const d=DPZ.d,eu=(typeof prontaSouEu==='function'&&prontaSouEu());
+  const ESTS={marcado:'⚪ marcado',digit:'🔵 digitalizado',dep:'✅ depositado',reg:'📎 junto ao registo'};
+  let i=0;
+  const linhas=d.docs.map((x,k)=>{const num=x.fixo==='dpa'?0:++i;const st=x.fileId&&x.estado==='marcado'?'digit':x.estado;
+    return `<tr data-k="${k}">
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted)">${String(num).padStart(2,'0')}</td>
+      <td><input class="form-input" style="padding:3px 6px;font-size:12px" value="${dpzEsc(x.desc)}" ${x.fixo?'readonly':''} oninput="DPZ.d.docs[${k}].desc=this.value;DPZ.sujo=true"></td>
+      <td style="white-space:nowrap"><input type="date" class="form-input" style="padding:3px 6px;font-size:12px;width:132px" value="${dpzEsc(x.data||'')}" onchange="DPZ.d.docs[${k}].data=this.value;DPZ.sujo=true">
+        <button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px" onclick="dpzCopiar(DPZ.d.docs[${k}].data,this)">Copiar</button></td>
+      <td><button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px" onclick="dpzCopiar(DPZ.d.docs[${k}].desc,this)">Copiar</button></td>
+      <td style="font-size:11.5px;white-space:nowrap">${eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="DPZ.d.docs[${k}].estado=this.value;DPZ.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
+      <td style="white-space:nowrap">${x.fileId?`<a class="btn btn-sm" style="padding:1px 6px;font-size:10.5px" href="${dpzEsc(x.webUrl||'#')}" target="_blank" title="${dpzEsc(x.ficheiro||'')}">📄</a>`:''}
+        <label class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;cursor:pointer">⬆ Puxar<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0])"></label>
+        ${x.fixo?'':`<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;color:var(--red)" onclick="dpzRemover(${k})">×</button>`}</td></tr>`;}).join('');
+  const st=dpzEstado(d,DPZ.nome);
+  const pred=(d.predios||[]).map((p,k)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:.4rem .55rem;margin:.3rem 0">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Prédio ${k+1} · sempre os dados da CRP (nunca da matriz)</div>
+      ${dpzCampo('Distrito','predios.'+k+'.distrito')}${dpzCampo('Concelho','predios.'+k+'.concelho')}${dpzCampo('Freguesia','predios.'+k+'.freguesia')}
+      ${dpzCampo('N.º de ficha / prédio','predios.'+k+'.ficha')}${dpzCampo('Fração autónoma','predios.'+k+'.fracao')}</div>`).join('');
+  document.body.insertAdjacentHTML('beforeend',`<div id="dpz-ov" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2500;display:flex;justify-content:flex-end">
+   <div style="background:var(--surface);width:min(980px,100%);height:100%;overflow:auto;padding:1rem 1.2rem;box-shadow:-8px 0 30px rgba(0,0,0,.15)">
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
+      <div style="flex:1"><div style="font-weight:700;font-size:15px">📥 Depósito</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted)">${dpzEsc(DPZ.nome)}</div></div>
+      <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
+      <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
+      <button class="btn btn-sm" onclick="dpzFechar()">Fechar</button></div>
+    ${DPZ.ger?`<div style="font-size:11px;color:var(--text-faint);margin-bottom:.4rem">Sugestões do gerador (${dpzEsc(DPZ.ger.rascunho)}) nos campos que estavam vazios — confirma ou corrige.</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+     <div>
+      <div class="cond-block-title" style="margin-top:.3rem">Entidade autenticadora</div>
+      <div id="dpz-ent" style="font-size:12px;color:var(--text-muted)">A carregar…</div>
+      <div class="cond-block-title" style="margin-top:.6rem">Processo</div>
+      <div style="display:flex;align-items:center;gap:.35rem;margin:.18rem 0"><span style="width:150px;font-size:11.5px;color:var(--text-muted)">Entidade</span>
+        <select class="form-select" style="padding:4px 8px;font-size:12.5px" onchange="dpzSet('proc.entidade',this.value)"><option value="">—</option>${['CGD','Particular'].map(o=>`<option${d.proc.entidade===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      ${dpzCampo('N.º de processo','proc.numProcesso','escreve à mão')}
+      ${dpzCampo('Código do depósito','proc.codDeposito','depois de submeter')}
+      ${dpzCampo('Código do DPA a relacionar','proc.codRel','só se houver')}
+     </div>
+     <div>
+      <div class="cond-block-title" style="margin-top:.3rem">Detalhes do ato</div>
+      ${dpzCampo('Preço (€)','ato.preco')}${dpzCampo('Valor do mútuo (€)','ato.mutuo')}${dpzCampo('Valor da hipoteca (€)','ato.hipoteca','montante máximo assegurado')}
+      <div class="cond-block-title" style="margin-top:.6rem">Sujeito do ato</div>
+      ${dpzCampo('Nome / firma','sujeito.nome',dpzCliente(DPZ.nome))}${dpzCampo('NIF / NIPC','sujeito.nif')}
+     </div></div>
+    <div class="cond-block-title" style="margin-top:.8rem">Imóveis</div>${pred||'<div style="font-size:12px;color:var(--text-faint)">Sem prédios — acrescenta abaixo.</div>'}
+    <button class="add-btn" type="button" onclick="(DPZ.d.predios=DPZ.d.predios||[]).push({});dpzRender()">+ Adicionar prédio</button>
+    <div class="cond-block-title" style="margin-top:.8rem">Documentos a depositar</div>
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Marca o documento mesmo antes de o teres digitalizado. O ficheiro vai para a subpasta DPA com o nome «NN - descrição.pdf», pela ordem desta lista.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--text-muted);font-size:11px"><th>N.º</th><th>Descrição</th><th>Data de emissão</th><th>Descr.</th><th>Estado</th><th>Ficheiro</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
+      <input class="form-input" id="dpz-novo" placeholder="Novo documento — ex.: Caderneta predial urbana art. 1234" style="flex:1;min-width:240px" onkeydown="if(event.key==='Enter')dpzNovo()">
+      <button class="btn btn-sm" onclick="dpzNovo()">+ Marcar documento</button>
+      <label class="btn btn-sm" style="cursor:pointer">⬆ Puxar vários<input type="file" multiple accept="application/pdf,image/*" style="display:none" onchange="dpzPuxarVarios(this.files)"></label>
+    </div>
+    <div style="display:flex;gap:.4rem;margin-top:.9rem;border-top:1px solid var(--border);padding-top:.7rem;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="dpzDescarregarTudo()">⬇ Descarregar pasta DPA (.zip)</button>
+      ${eu?`<button class="btn btn-sm" onclick="dpzMarcarDepositado()">✅ Marcar digitalizados como depositados</button>
+      <button class="btn btn-primary btn-sm" onclick="dpzEmail()">✉ Enviar para pagamento</button>`:''}
+    </div>
+   </div></div>`);
+  dpzEntidade();
+}
+async function dpzEntidade(){
+  const el=document.getElementById('dpz-ent');if(!el)return;
+  if(!window._dpzCfg){try{const dr=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/drives`);
+      const doc=(dr.value||[]).find(x=>/document|documento/i.test(x.name))||(dr.value||[])[0];
+      await renovarToken();
+      const r=doc?await fetch(`${GRAPH_BASE}/drives/${doc.id}/root:/Templates/CONFIG_LBC.json:/content`,{headers:{Authorization:'Bearer '+graphToken}}):null;
+      window._dpzCfg=r&&r.ok?((await r.json()).deposito||{}):{};}catch(e){window._dpzCfg={};}}
+  const c=window._dpzCfg;const rot={nome:'Nome',email:'email',tipoDoc:'Tipo de documento',numDoc:'N.º do documento',qualidade:'Qualidade',domicilio:'Domicílio profissional',codPostal:'Código postal',localidade:'Localidade',telemovel:'Telemóvel',nif:'NIF / NIPC'};
+  if(!Object.keys(c).length){el.innerHTML='Acrescenta o bloco «deposito» ao CONFIG_LBC.json (Templates) para os teus dados aparecerem aqui.';return;}
+  el.innerHTML=Object.entries(rot).filter(([k])=>c[k]).map(([k,t])=>`<div style="display:flex;align-items:center;gap:.35rem;margin:.12rem 0"><span style="width:150px;font-size:11.5px">${t}</span><span style="flex:1;font-size:12.5px;color:var(--text)">${dpzEsc(c[k])}</span><button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px" onclick="dpzCopiar(window._dpzCfg['${k}'],this)">Copiar</button></div>`).join('');
+}
+function dpzNovo(){const i=document.getElementById('dpz-novo');const t=(i?.value||'').trim();if(!t)return;
+  DPZ.d.docs.push({id:'d'+Date.now(),desc:t,data:'',estado:'marcado',obrig:true});DPZ.sujo=true;dpzRender();}
+function dpzRemover(k){const x=DPZ.d.docs[k];if(x.fileId&&!confirm('Este documento já tem ficheiro na pasta DPA. Retirar só da lista (o ficheiro fica)?'))return;
+  DPZ.d.docs.splice(k,1);DPZ.sujo=true;dpzRender();}
+/* Data de emissão: nos PDF com texto, procura a primeira data. Nas digitalizações escreve-se. */
+async function dpzLerData(file){
+  try{if(!/pdf$/i.test(file.type||file.name))return '';
+    if(!window.pdfjsLib){await carregarScriptJustif('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+    const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    const pg=await pdf.getPage(1);const t=(await pg.getTextContent()).items.map(x=>x.str).join(' ');
+    let m=t.match(/(20\d{2})[-\/.](\d{2})[-\/.](\d{2})/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+    m=t.match(/(\d{2})[-\/.](\d{2})[-\/.](20\d{2})/);if(m)return `${m[3]}-${m[2]}-${m[1]}`;
+  }catch(_){}return '';
+}
+async function dpzEnviar(x,i,file){
+  const nome=dpzNomeFicheiro(x,i);
+  await renovarToken();
+  const url=`${GRAPH_BASE}/drives/${bibliotecaId}/items/${DPZ.pastaId}:/${encodeURIComponent(DPZ_SUB)}/${encodeURIComponent(nome)}:/content?@microsoft.graph.conflictBehavior=replace`;
+  const r=await fetch(url,{method:'PUT',headers:{Authorization:'Bearer '+graphToken,'Content-Type':file.type||'application/pdf'},body:file});
+  if(!r.ok)throw new Error('upload '+r.status);
+  const j=await r.json();x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;if(!x.estado||x.estado==='marcado')x.estado='digit';
+}
+function dpzIndice(k){let i=0;for(let j=0;j<=k;j++)if(!DPZ.d.docs[j].fixo)i++;return i;}
+async function dpzPuxar(k,file){
+  if(!file)return;const x=DPZ.d.docs[k];
+  try{showToast('A gravar na pasta DPA…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
+    await dpzEnviar(x,dpzIndice(k),file);DPZ.sujo=true;await dpzGravar(true);dpzRender();showToast('✓ '+x.ficheiro,'success');}
+  catch(e){showToast('Não consegui gravar: '+e.message,'error');}
+}
+/* Vários de uma vez: cada ficheiro vai para o próximo documento marcado sem ficheiro;
+   sobrando, cria linha nova com o nome do ficheiro. */
+async function dpzPuxarVarios(files){
+  for(const f of [...(files||[])]){
+    let k=DPZ.d.docs.findIndex(x=>!x.fileId&&!x.fixo);
+    if(k<0){DPZ.d.docs.push({id:'d'+Date.now()+Math.random(),desc:f.name.replace(/\.[^.]+$/,''),data:'',estado:'marcado',obrig:false});k=DPZ.d.docs.length-1;}
+    const x=DPZ.d.docs[k];
+    try{if(!x.data){const dt=await dpzLerData(f);if(dt)x.data=dt;}await dpzEnviar(x,dpzIndice(k),f);}catch(e){showToast('Falhou '+f.name+': '+e.message,'error');}
+  }
+  DPZ.sujo=true;await dpzGravar(true);dpzRender();
+}
+async function dpzGravar(silencio){
+  const d=DPZ.d;d.dia=d.dia||dpzDiaPasta(DPZ.nome);
+  if(!d.sujeito.nome)d.sujeito.nome=dpzCliente(DPZ.nome);
+  d.docs.forEach(x=>{if(x.fileId&&(!x.estado||x.estado==='marcado'))x.estado='digit';});
+  try{
+    await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'deposito',d);
+    /* Para o «Registar»: junta ao campo «registo», sem apagar o que lá está. */
+    let reg={};try{reg={...(etqDadoSync('ESCRITURAS',DPZ.pastaId,'registo')||{})};}catch(_){}
+    const p0=(d.predios||[])[0]||{};
+    Object.assign(reg,{numProcesso:d.proc.numProcesso||reg.numProcesso||'',codDeposito:d.proc.codDeposito||reg.codDeposito||'',
+      entidade:d.proc.entidade==='CGD'?'CGD':(reg.entidade||''),montCredito:d.ato.mutuo||reg.montCredito||'',
+      predio:p0.ficha?(p0.ficha+(p0.fracao?'-'+p0.fracao:'')):(reg.predio||''),freguesia:p0.freguesia||reg.freguesia||'',concelho:p0.concelho||reg.concelho||''});
+    await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'registo',reg);
+    DPZ.sujo=false;if(!silencio)showToast('Depósito gravado.','success');
+    dpzPintarBotoes();
+  }catch(e){showToast('Não consegui gravar: '+e.message,'error');}
+}
+function dpzFechar(){if(DPZ&&DPZ.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;document.getElementById('dpz-ov')?.remove();DPZ=null;dpzPintarBotoes();}
+async function dpzMarcarDepositado(){
+  let n=0;DPZ.d.docs.forEach(x=>{if(x.fileId&&x.estado!=='dep'&&x.estado!=='reg'){x.estado='dep';n++;}});
+  DPZ.d.depositadoEm=new Date().toISOString();await dpzGravar(true);dpzRender();showToast(`${n} documento(s) marcados como depositados.`,'success');
+}
+function dpzEmail(){
+  const d=DPZ.d,ent=d.proc.entidade;
+  if(!ent){showToast('Escolhe primeiro a entidade (CGD ou Particular).','error');return;}
+  const proc=(d.proc.numProcesso||'').trim();
+  const assunto=`Pagamento Depósito Processo # ${proc||'—'} _ ${dpzCliente(DPZ.nome)}`;
+  const url='https://outlook.cloud.microsoft/mail/deeplink/compose?to='+encodeURIComponent(DPZ_EMAILS[ent]||'')
+    +'&subject='+encodeURIComponent(assunto)+'&body='+encodeURIComponent(`${ent} - Solicito pagamento.`);
+  window.open(url,'_blank');
+  dpzMarcarDepositado();
+}
+async function dpzDescarregarTudo(){
+  try{
+    const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${DPZ.pastaId}:/${encodeURIComponent(DPZ_SUB)}:/children?$top=500`);
+    const fs=(r.value||[]).filter(x=>x.file);if(!fs.length){showToast('A pasta DPA está vazia.','');return;}
+    if(!window.JSZip)await carregarScriptJustif('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js');
+    const zip=new JSZip();
+    for(const f of fs){await renovarToken();const b=await (await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+graphToken}})).blob();zip.file(f.name,b);}
+    const blob=await zip.generateAsync({type:'blob'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`DPA ${DPZ.nome}.zip`;a.click();
+  }catch(e){showToast('Não consegui descarregar: '+e.message,'error');}
+}
+
 /* Receção de documentos (17/10/2026): abre o verificador já na pasta do cliente.
    O verificador usa a sessão do Portal (mesmo endereço lililbc.github.io), separa e
    renomeia os documentos, grava-os na pasta principal (originais em «_originais») e
@@ -3693,6 +3936,9 @@ const VERIFICADOR_URL='https://lililbc.github.io/verificador-lbc/verificador.htm
    não reconheciam bem os documentos, demoravam e baralhavam. O código fica, desligado; os documentos tratam-se à mão.
    Para voltar a ligar: pôr estas constantes a true. */
 const ANALISADOR_ATIVO=false,DEPOSITO_ATIVO=false;
+/* Ficha da escritura (botão a vermelho no dia da escritura) desligada a 14/11/2026, a pedido da Liliana:
+   não lhe é útil e já deu erros. O código fica; para voltar a ligar, pôr a true. */
+const FICHA_ATIVA=false;
 const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html';
 function abrirAnalisador(lib,itemId,nome){
   if(!ANALISADOR_ATIVO){showToast('O analisador está desativado.','');return;}
@@ -4760,6 +5006,10 @@ function regPreencherAuto(nome,dep,ag){
   /* (12/11/2026) O n.º de processo já não se preenche sozinho: vinha errado. Escreve-se à mão. */
   if(ag){por('p-entidade',ag.entidade,'entidade');}
   if(dep){
+    /* (14/11/2026) Do Portal de Depósitos: o n.º de processo que a Liliana escreve no depósito
+       (nunca o da agenda) e o código do depósito. */
+    por('p-numProcesso',dep.numProcesso,'n.º de processo');
+    por('p-codDeposito',dep.codDeposito,'código do depósito');
     por('p-entidade',dep.entidade,'entidade');
     por('p-finalidade',dep.finalidade==='habitação própria permanente'?'HPP':(dep.finalidade?'Outros':''),'finalidade');
     por('p-produto',dep.produto,'produto');
@@ -4777,7 +5027,7 @@ function regPreencherAuto(nome,dep,ag){
   if(prod)por('p-valorServico',String(VALOR_SERVICO[prod]??300),'valor do serviço');
   if(typeof calcMargemLiq==='function')try{calcMargemLiq();}catch(_){}
   if(feitos.length)showToast(`Preenchido a partir dos documentos: ${feitos.join(', ')} (a amarelo). Confirme e Guardar.`,'success');
-  else if(!dep)showToast('Ainda não há dados lidos dos documentos — use primeiro o 📤 Depósito.','');
+  else if(!dep)showToast('Ainda não há dados do depósito desta escritura.','');
   regConfirmarValores();
 }
 /* Ao «Registar»: confirmar o valor da escritura e o do procurador antes de passar para a ficha (01/11/2026) */
@@ -11096,7 +11346,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
      parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
   const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
-  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio&&!d.crono;
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio&&!d.crono&&!d.deposito;
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 
