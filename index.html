@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.17">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.18">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3856,9 +3856,7 @@ async function fechoAbrir(pastaId,nome){
 function fechoEsc(){return FECHO&&FECHO.cont.esc[FECHO.k];}
 function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){const o=el.textContent;el.textContent='✓';setTimeout(()=>el.textContent=o,700);}}catch(_){}}
 function dpzGet(path){return path.split('.').reduce((o,k)=>o==null?o:o[k],fechoEsc());}
-function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;fxSyncRegisto();
-  /* O código de depósito grava-se sozinho (é ele que manda o pedido para a Isa). */
-  if(path==='proc.codDeposito'){clearTimeout(window._fxCodT);window._fxCodT=setTimeout(()=>{dpzGravar(true).then(()=>fechoRender());},1500);}}
+function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;fxSyncRegisto();}
 function dpzCampo(rot,path,ph){
   const v=dpzGet(path)||'';
   return `<div class="fx-l"><span class="fx-r">${rot}</span>
