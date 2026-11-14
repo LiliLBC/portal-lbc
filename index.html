@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.20">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.24">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2930,7 +2930,11 @@ async function mostrarApp(){
   /* Tendo acesso, os itens aparecem logo; não tendo, nem o botão de
      desbloquear se mostra, para não convidar a tentar. */
   if(financeiroDesbloqueado())mostrarMenuFinanceiro();
-  setDates();await resolverSiteIds();carregarCalendario();carregarDashboard();carregarLembretes();
+  setDates();await resolverSiteIds();
+  /* (14/11/2026) No separador do Fecho (?fecho=) não se carrega o resto do Portal (calendário,
+     dashboard, lembretes, avisos): só atrasava a abertura da página. */
+  if(new URLSearchParams(location.search).get('fecho'))return;
+  carregarCalendario();carregarDashboard();carregarLembretes();
   /* Escrituras dos próximos 4 dias sem o visto da Liliana → e-mail (24/10/2026). */
   setTimeout(()=>{if(window.vistoAvisos)window.vistoAvisos();},4000);
 }
@@ -3678,7 +3682,7 @@ function renderPastas(lista){
         ${ANALISADOR_ATIVO?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>`:''}
         <button class="btn btn-sm" data-dpz="${p.id}" data-nome="${escHtml(p.name||'')}" data-base="font-weight:600" onclick="dpzAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Depósito">📥 Depósito</button>
         ${GERADOR_PASTA_ATIVO?`<button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>`:''}
-        <button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras">Registar</button>
+        ${REGISTAR_PASTA_ATIVO?`<button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras">Registar</button>`:''}
       </div>
     </div>`).join('');
   el.style.display='block';
@@ -3715,10 +3719,43 @@ function dpzNovaEsc(label,rascunho,dia){
 /* Contentor por pasta. Versão antiga (uma só escritura, com «docs» à raiz) passa a «principal». */
 function dpzContentor(raw,nome){
   const dia=dpzDiaPasta(nome);
-  if(raw&&raw.v===2&&raw.esc)return raw;
+  if(raw&&raw.v===2&&raw.esc)return fxSemDuplicados(raw);
   const c={v:2,ordem:[],esc:{},pedidos:[]};
   if(raw&&raw.docs){c.ordem=['principal'];c.esc.principal={...dpzNovaEsc('Escritura','',dia),...raw};}
   return c;
+}
+/* (14/11/2026) Duas escrituras com o mesmo rascunho do gerador são a mesma (aparecia em
+   duplicado quando duas pessoas abriam a pasta antes de alguém gravar). Fica a que tem mais
+   trabalho feito; os pedidos passam a apontar para ela. */
+function fxPeso(e){return (e.registoId?100:0)+((e.docs||[]).filter(x=>x.fileId).length*10)+((e.proc||{}).codDeposito?50:0)+((e.proc||{}).numProcesso?5:0)+(e.depositadoEm?50:0)+(e.labelManual?1:0);}
+function fxSemDuplicados(c){
+  if(!c||!c.ordem)return c;const por={};const sai=[];
+  c.ordem.forEach(k=>{const e=c.esc[k];if(!e||!e.rascunho)return;const r=e.rascunho;
+    if(!(r in por)){por[r]=k;return;}const j=por[r];
+    if(fxPeso(e)>fxPeso(c.esc[j])){sai.push(j);por[r]=k;}else sai.push(k);});
+  if(!sai.length)return c;
+  sai.forEach(k=>{const e=c.esc[k],fica=por[e.rascunho];
+    (c.pedidos||[]).forEach(p=>{p.escs=[...new Set(p.escs.map(x=>x===k?fica:x))];});
+    delete c.esc[k];});
+  c.ordem=c.ordem.filter(k=>!sai.includes(k));
+  return c;
+}
+/* Tirar uma escritura desta pasta (o separador). */
+async function fechoRemoverEscritura(){
+  const c=FECHO.cont,k=FECHO.k,e=c.esc[k];if(!e)return;
+  if(c.ordem.length<2){showToast('É a única escritura da pasta — para apagar tudo usa o 🗑 de cima.','');return;}
+  const nDoc=(e.docs||[]).filter(x=>x.fileId).length;
+  const avisos=[e.registoId&&'tem linha no Registo de escrituras',nDoc&&`tem ${nDoc} ficheiro(s) puxado(s) (ficam na pasta DPA)`,(e.proc||{}).codDeposito&&'tem código de depósito'].filter(Boolean);
+  if(!confirm(`Tirar a escritura «${e.label}» desta pasta?`+(avisos.length?`\n\nAtenção: ${avisos.join('; ')}.`:'')))return;
+  if(e.registoId&&!c.ordem.some(x=>x!==k&&String(c.esc[x].registoId)===String(e.registoId))&&confirm(`Apagar também a linha dela no Registo de escrituras?\n\nOK = apagar · Cancelar = deixar`)){
+    try{await renovarToken();const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${e.registoId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+      if(!r.ok&&r.status!==204&&r.status!==404)throw new Error('Erro '+r.status);
+      if(typeof todosRegistosReg!=='undefined')todosRegistosReg=todosRegistosReg.filter(i=>String(i.id)!==String(e.registoId));}
+    catch(err){showToast('Não consegui apagar a linha do registo: '+err.message,'error');return;}}
+  (c.pedidos||[]).forEach(p=>{p.escs=p.escs.filter(x=>x!==k);});
+  c.pedidos=(c.pedidos||[]).filter(p=>p.escs.length||p.pedidoId||p.manual);
+  delete c.esc[k];c.ordem=c.ordem.filter(x=>x!==k);FECHO.k=c.ordem[0];FECHO.regK=null;
+  await dpzGravar(true);fechoRender();showToast(`«${e.label}» retirada. Gravado.`,'success');
 }
 function dpzTodasDocs(c){return(c&&c.esc?Object.values(c.esc):[]).flatMap(e=>e.docs||[]);}
 /* Estado da pasta para a cor do botão: soma de todas as escrituras. */
@@ -3824,6 +3861,9 @@ function dpzAplicarGerador(e,g){
 /* ── Abrir a página do fecho ── */
 async function fechoAbrir(pastaId,nome){
   document.title='Fecho · '+dpzCliente(nome);
+  fechoRender('A abrir…');
+  /* Lê ao mesmo tempo os dados gravados, a lista de rascunhos e o conteúdo de cada rascunho. */
+  const pRasc=dpzRascunhos(pastaId).then(l=>Promise.all(l.map(f=>dpzDoGerador(f.id,nome).then(g=>({f,g}))))).catch(e=>{console.warn(e);return [];});
   try{if(window.etqDadoLer)await etqDadoLer('ESCRITURAS',pastaId,'deposito');}catch(_){}
   let raw=null;try{raw=etqDadoSync('ESCRITURAS',pastaId,'deposito');}catch(_){}
   const cont=dpzContentor(raw?JSON.parse(JSON.stringify(raw)):null,nome);
@@ -3832,13 +3872,13 @@ async function fechoAbrir(pastaId,nome){
   FECHO={pastaId,nome,cont,k:null,ger:{},aguardaReg:null,base:JSON.parse(JSON.stringify(cont))};
   fechoRender('A ler os rascunhos do gerador…');
   /* Uma escritura por rascunho do gerador; os que já existem mantêm-se. */
-  let rasc=[];try{rasc=await dpzRascunhos(pastaId);}catch(e){console.warn(e);}
+  const lidos=await pRasc;
   const dia=dpzDiaPasta(nome);
-  for(const f of rasc){
+  for(const {f,g} of lidos){
     let k=Object.keys(cont.esc).find(x=>cont.esc[x].rascunho===f.name);
     if(!k&&cont.ordem.length===1&&cont.esc[cont.ordem[0]]&&!cont.esc[cont.ordem[0]].rascunho){k=cont.ordem[0];cont.esc[k].rascunho=f.name;cont.esc[k].label=dpzRotuloRasc(f.name);}
     if(!k){k='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);cont.esc[k]=dpzNovaEsc(dpzRotuloRasc(f.name),f.name,dia);cont.ordem.push(k);}
-    const g=await dpzDoGerador(f.id,nome);FECHO.ger[k]=g;dpzAplicarGerador(cont.esc[k],g);
+    FECHO.ger[k]=g;dpzAplicarGerador(cont.esc[k],g);
     /* Nome do separador: o produto (CVMH, MH…), não o nome do rascunho — esse leva o apelido
        do vendedor, que confunde. Só se mantém um nome escrito à mão. */
     const e=cont.esc[k];if(!e.labelManual&&g&&g.produto){e._prod=g.produto==='PARTILHAS'?(dpzRotuloRasc(f.name).split(/\s+/)[0]||'PARTILHA').toUpperCase():g.produto;e._resto=dpzRotuloRasc(f.name).replace(new RegExp('^'+e._prod+'\\b\\s*','i'),'').trim();}
@@ -3847,6 +3887,7 @@ async function fechoAbrir(pastaId,nome){
   {const conta={};cont.ordem.forEach(k=>{const p=cont.esc[k]._prod;if(p)conta[p]=(conta[p]||0)+1;});const n={};
    cont.ordem.forEach(k=>{const e=cont.esc[k];if(!e._prod)return;
      n[e._prod]=(n[e._prod]||0)+1;e.label=conta[e._prod]>1?`${e._prod} ${e._resto||n[e._prod]}`:e._prod;delete e._prod;delete e._resto;});}
+  fxSemDuplicados(cont);
   if(!cont.ordem.length){const k='principal';cont.esc[k]=dpzNovaEsc('Escritura','',dia);cont.ordem.push(k);}
   /* O sujeito é o cliente da pasta: vem já escrito; muda-se só se se editar (14/11/2026). */
   cont.ordem.forEach(k=>{const e=cont.esc[k];e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(nome);});
@@ -3917,7 +3958,8 @@ function fechoRender(msg){
   const chips=(mais,rot)=>`<span style="display:inline-flex;gap:.35rem;flex-wrap:wrap;font-weight:400" onclick="event.stopPropagation()">${c.ordem.map(k=>{const x=c.esc[k];const s1=dpzEstado({v:2,esc:{a:x}},FECHO.nome);
       return `<button class="fx-tab${k===FECHO.k?' on':''}" onclick="fechoTab('${k}')"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;${(DPZ_COR[s1]||'').replace(/color:[^;]+/,'')};border:1px solid #bbb"></span>${dpzEsc(x.label)}${x.proc&&x.proc.entidade?` · ${dpzEsc(x.proc.entidade)}`:''}</button>`;}).join('')}
       <button class="btn btn-sm fx-c" title="${rot}" onclick="fechoNovaEscritura()">${mais}</button>
-      <button class="btn btn-sm fx-c" style="color:var(--text-muted)" title="Mudar o nome desta escritura" onclick="fechoRenomear()">✏️</button></span>`;
+      <button class="btn btn-sm fx-c" style="color:var(--text-muted)" title="Mudar o nome desta escritura" onclick="fechoRenomear()">✏️</button>
+      ${c.ordem.length>1?`<button class="btn btn-sm fx-c" style="color:var(--red)" title="Tirar esta escritura (a selecionada) desta pasta" onclick="fechoRemoverEscritura()">✕ Tirar</button>`:''}</span>`;
   const cab=(n,tit,extra)=>`<div class="fx-h" onclick="fechoAbrirFechar(${n})"><span style="color:var(--text-muted);width:12px">${FECHO.abertos[n]?'▾':'▸'}</span><span class="fx-n">${n}</span> ${tit} ${extra||''}</div>`;
   document.getElementById('fx-b1').innerHTML=`<div class="fx-card">${cab(1,'Depósito',chips('+ Depósito','Mais uma escritura nesta pasta (mais um depósito)'))}
     ${FECHO.abertos[1]?fechoBlocoDeposito(e,eu):''}</div>`;
@@ -4132,7 +4174,11 @@ function fxJuntar(base,minha,deles){
       });
       return out;
     }
-    if(minha.every(x=>typeof x==='string')&&deles.every(x=>typeof x==='string'))return[...deles,...minha.filter(x=>!deles.includes(x))];
+    if(minha.every(x=>typeof x==='string')&&deles.every(x=>typeof x==='string')){
+      /* (14/11/2026) Respeita o que cada um tirou: o que estava na base e um dos lados tirou, sai. */
+      const B=Array.isArray(base)?base:[];
+      const fica=x=>!(B.includes(x)&&(!minha.includes(x)||!deles.includes(x)));
+      return[...deles,...minha.filter(x=>!deles.includes(x))].filter(fica);}
     return minha;
   }
   if(minha&&deles&&typeof minha==='object'&&typeof deles==='object'&&!Array.isArray(minha)&&!Array.isArray(deles)){
@@ -4153,7 +4199,7 @@ async function fxAtualizar(){
   if(!FECHO||FECHO.sujo||FECHO._ocupado||document.hidden)return;
   const ae=document.activeElement;if(ae&&ae.closest&&ae.closest('#fecho')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName))return;
   const g=await fxLerGravado();if(!g||fxIgual(g,FECHO.base))return;
-  FECHO.cont=fxJuntar(FECHO.base,FECHO.cont,g);FECHO.base=JSON.parse(JSON.stringify(g));
+  FECHO.cont=fxSemDuplicados(fxJuntar(FECHO.base,FECHO.cont,g));FECHO.base=JSON.parse(JSON.stringify(g));
   if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];
   fechoRender();showToast('Atualizado com o que foi gravado entretanto.','');
 }
@@ -4162,7 +4208,7 @@ async function dpzGravar(silencio){
   if(FECHO._ocupado){await new Promise(r=>setTimeout(r,400));}
   FECHO._ocupado=true;
   try{const g=await fxLerGravado();
-    if(g&&!fxIgual(g,FECHO.base)){FECHO.cont=fxJuntar(FECHO.base,FECHO.cont,g);if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];FECHO._juntou=true;}
+    if(g&&!fxIgual(g,FECHO.base)){FECHO.cont=fxSemDuplicados(fxJuntar(FECHO.base,FECHO.cont,g));if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];FECHO._juntou=true;}
   }catch(e){console.warn('[Fecho] juntar:',e);}
   try{return await dpzGravarJa(silencio);}finally{FECHO._ocupado=false;
     if(FECHO._juntou){FECHO._juntou=false;fechoRender();if(!silencio)showToast('Juntei o que a outra pessoa gravou entretanto.','');}}
@@ -4446,6 +4492,9 @@ const ANALISADOR_ATIVO=false,DEPOSITO_ATIVO=false;
 const FICHA_ATIVA=false;
 /* Botão «✍ Gerador» na pasta da escritura desligado a 14/11/2026, a pedido da Liliana. O gerador continua no menu. */
 const GERADOR_PASTA_ATIVO=false;
+/* (14/11/2026) O «Registar» da pasta deixou de fazer sentido: tudo se trabalha a partir do 📥 Depósito (Fecho).
+   Fica desligado; para voltar, pôr true. */
+const REGISTAR_PASTA_ATIVO=false;
 const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html';
 function abrirAnalisador(lib,itemId,nome){
   if(!ANALISADOR_ATIVO){showToast('O analisador está desativado.','');return;}
@@ -17990,7 +18039,7 @@ function montar(){
 }
 /* Mapa de registo preenchido a partir do DPA (01/11/2026): o 📤 Depósito lê do título os intervenientes
    (sem a Liliana nem a Andreia), o estado civil, os ónus a cancelar e o prédio, e guarda-os («síntese»).
-   Ao abrir um mapa ainda sem atos, monta-se: Aquisição (passivos → ativos, com os cancelamentos) e Hipoteca
+   Ao abrir um mapa ainda sem atos, monta-se: Aquisição (passivos → ativos), Cancelamento (ato à parte) e Hipoteca
    (mutuários → credor). Só preenche o que está vazio; o que já foi escrito no mapa fica. É o mesmo mapa que a
    Isa vê nos Registos prediais. */
 function mapaDeSintese(dados,S){
@@ -18006,10 +18055,13 @@ function mapaDeSintese(dados,S){
   const canc=(S.onusCancelar||[]).map(o=>{const m=String(o.ap||'').match(/AP\.?\s*(\d+)\s+de\s+(\d{4})\/(\d{2})\/(\d{2})/i);
     return{id:id(),ap:m?m[1]:String(o.ap||''),data:m?`${m[2]}-${m[3]}-${m[4]}`:'',facto:String(o.tipo||'hipoteca').toLowerCase(),valor:''};});
   if(S.valores&&S.valores.compra||!(S.onusRegistar||[]).length){
-    atos.push({id:id(),facto:'Aquisição Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:canc.length>0,cancs:canc,
+    atos.push({id:id(),facto:'Aquisição Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:false,cancs:[],
       sujeitos:[...(S.passivos||[]).map(x=>suj(x,'Passivo',S.passivos)),...(S.ativos||[]).map(x=>suj(x,'Ativo',S.ativos))]});}
+  /* (14/11/2026) O cancelamento é um ato diferente e autónomo: nunca vai dentro da aquisição
+     nem da hipoteca. Os sujeitos ficam por preencher. */
+  if(canc.length)atos.push({id:id(),facto:'Cancelamento',data:d.dataDoc||'',valor:'',cancelamentos:true,cancs:canc,sujeitos:[]});
   (S.onusRegistar||[]).forEach((h,k)=>{const cred={nome:h.favor,nif:h.nif,ec:''};
-    atos.push({id:id(),facto:'Hipoteca Voluntária Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:!atos.length&&canc.length>0,cancs:!atos.length?canc:[],
+    atos.push({id:id(),facto:'Hipoteca Voluntária Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:false,cancs:[],
       sujeitos:[...(S.ativos||[]).map(x=>suj(x,'Passivo',S.ativos)),...(h.nif?[suj(cred,'Ativo',[])]:[{id:id(),tipo:'Ativo',nif:'',estado:'',regime:'',nifConjuge:'',_col:true}])]});});
   d.atos=atos;
   const P=S.predio||{};
