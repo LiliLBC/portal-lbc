@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.4">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.5">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3737,7 +3737,15 @@ async function dpzDoGerador(pastaId,nome){
     const predios=[];
     if(c['f-im-num'])predios.push({ficha:c['f-im-num'],fracao:c['f-im-letra']||'',freguesia:c['f-im-freg-crp']||'',concelho:concDe(c['f-im-crp']),distrito:''});
     (g.prediosExtra||[]).forEach(p=>{if(p.num)predios.push({ficha:p.num,fracao:p.letra||'',freguesia:p.freg||'',concelho:concDe(p.crp),distrito:''});});
-    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,rascunho:f.name};
+    /* Para o Registar: produto, finalidade, código da certidão predial e artigo (14/11/2026). */
+    const ato=g.ato||c['f-tipo-ato']||'';
+    const produto=(ato==='leasing'||(ato==='cv'&&(g.compradores||[]).some(o=>o.tipo==='cgd')))?'LEASING'
+      :ato==='cv'?(c['f-subtipo-cv']==='mh'?'CVMH':'CV'):ato==='mh'?(/toic/i.test(c['f-mh-contrato']||'')?'TOIC':'MH')
+      :ato==='doacao'?'DOAÇÃO':ato==='partilhas'?'PARTILHAS':'';
+    const dest=[c['f-destino'],c['f-dcc-destino'],c['f-mh-destino']].filter(Boolean).join(' ');
+    const finalidade=/habita[cç][aã]o pr[oó]pria/i.test(dest)||/hpp/i.test(dest)?'habitação própria permanente':(dest?'outra':'');
+    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,rascunho:f.name,
+      produto,finalidade,codCRP:c['f-im-cert-cod']||'',matriz:c['f-im-artigo']?{tipo:c['f-im-tipo']||'',artigo:c['f-im-artigo']}:null};
   }catch(e){console.warn('[Depósito] gerador:',e);return null;}
 }
 async function dpzAbrir(pastaId,nome){
@@ -3751,7 +3759,9 @@ async function dpzAbrir(pastaId,nome){
   /* Sugestões do gerador só para campos vazios. */
   const g=await dpzDoGerador(pastaId,nome);DPZ.ger=g;
   if(g){const a=d.ato;if(!a.preco&&g.preco)a.preco=g.preco;if(!a.mutuo&&g.mutuo)a.mutuo=g.mutuo;if(!a.hipoteca&&g.hipoteca)a.hipoteca=g.hipoteca;
-    if(!d.sujeito.nif&&g.sujeitoNif)d.sujeito.nif=g.sujeitoNif;if(!d.predios.length&&g.predios.length)d.predios=g.predios;dpzRender();}
+    if(!d.sujeito.nif&&g.sujeitoNif)d.sujeito.nif=g.sujeitoNif;if(!d.predios.length&&g.predios.length)d.predios=g.predios;
+    if(!d.proc.produto&&g.produto)d.proc.produto=g.produto;if(!d.proc.codCRP&&g.codCRP)d.proc.codCRP=g.codCRP;
+    if(!d.finalidade&&g.finalidade)d.finalidade=g.finalidade;if(!d.matriz&&g.matriz)d.matriz=g.matriz;dpzRender();}
 }
 function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){el.textContent='✓';setTimeout(()=>el.textContent='Copiar',700);}}catch(_){}}
 function dpzCampo(rot,path,ph,ro){
@@ -3802,7 +3812,9 @@ function dpzRender(){
       <div class="cond-block-title" style="margin-top:.6rem">Processo</div>
       <div style="display:flex;align-items:center;gap:.35rem;margin:.18rem 0"><span style="width:150px;font-size:11.5px;color:var(--text-muted)">Entidade</span>
         <select class="form-select" style="padding:4px 8px;font-size:12.5px" onchange="dpzSet('proc.entidade',this.value)"><option value="">—</option>${['CGD','Particular'].map(o=>`<option${d.proc.entidade===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      ${dpzCampo('Produto','proc.produto','CVMH, TOIC, MH, LEASING, CV…')}
       ${dpzCampo('N.º de processo','proc.numProcesso','escreve à mão')}
+      ${dpzCampo('Código da certidão predial','proc.codCRP')}
       ${dpzCampo('Código do depósito','proc.codDeposito','depois de submeter')}
       ${dpzCampo('Código do DPA a relacionar','proc.codRel','só se houver')}
      </div>
@@ -3893,7 +3905,9 @@ async function dpzGravar(silencio){
     const p0=(d.predios||[])[0]||{};
     Object.assign(reg,{numProcesso:d.proc.numProcesso||reg.numProcesso||'',codDeposito:d.proc.codDeposito||reg.codDeposito||'',
       entidade:d.proc.entidade==='CGD'?'CGD':(reg.entidade||''),montCredito:d.ato.mutuo||reg.montCredito||'',
-      predio:p0.ficha?(p0.ficha+(p0.fracao?'-'+p0.fracao:'')):(reg.predio||''),freguesia:p0.freguesia||reg.freguesia||'',concelho:p0.concelho||reg.concelho||''});
+      predio:p0.ficha?(p0.ficha+(p0.fracao?'-'+p0.fracao:'')):(reg.predio||''),freguesia:p0.freguesia||reg.freguesia||'',concelho:p0.concelho||reg.concelho||'',
+      produto:d.proc.produto||reg.produto||'',codCRP:d.proc.codCRP||reg.codCRP||'',finalidade:d.finalidade||reg.finalidade||'',matriz:d.matriz||reg.matriz||null});
+    if(d.depositadoEm){reg.estado='Depositado';reg.quando=d.depositadoEm;}
     await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'registo',reg);
     DPZ.sujo=false;if(!silencio)showToast('Depósito gravado.','success');
     dpzPintarBotoes();
