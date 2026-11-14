@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.18">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.19">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3949,7 +3949,7 @@ function fechoBlocoDeposito(e,eu){
       <td><button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoEsc().docs[${k}].desc,this)">Copiar</button></td>
       <td style="font-size:11.5px;white-space:nowrap">${eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="fechoEsc().docs[${k}].estado=this.value;FECHO.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
       <td style="white-space:nowrap">${x.fileId?`<a class="btn btn-sm fx-c" href="${dpzEsc(x.webUrl||'#')}" target="_blank" title="${dpzEsc(x.ficheiro||'')}">📄</a>`:''}
-        <label class="btn btn-sm fx-c" style="cursor:pointer">⬆ Puxar<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0])"></label>
+        <label class="btn btn-sm fx-c" style="cursor:pointer" title="${x.fileId?'Puxar outra vez — substitui o ficheiro anterior':'Puxar o ficheiro'}">${x.fileId?'🔄 Substituir':'⬆ Puxar'}<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0]);this.value=''"></label>
         ${x.fixo?'':`<button class="btn btn-sm fx-c" style="color:var(--red)" onclick="dpzRemover(${k})">×</button>`}</td></tr>`;}).join('');
   const pred=(e.predios||[]).map((p,k)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:.4rem .55rem;margin:.3rem 0">
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Prédio ${k+1} · sempre os dados da CRP (nunca da matriz)</div>
@@ -4027,12 +4027,22 @@ async function dpzEnviar(x,i,file){
   const url=`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/${sub}/${encodeURIComponent(nome)}:/content?@microsoft.graph.conflictBehavior=replace`;
   const r=await fetch(url,{method:'PUT',headers:{Authorization:'Bearer '+graphToken,'Content-Type':file.type||'application/pdf'},body:file});
   if(!r.ok)throw new Error('upload '+r.status);
-  const j=await r.json();x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;if(!x.estado||x.estado==='marcado')x.estado='digit';
+  const j=await r.json();
+  /* (14/11/2026) Puxar outra vez o mesmo documento substitui o anterior. Com o mesmo nome o
+     ficheiro é substituído logo; se o nome mudou (descrição ou número), o antigo é apagado
+     para não ficarem dois na pasta DPA. */
+  const antigo=x.fileId;
+  if(antigo&&antigo!==j.id){try{await graphDelete(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${antigo}`);}catch(e){console.warn('[Fecho] apagar antigo:',e);}}
+  x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;
+  if(antigo){x.substituidoEm=new Date().toISOString();x.estado='digit';}else if(!x.estado||x.estado==='marcado')x.estado='digit';
 }
 async function dpzPuxar(k,file){
   if(!file)return;const x=fechoEsc().docs[k];
+  const jaDep=x.fileId&&(x.estado==='dep'||x.estado==='reg');
+  if(x.fileId&&!confirm(`Este documento já tem ficheiro na pasta DPA:\n«${x.ficheiro||x.desc}»\n\nSubstituir pelo novo?`+(jaDep?'\n\nAtenção: estava marcado como depositado — volta a «digitalizado» até depositares o novo.':'')))return;
+  const repor=!!x.fileId;
   try{showToast('A gravar…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
-    await dpzEnviar(x,dpzIndice(k),file);FECHO.sujo=true;await dpzGravar(true);fechoRender();showToast('✓ '+x.ficheiro,'success');}
+    await dpzEnviar(x,dpzIndice(k),file);FECHO.sujo=true;await dpzGravar(true);fechoRender();showToast((repor?'✓ Substituído: ':'✓ ')+x.ficheiro,'success');}
   catch(e){showToast('Não consegui gravar: '+e.message,'error');}
 }
 /* Vários de uma vez: cada ficheiro vai para o próximo documento marcado sem ficheiro;
