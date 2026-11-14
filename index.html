@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.24">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.25">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4359,6 +4359,7 @@ function fechoBlocoRegistos(){
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;margin:.4rem 0">
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b style="font-size:12.5px">Pedido de registo ${gi+1} · ${dpzEsc(p.entidade)}</b>
         ${p.pedidoId?`<span style="font-size:11px;color:#1F5E3A">✓ ${cods[0]?'no Portal Registos':'criado'}</span>`:''}
+        <button class="btn btn-sm fx-c" style="margin-left:auto;color:var(--red)" title="Apagar este pedido de registo" onclick="fechoApagarPedido('${p.id}')">✕ Apagar pedido</button>
         ${!cods[0]?`<span style="font-size:11px;color:#7A4F0C">falta o código de depósito principal (${dpzEsc(escs[0]?escs[0].label:'')}) — ainda não foi para o Portal Registos</span>`:falta?`<span style="font-size:11px;color:#1F5E3A">já foi para o Portal Registos · faltam ${falta} código(s) das outras escrituras</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
       <div style="font-size:12px;margin:.25rem 0">${escs.map((e,j)=>`<span style="display:inline-block;margin-right:.6rem">• ${dpzEsc(e.label)} <span style="color:var(--text-muted)">${dpzEsc(cods[j]||'sem código')}</span>
         ${p.escs.length>1&&!p.pedidoId?`<button class="btn btn-sm fx-c" title="Tirar para um pedido à parte (outra conservatória)" onclick="fechoSeparar('${p.id}','${p.escs[j]}')">↗ separar</button>`:''}</span>`).join('')}</div>
@@ -4369,6 +4370,24 @@ function fechoBlocoRegistos(){
   return `<div style="margin-top:.4rem">
     <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as. Vai para o Portal Registos quando tiver o código de depósito principal.</div>
     ${cx||'<div style="font-size:12px;color:var(--text-faint)">Sem escrituras.</div>'}</div>`;
+}
+/* (14/11/2026) Apagar um pedido criado por engano. As escrituras dele passam para outro pedido
+   da mesma entidade (se houver); se já estava no Portal Registos, pergunta se sai de lá também. */
+async function fechoApagarPedido(pid){
+  const c=FECHO.cont,p=(c.pedidos||[]).find(x=>x.id===pid);if(!p)return;
+  const outro=c.pedidos.find(x=>x!==p&&x.entidade===p.entidade&&!x.pedidoId);
+  const nomes=p.escs.map(k=>(c.esc[k]||{}).label).filter(Boolean);
+  if(!confirm(`Apagar este pedido de registo (${p.entidade})?`+(nomes.length?`\n\n${outro?'A(s) escritura(s) '+nomes.join(', ')+' passa(m) para o outro pedido '+p.entidade+'.':'A(s) escritura(s) '+nomes.join(', ')+' fica(m) num pedido novo.'}`:'')))return;
+  if(p.pedidoId){
+    if(!confirm('Este pedido já foi criado no Portal Registos. Apagá-lo também de lá?\n\nOK = apagar · Cancelar = não apagar nada'))return;
+    try{const L=await fechoListaPed();await renovarToken();
+      const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+      if(!r.ok&&r.status!==204&&r.status!==404)throw new Error('Erro '+r.status);}
+    catch(e){showToast('Não consegui apagar no Portal Registos: '+e.message,'error');return;}
+  }
+  if(outro)p.escs.forEach(k=>{if(!outro.escs.includes(k))outro.escs.push(k);});
+  c.pedidos=c.pedidos.filter(x=>x!==p);
+  await dpzGravar(true);fechoRender();showToast('Pedido apagado. Gravado.','success');
 }
 function fechoNovoPedido(){const ent=prompt('Entidade deste registo: CGD ou Particular?','CGD');if(!ent)return;
   const e=/^c/i.test(ent.trim())?'CGD':'Particular';(FECHO.cont.pedidos=FECHO.cont.pedidos||[]).push({id:'p'+Date.now().toString(36),entidade:e,escs:[],dividido:true,manual:true});
