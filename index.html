@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.10">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.11">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3890,7 +3890,8 @@ function fechoRender(msg){
         <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted)">${dpzEsc(FECHO.nome)}</div></div>
       <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
       <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
-      <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button></div>
+      <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button>
+      ${(typeof prontaSouEu==='function'&&prontaSouEu())?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" title="Apaga a lista, os estados e os dados do Fecho desta pasta (não apaga ficheiros, registos nem pedidos)" onclick="fechoApagarDados()">🗑</button>`:''}</div>
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem;align-items:center">${tabs}
       <button class="btn btn-sm" onclick="fechoNovaEscritura()">+ Escritura</button>
       <button class="btn btn-sm" style="color:var(--text-muted)" onclick="fechoRenomear()">✏️ Nome</button></div>
@@ -3899,6 +3900,14 @@ function fechoRender(msg){
     ${fechoBlocoRegistos()}
   </div>`;
   dpzEntidade();
+}
+async function fechoApagarDados(){
+  if(!confirm('Apagar os dados do Fecho desta pasta (lista de documentos, estados, valores e pedidos ligados)?\n\nOs ficheiros na pasta DPA, os registos de escritura e os pedidos de registo NÃO são apagados aqui.'))return;
+  try{for(const campo of ['deposito','registo','sintese'])await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,campo,null);
+    FECHO.sujo=false;showToast('Dados do Fecho apagados.','success');
+    try{if(window.opener&&window.opener.dpzPintarBotoes){window.opener.etqRecarregar&&await window.opener.etqRecarregar();window.opener.dpzPintarBotoes();}}catch(_){}
+    fechoRender('Dados apagados. Pode fechar este separador.');}
+  catch(e){showToast('Não consegui apagar: '+e.message,'error');}
 }
 function fechoTab(k){FECHO.k=k;fechoRender();window.scrollTo(0,0);}
 function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
@@ -3940,7 +3949,7 @@ function fechoBlocoDeposito(e,eu){
       ${dpzCampo('N.º de processo','proc.numProcesso','escreve à mão')}
       ${dpzCampo('Código da certidão predial','proc.codCRP')}
       ${dpzCampo('Código do depósito','proc.codDeposito','depois de submeter')}
-      ${dpzCampo('Código do DPA a relacionar','proc.codRel','só se houver')}
+      ${fechoCodRels(e)}
      </div>
      <div>
       <div class="cond-block-title" style="margin-top:.2rem">Detalhes do ato</div>
@@ -4132,6 +4141,22 @@ async function dpzDescarregarTudo(){
   }catch(e){showToast('Não consegui descarregar: '+e.message,'error');}
 }
 
+/* Códigos de outros DPA a relacionar (p. ex. três distrates, cada um com o seu código).
+   Vão todos para o mapa de registo, na lista de documentos (14/11/2026). */
+function fechoCodRelsDe(e){const p=e.proc=e.proc||{};
+  if(!Array.isArray(p.codRels)){p.codRels=p.codRel?[{id:'r'+Date.now().toString(36),codigo:p.codRel,descricao:''}]:[];delete p.codRel;}
+  return p.codRels;}
+function fechoCodRels(e){
+  const l=fechoCodRelsDe(e);
+  const linhas=l.map((r,i)=>`<div class="fx-l"><span class="fx-r">${i?'':'Códigos de DPA a relacionar'}</span>
+      <input class="form-input fx-i" style="flex:.9" placeholder="Código" value="${dpzEsc(r.codigo||'')}" oninput="fechoCodRelsDe(fechoEsc())[${i}].codigo=this.value;FECHO.sujo=true">
+      <input class="form-input fx-i" style="flex:1.1" placeholder="O que é (ex.: Distrate CGD)" value="${dpzEsc(r.descricao||'')}" oninput="fechoCodRelsDe(fechoEsc())[${i}].descricao=this.value;FECHO.sujo=true">
+      <button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoCodRelsDe(fechoEsc())[${i}].codigo,this)">Copiar</button>
+      <button class="btn btn-sm fx-c" style="color:var(--red)" onclick="fechoCodRelsDe(fechoEsc()).splice(${i},1);FECHO.sujo=true;fechoRender()">×</button></div>`).join('');
+  return `${linhas||'<div class="fx-l"><span class="fx-r">Códigos de DPA a relacionar</span><span style="font-size:11.5px;color:var(--text-faint)">nenhum</span></div>'}
+    <div class="fx-l"><span class="fx-r"></span><button class="btn btn-sm fx-c" onclick="fechoCodRelsDe(fechoEsc()).push({id:'r'+Date.now().toString(36),codigo:'',descricao:''});FECHO.sujo=true;fechoRender()">+ Código a relacionar</button></div>`;
+}
+
 /* ── 2 · Registo de escritura ── */
 function fechoBlocoRegisto(e){
   const reg=dpzRegDe(e);
@@ -4226,9 +4251,13 @@ function fechoMontarMapa(p,ant){
     escs.forEach(e=>(e.predios||[]).forEach(x=>{const k=(x.ficha||'')+'|'+(x.fracao||'');if(!x.ficha||vistos.has(k))return;vistos.add(k);
       base.predios.push({id:id(),concelho:x.concelho||'',freguesia:x.freguesia||'',numero:x.ficha,fracao:!!x.fracao,letra:x.fracao||''});}));
   }
-  const outros=(base.docs||[]).filter(dd=>!cods.includes(String(dd.codigo||'').trim()));
+  /* Códigos relacionados (distrates, etc.) de todas as escrituras do pedido. */
+  const rels=escs.flatMap(e=>fechoCodRelsDe(e)).filter(r=>String(r.codigo||'').trim()).map(r=>({codigo:String(r.codigo).trim(),descricao:r.descricao||'Documento relacionado'}));
+  const meus=new Set([...cods,...rels.map(r=>r.codigo)]);
+  const outros=(base.docs||[]).filter(dd=>!meus.has(String(dd.codigo||'').trim()));
   base.codDPA=completos?cods[0]:'';
-  base.docs=[...(completos?cods.slice(1).map(cd=>({id:id(),codigo:cd,descricao:'Documento Particular Autenticado'})):[]),...outros];
+  base.docs=[...(completos?cods.slice(1).map(cd=>({id:id(),codigo:cd,descricao:'Documento Particular Autenticado'})):[]),
+    ...rels.map(r=>({id:id(),codigo:r.codigo,descricao:r.descricao})),...outros];
   return base;
 }
 async function fechoMapa(pid){
