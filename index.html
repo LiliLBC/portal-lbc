@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.5">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.6">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3744,7 +3744,31 @@ async function dpzDoGerador(pastaId,nome){
       :ato==='doacao'?'DOAÇÃO':ato==='partilhas'?'PARTILHAS':'';
     const dest=[c['f-destino'],c['f-dcc-destino'],c['f-mh-destino']].filter(Boolean).join(' ');
     const finalidade=/habita[cç][aã]o pr[oó]pria/i.test(dest)||/hpp/i.test(dest)?'habitação própria permanente':(dest?'outra':'');
-    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,rascunho:f.name,
+    /* Síntese para o mapa de registo da Isa (14/11/2026): sujeitos passivos e ativos, com estado
+       civil e cônjuge, hipoteca a registar e ónus a cancelar — tudo do rascunho do gerador. */
+    const pessoa=o=>{
+      if(o.tipo==='cgd')return[{nome:'CAIXA GERAL DE DEPÓSITOS, S.A.',nif:'500960046',ec:''}];
+      if(o.tipo==='empresa')return[{nome:o.denom||'',nif:o.nipc||'',ec:''}];
+      if(o.tipo==='municipio')return[{nome:'MUNICÍPIO DE '+String(o['mun-nome']||'').toUpperCase(),nif:o['mun-nipc']||'',ec:''}];
+      const casado=/^casad/i.test(o.ec||'');
+      const ec=casado?`casado(a) com ${o['conj-nome']||''}, sob o regime de ${o.regime||''}`:(o.ec||'');
+      const l=[{nome:o.nome||'',nif:o.nif||'',ec}];
+      /* Bem comum: o cônjuge também é sujeito (fora da separação de bens). */
+      if(casado&&o['conj-nome']&&!/separa/i.test(o.regime||''))l.push({nome:o['conj-nome'],nif:o['conj-nif']||'',ec:`casado(a) com ${o.nome||''}, sob o regime de ${o.regime||''}`});
+      return l;};
+    const V=(g.vendedores||[]).flatMap(pessoa),C=(g.compradores||[]).flatMap(pessoa);
+    const mut=c['f-mutuante']||'cgd';
+    const banco=mut==='ccam'?{favor:'CAIXA DE CRÉDITO AGRÍCOLA MÚTUO DO ALENTEJO CENTRAL, CRL',nif:''}:{favor:'CAIXA GERAL DE DEPÓSITOS, S.A.',nif:'500960046'};
+    const temHip=produto==='CVMH'||produto==='MH'||produto==='TOIC';
+    const onusTodos=[...(g.onus||[]),...(g.prediosExtra||[]).flatMap(p=>p.onus||[])];
+    const sintese={_fonte:'gerador',
+      passivos:produto==='MH'||produto==='TOIC'?[]:V,
+      ativos:produto==='MH'||produto==='TOIC'?V:C,
+      onusRegistar:temHip?[banco]:[],
+      onusCancelar:onusTodos.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(o=>({ap:o.ap||'',tipo:o.desc||'hipoteca'})),
+      valores:{compra:produto==='MH'||produto==='TOIC'?'':(c['f-preco']||'1')},
+      predio:predios[0]?{descricao:predios[0].ficha,freguesia:predios[0].freguesia,fracao:predios[0].fracao}:null};
+    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,rascunho:f.name,sintese,
       produto,finalidade,codCRP:c['f-im-cert-cod']||'',matriz:c['f-im-artigo']?{tipo:c['f-im-tipo']||'',artigo:c['f-im-artigo']}:null};
   }catch(e){console.warn('[Depósito] gerador:',e);return null;}
 }
@@ -3909,6 +3933,11 @@ async function dpzGravar(silencio){
       produto:d.proc.produto||reg.produto||'',codCRP:d.proc.codCRP||reg.codCRP||'',finalidade:d.finalidade||reg.finalidade||'',matriz:d.matriz||reg.matriz||null});
     if(d.depositadoEm){reg.estado='Depositado';reg.quando=d.depositadoEm;}
     await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'registo',reg);
+    /* Síntese para o mapa da Isa: do gerador, sem pisar uma que não tenha vindo dele. */
+    if(DPZ.ger&&DPZ.ger.sintese){let sAnt=null;try{sAnt=etqDadoSync('ESCRITURAS',DPZ.pastaId,'sintese');}catch(_){}
+      if(!sAnt||sAnt._fonte==='gerador'){const S={...DPZ.ger.sintese};const p0=(d.predios||[])[0];
+        if(p0&&p0.ficha)S.predio={descricao:p0.ficha,freguesia:p0.freguesia||'',fracao:p0.fracao||''};
+        await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'sintese',S);}}
     DPZ.sujo=false;if(!silencio)showToast('Depósito gravado.','success');
     dpzPintarBotoes();
   }catch(e){showToast('Não consegui gravar: '+e.message,'error');}
