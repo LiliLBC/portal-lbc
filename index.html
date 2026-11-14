@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.3">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3677,33 +3677,55 @@ function renderPastas(lista){
         ${(DEPOSITO_ATIVO&&window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
         ${ANALISADOR_ATIVO?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>`:''}
         <button class="btn btn-sm" data-dpz="${p.id}" data-nome="${escHtml(p.name||'')}" data-base="font-weight:600" onclick="dpzAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Depósito">📥 Depósito</button>
-        <button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>
+        ${GERADOR_PASTA_ATIVO?`<button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>`:''}
         <button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras">Registar</button>
       </div>
     </div>`).join('');
   el.style.display='block';
   if(window.etqPintar)Promise.resolve(etqPintar()).then(()=>dpzPintarBotoes()).catch(()=>{});
 }
-/* ══════════ PORTAL DE DEPÓSITOS (14/11/2026) ══════════
-   Uma janela por escritura, aberta pelo botão «📥 Depósito» da pasta (Liliana e Andreia).
-   Junta numa lista os documentos a depositar (marcado → digitalizado → depositado / junto ao
-   registo), grava os ficheiros na subpasta DPA com o nome final, e reúne o que o pedido de
-   depósito no Predial Online pede: data e descrição de cada documento, preço, mútuo e hipoteca
-   (montante máximo), o sujeito (o cliente da pasta) e os prédios (sempre da CRP).
-   Os dados vêm do último rascunho do gerador na pasta e prevalece o que se escrever aqui.
-   Fica nas Etiquetas (ESCRITURAS|pasta, campo «deposito») e passa para o «registo», de onde o
-   «Registar» os vai buscar (n.º de processo, código do depósito, entidade, mútuo, prédio). */
+/* ══════════ FECHO DA ESCRITURA · DEPÓSITO → REGISTO DE ESCRITURA → REGISTOS (14/11/2026) ══════════
+   Página própria por pasta, num separador à parte (index.html?fecho=<pasta>), aberta pelo botão
+   «📥 Depósito» da pasta. Usa o login e as listas do Portal.
+   Uma pasta pode ter várias escrituras (p. ex. uma divisão particular e dois mútuos da CGD): cada
+   uma tem o seu separador, com
+     1 · Depósito — documentos (marcado → digitalizado → depositado / junto ao registo), data e
+         descrição para o Predial Online, valores, sujeito, prédios (sempre da CRP), e o e-mail de
+         pagamento (um por depósito);
+     2 · Registo de escritura — abre a ficha do Registo de escrituras já preenchida; grava-se uma vez.
+   e, ao nível da pasta,
+     3 · Registos prediais — um pedido por entidade (nunca se mistura CGD com particular), que se
+         pode dividir; junta os atos das escrituras que o compõem e todos os códigos de depósito.
+         Só entra na lista da Isa quando tiver os códigos todos.
+   Os dados vêm do rascunho do gerador de cada escritura e prevalece o que se escrever aqui.
+   Guarda-se nas Etiquetas (ESCRITURAS|pasta, campo «deposito»). O Registo de escrituras e o
+   portal da Isa continuam a ser onde se pesquisa e consulta. */
 const DPZ_SUB='DPA';
 const DPZ_EMAILS={CGD:'dpacx@costafreitas.pt',Particular:'liliana.cardoso@lbc-solicitadora.pt'};
-let DPZ=null; /* {pastaId,nome,d} aberto */
+let FECHO=null;   /* {pastaId,nome,cont,k,ger:{k:…},aguardaReg} */
+let DPZ=null;     /* atalho para a escritura aberta: {d} — mantém os nomes antigos */
 function dpzHojeISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function dpzDiaPasta(nome){const m=String(nome||'').match(/^(\d{4})(\d{2})(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:'';}
 function dpzCliente(nome){return String(nome||'').replace(/^\d{8}\s*/,'').trim();}
 function dpzEsc(s){return escHtml(String(s==null?'':s));}
-/* Estado da pasta para a cor do botão. */
-function dpzEstado(d,nome){
-  const docs=(d&&d.docs)||[];if(!docs.length)return 'vazio';
-  const dia=dpzDiaPasta(nome)||(d&&d.dia)||'',passou=dia&&dia<dpzHojeISO();
+function dpzNovaEsc(label,rascunho,dia){
+  return{label:label||'Escritura',rascunho:rascunho||'',dia:dia||'',docs:[{id:'dpa',fixo:'dpa',desc:'Documento Particular Autenticado',data:dia||'',estado:'marcado',obrig:true}],
+    proc:{},ato:{},sujeito:{},predios:[]};
+}
+/* Contentor por pasta. Versão antiga (uma só escritura, com «docs» à raiz) passa a «principal». */
+function dpzContentor(raw,nome){
+  const dia=dpzDiaPasta(nome);
+  if(raw&&raw.v===2&&raw.esc)return raw;
+  const c={v:2,ordem:[],esc:{},pedidos:[]};
+  if(raw&&raw.docs){c.ordem=['principal'];c.esc.principal={...dpzNovaEsc('Escritura','',dia),...raw};}
+  return c;
+}
+function dpzTodasDocs(c){return(c&&c.esc?Object.values(c.esc):[]).flatMap(e=>e.docs||[]);}
+/* Estado da pasta para a cor do botão: soma de todas as escrituras. */
+function dpzEstado(raw,nome){
+  const c=dpzContentor(raw,nome);const docs=dpzTodasDocs(c);
+  if(!docs.length)return 'vazio';
+  const dia=dpzDiaPasta(nome),passou=dia&&dia<dpzHojeISO();
   if(!passou)return docs.every(x=>x.fileId)?'verde':'laranja';
   return docs.every(x=>x.estado==='dep'||x.estado==='reg')?'azul':'rosa';
 }
@@ -3717,15 +3739,24 @@ function dpzPintarBotoes(){
     const st=dpzEstado(d,nome);b.setAttribute('style',(b.dataset.base||'')+';'+DPZ_COR[st]);b.title=DPZ_TIT[st];
     b.textContent=st==='azul'?'📥 Depósito ✓':'📥 Depósito';});
 }
-/* Último rascunho do gerador na pasta → sugestões. */
-async function dpzDoGerador(pastaId,nome){
+/* Botão da pasta: abre a página do fecho num separador próprio. */
+function dpzAbrir(pastaId,nome){
+  const u=location.pathname+'?fecho='+encodeURIComponent(pastaId)+'&n='+encodeURIComponent(nome);
+  const w=window.open(u,'lbc-fecho-'+pastaId);if(w)w.focus();
+}
+
+/* ── Rascunhos do gerador na pasta ── */
+async function dpzRascunhos(pastaId){
+  const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${pastaId}/children?$top=200&$select=id,name,file,lastModifiedDateTime`);
+  return(r.value||[]).filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name)&&!/^RASCUNHO_CPCV/i.test(x.name))
+    .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
+}
+function dpzRotuloRasc(n){if(/^RASCUNHO_GERADOR\.json$/i.test(n))return 'Escritura';return String(n).replace(/^RASCUNHO_?/i,'').replace(/\.json$/i,'').replace(/_/g,' ')||'Escritura';}
+/* Lê um rascunho e tira dele o que o depósito, o registo e a Isa precisam. */
+async function dpzDoGerador(fileId,nome){
   try{
-    const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${pastaId}/children?$top=200&$select=id,name,file,lastModifiedDateTime`);
-    const f=(r.value||[]).filter(x=>x.file&&/^RASCUNHO.*\.json$/i.test(x.name)&&!/^RASCUNHO_CPCV/i.test(x.name))
-      .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)))[0];
-    if(!f)return null;
     await renovarToken();
-    const res=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+graphToken}});
+    const res=await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${fileId}/content`,{headers:{Authorization:'Bearer '+graphToken}});
     if(!res.ok)return null;const g=await res.json();const c=g.campos||{};
     const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
     const cli=norm(dpzCliente(nome));
@@ -3737,98 +3768,194 @@ async function dpzDoGerador(pastaId,nome){
     const predios=[];
     if(c['f-im-num'])predios.push({ficha:c['f-im-num'],fracao:c['f-im-letra']||'',freguesia:c['f-im-freg-crp']||'',concelho:concDe(c['f-im-crp']),distrito:''});
     (g.prediosExtra||[]).forEach(p=>{if(p.num)predios.push({ficha:p.num,fracao:p.letra||'',freguesia:p.freg||'',concelho:concDe(p.crp),distrito:''});});
-    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,rascunho:f.name};
-  }catch(e){console.warn('[Depósito] gerador:',e);return null;}
+    const ato=g.ato||c['f-tipo-ato']||'';
+    const produto=(ato==='leasing'||(ato==='cv'&&(g.compradores||[]).some(o=>o.tipo==='cgd')))?'LEASING'
+      :ato==='cv'?(c['f-subtipo-cv']==='mh'?'CVMH':'CV'):ato==='mh'?(/toic/i.test(c['f-mh-contrato']||'')?'TOIC':'MH')
+      :ato==='doacao'?'DOAÇÃO':ato==='partilhas'?'PARTILHAS':'';
+    const dest=[c['f-destino'],c['f-dcc-destino'],c['f-mh-destino']].filter(Boolean).join(' ');
+    const finalidade=/habita[cç][aã]o pr[oó]pria/i.test(dest)||/hpp/i.test(dest)?'habitação própria permanente':(dest?'outra':'');
+    const mut=c['f-mutuante']||'cgd';
+    /* Entidade: mútuo/CVMH/leasing do banco → CGD (ou CCAM, que se paga como particular) */
+    const entidade=(produto==='LEASING'||((produto==='CVMH'||produto==='MH'||produto==='TOIC')&&mut!=='ccam'))?'CGD':'Particular';
+    /* Síntese para o mapa de registo da Isa: sujeitos passivos e ativos, com estado civil e
+       cônjuge, hipoteca a registar e ónus a cancelar. */
+    const pessoa=o=>{
+      if(o.tipo==='cgd')return[{nome:'CAIXA GERAL DE DEPÓSITOS, S.A.',nif:'500960046',ec:''}];
+      if(o.tipo==='empresa')return[{nome:o.denom||'',nif:o.nipc||'',ec:''}];
+      if(o.tipo==='municipio')return[{nome:'MUNICÍPIO DE '+String(o['mun-nome']||'').toUpperCase(),nif:o['mun-nipc']||'',ec:''}];
+      const casado=/^casad/i.test(o.ec||'');
+      const ec=casado?`casado(a) com ${o['conj-nome']||''}, sob o regime de ${o.regime||''}`:(o.ec||'');
+      const l=[{nome:o.nome||'',nif:o.nif||'',ec}];
+      if(casado&&o['conj-nome']&&!/separa/i.test(o.regime||''))l.push({nome:o['conj-nome'],nif:o['conj-nif']||'',ec:`casado(a) com ${o.nome||''}, sob o regime de ${o.regime||''}`});
+      return l;};
+    const V=(g.vendedores||[]).flatMap(pessoa),C=(g.compradores||[]).flatMap(pessoa);
+    const banco=mut==='ccam'?{favor:'CAIXA DE CRÉDITO AGRÍCOLA MÚTUO DO ALENTEJO CENTRAL, CRL',nif:''}:{favor:'CAIXA GERAL DE DEPÓSITOS, S.A.',nif:'500960046'};
+    const soMutuo=produto==='MH'||produto==='TOIC';
+    const temHip=produto==='CVMH'||soMutuo;
+    const onusTodos=[...(g.onus||[]),...(g.prediosExtra||[]).flatMap(p=>p.onus||[])];
+    const sintese={_fonte:'gerador',passivos:soMutuo?[]:V,ativos:soMutuo?V:C,onusRegistar:temHip?[banco]:[],
+      onusCancelar:onusTodos.filter(o=>o.canc==='fisico'||o.canc==='codigo').map(o=>({ap:o.ap||'',tipo:o.desc||'hipoteca'})),
+      valores:{compra:soMutuo?'':(c['f-preco']||'1')},
+      predio:predios[0]?{descricao:predios[0].ficha,freguesia:predios[0].freguesia,fracao:predios[0].fracao}:null};
+    return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,
+      produto,finalidade,entidade,codCRP:c['f-im-cert-cod']||'',matriz:c['f-im-artigo']?{tipo:c['f-im-tipo']||'',artigo:c['f-im-artigo']}:null,sintese};
+  }catch(e){console.warn('[Fecho] gerador:',e);return null;}
 }
-async function dpzAbrir(pastaId,nome){
+/* Sugestões do gerador só para campos vazios. */
+function dpzAplicarGerador(e,g){
+  if(!g)return;const a=e.ato=e.ato||{};e.proc=e.proc||{};e.sujeito=e.sujeito||{};
+  if(!a.preco&&g.preco)a.preco=g.preco;if(!a.mutuo&&g.mutuo)a.mutuo=g.mutuo;if(!a.hipoteca&&g.hipoteca)a.hipoteca=g.hipoteca;
+  if(!e.sujeito.nif&&g.sujeitoNif)e.sujeito.nif=g.sujeitoNif;if(!(e.predios&&e.predios.length)&&g.predios.length)e.predios=g.predios;
+  if(!e.proc.produto&&g.produto)e.proc.produto=g.produto;if(!e.proc.codCRP&&g.codCRP)e.proc.codCRP=g.codCRP;
+  if(!e.proc.entidade&&g.entidade)e.proc.entidade=g.entidade;
+  if(!e.finalidade&&g.finalidade)e.finalidade=g.finalidade;if(!e.matriz&&g.matriz)e.matriz=g.matriz;
+  if(g.sintese)e.sintese=g.sintese;
+}
+
+/* ── Abrir a página do fecho ── */
+async function fechoAbrir(pastaId,nome){
+  document.title='Fecho · '+dpzCliente(nome);
   try{if(window.etqDadoLer)await etqDadoLer('ESCRITURAS',pastaId,'deposito');}catch(_){}
-  let d=null;try{d=etqDadoSync('ESCRITURAS',pastaId,'deposito');}catch(_){}
-  d=d?JSON.parse(JSON.stringify(d)):{docs:[],proc:{},ato:{},sujeito:{},predios:[]};
-  d.dia=d.dia||dpzDiaPasta(nome);
-  if(!d.docs.some(x=>x.fixo==='dpa'))d.docs.unshift({id:'dpa',fixo:'dpa',desc:'Documento Particular Autenticado',data:d.dia,estado:'marcado',obrig:true});
-  DPZ={pastaId,nome,d,ger:null};
-  dpzRender();
-  /* Sugestões do gerador só para campos vazios. */
-  const g=await dpzDoGerador(pastaId,nome);DPZ.ger=g;
-  if(g){const a=d.ato;if(!a.preco&&g.preco)a.preco=g.preco;if(!a.mutuo&&g.mutuo)a.mutuo=g.mutuo;if(!a.hipoteca&&g.hipoteca)a.hipoteca=g.hipoteca;
-    if(!d.sujeito.nif&&g.sujeitoNif)d.sujeito.nif=g.sujeitoNif;if(!d.predios.length&&g.predios.length)d.predios=g.predios;dpzRender();}
+  let raw=null;try{raw=etqDadoSync('ESCRITURAS',pastaId,'deposito');}catch(_){}
+  const cont=dpzContentor(raw?JSON.parse(JSON.stringify(raw)):null,nome);
+  /* «base» = o que estava gravado quando se abriu: serve para juntar, ao gravar, o que a
+     outra pessoa gravou entretanto (trabalho em simultâneo, 14/11/2026). */
+  FECHO={pastaId,nome,cont,k:null,ger:{},aguardaReg:null,base:JSON.parse(JSON.stringify(cont))};
+  fechoRender('A ler os rascunhos do gerador…');
+  /* Uma escritura por rascunho do gerador; os que já existem mantêm-se. */
+  let rasc=[];try{rasc=await dpzRascunhos(pastaId);}catch(e){console.warn(e);}
+  const dia=dpzDiaPasta(nome);
+  for(const f of rasc){
+    let k=Object.keys(cont.esc).find(x=>cont.esc[x].rascunho===f.name);
+    if(!k&&cont.ordem.length===1&&cont.esc[cont.ordem[0]]&&!cont.esc[cont.ordem[0]].rascunho){k=cont.ordem[0];cont.esc[k].rascunho=f.name;cont.esc[k].label=dpzRotuloRasc(f.name);}
+    if(!k){k='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);cont.esc[k]=dpzNovaEsc(dpzRotuloRasc(f.name),f.name,dia);cont.ordem.push(k);}
+    const g=await dpzDoGerador(f.id,nome);FECHO.ger[k]=g;dpzAplicarGerador(cont.esc[k],g);
+  }
+  if(!cont.ordem.length){const k='principal';cont.esc[k]=dpzNovaEsc('Escritura','',dia);cont.ordem.push(k);}
+  FECHO.k=cont.ordem[0];
+  fechoRender();
 }
-function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){el.textContent='✓';setTimeout(()=>el.textContent='Copiar',700);}}catch(_){}}
-function dpzCampo(rot,path,ph,ro){
+function fechoEsc(){return FECHO&&FECHO.cont.esc[FECHO.k];}
+function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){const o=el.textContent;el.textContent='✓';setTimeout(()=>el.textContent=o,700);}}catch(_){}}
+function dpzGet(path){return path.split('.').reduce((o,k)=>o==null?o:o[k],fechoEsc());}
+function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;}
+function dpzCampo(rot,path,ph){
   const v=dpzGet(path)||'';
-  return `<div style="display:flex;align-items:center;gap:.35rem;margin:.18rem 0"><span style="width:150px;font-size:11.5px;color:var(--text-muted)">${rot}</span>
-    <input class="form-input" style="flex:1;padding:4px 8px;font-size:12.5px" value="${dpzEsc(v)}" placeholder="${dpzEsc(ph||'')}" ${ro?'readonly':''} oninput="dpzSet('${path}',this.value)">
-    <button class="btn btn-sm" style="padding:2px 8px;font-size:11px" onclick="dpzCopiar(dpzGet('${path}'),this)">Copiar</button></div>`;
+  return `<div class="fx-l"><span class="fx-r">${rot}</span>
+    <input class="form-input fx-i" value="${dpzEsc(v)}" placeholder="${dpzEsc(ph||'')}" oninput="dpzSet('${path}',this.value)">
+    <button class="btn btn-sm fx-c" onclick="dpzCopiar(dpzGet('${path}'),this)">Copiar</button></div>`;
 }
-function dpzGet(path){return path.split('.').reduce((o,k)=>o==null?o:o[k],DPZ.d);}
-function dpzSet(path,val){const ks=path.split('.');let o=DPZ.d;ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;DPZ.sujo=true;}
+function dpzMulti(){return FECHO.cont.ordem.length>1;}
 function dpzNomeFicheiro(x,i){
   const n=String(x.fixo==='dpa'?0:i).padStart(2,'0');
   return `${n} - ${String(x.desc||'Documento').replace(/[\\/:*?"<>|#%]/g,'-').trim()}.pdf`;
 }
-function dpzRender(){
-  document.getElementById('dpz-ov')?.remove();
-  const d=DPZ.d,eu=(typeof prontaSouEu==='function'&&prontaSouEu());
+/* Com várias escrituras na pasta, cada uma tem a sua subpasta dentro da DPA. */
+function dpzSubpasta(){const e=fechoEsc();return dpzMulti()?`${DPZ_SUB}/${String(e.label||'Escritura').replace(/[\\/:*?"<>|#%]/g,'-').trim()}`:DPZ_SUB;}
+function dpzIndice(k){const d=fechoEsc().docs;let i=0;for(let j=0;j<=k;j++)if(!d[j].fixo)i++;return i;}
+
+function fechoRender(msg){
+  let el=document.getElementById('fecho');
+  if(!el){document.body.insertAdjacentHTML('beforeend',`<div id="fecho"></div>`);el=document.getElementById('fecho');}
+  if(!document.getElementById('fecho-css')){document.head.insertAdjacentHTML('beforeend',`<style id="fecho-css">
+    #fecho{position:fixed;inset:0;z-index:250;background:var(--bg,#f7f6f3);overflow:auto}
+    #fecho .fx-w{max-width:1100px;margin:0 auto;padding:1rem 1.2rem 3rem}
+    #fecho .fx-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;margin:.7rem 0}
+    #fecho .fx-h{font-weight:700;font-size:13.5px;margin-bottom:.4rem;display:flex;align-items:center;gap:.5rem}
+    #fecho .fx-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent,#7C6FAE);color:#fff;font-size:11.5px}
+    #fecho .fx-l{display:flex;align-items:center;gap:.35rem;margin:.18rem 0}
+    #fecho .fx-r{width:170px;font-size:11.5px;color:var(--text-muted)}
+    #fecho .fx-i{flex:1;padding:4px 8px;font-size:12.5px}
+    #fecho .fx-c{padding:2px 8px;font-size:11px}
+    #fecho .fx-tab{border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:5px 12px;font-size:12.5px;cursor:pointer}
+    #fecho .fx-tab.on{background:var(--accent,#7C6FAE);color:#fff;border-color:transparent}
+    #fecho table td,#fecho table th{padding:3px 4px;vertical-align:middle}
+    @media(max-width:760px){#fecho .fx-g2{grid-template-columns:1fr!important}#fecho .fx-r{width:120px}}
+  </style>`);}
+  if(msg||!FECHO||!FECHO.k){el.innerHTML=`<div class="fx-w"><div class="fx-card">${dpzEsc(msg||'A carregar…')}</div></div>`;return;}
+  const c=FECHO.cont,e=fechoEsc(),eu=(typeof prontaSouEu==='function'&&prontaSouEu());
+  const st=dpzEstado(c,FECHO.nome);
+  const tabs=c.ordem.map(k=>{const x=c.esc[k];const s1=dpzEstado({v:2,esc:{a:x}},FECHO.nome);
+    return `<button class="fx-tab${k===FECHO.k?' on':''}" onclick="fechoTab('${k}')"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;${(DPZ_COR[s1]||'').replace(/color:[^;]+/,'')};border:1px solid #bbb"></span>${dpzEsc(x.label)}${x.proc&&x.proc.entidade?` · ${dpzEsc(x.proc.entidade)}`:''}</button>`;}).join('');
+  el.innerHTML=`<div class="fx-w">
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:16px">Fecho da escritura</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted)">${dpzEsc(FECHO.nome)}</div></div>
+      <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
+      <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
+      <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button></div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem;align-items:center">${tabs}
+      <button class="btn btn-sm" onclick="fechoNovaEscritura()">+ Escritura</button>
+      ${dpzMulti()?`<button class="btn btn-sm" style="color:var(--text-muted)" onclick="fechoRenomear()">✏️ Nome</button>`:''}</div>
+    ${fechoBlocoDeposito(e,eu)}
+    ${fechoBlocoRegisto(e)}
+    ${fechoBlocoRegistos()}
+  </div>`;
+  dpzEntidade();
+}
+function fechoTab(k){FECHO.k=k;fechoRender();window.scrollTo(0,0);}
+function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
+  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
+function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();FECHO.sujo=true;fechoRender();}}
+function fechoFechar(){if(FECHO&&FECHO.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;
+  window.close();setTimeout(()=>{document.getElementById('fecho')?.remove();FECHO=null;},150);}
+
+/* ── 1 · Depósito ── */
+function fechoBlocoDeposito(e,eu){
   const ESTS={marcado:'⚪ marcado',digit:'🔵 digitalizado',dep:'✅ depositado',reg:'📎 junto ao registo'};
   let i=0;
-  const linhas=d.docs.map((x,k)=>{const num=x.fixo==='dpa'?0:++i;const st=x.fileId&&x.estado==='marcado'?'digit':x.estado;
-    return `<tr data-k="${k}">
+  const linhas=e.docs.map((x,k)=>{const num=x.fixo==='dpa'?0:++i;const st=x.fileId&&x.estado==='marcado'?'digit':x.estado;
+    return `<tr>
       <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted)">${String(num).padStart(2,'0')}</td>
-      <td><input class="form-input" style="padding:3px 6px;font-size:12px" value="${dpzEsc(x.desc)}" ${x.fixo?'readonly':''} oninput="DPZ.d.docs[${k}].desc=this.value;DPZ.sujo=true"></td>
-      <td style="white-space:nowrap"><input type="date" class="form-input" style="padding:3px 6px;font-size:12px;width:132px" value="${dpzEsc(x.data||'')}" onchange="DPZ.d.docs[${k}].data=this.value;DPZ.sujo=true">
-        <button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px" onclick="dpzCopiar(DPZ.d.docs[${k}].data,this)">Copiar</button></td>
-      <td><button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px" onclick="dpzCopiar(DPZ.d.docs[${k}].desc,this)">Copiar</button></td>
-      <td style="font-size:11.5px;white-space:nowrap">${eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="DPZ.d.docs[${k}].estado=this.value;DPZ.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
-      <td style="white-space:nowrap">${x.fileId?`<a class="btn btn-sm" style="padding:1px 6px;font-size:10.5px" href="${dpzEsc(x.webUrl||'#')}" target="_blank" title="${dpzEsc(x.ficheiro||'')}">📄</a>`:''}
-        <label class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;cursor:pointer">⬆ Puxar<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0])"></label>
-        ${x.fixo?'':`<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;color:var(--red)" onclick="dpzRemover(${k})">×</button>`}</td></tr>`;}).join('');
-  const st=dpzEstado(d,DPZ.nome);
-  const pred=(d.predios||[]).map((p,k)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:.4rem .55rem;margin:.3rem 0">
+      <td><input class="form-input" style="padding:3px 6px;font-size:12px" value="${dpzEsc(x.desc)}" ${x.fixo?'readonly':''} oninput="fechoEsc().docs[${k}].desc=this.value;FECHO.sujo=true"></td>
+      <td style="white-space:nowrap"><input type="date" class="form-input" style="padding:3px 6px;font-size:12px;width:132px" value="${dpzEsc(x.data||'')}" onchange="fechoEsc().docs[${k}].data=this.value;FECHO.sujo=true">
+        <button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoEsc().docs[${k}].data,this)">Copiar</button></td>
+      <td><button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoEsc().docs[${k}].desc,this)">Copiar</button></td>
+      <td style="font-size:11.5px;white-space:nowrap">${eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="fechoEsc().docs[${k}].estado=this.value;FECHO.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
+      <td style="white-space:nowrap">${x.fileId?`<a class="btn btn-sm fx-c" href="${dpzEsc(x.webUrl||'#')}" target="_blank" title="${dpzEsc(x.ficheiro||'')}">📄</a>`:''}
+        <label class="btn btn-sm fx-c" style="cursor:pointer">⬆ Puxar<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0])"></label>
+        ${x.fixo?'':`<button class="btn btn-sm fx-c" style="color:var(--red)" onclick="dpzRemover(${k})">×</button>`}</td></tr>`;}).join('');
+  const pred=(e.predios||[]).map((p,k)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:.4rem .55rem;margin:.3rem 0">
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Prédio ${k+1} · sempre os dados da CRP (nunca da matriz)</div>
       ${dpzCampo('Distrito','predios.'+k+'.distrito')}${dpzCampo('Concelho','predios.'+k+'.concelho')}${dpzCampo('Freguesia','predios.'+k+'.freguesia')}
       ${dpzCampo('N.º de ficha / prédio','predios.'+k+'.ficha')}${dpzCampo('Fração autónoma','predios.'+k+'.fracao')}</div>`).join('');
-  document.body.insertAdjacentHTML('beforeend',`<div id="dpz-ov" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2500;display:flex;justify-content:flex-end">
-   <div style="background:var(--surface);width:min(980px,100%);height:100%;overflow:auto;padding:1rem 1.2rem;box-shadow:-8px 0 30px rgba(0,0,0,.15)">
-    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
-      <div style="flex:1"><div style="font-weight:700;font-size:15px">📥 Depósito</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted)">${dpzEsc(DPZ.nome)}</div></div>
-      <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
-      <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
-      <button class="btn btn-sm" onclick="dpzFechar()">Fechar</button></div>
-    ${DPZ.ger?`<div style="font-size:11px;color:var(--text-faint);margin-bottom:.4rem">Sugestões do gerador (${dpzEsc(DPZ.ger.rascunho)}) nos campos que estavam vazios — confirma ou corrige.</div>`:''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+  const ger=FECHO.ger[FECHO.k];
+  return `<div class="fx-card"><div class="fx-h"><span class="fx-n">1</span> Depósito${e.depositadoEm?` <span style="font-weight:400;font-size:11.5px;color:#1F5E3A">✓ pedido de pagamento enviado ${new Date(e.depositadoEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}</span>`:''}</div>
+    ${ger?`<div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Sugestões do gerador (${dpzEsc(e.rascunho)}) nos campos que estavam vazios — confirma ou corrige.</div>`:''}
+    <div class="fx-g2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
      <div>
-      <div class="cond-block-title" style="margin-top:.3rem">Entidade autenticadora</div>
+      <div class="cond-block-title" style="margin-top:.2rem">Entidade autenticadora</div>
       <div id="dpz-ent" style="font-size:12px;color:var(--text-muted)">A carregar…</div>
       <div class="cond-block-title" style="margin-top:.6rem">Processo</div>
-      <div style="display:flex;align-items:center;gap:.35rem;margin:.18rem 0"><span style="width:150px;font-size:11.5px;color:var(--text-muted)">Entidade</span>
-        <select class="form-select" style="padding:4px 8px;font-size:12.5px" onchange="dpzSet('proc.entidade',this.value)"><option value="">—</option>${['CGD','Particular'].map(o=>`<option${d.proc.entidade===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="fx-l"><span class="fx-r">Entidade</span>
+        <select class="form-select" style="padding:4px 8px;font-size:12.5px" onchange="dpzSet('proc.entidade',this.value);fechoRender()"><option value="">—</option>${['CGD','Particular'].map(o=>`<option${(e.proc||{}).entidade===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      ${dpzCampo('Produto','proc.produto','CVMH, TOIC, MH, LEASING, CV…')}
       ${dpzCampo('N.º de processo','proc.numProcesso','escreve à mão')}
+      ${dpzCampo('Código da certidão predial','proc.codCRP')}
       ${dpzCampo('Código do depósito','proc.codDeposito','depois de submeter')}
       ${dpzCampo('Código do DPA a relacionar','proc.codRel','só se houver')}
      </div>
      <div>
-      <div class="cond-block-title" style="margin-top:.3rem">Detalhes do ato</div>
+      <div class="cond-block-title" style="margin-top:.2rem">Detalhes do ato</div>
       ${dpzCampo('Preço (€)','ato.preco')}${dpzCampo('Valor do mútuo (€)','ato.mutuo')}${dpzCampo('Valor da hipoteca (€)','ato.hipoteca','montante máximo assegurado')}
       <div class="cond-block-title" style="margin-top:.6rem">Sujeito do ato</div>
-      ${dpzCampo('Nome / firma','sujeito.nome',dpzCliente(DPZ.nome))}${dpzCampo('NIF / NIPC','sujeito.nif')}
+      ${dpzCampo('Nome / firma','sujeito.nome',dpzCliente(FECHO.nome))}${dpzCampo('NIF / NIPC','sujeito.nif')}
      </div></div>
-    <div class="cond-block-title" style="margin-top:.8rem">Imóveis</div>${pred||'<div style="font-size:12px;color:var(--text-faint)">Sem prédios — acrescenta abaixo.</div>'}
-    <button class="add-btn" type="button" onclick="(DPZ.d.predios=DPZ.d.predios||[]).push({});dpzRender()">+ Adicionar prédio</button>
-    <div class="cond-block-title" style="margin-top:.8rem">Documentos a depositar</div>
-    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Marca o documento mesmo antes de o teres digitalizado. O ficheiro vai para a subpasta DPA com o nome «NN - descrição.pdf», pela ordem desta lista.</div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--text-muted);font-size:11px"><th>N.º</th><th>Descrição</th><th>Data de emissão</th><th>Descr.</th><th>Estado</th><th>Ficheiro</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="cond-block-title" style="margin-top:.7rem">Imóveis</div>${pred||'<div style="font-size:12px;color:var(--text-faint)">Sem prédios — acrescenta abaixo.</div>'}
+    <button class="btn btn-sm" type="button" onclick="(fechoEsc().predios=fechoEsc().predios||[]).push({});fechoRender()">+ Adicionar prédio</button>
+    <div class="cond-block-title" style="margin-top:.7rem">Documentos a depositar</div>
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Marca o documento mesmo antes de o teres digitalizado. O ficheiro vai para ${dpzMulti()?`a subpasta «${dpzEsc(dpzSubpasta())}»`:'a subpasta DPA'} com o nome «NN - descrição.pdf», pela ordem desta lista.</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--text-muted);font-size:11px"><th>N.º</th><th>Descrição</th><th>Data de emissão</th><th>Descr.</th><th>Estado</th><th>Ficheiro</th></tr></thead><tbody>${linhas}</tbody></table></div>
     <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
       <input class="form-input" id="dpz-novo" placeholder="Novo documento — ex.: Caderneta predial urbana art. 1234" style="flex:1;min-width:240px" onkeydown="if(event.key==='Enter')dpzNovo()">
       <button class="btn btn-sm" onclick="dpzNovo()">+ Marcar documento</button>
       <label class="btn btn-sm" style="cursor:pointer">⬆ Puxar vários<input type="file" multiple accept="application/pdf,image/*" style="display:none" onchange="dpzPuxarVarios(this.files)"></label>
     </div>
-    <div style="display:flex;gap:.4rem;margin-top:.9rem;border-top:1px solid var(--border);padding-top:.7rem;flex-wrap:wrap">
-      <button class="btn btn-sm" onclick="dpzDescarregarTudo()">⬇ Descarregar pasta DPA (.zip)</button>
+    <div style="display:flex;gap:.4rem;margin-top:.8rem;border-top:1px solid var(--border);padding-top:.6rem;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="dpzDescarregarTudo()">⬇ Descarregar ${dpzMulti()?'os documentos desta escritura':'a pasta DPA'} (.zip)</button>
       ${eu?`<button class="btn btn-sm" onclick="dpzMarcarDepositado()">✅ Marcar digitalizados como depositados</button>
       <button class="btn btn-primary btn-sm" onclick="dpzEmail()">✉ Enviar para pagamento</button>`:''}
-    </div>
-   </div></div>`);
-  dpzEntidade();
+    </div></div>`;
 }
 async function dpzEntidade(){
   const el=document.getElementById('dpz-ent');if(!el)return;
@@ -3838,13 +3965,14 @@ async function dpzEntidade(){
       const r=doc?await fetch(`${GRAPH_BASE}/drives/${doc.id}/root:/Templates/CONFIG_LBC.json:/content`,{headers:{Authorization:'Bearer '+graphToken}}):null;
       window._dpzCfg=r&&r.ok?((await r.json()).deposito||{}):{};}catch(e){window._dpzCfg={};}}
   const c=window._dpzCfg;const rot={nome:'Nome',email:'email',tipoDoc:'Tipo de documento',numDoc:'N.º do documento',qualidade:'Qualidade',domicilio:'Domicílio profissional',codPostal:'Código postal',localidade:'Localidade',telemovel:'Telemóvel',nif:'NIF / NIPC'};
-  if(!Object.keys(c).length){el.innerHTML='Acrescenta o bloco «deposito» ao CONFIG_LBC.json (Templates) para os teus dados aparecerem aqui.';return;}
-  el.innerHTML=Object.entries(rot).filter(([k])=>c[k]).map(([k,t])=>`<div style="display:flex;align-items:center;gap:.35rem;margin:.12rem 0"><span style="width:150px;font-size:11.5px">${t}</span><span style="flex:1;font-size:12.5px;color:var(--text)">${dpzEsc(c[k])}</span><button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px" onclick="dpzCopiar(window._dpzCfg['${k}'],this)">Copiar</button></div>`).join('');
+  const el2=document.getElementById('dpz-ent');if(!el2)return;
+  if(!Object.keys(c).length){el2.innerHTML='Acrescenta o bloco «deposito» ao CONFIG_LBC.json (Templates) para os teus dados aparecerem aqui.';return;}
+  el2.innerHTML=Object.entries(rot).filter(([k])=>c[k]).map(([k,t])=>`<div class="fx-l"><span class="fx-r">${t}</span><span style="flex:1;font-size:12.5px;color:var(--text)">${dpzEsc(c[k])}</span><button class="btn btn-sm fx-c" onclick="dpzCopiar(window._dpzCfg['${k}'],this)">Copiar</button></div>`).join('');
 }
 function dpzNovo(){const i=document.getElementById('dpz-novo');const t=(i?.value||'').trim();if(!t)return;
-  DPZ.d.docs.push({id:'d'+Date.now(),desc:t,data:'',estado:'marcado',obrig:true});DPZ.sujo=true;dpzRender();}
-function dpzRemover(k){const x=DPZ.d.docs[k];if(x.fileId&&!confirm('Este documento já tem ficheiro na pasta DPA. Retirar só da lista (o ficheiro fica)?'))return;
-  DPZ.d.docs.splice(k,1);DPZ.sujo=true;dpzRender();}
+  fechoEsc().docs.push({id:'d'+Date.now(),desc:t,data:'',estado:'marcado',obrig:true});FECHO.sujo=true;fechoRender();}
+function dpzRemover(k){const x=fechoEsc().docs[k];if(x.fileId&&!confirm('Este documento já tem ficheiro na pasta DPA. Retirar só da lista (o ficheiro fica)?'))return;
+  fechoEsc().docs.splice(k,1);FECHO.sujo=true;fechoRender();}
 /* Data de emissão: nos PDF com texto, procura a primeira data. Nas digitalizações escreve-se. */
 async function dpzLerData(file){
   try{if(!/pdf$/i.test(file.type||file.name))return '';
@@ -3859,56 +3987,127 @@ async function dpzLerData(file){
 async function dpzEnviar(x,i,file){
   const nome=dpzNomeFicheiro(x,i);
   await renovarToken();
-  const url=`${GRAPH_BASE}/drives/${bibliotecaId}/items/${DPZ.pastaId}:/${encodeURIComponent(DPZ_SUB)}/${encodeURIComponent(nome)}:/content?@microsoft.graph.conflictBehavior=replace`;
+  const sub=dpzSubpasta().split('/').map(encodeURIComponent).join('/');
+  const url=`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/${sub}/${encodeURIComponent(nome)}:/content?@microsoft.graph.conflictBehavior=replace`;
   const r=await fetch(url,{method:'PUT',headers:{Authorization:'Bearer '+graphToken,'Content-Type':file.type||'application/pdf'},body:file});
   if(!r.ok)throw new Error('upload '+r.status);
   const j=await r.json();x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;if(!x.estado||x.estado==='marcado')x.estado='digit';
 }
-function dpzIndice(k){let i=0;for(let j=0;j<=k;j++)if(!DPZ.d.docs[j].fixo)i++;return i;}
 async function dpzPuxar(k,file){
-  if(!file)return;const x=DPZ.d.docs[k];
-  try{showToast('A gravar na pasta DPA…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
-    await dpzEnviar(x,dpzIndice(k),file);DPZ.sujo=true;await dpzGravar(true);dpzRender();showToast('✓ '+x.ficheiro,'success');}
+  if(!file)return;const x=fechoEsc().docs[k];
+  try{showToast('A gravar…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
+    await dpzEnviar(x,dpzIndice(k),file);FECHO.sujo=true;await dpzGravar(true);fechoRender();showToast('✓ '+x.ficheiro,'success');}
   catch(e){showToast('Não consegui gravar: '+e.message,'error');}
 }
 /* Vários de uma vez: cada ficheiro vai para o próximo documento marcado sem ficheiro;
    sobrando, cria linha nova com o nome do ficheiro. */
 async function dpzPuxarVarios(files){
+  const d=fechoEsc().docs;
   for(const f of [...(files||[])]){
-    let k=DPZ.d.docs.findIndex(x=>!x.fileId&&!x.fixo);
-    if(k<0){DPZ.d.docs.push({id:'d'+Date.now()+Math.random(),desc:f.name.replace(/\.[^.]+$/,''),data:'',estado:'marcado',obrig:false});k=DPZ.d.docs.length-1;}
-    const x=DPZ.d.docs[k];
+    let k=d.findIndex(x=>!x.fileId&&!x.fixo);
+    if(k<0){d.push({id:'d'+Date.now()+Math.random(),desc:f.name.replace(/\.[^.]+$/,''),data:'',estado:'marcado',obrig:false});k=d.length-1;}
+    const x=d[k];
     try{if(!x.data){const dt=await dpzLerData(f);if(dt)x.data=dt;}await dpzEnviar(x,dpzIndice(k),f);}catch(e){showToast('Falhou '+f.name+': '+e.message,'error');}
   }
-  DPZ.sujo=true;await dpzGravar(true);dpzRender();
+  FECHO.sujo=true;await dpzGravar(true);fechoRender();
 }
+/* O que o «Registar» precisa desta escritura. */
+function dpzRegDe(e){
+  const p0=(e.predios||[])[0]||{};
+  const reg={numProcesso:(e.proc||{}).numProcesso||'',codDeposito:(e.proc||{}).codDeposito||'',entidade:(e.proc||{}).entidade==='CGD'?'CGD':'',
+    montCredito:(e.ato||{}).mutuo||'',predio:p0.ficha?(p0.ficha+(p0.fracao?'-'+p0.fracao:'')):'',freguesia:p0.freguesia||'',concelho:p0.concelho||'',
+    produto:(e.proc||{}).produto||'',codCRP:(e.proc||{}).codCRP||'',finalidade:e.finalidade||'',matriz:e.matriz||null};
+  if(e.depositadoEm){reg.estado='Depositado';reg.quando=e.depositadoEm;}
+  return reg;
+}
+/* ── Trabalho em simultâneo ──
+   Junta três versões: a base (o que se abriu), a minha e a que está gravada agora. Fica o que
+   cada uma mudou; se as duas mudaram o mesmo campo, fica o meu. Listas com «id» (documentos,
+   pedidos) juntam-se linha a linha; a ordem das escrituras soma as de ambas. */
+function fxIgual(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function fxJuntar(base,minha,deles){
+  if(fxIgual(minha,base))return deles===undefined?minha:deles;
+  if(deles===undefined||fxIgual(deles,base))return minha;
+  if(Array.isArray(minha)&&Array.isArray(deles)){
+    const temId=x=>x&&typeof x==='object'&&x.id!=null;
+    if(minha.every(temId)&&deles.every(temId)){
+      const B=Object.fromEntries((Array.isArray(base)?base:[]).filter(temId).map(x=>[x.id,x]));
+      const M=Object.fromEntries(minha.map(x=>[x.id,x])),D=Object.fromEntries(deles.map(x=>[x.id,x]));
+      const out=[];
+      const ids=[...deles.map(x=>x.id),...minha.map(x=>x.id).filter(i=>!(i in D))];
+      ids.forEach(i=>{
+        if(i in M&&i in D)out.push(fxJuntar(B[i],M[i],D[i]));
+        else if(i in M){if(!(i in B))out.push(M[i]);else if(!fxIgual(M[i],B[i]))out.push(M[i]);}      /* eles apagaram e eu não mexi → sai */
+        else if(i in D){if(!(i in B))out.push(D[i]);else if(!fxIgual(D[i],B[i]))out.push(D[i]);}      /* eu apaguei e eles não mexeram → sai */
+      });
+      return out;
+    }
+    if(minha.every(x=>typeof x==='string')&&deles.every(x=>typeof x==='string'))return[...deles,...minha.filter(x=>!deles.includes(x))];
+    return minha;
+  }
+  if(minha&&deles&&typeof minha==='object'&&typeof deles==='object'&&!Array.isArray(minha)&&!Array.isArray(deles)){
+    const out={},b=(base&&typeof base==='object')?base:{};
+    new Set([...Object.keys(deles),...Object.keys(minha)]).forEach(k=>{
+      if(!(k in minha)){if(k in b&&fxIgual(deles[k],b[k]))return;out[k]=deles[k];return;}
+      out[k]=fxJuntar(b[k],minha[k],deles[k]);});
+    return out;
+  }
+  return minha;
+}
+async function fxLerGravado(){
+  let raw=null;try{raw=await etqDadoLer('ESCRITURAS',FECHO.pastaId,'deposito');}catch(_){}
+  return raw?dpzContentor(JSON.parse(JSON.stringify(raw)),FECHO.nome):null;
+}
+/* De 45 em 45 s, sem alterações por gravar, vai buscar o que a outra pessoa gravou. */
+async function fxAtualizar(){
+  if(!FECHO||FECHO.sujo||FECHO._ocupado||document.hidden)return;
+  const ae=document.activeElement;if(ae&&ae.closest&&ae.closest('#fecho')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName))return;
+  const g=await fxLerGravado();if(!g||fxIgual(g,FECHO.base))return;
+  FECHO.cont=fxJuntar(FECHO.base,FECHO.cont,g);FECHO.base=JSON.parse(JSON.stringify(g));
+  if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];
+  fechoRender();showToast('Atualizado com o que foi gravado entretanto.','');
+}
+setInterval(()=>{fxAtualizar().catch(()=>{});},45000);
 async function dpzGravar(silencio){
-  const d=DPZ.d;d.dia=d.dia||dpzDiaPasta(DPZ.nome);
-  if(!d.sujeito.nome)d.sujeito.nome=dpzCliente(DPZ.nome);
-  d.docs.forEach(x=>{if(x.fileId&&(!x.estado||x.estado==='marcado'))x.estado='digit';});
+  if(FECHO._ocupado){await new Promise(r=>setTimeout(r,400));}
+  FECHO._ocupado=true;
+  try{const g=await fxLerGravado();
+    if(g&&!fxIgual(g,FECHO.base)){FECHO.cont=fxJuntar(FECHO.base,FECHO.cont,g);if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];FECHO._juntou=true;}
+  }catch(e){console.warn('[Fecho] juntar:',e);}
+  try{return await dpzGravarJa(silencio);}finally{FECHO._ocupado=false;
+    if(FECHO._juntou){FECHO._juntou=false;fechoRender();if(!silencio)showToast('Juntei o que a outra pessoa gravou entretanto.','');}}
+}
+async function dpzGravarJa(silencio){
+  const c=FECHO.cont;
+  c.ordem.forEach(k=>{const e=c.esc[k];e.dia=e.dia||dpzDiaPasta(FECHO.nome);e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(FECHO.nome);
+    (e.docs||[]).forEach(x=>{if(x.fileId&&(!x.estado||x.estado==='marcado'))x.estado='digit';});});
   try{
-    await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'deposito',d);
-    /* Para o «Registar»: junta ao campo «registo», sem apagar o que lá está. */
-    let reg={};try{reg={...(etqDadoSync('ESCRITURAS',DPZ.pastaId,'registo')||{})};}catch(_){}
-    const p0=(d.predios||[])[0]||{};
-    Object.assign(reg,{numProcesso:d.proc.numProcesso||reg.numProcesso||'',codDeposito:d.proc.codDeposito||reg.codDeposito||'',
-      entidade:d.proc.entidade==='CGD'?'CGD':(reg.entidade||''),montCredito:d.ato.mutuo||reg.montCredito||'',
-      predio:p0.ficha?(p0.ficha+(p0.fracao?'-'+p0.fracao:'')):(reg.predio||''),freguesia:p0.freguesia||reg.freguesia||'',concelho:p0.concelho||reg.concelho||''});
-    await etqDadoGravar('ESCRITURAS',DPZ.pastaId,DPZ.nome,'registo',reg);
-    DPZ.sujo=false;if(!silencio)showToast('Depósito gravado.','success');
-    dpzPintarBotoes();
+    await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'deposito',c);
+    FECHO.base=JSON.parse(JSON.stringify(c));
+    /* Compatibilidade com o «Registar» da pasta e com o mapa: quando há uma só escritura,
+       o «registo» e a «síntese» da pasta são os dela. */
+    if(c.ordem.length===1){const e=c.esc[c.ordem[0]];
+      let reg={};try{reg={...(etqDadoSync('ESCRITURAS',FECHO.pastaId,'registo')||{})};}catch(_){}
+      const novo=dpzRegDe(e);Object.keys(novo).forEach(k=>{if(novo[k]!==''&&novo[k]!=null)reg[k]=novo[k];});
+      await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'registo',reg);
+      if(e.sintese){let sAnt=null;try{sAnt=etqDadoSync('ESCRITURAS',FECHO.pastaId,'sintese');}catch(_){}
+        if(!sAnt||sAnt._fonte==='gerador')await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'sintese',{...e.sintese,predio:fechoPredioSint(e)});}}
+    FECHO.sujo=false;
+    try{await fechoPedidosSincronizar();}catch(err){console.warn('[Fecho] pedidos:',err);}
+    if(!silencio)showToast('Gravado.','success');
+    try{if(window.opener&&window.opener.dpzPintarBotoes){window.opener.etqRecarregar&&await window.opener.etqRecarregar();window.opener.dpzPintarBotoes();}}catch(_){}
   }catch(e){showToast('Não consegui gravar: '+e.message,'error');}
 }
-function dpzFechar(){if(DPZ&&DPZ.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;document.getElementById('dpz-ov')?.remove();DPZ=null;dpzPintarBotoes();}
+function fechoPredioSint(e){const p0=(e.predios||[])[0];return p0&&p0.ficha?{descricao:p0.ficha,freguesia:p0.freguesia||'',fracao:p0.fracao||''}:(e.sintese&&e.sintese.predio)||null;}
 async function dpzMarcarDepositado(){
-  let n=0;DPZ.d.docs.forEach(x=>{if(x.fileId&&x.estado!=='dep'&&x.estado!=='reg'){x.estado='dep';n++;}});
-  DPZ.d.depositadoEm=new Date().toISOString();await dpzGravar(true);dpzRender();showToast(`${n} documento(s) marcados como depositados.`,'success');
+  const e=fechoEsc();let n=0;(e.docs||[]).forEach(x=>{if(x.fileId&&x.estado!=='dep'&&x.estado!=='reg'){x.estado='dep';n++;}});
+  e.depositadoEm=new Date().toISOString();await dpzGravar(true);fechoRender();showToast(`${n} documento(s) marcados como depositados.`,'success');
 }
 function dpzEmail(){
-  const d=DPZ.d,ent=d.proc.entidade;
+  const e=fechoEsc(),ent=(e.proc||{}).entidade;
   if(!ent){showToast('Escolhe primeiro a entidade (CGD ou Particular).','error');return;}
-  const proc=(d.proc.numProcesso||'').trim();
-  const assunto=`Pagamento Depósito Processo # ${proc||'—'} _ ${dpzCliente(DPZ.nome)}`;
+  const proc=String((e.proc||{}).numProcesso||'').trim();
+  const assunto=`Pagamento Depósito Processo # ${proc||'—'} _ ${dpzCliente(FECHO.nome)}`;
   const url='https://outlook.cloud.microsoft/mail/deeplink/compose?to='+encodeURIComponent(DPZ_EMAILS[ent]||'')
     +'&subject='+encodeURIComponent(assunto)+'&body='+encodeURIComponent(`${ent} - Solicito pagamento.`);
   window.open(url,'_blank');
@@ -3916,14 +4115,159 @@ function dpzEmail(){
 }
 async function dpzDescarregarTudo(){
   try{
-    const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${DPZ.pastaId}:/${encodeURIComponent(DPZ_SUB)}:/children?$top=500`);
-    const fs=(r.value||[]).filter(x=>x.file);if(!fs.length){showToast('A pasta DPA está vazia.','');return;}
+    const sub=dpzSubpasta().split('/').map(encodeURIComponent).join('/');
+    const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/${sub}:/children?$top=500`);
+    const fs=(r.value||[]).filter(x=>x.file);if(!fs.length){showToast('Ainda não há ficheiros.','');return;}
     if(!window.JSZip)await carregarScriptJustif('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js');
     const zip=new JSZip();
     for(const f of fs){await renovarToken();const b=await (await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+graphToken}})).blob();zip.file(f.name,b);}
-    const blob=await zip.generateAsync({type:'blob'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`DPA ${DPZ.nome}.zip`;a.click();
+    const blob=await zip.generateAsync({type:'blob'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`DPA ${FECHO.nome}${dpzMulti()?' - '+fechoEsc().label:''}.zip`;a.click();
   }catch(e){showToast('Não consegui descarregar: '+e.message,'error');}
 }
+
+/* ── 2 · Registo de escritura ── */
+function fechoBlocoRegisto(e){
+  const reg=dpzRegDe(e);
+  const i=e.registoId&&typeof todosRegistosReg!=='undefined'?todosRegistosReg.find(x=>String(x.id)===String(e.registoId)):null;
+  const num=i&&(i['Num_Ordem']||i['NumOrdem']);
+  const linhas=[['N.º de processo',reg.numProcesso],['Entidade',(e.proc||{}).entidade],['Produto',reg.produto],['Prédio',reg.predio],['Freguesia / concelho',[reg.freguesia,reg.concelho].filter(Boolean).join(' / ')],
+    ['Montante do crédito',reg.montCredito],['Código CRP',reg.codCRP],['Código do depósito',reg.codDeposito]]
+    .map(([a,b])=>`<div style="display:flex;gap:.5rem;font-size:12px;margin:.1rem 0"><span style="width:170px;color:var(--text-muted)">${a}</span><span>${dpzEsc(b||'—')}</span></div>`).join('');
+  return `<div class="fx-card"><div class="fx-h"><span class="fx-n">2</span> Registo de escritura
+      ${e.registoId?`<span style="font-weight:400;font-size:11.5px;color:#1F5E3A">✓ gravado${num?' · n.º de arquivo '+dpzEsc(num):''}</span>`:'<span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">ainda por gravar</span>'}</div>
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Vai para a ficha do Registo de escrituras (a amarelo). Confirmas, completas o que falta e gravas uma vez.</div>
+    ${linhas}
+    <div style="margin-top:.5rem"><button class="btn btn-primary btn-sm" onclick="fechoRegistar()">${e.registoId?'Abrir o registo desta escritura':'Criar o registo desta escritura'}</button></div></div>`;
+}
+async function fechoRegistar(){
+  const e=fechoEsc();if(FECHO.sujo)await dpzGravar(true);
+  try{if(!registosCarregados||!todosRegistosReg.length){registosCarregados=false;await carregarRegistos();}}catch(_){}
+  FECHO.aguardaReg=FECHO.k;
+  const reg=dpzRegDe(e);
+  if(e.registoId&&todosRegistosReg.some(x=>String(x.id)===String(e.registoId))){
+    abrirPainelRegisto(e.registoId);setTimeout(()=>regPreencherAuto(FECHO.nome,reg,null),500);
+  }else registarDePastaNova(FECHO.nome,reg,null);
+}
+/* Chamado depois de se gravar a ficha do registo, quando foi aberta a partir daqui. */
+async function fechoDepoisDeGravarRegisto(id){
+  if(!FECHO||!FECHO.aguardaReg||!id)return;
+  const e=FECHO.cont.esc[FECHO.aguardaReg];FECHO.aguardaReg=null;if(!e)return;
+  e.registoId=String(id);await dpzGravar(true);fechoRender();
+}
+
+/* ── 3 · Registos prediais ── */
+/* Proposta: um pedido por entidade. Cada pedido pode dividir-se (conservatórias diferentes). */
+function fechoGrupos(){
+  const c=FECHO.cont;c.pedidos=c.pedidos||[];
+  c.ordem.forEach(k=>{const ent=(c.esc[k].proc||{}).entidade||'Particular';
+    if(!c.pedidos.some(p=>p.escs.includes(k))){let p=c.pedidos.find(x=>x.entidade===ent&&!x.pedidoId&&!x.dividido);
+      if(!p){p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),entidade:ent,escs:[]};c.pedidos.push(p);}p.escs.push(k);}});
+  /* Uma escritura que mudou de entidade sai do pedido da outra. */
+  c.pedidos.forEach(p=>{p.escs=p.escs.filter(k=>c.esc[k]&&(((c.esc[k].proc||{}).entidade||'Particular')===p.entidade));});
+  c.pedidos=c.pedidos.filter(p=>p.escs.length||p.pedidoId);
+  return c.pedidos;
+}
+function fechoBlocoRegistos(){
+  const c=FECHO.cont,gs=fechoGrupos();
+  const cx=gs.map((p,gi)=>{
+    const escs=p.escs.map(k=>c.esc[k]);
+    const cods=escs.map(e=>((e.proc||{}).codDeposito||'').trim());
+    const falta=cods.filter(x=>!x).length,semReg=escs.filter(e=>!e.registoId).length;
+    const frac=escs.flatMap(e=>e.predios||[]).filter(x=>x.fracao).map(x=>`${x.ficha}-${x.fracao}`);
+    const outros=c.ordem.filter(k=>((c.esc[k].proc||{}).entidade||'Particular')===p.entidade&&!p.escs.includes(k));
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;margin:.4rem 0">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b style="font-size:12.5px">Pedido de registo ${gi+1} · ${dpzEsc(p.entidade)}</b>
+        ${p.pedidoId?'<span style="font-size:11px;color:#1F5E3A">✓ criado</span>':''}
+        ${falta?`<span style="font-size:11px;color:#7A4F0C">faltam ${falta} código(s) de depósito — ainda não vai para a Isa</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
+      <div style="font-size:12px;margin:.25rem 0">${escs.map((e,j)=>`<span style="display:inline-block;margin-right:.6rem">• ${dpzEsc(e.label)} <span style="color:var(--text-muted)">${dpzEsc(cods[j]||'sem código')}</span>
+        ${p.escs.length>1&&!p.pedidoId?`<button class="btn btn-sm fx-c" title="Tirar para um pedido à parte (outra conservatória)" onclick="fechoSeparar('${p.id}','${p.escs[j]}')">↗ separar</button>`:''}</span>`).join('')}</div>
+      ${frac.length?`<div style="font-size:11.5px;background:#FEF9C3;border-radius:6px;padding:.25rem .45rem;display:inline-block">Fração: ${dpzEsc(frac.join(', '))} — no mapa vai com ficha e fração em separado</div>`:''}
+      ${outros.length&&!p.pedidoId?`<div style="font-size:11.5px;margin-top:.25rem">Juntar: ${outros.map(k=>`<button class="btn btn-sm fx-c" onclick="fechoJuntar('${p.id}','${k}')">+ ${dpzEsc(c.esc[k].label)}</button>`).join(' ')}</div>`:''}
+      <div style="margin-top:.4rem">${semReg?`<span style="font-size:11.5px;color:var(--text-muted)">Grava primeiro o registo de escritura de ${semReg===1?'uma escritura':semReg+' escrituras'} deste pedido (bloco 2).</span>`
+        :`<button class="btn btn-primary btn-sm" onclick="fechoMapa('${p.id}')">${p.pedidoId?'Abrir o mapa de registo':'Criar o mapa de registo'}</button>`}</div></div>`;}).join('');
+  return `<div class="fx-card"><div class="fx-h"><span class="fx-n">3</span> Registos prediais <span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">— toda a pasta</span></div>
+    <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as.</div>
+    ${cx||'<div style="font-size:12px;color:var(--text-faint)">Sem escrituras.</div>'}</div>`;
+}
+function fechoSeparar(pid,k){const c=FECHO.cont;const p=c.pedidos.find(x=>x.id===pid);if(!p)return;
+  p.escs=p.escs.filter(x=>x!==k);c.pedidos.push({id:'p'+Date.now().toString(36),entidade:p.entidade,escs:[k],dividido:true});p.dividido=true;FECHO.sujo=true;fechoRender();}
+function fechoJuntar(pid,k){const c=FECHO.cont;c.pedidos.forEach(x=>{x.escs=x.escs.filter(y=>y!==k);});
+  const p=c.pedidos.find(x=>x.id===pid);if(p)p.escs.push(k);c.pedidos=c.pedidos.filter(x=>x.escs.length||x.pedidoId);FECHO.sujo=true;fechoRender();}
+let _fechoListaPed=null;
+async function fechoListaPed(){
+  if(_fechoListaPed)return _fechoListaPed;
+  const r=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$select=id,name,displayName&$top=200`);
+  _fechoListaPed=(r.value||[]).find(l=>l.name==='RegistoPedidos'||l.displayName==='RegistoPedidos')?.id||null;
+  if(!_fechoListaPed)throw new Error('Lista RegistoPedidos não encontrada');return _fechoListaPed;
+}
+/* Mapa do pedido: atos de todas as escrituras do pedido; todos os códigos de depósito
+   (o primeiro em «código do DPA», os outros na lista de documentos). Sem os códigos todos,
+   o código fica vazio e o pedido não aparece à Isa. */
+function fechoMontarMapa(p,ant){
+  const c=FECHO.cont,escs=p.escs.map(k=>c.esc[k]);
+  const id=()=>Math.random().toString(36).slice(2,9);
+  const cods=escs.map(e=>((e.proc||{}).codDeposito||'').trim());
+  const completos=cods.every(Boolean);
+  const base=Object.assign({},ant||{},{dataDoc:(ant&&ant.dataDoc)||dpzDiaPasta(FECHO.nome),tipoEsc:p.entidade==='CGD'?'CGD':'Particular',ref:FECHO.nome,
+    processo:escs.map(e=>(e.proc||{}).numProcesso).filter(Boolean).join(' / '),cliente:dpzCliente(FECHO.nome)});
+  if(!(ant&&ant.atos&&ant.atos.length)){
+    let atos=[];escs.forEach(e=>{if(e.sintese&&window.rcMapaDeSintese)atos=atos.concat((window.rcMapaDeSintese({dataDoc:base.dataDoc},{...e.sintese,predio:null}).atos)||[]);});
+    base.atos=atos;
+  }
+  if(!(ant&&ant.predios&&ant.predios.length)){
+    const vistos=new Set();base.predios=[];
+    escs.forEach(e=>(e.predios||[]).forEach(x=>{const k=(x.ficha||'')+'|'+(x.fracao||'');if(!x.ficha||vistos.has(k))return;vistos.add(k);
+      base.predios.push({id:id(),concelho:x.concelho||'',freguesia:x.freguesia||'',numero:x.ficha,fracao:!!x.fracao,letra:x.fracao||''});}));
+  }
+  const outros=(base.docs||[]).filter(dd=>!cods.includes(String(dd.codigo||'').trim()));
+  base.codDPA=completos?cods[0]:'';
+  base.docs=[...(completos?cods.slice(1).map(cd=>({id:id(),codigo:cd,descricao:'Documento Particular Autenticado'})):[]),...outros];
+  return base;
+}
+async function fechoMapa(pid){
+  const c=FECHO.cont,p=c.pedidos.find(x=>x.id===pid);if(!p)return;
+  if(FECHO.sujo)await dpzGravar(true);
+  const escPrincipal=c.esc[p.escs[0]];
+  try{
+    const L=await fechoListaPed();await renovarToken();
+    if(!p.pedidoId){
+      const m=fechoMontarMapa(p,null);
+      const b={Title:`Registo ${p.entidade}${c.pedidos.filter(x=>x.entidade===p.entidade).length>1?' '+(c.pedidos.filter(x=>x.entidade===p.entidade).indexOf(p)+1):''}`,
+        EscrituraId:parseInt(escPrincipal.registoId)||0,Cliente:dpzCliente(FECHO.nome),Regime:'Normal',EstadoPedido:'Por submeter',
+        CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),AtosJSON:JSON.stringify(m)};
+      const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items`,{fields:b});
+      p.pedidoId=r&&r.id?String(r.id):null;await dpzGravar(true);
+      showToast('Pedido de registo criado — confirma o mapa.','success');
+    }
+    /* Abre o mapa pela ficha da escritura principal do pedido (é aí que ele vive). */
+    try{if(!registosCarregados||!todosRegistosReg.length){registosCarregados=false;await carregarRegistos();}}catch(_){}
+    abrirPainelRegisto(escPrincipal.registoId);
+    setTimeout(()=>{if(window.rcAbrirMapa)rcAbrirMapa(p.pedidoId);},1500);
+    fechoRender();
+  }catch(e){showToast('Não consegui criar o pedido: '+e.message,'error');}
+}
+/* Os códigos de depósito chegam depois: quando aparecem, atualizam os pedidos já criados. */
+async function fechoPedidosSincronizar(){
+  const c=FECHO.cont;if(!(c.pedidos||[]).some(p=>p.pedidoId))return;
+  const L=await fechoListaPed();
+  for(const p of c.pedidos.filter(x=>x.pedidoId)){
+    const it=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}?$expand=fields`);
+    let ant={};try{ant=JSON.parse((it.fields||{}).AtosJSON||'{}');}catch(_){}
+    const m=fechoMontarMapa(p,ant);
+    if((ant.codDPA||'')===(m.codDPA||'')&&JSON.stringify(ant.docs||[])===JSON.stringify(m.docs||[]))continue;
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}/fields`,
+      {AtosJSON:JSON.stringify(m),CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')});
+  }
+}
+/* Arranque: index.html?fecho=<pasta>&n=<nome> — espera pelo login e abre. */
+(function(){
+  const q=new URLSearchParams(location.search),pid=q.get('fecho');if(!pid)return;
+  const nome=q.get('n')||'';
+  const t=setInterval(()=>{
+    if(typeof bibliotecaId!=='undefined'&&bibliotecaId&&typeof siteIdDados!=='undefined'&&siteIdDados&&window.etqDadoLer&&typeof graphToken!=='undefined'&&graphToken){
+      clearInterval(t);fechoAbrir(pid,nome).catch(e=>fechoRender('Erro: '+e.message));}
+  },400);
+})();
 
 /* Receção de documentos (17/10/2026): abre o verificador já na pasta do cliente.
    O verificador usa a sessão do Portal (mesmo endereço lililbc.github.io), separa e
@@ -3939,6 +4283,8 @@ const ANALISADOR_ATIVO=false,DEPOSITO_ATIVO=false;
 /* Ficha da escritura (botão a vermelho no dia da escritura) desligada a 14/11/2026, a pedido da Liliana:
    não lhe é útil e já deu erros. O código fica; para voltar a ligar, pôr a true. */
 const FICHA_ATIVA=false;
+/* Botão «✍ Gerador» na pasta da escritura desligado a 14/11/2026, a pedido da Liliana. O gerador continua no menu. */
+const GERADOR_PASTA_ATIVO=false;
 const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html';
 function abrirAnalisador(lib,itemId,nome){
   if(!ANALISADOR_ATIVO){showToast('O analisador está desativado.','');return;}
@@ -4879,6 +5225,7 @@ function embedSP(url){
 function abrirPastaSP(){if(painelPastaUrl)window.open(embedSP(painelPastaUrl),'_blank');}
 
 async function guardarPainel(){
+  window._regUltimoCriado=null;
   await resolverColunaFinalidade();
   const btn=document.getElementById('painel-btn-guardar');
   btn.disabled=true;btn.textContent='A guardar...';
@@ -4950,7 +5297,8 @@ async function guardarPainel(){
       if(idx>-1)Object.assign(todosRegistosReg[idx],b);
     }else{
       b[F.titulo]=document.getElementById('painel-ref').textContent||sv('p-nome');
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:b});
+      const _novo=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items`,{fields:b});
+      window._regUltimoCriado=_novo&&_novo.id?String(_novo.id):null;   /* (14/11/2026) n.º de arquivo logo na 1.ª gravação; Fecho */
     }
   };
   try{
@@ -4967,6 +5315,7 @@ async function guardarPainel(){
       } else throw e;
     }
     if(!painelItemId){registosCarregados=false;await carregarRegistos();}
+    try{if(window.fechoDepoisDeGravarRegisto)await fechoDepoisDeGravarRegisto(painelItemId||window._regUltimoCriado);}catch(_){}
     if(window.pesSincronizar)window.pesSincronizar();
     fecharPainel();
     renderRegistos(registosFiltradosAtual);
@@ -17582,6 +17931,7 @@ async function apagar(id){
     showToast('Registo eliminado','');await carregar(escId);
   }catch(e){showToast('Erro ao eliminar: '+e.message,'error');}
 }
+window.rcMapaDeSintese=mapaDeSintese;
 window.rcNovoRegisto=novoRegisto; window.rcAbrirMapa=abrirMapa; window.rcApagarPed=apagar; window.rcFechar=fechar;
 
 function rotuloToggle(){
@@ -17724,7 +18074,9 @@ async function gravarNumero(id,numero){
    Ao gravar uma escritura sem número, recebe o seguinte da sequência. */
 async function atribuirANova(){
   try{
-    const id=(typeof painelItemId!=='undefined')?painelItemId:null;
+    /* (14/11/2026) Numa escritura nova o painel já não tem id quando isto corre: usa-se o do
+       registo acabado de criar, e o n.º de arquivo fica logo na primeira gravação. */
+    const id=((typeof painelItemId!=='undefined')?painelItemId:null)||window._regUltimoCriado||null;
     if(!id)return;
     const lista=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]);
     const i=lista.find(x=>x.id===id);
@@ -17796,7 +18148,7 @@ function instalar(){
     window.guardarPainel=async function(){
       const r=await _g.apply(this,arguments);
       await atribuirANova();
-      const id=(typeof painelItemId!=='undefined')?painelItemId:null;
+      const id=((typeof painelItemId!=='undefined')?painelItemId:null)||window._regUltimoCriado||null;
       const i=(typeof todosRegistosReg!=='undefined'?todosRegistosReg:[]).find(x=>x.id===id);
       const c=$('p-numOrdem'); if(c&&i)c.value=i[COL]||'';
       return r;
