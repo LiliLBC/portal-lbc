@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.3">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.4">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3677,7 +3677,7 @@ function renderPastas(lista){
         ${(DEPOSITO_ATIVO&&window.depSouEu&&depSouEu())?`<button class="btn btn-sm" onclick="depAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Separar o PDF da subpasta DPA e preparar o depósito no Predial Online (só a Liliana)">📤 Depósito</button>`:''}
         ${ANALISADOR_ATIVO?`<button class="btn btn-sm${pastaEhHoje(p.name)?' anl-hoje':''}" data-anl="ESCRITURAS|${p.id}" onclick="abrirAnalisador('ESCRITURAS','${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="${pastaEhHoje(p.name)?'Escritura hoje — carregar CRP, CPU e BC emitidos hoje e gerar a ficha':'Analisador predial: certidões × cadernetas e ficha da escritura'}">🔎 Analisar</button>`:''}
         <button class="btn btn-sm" data-dpz="${p.id}" data-nome="${escHtml(p.name||'')}" data-base="font-weight:600" onclick="dpzAbrir('${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Depósito">📥 Depósito</button>
-        <button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>
+        ${GERADOR_PASTA_ATIVO?`<button class="btn btn-sm" onclick="abrirGeradorPasta(bibliotecaId,'${p.id}',decodeURIComponent('${encodeURIComponent(p.name||'')}'))" title="Gerador de contratos já com esta pasta">✍ Gerador</button>`:''}
         <button class="btn btn-primary btn-sm" onclick="registarDePasta(decodeURIComponent('${encodeURIComponent(p.name||'')}'),'${p.id}',decodeURIComponent('${encodeURIComponent(p.webUrl||'')}'))" title="Registo de escrituras">Registar</button>
       </div>
     </div>`).join('');
@@ -3939,6 +3939,8 @@ const ANALISADOR_ATIVO=false,DEPOSITO_ATIVO=false;
 /* Ficha da escritura (botão a vermelho no dia da escritura) desligada a 14/11/2026, a pedido da Liliana:
    não lhe é útil e já deu erros. O código fica; para voltar a ligar, pôr a true. */
 const FICHA_ATIVA=false;
+/* Botão «✍ Gerador» na pasta da escritura desligado a 14/11/2026, a pedido da Liliana. O gerador continua no menu. */
+const GERADOR_PASTA_ATIVO=false;
 const ANALISADOR_URL='https://lililbc.github.io/verificador-lbc/analisador.html';
 function abrirAnalisador(lib,itemId,nome){
   if(!ANALISADOR_ATIVO){showToast('O analisador está desativado.','');return;}
