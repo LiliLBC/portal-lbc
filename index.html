@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.24">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.26">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3784,6 +3784,43 @@ function dpzPintarBotoes(){
     const semF=docs.filter(x=>!x.fileId),semD=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg');
     b.title=DPZ_TIT[st];
     b.textContent=st==='laranja'?`📥 Falta${faltaFich>1?'m':''} ${faltaFich}`:st==='verde'?'📥 Pronto a depositar':st==='azul'?'📥 Depósito ✓':st==='rosa'?`📥 Falta${faltaDep>1?'m':''} ${faltaDep} (registo)`:'📥 Depósito';});
+  dpzPendentesPintar();
+}
+/* (14/11/2026) Caixa rosa ao lado de «Por rever»: pastas já depositadas a que ainda falta
+   juntar algum documento (no registo). Vem de todas as pastas com dados do Fecho, não só das
+   que estão na lista; abre-se para ver quais e ir direto a cada uma. */
+function dpzPendentes(){
+  const I=(window._etq&&window._etq.ITENS)?window._etq.ITENS():{};
+  return Object.values(I).filter(it=>it.lib==='ESCRITURAS'&&it.deposito).map(it=>{
+    const c=dpzContentor(JSON.parse(JSON.stringify(it.deposito)),it.nome||'');
+    const docs=dpzTodasDocs(c);
+    const depositada=Object.values(c.esc).some(e=>e.depositadoEm)||docs.some(x=>x.estado==='dep'||x.estado==='reg');
+    const falta=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg');
+    return{id:it.itemId,nome:it.nome||'',depositada,falta,st:dpzEstado(c,it.nome||'')};
+  }).filter(x=>x.st==='rosa'&&x.depositada&&x.falta.length).sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function dpzPendentesPintar(){
+  const count=document.getElementById('pastas-count');if(!count)return;
+  let b=document.getElementById('btn-dpz-pend');const l=dpzPendentes();
+  if(!l.length){if(b)b.remove();return;}
+  if(!b){count.insertAdjacentHTML('beforeend',`<button class="btn btn-sm" id="btn-dpz-pend" onclick="dpzPendentesAbrir(event)" style="margin-left:.4rem;padding:2px 10px;font-size:11px;background:#B5838D;border-color:#B5838D;color:#fff;font-weight:600"></button>`);b=document.getElementById('btn-dpz-pend');}
+  b.textContent=`📥 Por completar (${l.length})`;
+  b.title='Pastas já depositadas a que ainda falta juntar algum documento (no registo)';
+}
+function dpzPendentesAbrir(ev){
+  ev&&ev.stopPropagation();
+  let cx=document.getElementById('dpz-pend-cx');if(cx){cx.remove();return;}
+  const b=document.getElementById('btn-dpz-pend');if(!b)return;const r=b.getBoundingClientRect();
+  const web=id=>{const p=(typeof todasPastas!=='undefined'?todasPastas:[]).find(x=>x.id===id);return p&&p.webUrl;};
+  const l=dpzPendentes();
+  document.body.insertAdjacentHTML('beforeend',`<div id="dpz-pend-cx" style="position:fixed;top:${r.bottom+6}px;left:${Math.max(8,Math.min(r.left,innerWidth-480))}px;z-index:300;width:min(470px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:var(--surface,#fff);border:1px solid #B5838D;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:.5rem .6rem" onclick="event.stopPropagation()">
+    <div style="font-size:12px;font-weight:700;color:#7A4A55;margin:.1rem 0 .4rem">Depositadas — falta juntar documento(s) no registo</div>
+    ${l.map(x=>`<div style="display:flex;align-items:center;gap:.4rem;padding:.35rem 0;border-top:1px solid var(--border)">
+      <div style="flex:1;min-width:0"><div style="font-family:'DM Mono',monospace;font-size:11.5px;font-weight:600">${escHtml(x.nome)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Falta: ${escHtml(x.falta.map(d=>d.desc||'documento').join(', '))}</div></div>
+      ${web(x.id)?`<a class="btn btn-sm" style="padding:2px 8px;font-size:11px" href="${escHtml(web(x.id))}" target="_blank" title="Abrir a pasta no SharePoint">📁</a>`:''}
+      <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;background:#B5838D;border-color:#B5838D;color:#fff" onclick="dpzAbrir('${x.id}',decodeURIComponent('${encodeURIComponent(x.nome)}'))">📥 Abrir</button></div>`).join('')}</div>`);
+  setTimeout(()=>document.addEventListener('click',function f(){const c=document.getElementById('dpz-pend-cx');if(c)c.remove();document.removeEventListener('click',f);}),0);
 }
 /* Botão da pasta: abre a página do fecho num separador próprio. */
 function dpzAbrir(pastaId,nome){
@@ -4359,6 +4396,7 @@ function fechoBlocoRegistos(){
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;margin:.4rem 0">
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b style="font-size:12.5px">Pedido de registo ${gi+1} · ${dpzEsc(p.entidade)}</b>
         ${p.pedidoId?`<span style="font-size:11px;color:#1F5E3A">✓ ${cods[0]?'no Portal Registos':'criado'}</span>`:''}
+        <button class="btn btn-sm fx-c" style="margin-left:auto;color:var(--red)" title="Apagar este pedido de registo" onclick="fechoApagarPedido('${p.id}')">✕ Apagar pedido</button>
         ${!cods[0]?`<span style="font-size:11px;color:#7A4F0C">falta o código de depósito principal (${dpzEsc(escs[0]?escs[0].label:'')}) — ainda não foi para o Portal Registos</span>`:falta?`<span style="font-size:11px;color:#1F5E3A">já foi para o Portal Registos · faltam ${falta} código(s) das outras escrituras</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
       <div style="font-size:12px;margin:.25rem 0">${escs.map((e,j)=>`<span style="display:inline-block;margin-right:.6rem">• ${dpzEsc(e.label)} <span style="color:var(--text-muted)">${dpzEsc(cods[j]||'sem código')}</span>
         ${p.escs.length>1&&!p.pedidoId?`<button class="btn btn-sm fx-c" title="Tirar para um pedido à parte (outra conservatória)" onclick="fechoSeparar('${p.id}','${p.escs[j]}')">↗ separar</button>`:''}</span>`).join('')}</div>
@@ -4369,6 +4407,24 @@ function fechoBlocoRegistos(){
   return `<div style="margin-top:.4rem">
     <div style="font-size:11px;color:var(--text-faint);margin-bottom:.2rem">Um pedido por entidade — CGD e particular nunca se juntam. Se as escrituras forem para conservatórias diferentes, separa-as. Vai para o Portal Registos quando tiver o código de depósito principal.</div>
     ${cx||'<div style="font-size:12px;color:var(--text-faint)">Sem escrituras.</div>'}</div>`;
+}
+/* (14/11/2026) Apagar um pedido criado por engano. As escrituras dele passam para outro pedido
+   da mesma entidade (se houver); se já estava no Portal Registos, pergunta se sai de lá também. */
+async function fechoApagarPedido(pid){
+  const c=FECHO.cont,p=(c.pedidos||[]).find(x=>x.id===pid);if(!p)return;
+  const outro=c.pedidos.find(x=>x!==p&&x.entidade===p.entidade&&!x.pedidoId);
+  const nomes=p.escs.map(k=>(c.esc[k]||{}).label).filter(Boolean);
+  if(!confirm(`Apagar este pedido de registo (${p.entidade})?`+(nomes.length?`\n\n${outro?'A(s) escritura(s) '+nomes.join(', ')+' passa(m) para o outro pedido '+p.entidade+'.':'A(s) escritura(s) '+nomes.join(', ')+' fica(m) num pedido novo.'}`:'')))return;
+  if(p.pedidoId){
+    if(!confirm('Este pedido já foi criado no Portal Registos. Apagá-lo também de lá?\n\nOK = apagar · Cancelar = não apagar nada'))return;
+    try{const L=await fechoListaPed();await renovarToken();
+      const r=await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}`,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});
+      if(!r.ok&&r.status!==204&&r.status!==404)throw new Error('Erro '+r.status);}
+    catch(e){showToast('Não consegui apagar no Portal Registos: '+e.message,'error');return;}
+  }
+  if(outro)p.escs.forEach(k=>{if(!outro.escs.includes(k))outro.escs.push(k);});
+  c.pedidos=c.pedidos.filter(x=>x!==p);
+  await dpzGravar(true);fechoRender();showToast('Pedido apagado. Gravado.','success');
 }
 function fechoNovoPedido(){const ent=prompt('Entidade deste registo: CGD ou Particular?','CGD');if(!ent)return;
   const e=/^c/i.test(ent.trim())?'CGD':'Particular';(FECHO.cont.pedidos=FECHO.cont.pedidos||[]).push({id:'p'+Date.now().toString(36),entidade:e,escs:[],dividido:true,manual:true});
