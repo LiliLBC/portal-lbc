@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.25">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.26">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3784,6 +3784,43 @@ function dpzPintarBotoes(){
     const semF=docs.filter(x=>!x.fileId),semD=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg');
     b.title=DPZ_TIT[st];
     b.textContent=st==='laranja'?`📥 Falta${faltaFich>1?'m':''} ${faltaFich}`:st==='verde'?'📥 Pronto a depositar':st==='azul'?'📥 Depósito ✓':st==='rosa'?`📥 Falta${faltaDep>1?'m':''} ${faltaDep} (registo)`:'📥 Depósito';});
+  dpzPendentesPintar();
+}
+/* (14/11/2026) Caixa rosa ao lado de «Por rever»: pastas já depositadas a que ainda falta
+   juntar algum documento (no registo). Vem de todas as pastas com dados do Fecho, não só das
+   que estão na lista; abre-se para ver quais e ir direto a cada uma. */
+function dpzPendentes(){
+  const I=(window._etq&&window._etq.ITENS)?window._etq.ITENS():{};
+  return Object.values(I).filter(it=>it.lib==='ESCRITURAS'&&it.deposito).map(it=>{
+    const c=dpzContentor(JSON.parse(JSON.stringify(it.deposito)),it.nome||'');
+    const docs=dpzTodasDocs(c);
+    const depositada=Object.values(c.esc).some(e=>e.depositadoEm)||docs.some(x=>x.estado==='dep'||x.estado==='reg');
+    const falta=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg');
+    return{id:it.itemId,nome:it.nome||'',depositada,falta,st:dpzEstado(c,it.nome||'')};
+  }).filter(x=>x.st==='rosa'&&x.depositada&&x.falta.length).sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function dpzPendentesPintar(){
+  const count=document.getElementById('pastas-count');if(!count)return;
+  let b=document.getElementById('btn-dpz-pend');const l=dpzPendentes();
+  if(!l.length){if(b)b.remove();return;}
+  if(!b){count.insertAdjacentHTML('beforeend',`<button class="btn btn-sm" id="btn-dpz-pend" onclick="dpzPendentesAbrir(event)" style="margin-left:.4rem;padding:2px 10px;font-size:11px;background:#B5838D;border-color:#B5838D;color:#fff;font-weight:600"></button>`);b=document.getElementById('btn-dpz-pend');}
+  b.textContent=`📥 Por completar (${l.length})`;
+  b.title='Pastas já depositadas a que ainda falta juntar algum documento (no registo)';
+}
+function dpzPendentesAbrir(ev){
+  ev&&ev.stopPropagation();
+  let cx=document.getElementById('dpz-pend-cx');if(cx){cx.remove();return;}
+  const b=document.getElementById('btn-dpz-pend');if(!b)return;const r=b.getBoundingClientRect();
+  const web=id=>{const p=(typeof todasPastas!=='undefined'?todasPastas:[]).find(x=>x.id===id);return p&&p.webUrl;};
+  const l=dpzPendentes();
+  document.body.insertAdjacentHTML('beforeend',`<div id="dpz-pend-cx" style="position:fixed;top:${r.bottom+6}px;left:${Math.max(8,Math.min(r.left,innerWidth-480))}px;z-index:300;width:min(470px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:var(--surface,#fff);border:1px solid #B5838D;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:.5rem .6rem" onclick="event.stopPropagation()">
+    <div style="font-size:12px;font-weight:700;color:#7A4A55;margin:.1rem 0 .4rem">Depositadas — falta juntar documento(s) no registo</div>
+    ${l.map(x=>`<div style="display:flex;align-items:center;gap:.4rem;padding:.35rem 0;border-top:1px solid var(--border)">
+      <div style="flex:1;min-width:0"><div style="font-family:'DM Mono',monospace;font-size:11.5px;font-weight:600">${escHtml(x.nome)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Falta: ${escHtml(x.falta.map(d=>d.desc||'documento').join(', '))}</div></div>
+      ${web(x.id)?`<a class="btn btn-sm" style="padding:2px 8px;font-size:11px" href="${escHtml(web(x.id))}" target="_blank" title="Abrir a pasta no SharePoint">📁</a>`:''}
+      <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;background:#B5838D;border-color:#B5838D;color:#fff" onclick="dpzAbrir('${x.id}',decodeURIComponent('${encodeURIComponent(x.nome)}'))">📥 Abrir</button></div>`).join('')}</div>`);
+  setTimeout(()=>document.addEventListener('click',function f(){const c=document.getElementById('dpz-pend-cx');if(c)c.remove();document.removeEventListener('click',f);}),0);
 }
 /* Botão da pasta: abre a página do fecho num separador próprio. */
 function dpzAbrir(pastaId,nome){
