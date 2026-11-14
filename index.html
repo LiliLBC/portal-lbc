@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.15">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.16">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3856,7 +3856,9 @@ async function fechoAbrir(pastaId,nome){
 function fechoEsc(){return FECHO&&FECHO.cont.esc[FECHO.k];}
 function dpzCopiar(t,el){try{navigator.clipboard.writeText(String(t||''));if(el){const o=el.textContent;el.textContent='✓';setTimeout(()=>el.textContent=o,700);}}catch(_){}}
 function dpzGet(path){return path.split('.').reduce((o,k)=>o==null?o:o[k],fechoEsc());}
-function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;fxSyncRegisto();}
+function dpzSet(path,val){const ks=path.split('.');let o=fechoEsc();ks.slice(0,-1).forEach(k=>{if(o[k]==null)o[k]={};o=o[k];});o[ks[ks.length-1]]=val;FECHO.sujo=true;fxSyncRegisto();
+  /* O código de depósito grava-se sozinho (é ele que manda o pedido para a Isa). */
+  if(path==='proc.codDeposito'){clearTimeout(window._fxCodT);window._fxCodT=setTimeout(()=>{dpzGravar(true).then(()=>fechoRender());},1500);}}
 function dpzCampo(rot,path,ph){
   const v=dpzGet(path)||'';
   return `<div class="fx-l"><span class="fx-r">${rot}</span>
@@ -4228,7 +4230,11 @@ function fxSyncRegisto(){clearTimeout(_fxSyncT);_fxSyncT=setTimeout(()=>{
 async function fechoDepoisDeGravarRegisto(id){
   if(!FECHO||!FECHO.aguardaReg||!id)return;
   const k=FECHO.aguardaReg,e=FECHO.cont.esc[k];if(!e)return;
-  e.registoId=String(id);await dpzGravar(true);
+  e.registoId=String(id);
+  /* O que ficou escrito na ficha volta para o Fecho (vale o último escrito). */
+  e.proc=e.proc||{};[['p-codDeposito','codDeposito'],['p-numProcesso','numProcesso'],['p-codCRP','codCRP']].forEach(([i,c])=>{
+    const el=document.getElementById(i);const v=el?String(el.value||'').trim():'';if(v)e.proc[c]=v;});
+  await dpzGravar(true);
   setTimeout(()=>{FECHO.regK=null;fxCarregarRegisto(k).then(()=>fechoRender());},400);
 }
 
@@ -4254,7 +4260,7 @@ function fechoBlocoRegistos(){
     const outros=c.ordem.filter(k=>((c.esc[k].proc||{}).entidade||'Particular')===p.entidade&&!p.escs.includes(k));
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;margin:.4rem 0">
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b style="font-size:12.5px">Pedido de registo ${gi+1} · ${dpzEsc(p.entidade)}</b>
-        ${p.pedidoId?'<span style="font-size:11px;color:#1F5E3A">✓ criado</span>':''}
+        ${p.pedidoId?`<span style="font-size:11px;color:#1F5E3A">✓ ${cods[0]?'na lista da Isa':'criado'}</span>`:''}
         ${!cods[0]?`<span style="font-size:11px;color:#7A4F0C">falta o código de depósito principal (${dpzEsc(escs[0]?escs[0].label:'')}) — ainda não vai para a Isa</span>`:falta?`<span style="font-size:11px;color:#1F5E3A">já vai para a Isa · faltam ${falta} código(s) das outras escrituras</span>`:'<span style="font-size:11px;color:#1F5E3A">códigos completos</span>'}</div>
       <div style="font-size:12px;margin:.25rem 0">${escs.map((e,j)=>`<span style="display:inline-block;margin-right:.6rem">• ${dpzEsc(e.label)} <span style="color:var(--text-muted)">${dpzEsc(cods[j]||'sem código')}</span>
         ${p.escs.length>1&&!p.pedidoId?`<button class="btn btn-sm fx-c" title="Tirar para um pedido à parte (outra conservatória)" onclick="fechoSeparar('${p.id}','${p.escs[j]}')">↗ separar</button>`:''}</span>`).join('')}</div>
@@ -4334,15 +4340,32 @@ async function fechoMapa(pid){
 }
 /* Os códigos de depósito chegam depois: quando aparecem, atualizam os pedidos já criados. */
 async function fechoPedidosSincronizar(){
-  const c=FECHO.cont;if(!(c.pedidos||[]).some(p=>p.pedidoId))return;
+  const c=FECHO.cont;fechoGrupos();
+  const novos=(c.pedidos||[]).filter(p=>!p.pedidoId&&p.escs.length&&((c.esc[p.escs[0]].proc||{}).codDeposito||'').trim());
+  if(!(c.pedidos||[]).some(p=>p.pedidoId)&&!novos.length)return;
   const L=await fechoListaPed();
+  /* (14/11/2026) O código de depósito principal desencadeia o pedido: cria-o já na lista
+     da Isa, sem ser preciso carregar em «Criar o mapa de registo». */
+  let criados=0;
+  for(const p of novos){
+    const m=fechoMontarMapa(p,null),e0=c.esc[p.escs[0]],mesma=c.pedidos.filter(x=>x.entidade===p.entidade);
+    const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items`,{fields:{
+      Title:`Registo ${p.entidade}${mesma.length>1?' '+(mesma.indexOf(p)+1):''}`,EscrituraId:parseInt(e0.registoId)||0,Cliente:dpzCliente(FECHO.nome),
+      Regime:'Normal',EstadoPedido:'Por submeter',CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · '),AtosJSON:JSON.stringify(m)}});
+    if(r&&r.id){p.pedidoId=String(r.id);criados++;}
+  }
+  if(criados){await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'deposito',c);FECHO.base=JSON.parse(JSON.stringify(c));
+    showToast(criados===1?'Pedido de registo enviado para a Isa.':`${criados} pedidos de registo enviados para a Isa.`,'success');}
   for(const p of c.pedidos.filter(x=>x.pedidoId)){
     const it=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}?$expand=fields`);
     let ant={};try{ant=JSON.parse((it.fields||{}).AtosJSON||'{}');}catch(_){}
     const m=fechoMontarMapa(p,ant);
-    if((ant.codDPA||'')===(m.codDPA||'')&&JSON.stringify(ant.docs||[])===JSON.stringify(m.docs||[]))continue;
-    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}/fields`,
-      {AtosJSON:JSON.stringify(m),CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')});
+    const escId=parseInt((c.esc[p.escs[0]]||{}).registoId)||0,f0=it.fields||{};
+    const mudouEsc=escId&&String(f0.EscrituraId||'')!==String(escId);
+    if(!mudouEsc&&(ant.codDPA||'')===(m.codDPA||'')&&JSON.stringify(ant.docs||[])===JSON.stringify(m.docs||[]))continue;
+    const pf={AtosJSON:JSON.stringify(m),CodigosUsar:[m.codDPA,...(m.docs||[]).map(x=>x.codigo)].filter(Boolean).join(' · ')};
+    if(mudouEsc)pf.EscrituraId=escId;
+    await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items/${p.pedidoId}/fields`,pf);
   }
 }
 /* Arranque: index.html?fecho=<pasta>&n=<nome> — espera pelo login e abre. */
