@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.11">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-14.12">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3839,6 +3839,8 @@ async function fechoAbrir(pastaId,nome){
    cont.ordem.forEach(k=>{const e=cont.esc[k];if(!e._prod)return;
      n[e._prod]=(n[e._prod]||0)+1;e.label=conta[e._prod]>1?`${e._prod} ${e._resto||n[e._prod]}`:e._prod;delete e._prod;delete e._resto;});}
   if(!cont.ordem.length){const k='principal';cont.esc[k]=dpzNovaEsc('Escritura','',dia);cont.ordem.push(k);}
+  /* O sujeito é o cliente da pasta: vem já escrito; muda-se só se se editar (14/11/2026). */
+  cont.ordem.forEach(k=>{const e=cont.esc[k];e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(nome);});
   FECHO.k=cont.ordem[0];
   fechoRender();
 }
@@ -3911,7 +3913,7 @@ async function fechoApagarDados(){
 }
 function fechoTab(k){FECHO.k=k;fechoRender();window.scrollTo(0,0);}
 function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
-  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.esc[k].labelManual=true;FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
+  const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.esc[k].labelManual=true;FECHO.cont.esc[k].sujeito={nome:dpzCliente(FECHO.nome)};FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
 function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();e.labelManual=true;FECHO.sujo=true;fechoRender();}}
 function fechoFechar(){if(FECHO&&FECHO.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;
   window.close();setTimeout(()=>{document.getElementById('fecho')?.remove();FECHO=null;},150);}
