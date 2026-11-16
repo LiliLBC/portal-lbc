@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-14.26">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-16.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1300,6 +1300,7 @@ tbody tr:hover td{background:#FAFAF8}
           <div class="modal-box-title" id="modal-evento-titulo">Novo evento</div>
           <div class="form-grid-2" style="display:grid;gap:.75rem">
             <div class="form-group form-full"><label class="form-label">Descrição *</label><input class="form-input" id="ev-titulo" type="text" placeholder="Ex: Escritura João Silva"></div>
+            <div class="form-group form-full" id="ev-priv-wrap" style="display:none"><label style="display:flex;align-items:center;gap:.4rem;font-size:12.5px;cursor:pointer"><input type="checkbox" id="ev-privado"> 🔒 <b>Privado</b> — só eu vejo (não aparece a mais ninguém)</label></div>
             <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="ev-data" type="date"></div>
             <div class="form-group"><label class="form-label">Hora início *</label><input class="form-input" id="ev-hora" type="time" value="10:00" required></div>
             <div class="form-group"><label class="form-label">Hora fim *</label><input class="form-input" id="ev-hora-fim" type="time" value="11:00" required></div>
@@ -2805,6 +2806,9 @@ function tarRespOpcoes(id,atual){const el=document.getElementById(id);if(!el)ret
   el.value=atual?(tarEhTodos(atual)?TAR_TODOS:(tarNormNome(atual)===tarNormNome(eu)?eu:atual)):eu;}
 const A={titulo:'Title',data:'Data',hora:'Hora',horaFim:'Hora_Fim',tipo:'Evento',responsavel:'Responsavel',observacoes:'Observacoes',entidade:'Entidade',numProcesso:'NumProcesso',dataPedido:'DataPedido',estadoCGD:'Estado_CGD',naoAdjudicado:'NaoAdjudicado',emailAgendamento:'EmailAgendamento'};
 const LISTA_AGENDA='Agenda_Escritorio';
+/* (16/11/2026) Agenda privada da Liliana: lista própria no SharePoint, com permissões só dela.
+   Os outros nem a encontram (a lista não lhes aparece), por isso é privada de verdade. */
+const LISTA_AGENDA_PRIV='Agenda_Privada';let listaIdAgendaPriv=null;
 
 let msalApp=null,graphToken=null,contaAtual=null;
 // A conta da sessão fica visível às janelas abertas pelo Portal (Analisador): nome de quem analisa.
@@ -3001,6 +3005,7 @@ async function resolverSiteIds(){
     listaIdConta=cc.value[0]?.id;
     const cb=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_CONTAB}'`);
     listaIdContab=cb.value[0]?.id;
+    try{if(financeiroDesbloqueado()){const ap=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_AGENDA_PRIV}'`);listaIdAgendaPriv=ap.value[0]?.id||null;}}catch(_){listaIdAgendaPriv=null;}
     bibliotecaFaturasId=drivesDados.value.find(d=>d.name===BIBLIOTECA_FATURAS)?.id;
     driveIdSuprimentos=drivesDados.value.find(d=>d.name===BIBLIOTECA_SUPRIMENTOS)?.id;
     driveIdAvencas=drivesDados.value.find(d=>d.name==='AVENCAS')?.id;
@@ -6540,6 +6545,12 @@ async function carregarCalendario(){
       }
       todosEventos=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     }
+    /* Eventos privados (só a Liliana): id «priv:N», título com 🔒. */
+    if(listaIdAgendaPriv&&financeiroDesbloqueado()){
+      try{const dp=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgendaPriv}/items?$expand=fields&$top=500`);
+        todosEventos=(todosEventos||[]).concat((dp.value||[]).map(i=>({...i.fields,id:'priv:'+i.id,_priv:true,_titOrig:i.fields[A.titulo]||'',[A.titulo]:'🔒 '+(i.fields[A.titulo]||'')})));}
+      catch(e){console.warn('Agenda privada:',e);}
+    }
     if(listaIdTarefas){
       const sel=`${T.titulo},${T.prazo},${T.prioridade},${T.estado},${T.responsavel}`;
       const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=200`);
@@ -6660,7 +6671,7 @@ async function evTemWord(pasta){
 }
 function evProntaPintar(e){
   const box=document.getElementById('ev-pronta-box');if(!box)return;
-  if(!e||!evEhEscritura(e)){box.style.display='none';box.innerHTML='';return;}
+  if(!e||e._priv||!evEhEscritura(e)){box.style.display='none';box.innerHTML='';return;}
   const pr=evPronta(e);
   const quando=e.ProntaEm?new Date(e.ProntaEm).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):'';
   const est=pr?`<span class="ev-pronta-selo" style="float:none;margin:0 .4rem 0 0">✓ OK</span>verificada${e.ProntaPor?' por '+escHtml(e.ProntaPor):''}${quando?' em '+quando:''}`
@@ -7608,8 +7619,12 @@ async function evUploadPdfEmail(){
   }
 }
 
+function evPrivMostrar(marcado){
+  const w=document.getElementById('ev-priv-wrap'),c=document.getElementById('ev-privado');if(!w||!c)return;
+  w.style.display=(listaIdAgendaPriv&&financeiroDesbloqueado())?'':'none';c.checked=!!marcado;
+}
 function abrirModalEvento(dateStr){
-  evItemId=null;
+  evItemId=null;setTimeout(()=>evPrivMostrar(false),0);
   document.getElementById('ev-data').value=dateStr;
   document.getElementById('ev-titulo').value='';
   document.getElementById('ev-hora').value='10:00';
@@ -7653,7 +7668,8 @@ function abrirEventoExistente(eventoId,ev){
     horaFim=`${String((h+1)%24).padStart(2,'0')}:${String(m||0).padStart(2,'0')}`;
   }
   document.getElementById('ev-data').value=dataStr;
-  document.getElementById('ev-titulo').value=e[A.titulo]||'';
+  document.getElementById('ev-titulo').value=e._priv?e._titOrig:(e[A.titulo]||'');
+  evPrivMostrar(!!e._priv);
   document.getElementById('ev-hora').value=hora;
   document.getElementById('ev-hora-fim').value=horaFim;
   document.getElementById('ev-tipo').value=e[A.tipo]||'Escritura';
@@ -7745,6 +7761,23 @@ async function guardarEvento(){
   const bodySemFim={...body};delete bodySemFim[A.horaFim];
   const bodyBaseSemFim={...bodyBase};delete bodyBaseSemFim[A.horaFim];
 
+  /* Privado: grava na Agenda_Privada (ou muda o evento de uma lista para a outra). */
+  const querPriv=!!(document.getElementById('ev-privado')?.checked&&listaIdAgendaPriv&&financeiroDesbloqueado());
+  const eraPriv=String(evItemId||'').startsWith('priv:');
+  if(querPriv||eraPriv){
+    const U=id=>`${GRAPH_BASE}/sites/${siteIdDados}/lists/${id}/items`;
+    const bp={[A.titulo]:titulo,[A.data]:dataParaSP,[A.hora]:hora,[A.horaFim]:horaFim,[A.tipo]:document.getElementById('ev-tipo').value,[A.observacoes]:observacoes};
+    const del=async u=>{await renovarToken();const r=await fetch(u,{method:'DELETE',headers:{Authorization:'Bearer '+graphToken}});if(!r.ok&&r.status!==204&&r.status!==404)throw new Error('Erro '+r.status);};
+    try{
+      const pid=eraPriv?String(evItemId).slice(5):null;
+      if(querPriv&&eraPriv)await graphPatch(`${U(listaIdAgendaPriv)}/${pid}/fields`,bp);
+      else if(querPriv){await graphPost(U(listaIdAgendaPriv),{fields:bp});if(evItemId)await del(`${U(listaIdAgenda)}/${evItemId}`);}
+      else{await graphPost(U(listaIdAgenda),{fields:{...bp,[A.responsavel]:document.getElementById('ev-responsavel').value}});await del(`${U(listaIdAgendaPriv)}/${pid}`);}
+      showToast(querPriv?'🔒 Evento privado gravado':'Evento passou para a agenda do escritório','success');
+      fecharModalEvento();carregarCalendario();
+    }catch(e){showToast('Erro: '+e.message,'error');}
+    return;
+  }
   const evAntes=evItemId?{...((todosEventos||[]).find(x=>x.id===evItemId)||{})}:null;
   const tentar=async b=>{
     if(evItemId){
@@ -7867,8 +7900,9 @@ async function guardarEvento(){
 async function eliminarEvento(){
   if(!evItemId)return;
   if(!confirm('Apagar este evento? Esta acção não pode ser desfeita.'))return;
+  const priv=String(evItemId).startsWith('priv:');
   try{
-    await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAgenda}/items/${evItemId}`,{
+    await fetch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${priv?listaIdAgendaPriv:listaIdAgenda}/items/${priv?String(evItemId).slice(5):evItemId}`,{
       method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}
     });
     showToast('Evento eliminado','success');
