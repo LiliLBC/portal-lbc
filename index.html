@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-16.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-16.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3796,7 +3796,9 @@ function dpzPintarBotoes(){
    que estão na lista; abre-se para ver quais e ir direto a cada uma. */
 function dpzPendentes(){
   const I=(window._etq&&window._etq.ITENS)?window._etq.ITENS():{};
-  return Object.values(I).filter(it=>it.lib==='ESCRITURAS'&&it.deposito).map(it=>{
+  /* (16/11/2026) Pastas apagadas ficam de fora (os dados do Fecho podem ter ficado para trás). */
+  const ids=(typeof todasPastas!=='undefined'&&todasPastas&&todasPastas.length)?new Set(todasPastas.map(x=>x.id)):null;
+  return Object.values(I).filter(it=>it.lib==='ESCRITURAS'&&it.deposito&&(!ids||ids.has(it.itemId))).map(it=>{
     const c=dpzContentor(JSON.parse(JSON.stringify(it.deposito)),it.nome||'');
     const docs=dpzTodasDocs(c);
     const depositada=Object.values(c.esc).some(e=>e.depositadoEm)||docs.some(x=>x.estado==='dep'||x.estado==='reg');
