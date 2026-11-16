@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-16.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-16.3">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3907,6 +3907,8 @@ async function fechoAbrir(pastaId,nome){
   document.title='Fecho · '+dpzCliente(nome);
   fechoRender('A abrir…');
   /* Lê ao mesmo tempo os dados gravados, a lista de rascunhos e o conteúdo de cada rascunho. */
+  const pRegs=fxRegistosCarregados();
+  const pWeb=graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${pastaId}?$select=webUrl`).then(x=>x.webUrl||'').catch(()=>'');
   const pRasc=dpzRascunhos(pastaId).then(l=>Promise.all(l.map(f=>dpzDoGerador(f.id,nome).then(g=>({f,g}))))).catch(e=>{console.warn(e);return [];});
   try{if(window.etqDadoLer)await etqDadoLer('ESCRITURAS',pastaId,'deposito');}catch(_){}
   let raw=null;try{raw=etqDadoSync('ESCRITURAS',pastaId,'deposito');}catch(_){}
@@ -3935,6 +3937,8 @@ async function fechoAbrir(pastaId,nome){
   if(!cont.ordem.length){const k='principal';cont.esc[k]=dpzNovaEsc('Escritura','',dia);cont.ordem.push(k);}
   /* O sujeito é o cliente da pasta: vem já escrito; muda-se só se se editar (14/11/2026). */
   cont.ordem.forEach(k=>{const e=cont.esc[k];e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(nome);});
+  /* Espelho com o Registo de escrituras: liga as linhas desta pasta e traz o que lá está. */
+  try{await pRegs;const n=await fxLigarEPuxar(cont,nome,await pWeb);if(n)FECHO.sujo=true;}catch(err){console.warn('[Registo→Fecho]',err);}
   FECHO.k=cont.ordem[0];
   fechoRender();
 }
@@ -4273,6 +4277,7 @@ async function dpzGravarJa(silencio){
       if(e.sintese){let sAnt=null;try{sAnt=etqDadoSync('ESCRITURAS',FECHO.pastaId,'sintese');}catch(_){}
         if(!sAnt||sAnt._fonte==='gerador')await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'sintese',{...e.sintese,predio:fechoPredioSint(e)});}}
     FECHO.sujo=false;
+    try{await fxEspelharParaRegisto();}catch(err){console.warn('[Fecho→Registo]',err);}
     try{await fechoPedidosSincronizar();}catch(err){console.warn('[Fecho] pedidos:',err);}
     if(!silencio)showToast('Gravado.','success');
     try{if(window.opener&&window.opener.dpzPintarBotoes){window.opener.etqRecarregar&&await window.opener.etqRecarregar();window.opener.dpzPintarBotoes();}}catch(_){}
@@ -4373,11 +4378,105 @@ async function fechoDepoisDeGravarRegisto(id){
   if(!FECHO||!FECHO.aguardaReg||!id)return;
   const k=FECHO.aguardaReg,e=FECHO.cont.esc[k];if(!e)return;
   e.registoId=String(id);
+  /* (16/11/2026) Tudo o que ficou gravado na ficha volta para o Fecho (espelho). */
+  {const it=(todosRegistosReg||[]).find(i=>String(i.id)===String(id));if(it)fxDoRegisto(e,it);}
   /* O que ficou escrito na ficha volta para o Fecho (vale o último escrito). */
   e.proc=e.proc||{};[['p-codDeposito','codDeposito'],['p-numProcesso','numProcesso'],['p-codCRP','codCRP']].forEach(([i,c])=>{
     const el=document.getElementById(i);const v=el?String(el.value||'').trim():'';if(v)e.proc[c]=v;});
   await dpzGravar(true);
   setTimeout(()=>{FECHO.regK=null;fxCarregarRegisto(k).then(()=>fechoRender());},400);
+}
+
+/* ── Espelho Fecho ↔ Registo de escrituras (16/11/2026) ──
+   Cada escritura do Fecho é uma linha do Registo de escrituras. Os dois mostram a mesma
+   informação: gravar num lado escreve no outro (vale o último gravado).
+   · Ao abrir o Fecho: liga as escrituras às linhas do Registo desta pasta e traz de lá o que
+     estiver preenchido.
+   · Gravar no Fecho → atualiza a linha do Registo.
+   · Guardar a ficha do Registo (no Fecho ou no ecrã Registo de escrituras) → atualiza o Fecho e,
+     havendo código de depósito principal, o pedido vai para o Portal Registos. */
+const FX_ESP=[['numProcesso','proc.numProcesso'],['produto','proc.produto'],['codDeposito','proc.codDeposito'],['codCRP','proc.codCRP'],
+  ['finalidade','finalidade'],['freguesia','predios.0.freguesia'],['concelho','predios.0.concelho']];
+function fxCam(o,p){return p.split('.').reduce((x,k)=>x==null?x:x[k],o);}
+function fxPor(o,p,v){const ks=p.split('.');let x=o;ks.slice(0,-1).forEach((k,i)=>{if(x[k]==null)x[k]=/^\d+$/.test(ks[i+1])?[]:{};x=x[k];});x[ks[ks.length-1]]=v;}
+function fxNumPt(v){if(v==null||v==='')return 0;if(typeof v==='number')return v;let s=String(v).replace(/[\s€]/g,'');
+  if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
+function fxUrlIgual(a,b){const n=x=>{try{return decodeURIComponent(String(x||'')).toLowerCase().replace(/\/+$/,'');}catch(_){return String(x||'').toLowerCase();}};return !!a&&!!b&&n(a)===n(b);}
+/* Linha do Registo → escritura do Fecho (o que está preenchido no Registo prevalece). */
+function fxDoRegisto(e,it){
+  let mud=false;const muda=(p,v)=>{if(String(fxCam(e,p)??'')!==String(v)){fxPor(e,p,v);mud=true;}};
+  FX_ESP.forEach(([c,p])=>{const v=it[F[c]];if(v==null||String(v).trim()==='')return;muda(p,String(v).trim());});
+  const mc=Number(it[F.montCredito])||0;if(mc&&fxNumPt(fxCam(e,'ato.mutuo'))!==mc)muda('ato.mutuo',mc.toFixed(2).replace('.',','));
+  const ent=String(it[F.entidade]||'').trim();if(ent)muda('proc.entidade',ent==='CGD'?'CGD':'Particular');
+  const pr=String(it[F.predio]||'').trim();
+  if(pr){const m=pr.match(/^(\d+)\s*-\s*([A-Z]{1,3})$/i);muda('predios.0.ficha',m?m[1]:pr);if(m)muda('predios.0.fracao',m[2].toUpperCase());}
+  return mud;
+}
+/* Escritura do Fecho → campos a mudar na linha do Registo (só o que está preenchido e é diferente). */
+function fxParaRegisto(e,it){
+  const b={},reg=dpzRegDe(e);
+  ['numProcesso','produto','codDeposito','codCRP','freguesia','concelho','predio','finalidade'].forEach(c=>{
+    const v=String(reg[c]||'').trim();if(v&&String(it[F[c]]??'').trim()!==v)b[F[c]]=v;});
+  const m=fxNumPt((e.ato||{}).mutuo);if(m&&Number(it[F.montCredito]||0)!==m)b[F.montCredito]=m;
+  const ent=(e.proc||{}).entidade,re=String(it[F.entidade]||'');
+  if(ent==='CGD'&&re!=='CGD')b[F.entidade]='CGD';
+  if(ent==='Particular'&&(!re||re==='CGD'))b[F.entidade]='PARTICULARES';
+  return b;
+}
+async function fxPatchRegisto(id,b){
+  const u=`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${id}/fields`;
+  try{await graphPatch(u,b);}
+  catch(err){const b2={...b};delete b2[F.produto];delete b2[F.finalidade];delete b2[F.entidade];if(!Object.keys(b2).length)throw err;await graphPatch(u,b2);b=b2;}
+  const it=(todosRegistosReg||[]).find(i=>String(i.id)===String(id));if(it)Object.assign(it,b);
+}
+async function fxRegistosCarregados(){try{if(!registosCarregados||!todosRegistosReg.length){registosCarregados=false;await carregarRegistos();}}catch(_){}}
+/* Ao abrir: liga e puxa. */
+async function fxLigarEPuxar(cont,nome,webUrl){
+  await fxRegistosCarregados();
+  const daPasta=(todosRegistosReg||[]).filter(i=>fxUrlIgual(i[F.ligacaoPasta],webUrl)||String(i[F.titulo]||'').trim().toUpperCase()===String(nome).trim().toUpperCase());
+  const ligados=new Set(cont.ordem.map(k=>String(cont.esc[k].registoId||'')).filter(Boolean));
+  let livres=daPasta.filter(i=>!ligados.has(String(i.id)));
+  const semReg=cont.ordem.filter(k=>!cont.esc[k].registoId);
+  semReg.forEach(k=>{const e=cont.esc[k];if(!livres.length)return;
+    const proc=String((e.proc||{}).numProcesso||'').trim(),prod=String((e.proc||{}).produto||'').trim();
+    let it=proc&&livres.find(i=>String(i[F.numProcesso]||'').trim()===proc);
+    if(!it&&prod){const l=livres.filter(i=>i[F.produto]===prod);if(l.length===1)it=l[0];}
+    if(!it&&semReg.length===1&&livres.length===1)it=livres[0];
+    if(it){e.registoId=String(it.id);livres=livres.filter(x=>x!==it);}});
+  let mud=0;cont.ordem.forEach(k=>{const e=cont.esc[k];if(!e.registoId)return;const it=(todosRegistosReg||[]).find(i=>String(i.id)===String(e.registoId));if(it&&fxDoRegisto(e,it))mud++;});
+  return mud;
+}
+/* Gravar no Fecho → Registo. */
+async function fxEspelharParaRegisto(){
+  const c=FECHO.cont;
+  for(const k of c.ordem){const e=c.esc[k];if(!e.registoId)continue;
+    let it=(todosRegistosReg||[]).find(i=>String(i.id)===String(e.registoId));
+    if(!it){try{const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${e.registoId}?$expand=fields`);it={id:r.id,...r.fields};}catch(_){continue;}}
+    const b=fxParaRegisto(e,it);if(Object.keys(b).length){try{await fxPatchRegisto(e.registoId,b);}catch(err){console.warn('[Fecho→Registo]',err);}}}
+}
+/* Ficha do Registo guardada fora do Fecho (ecrã Registo de escrituras) → Fecho da pasta. */
+async function fxRegistoParaFecho(id){
+  if(!id)return;const it=(todosRegistosReg||[]).find(i=>String(i.id)===String(id));if(!it)return;
+  const url=it[F.ligacaoPasta];if(!url)return;
+  let pastaId=null,nome=null;
+  const p=[...((typeof todasPastas!=='undefined'&&todasPastas)||[]),...((typeof pastasPainel!=='undefined'&&pastasPainel)||[])].find(x=>fxUrlIgual(x.webUrl,url));
+  if(p){pastaId=p.id;nome=p.name||p.nome;}
+  else{try{const enc='u!'+btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+    const d=await graphGet(`${GRAPH_BASE}/shares/${enc}/driveItem?$select=id,name`);pastaId=d.id;nome=d.name;}catch(_){return;}}
+  if(!pastaId)return;
+  let raw=null;try{raw=await etqDadoLer('ESCRITURAS',pastaId,'deposito');}catch(_){}
+  if(!raw)return;   /* pasta ainda sem Fecho: fica tudo no Registo */
+  const cont=dpzContentor(JSON.parse(JSON.stringify(raw)),nome);
+  let k=cont.ordem.find(x=>String(cont.esc[x].registoId)===String(id));
+  if(!k){const l=cont.ordem.filter(x=>!cont.esc[x].registoId);if(l.length===1){k=l[0];cont.esc[k].registoId=String(id);}}
+  if(!k)return;
+  fxDoRegisto(cont.esc[k],it);
+  const guarda=FECHO;
+  FECHO={pastaId,nome,cont,k,ger:{},aguardaReg:null,base:JSON.parse(JSON.stringify(raw))};
+  try{await etqDadoGravar('ESCRITURAS',pastaId,nome,'deposito',cont);FECHO.base=JSON.parse(JSON.stringify(cont));
+    await fechoPedidosSincronizar();}
+  catch(err){console.warn('[Registo→Fecho]',err);}
+  finally{FECHO=guarda;}
 }
 
 /* ── 3 · Registos prediais ── */
@@ -4508,7 +4607,13 @@ async function fechoPedidosSincronizar(){
   /* (14/11/2026) O código de depósito principal desencadeia o pedido: cria-o já na lista
      da Isa, sem ser preciso carregar em «Criar o mapa de registo». */
   let criados=0;
+  /* (16/11/2026) Se a ficha do Registo já tem um pedido (criado lá), usa-se esse — não se cria outro. */
+  let jaHa={};
+  if(novos.length){try{const usados=new Set(c.pedidos.map(x=>String(x.pedidoId||'')));
+    const t=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items?$expand=fields($select=EscrituraId)&$top=500`);
+    (t.value||[]).forEach(i=>{const r=String((i.fields||{}).EscrituraId||'');if(r&&r!=='0'&&!usados.has(String(i.id)))(jaHa[r]=jaHa[r]||[]).push(String(i.id));});}catch(_){}}
   for(const p of novos){
+    {const r=String((c.esc[p.escs[0]]||{}).registoId||'');if(r&&jaHa[r]&&jaHa[r].length){p.pedidoId=jaHa[r].shift();criados++;continue;}}
     const m=fechoMontarMapa(p,null),e0=c.esc[p.escs[0]],mesma=c.pedidos.filter(x=>x.entidade===p.entidade);
     const r=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${L}/items`,{fields:{
       Title:`Registo ${p.entidade}${mesma.length>1?' '+(mesma.indexOf(p)+1):''}`,EscrituraId:parseInt(e0.registoId)||0,Cliente:dpzCliente(FECHO.nome),
@@ -5589,6 +5694,8 @@ async function guardarPainel(){
     }
     if(!painelItemId){registosCarregados=false;await carregarRegistos();}
     try{if(window.fechoDepoisDeGravarRegisto)await fechoDepoisDeGravarRegisto(painelItemId||window._regUltimoCriado);}catch(_){}
+    /* (16/11/2026) Guardado no ecrã Registo de escrituras: atualiza também o Fecho da pasta. */
+    if(!FECHO||!FECHO.aguardaReg){try{await fxRegistoParaFecho(painelItemId||window._regUltimoCriado);}catch(err){console.warn('[Registo→Fecho]',err);}}
     if(window.pesSincronizar)window.pesSincronizar();
     fecharPainel();
     renderRegistos(registosFiltradosAtual);
