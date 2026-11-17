@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-17.1</span>
+    <span class="page-sub">piloto · v2026-11-17.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2610,11 +2610,9 @@ function textoVendedor(v){
 /* ── IDENTIFICAÇÃO CURTA · CORPO DO CONTRATO ──
    Só nome, naturalidade e NIF. */
 function idCurta(nome,natural,nif){
-  /* A naturalidade saiu do CORPO DO CONTRATO — no termo mantém-se, porque é lá
-     que a identificação tem de ser completa. O parâmetro fica na assinatura
-     para não obrigar a mexer em todas as chamadas. */
-  void natural;
-  return`${nome||'…'}, número de identificação fiscal ${nif||'…'}`;
+  /* (17/11/2026) A naturalidade volta ao CORPO DO CONTRATO, a pedido da Liliana:
+     nome, naturalidade e NIF. */
+  return`${nome||'…'}, natural de ${natural||'…'}, número de identificação fiscal ${nif||'…'}`;
 }
 function textoVendedorCurto(v){
   /* ── ENTIDADES · CONTRATO ──
@@ -2623,7 +2621,7 @@ function textoVendedorCurto(v){
      Sem regime de bens: no contrato não interessa. */
   const repCurto=o=>{
     const rs=(o.reps&&o.reps.length)?o.reps:[{}];
-    const p=rs.map(r=>r._sol?idCurta(r.nome,r.natural,r.nif):`${r.nome||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
+    const p=rs.map(r=>r._sol?idCurta(r.nome,r.natural,r.nif):`${r.nome||'…'}, natural de ${r.natural||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
     return p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
   };
   if(v.tipo==='cgd')
