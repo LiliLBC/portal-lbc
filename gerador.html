@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-11.1</span>
+    <span class="page-sub">piloto · v2026-11-17.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1213,6 +1213,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="apresentado">Declara que dispõe e apresenta — verifiquei o documento</option>
           <option value="declarado">Declara que dispõe mas não apresenta</option>
           <option value="nao-exigido">Declara que não dispõe por não ser exigido à data da construção</option>
+          <option value="nao-exigido-matriz">Não dispõe — verificado pela inscrição matricial (anterior à exigência legal no concelho)</option>
           <option value="nao-dispoe">Declara que não dispõe</option>
         </select></div>
 
@@ -1249,6 +1250,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group form-full tu-construcao" style="display:none"><label class="form-label">Época da construção (opcional)</label>
         <input class="form-input" id="f-tu-construcao" oninput="atualizar()" placeholder="Ex: em data anterior a 1951 · na década de 1940">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Sem certidão de anterioridade da câmara. Havendo certidão, escolha «Declara que dispõe e apresenta» → certidão de anterioridade. Entra como «… construído <i>[época]</i> …».</div></div>
+      <div class="form-group form-full tu-matriz" style="display:none"><label class="form-label">Concelho (opcional)</label>
+        <input class="form-input" id="f-tu-mat-concelho" oninput="atualizar()" placeholder="Ex: Évora">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Verificado pela caderneta: a inscrição matricial é anterior à exigência legal de licenciamento no concelho. No contrato sai «… conforme se verifica pela inscrição matricial»; no termo, o que verifiquei, sem advertência. A «Época da construção» de cima também entra, se a preencher.</div></div>
       <div class="form-group form-full tu-motivo" style="display:none"><label class="form-label">Motivo por que não é apresentado</label>
         <input class="form-input" id="f-tu-motivo" oninput="atualizar()" placeholder="Ex: se encontrar em poder da entidade bancária">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Entra como «…, o qual não é apresentado neste ato por <i>[motivo]</i>.»</div></div>
@@ -9045,6 +9049,7 @@ const TU_NOVO=[['','— por responder —'],
   ['apresentado','Declara que dispõe e apresenta — verifiquei o documento'],
   ['declarado','Declara que dispõe mas não apresenta'],
   ['nao-exigido','Declara que não dispõe por não ser exigido à data da construção'],
+  ['nao-exigido-matriz','Não dispõe — verificado pela inscrição matricial (anterior à exigência legal no concelho)'],
   ['nao-dispoe','Declara que não dispõe']];
 /* Documentos: género (para «o qual / a qual») e se é certidão camarária — às
    certidões aplica-se a verificação do Modelo 1 do IMI. */
@@ -9081,7 +9086,8 @@ function onTituloUrb(){
   mostra('.tu-anterior',c==='apresentado'&&doc.cert==='anterior','block');
   mostra('.tu-motivo',c==='declarado','block');
   mostra('.tu-advert',c==='declarado'||c==='nao-dispoe','block');
-  mostra('.tu-construcao',c==='nao-exigido','block');
+  mostra('.tu-construcao',c==='nao-exigido'||c==='nao-exigido-matriz','block');
+  mostra('.tu-matriz',c==='nao-exigido-matriz','block');
   mostra('.tu-mod1',c==='apresentado'&&!!doc.cert,'grid');
   mostra('.tu-areas',c==='apresentado'&&chk('t-tu-areas'),'block');
 }
@@ -9164,6 +9170,17 @@ function textosTituloUrb(){
     return{
       contrato:`${QUEM} ${DECL} que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção.`,
       termo:`— os outorgantes declararam que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção; não me tendo sido apresentado documento camarário que o ateste, adverti-os de que não posso confirmar essa situação;`};
+  }
+  /* ⚠ Nova (17/11/2026): sem título, mas verificado pela inscrição matricial que a construção é
+     anterior à exigência legal de licenciamento no concelho. Contrato como pedido pela Liliana
+     («… conforme se verifica pela inscrição matricial»); a frase do termo é minha, por validar. */
+  if(c==='nao-exigido-matriz'){
+    const ep=(v('f-tu-construcao')||'').trim().replace(/[.;,]\s*$/,'');
+    const epoca=ep?`, construído ${ep},`:'';
+    const conc=(v('f-tu-mat-concelho')||'').trim();
+    return{
+      contrato:`${QUEM} ${DECL} que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção, conforme se verifica pela inscrição matricial.`,
+      termo:`— verifiquei, pela inscrição matricial do imóvel, que a sua construção é anterior à exigência legal de licenciamento${conc?` no concelho de ${conc}`:' no concelho'}, não carecendo de título urbanístico à data da sua construção;`};
   }
   return{
     contrato:`${QUEM} ${DECL} que o imóvel não dispõe de título urbanístico.`,
