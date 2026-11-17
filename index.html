@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-16.3">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-17.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3762,7 +3762,10 @@ async function fechoRemoverEscritura(){
   delete c.esc[k];c.ordem=c.ordem.filter(x=>x!==k);FECHO.k=c.ordem[0];FECHO.regK=null;
   await dpzGravar(true);fechoRender();showToast(`«${e.label}» retirada. Gravado.`,'success');
 }
-function dpzTodasDocs(c){return(c&&c.esc?Object.values(c.esc):[]).flatMap(e=>e.docs||[]);}
+/* (17/11/2026) Documentos «para arquivo» só ficam digitalizados na pasta DPA: não contam para o
+   estado do depósito, nem ficam pendentes. */
+function dpzTodasDocs(c){return(c&&c.esc?Object.values(c.esc):[]).flatMap(e=>e.docs||[]).filter(x=>!x.arquivo);}
+function dpzDestino(k,v){const x=fechoEsc().docs[k];if(!x||x.fixo)return;x.arquivo=v==='arquivo';FECHO.sujo=true;fechoRender();}
 /* Estado da pasta para a cor do botão: soma de todas as escrituras. */
 function dpzEstado(raw,nome){
   const c=dpzContentor(raw,nome);const docs=dpzTodasDocs(c);
@@ -4081,7 +4084,8 @@ function fechoBlocoDeposito(e,eu){
       <td style="white-space:nowrap"><input type="date" class="form-input" style="padding:3px 6px;font-size:12px;width:132px" value="${dpzEsc(x.data||'')}" onchange="fechoEsc().docs[${k}].data=this.value;FECHO.sujo=true">
         <button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoEsc().docs[${k}].data,this)">Copiar</button></td>
       <td><button class="btn btn-sm fx-c" onclick="dpzCopiar(fechoEsc().docs[${k}].desc,this)">Copiar</button></td>
-      <td style="font-size:11.5px;white-space:nowrap">${eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="fechoEsc().docs[${k}].estado=this.value;FECHO.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
+      <td style="white-space:nowrap">${x.fixo?'<span style="font-size:11px;color:var(--text-muted)">Depósito</span>':`<select class="form-select" style="padding:2px 4px;font-size:11.5px" title="Depósito: segue as regras do depósito. Arquivo: só fica digitalizado na pasta DPA, não fica pendente." onchange="dpzDestino(${k},this.value)"><option value="deposito"${x.arquivo?'':' selected'}>Depósito</option><option value="arquivo"${x.arquivo?' selected':''}>Arquivo</option></select>`}</td>
+      <td style="font-size:11.5px;white-space:nowrap">${x.arquivo?`<span title="Só para ficar digitalizado — não se deposita">🟡 arquivo${x.fileId?' · digitalizado':' · por digitalizar'}</span>`:eu?`<select class="form-select" style="padding:2px 4px;font-size:11.5px" onchange="fechoEsc().docs[${k}].estado=this.value;FECHO.sujo=true">${Object.entries(ESTS).map(([v,t])=>`<option value="${v}"${st===v?' selected':''}>${t}</option>`).join('')}</select>`:ESTS[st]}</td>
       <td style="white-space:nowrap">${x.fileId?`<a class="btn btn-sm fx-c" href="${dpzEsc(x.webUrl||'#')}" target="_blank" title="${dpzEsc(x.ficheiro||'')}">📄</a>`:''}
         <label class="btn btn-sm fx-c" style="cursor:pointer" title="${x.fileId?'Puxar outra vez — substitui o ficheiro anterior':'Puxar o ficheiro'}">${x.fileId?'🔄 Substituir':'⬆ Puxar'}<input type="file" accept="application/pdf,image/*" style="display:none" onchange="dpzPuxar(${k},this.files[0]);this.value=''"></label>
         ${x.fixo?'':`<button class="btn btn-sm fx-c" style="color:var(--red)" onclick="dpzRemover(${k})">×</button>`}</td></tr>`;}).join('');
@@ -4115,7 +4119,7 @@ function fechoBlocoDeposito(e,eu){
     <button class="btn btn-sm" type="button" onclick="(fechoEsc().predios=fechoEsc().predios||[]).push({});fechoRender()">+ Adicionar prédio</button>
     <div class="cond-block-title" style="margin-top:.7rem">Documentos a depositar</div>
     <div style="font-size:11px;color:var(--text-faint);margin-bottom:.3rem">Marca o documento mesmo antes de o teres digitalizado. O ficheiro vai para ${dpzMulti()?`a subpasta «${dpzEsc(dpzSubpasta())}»`:'a subpasta DPA'} com o nome «NN - descrição.pdf», pela ordem desta lista.</div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--text-muted);font-size:11px"><th>N.º</th><th>Descrição</th><th>Data de emissão</th><th>Descr.</th><th>Estado</th><th>Ficheiro</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--text-muted);font-size:11px"><th>N.º</th><th>Descrição</th><th>Data de emissão</th><th>Descr.</th><th>Destino</th><th>Estado</th><th>Ficheiro</th></tr></thead><tbody>${linhas}</tbody></table></div>
     <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
       <input class="form-input" id="dpz-novo" placeholder="Novo documento — ex.: Caderneta predial urbana art. 1234" style="flex:1;min-width:240px" onkeydown="if(event.key==='Enter')dpzNovo()">
       <button class="btn btn-sm" onclick="dpzNovo()">+ Marcar documento</button>
@@ -4285,7 +4289,7 @@ async function dpzGravarJa(silencio){
 }
 function fechoPredioSint(e){const p0=(e.predios||[])[0];return p0&&p0.ficha?{descricao:p0.ficha,freguesia:p0.freguesia||'',fracao:p0.fracao||''}:(e.sintese&&e.sintese.predio)||null;}
 async function dpzMarcarDepositado(){
-  const e=fechoEsc();let n=0;(e.docs||[]).forEach(x=>{if(x.fileId&&x.estado!=='dep'&&x.estado!=='reg'){x.estado='dep';n++;}});
+  const e=fechoEsc();let n=0;(e.docs||[]).forEach(x=>{if(x.fileId&&!x.arquivo&&x.estado!=='dep'&&x.estado!=='reg'){x.estado='dep';n++;}});
   e.depositadoEm=new Date().toISOString();await dpzGravar(true);fechoRender();showToast(`${n} documento(s) marcados como depositados.`,'success');
 }
 function dpzEmail(){
