@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-17.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-17.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1384,7 +1384,9 @@ tbody tr:hover td{background:#FAFAF8}
               </div>
             </div>
 
-            <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea></div>
+            <div class="form-group form-full"><label class="form-label">Observações <span style="font-weight:400;color:var(--text-faint);font-size:10px">(não aparecem no calendário)</span></label><textarea class="form-input" id="ev-observacoes" rows="4" placeholder="Notas internas sobre o evento..."></textarea>
+              <div id="ev-obs-lock" style="display:none;border:1px dashed var(--border);border-radius:8px;padding:.6rem .7rem;font-size:12.5px;color:var(--text-muted)"></div>
+              <label id="ev-obs-res-wrap" style="display:flex;align-items:center;gap:.4rem;font-size:12px;margin-top:.35rem;cursor:pointer"><input type="checkbox" id="ev-obs-res"> 🔒 Observações só para mim — protegidas com o meu código (os outros veem a marcação, não o conteúdo)</label></div>
           </div>
           <div id="ev-pronta-box" style="display:none;align-items:center;gap:.6rem;margin:.6rem 0 0;padding:.55rem .7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2)"></div>
           <div class="modal-actions" style="justify-content:space-between">
@@ -7736,6 +7738,66 @@ function evPrivMostrar(marcado){
   const w=document.getElementById('ev-priv-wrap'),c=document.getElementById('ev-privado');if(!w||!c)return;
   w.style.display=(listaIdAgendaPriv&&financeiroDesbloqueado())?'':'none';c.checked=!!marcado;
 }
+/* ── Observações reservadas (17/11/2026) ──
+   O evento fica à vista de todos; as observações, se marcadas «só para mim», ficam cifradas
+   (AES-GCM, chave tirada do código da pessoa + o nome dela). Na lista do SharePoint só fica
+   texto cifrado, por isso nem quem abrir a lista diretamente as lê. Só a própria pessoa, com
+   o seu login e o seu código, as vê. O código não fica guardado em lado nenhum: esquecido,
+   o conteúdo não se recupera. */
+const OBS_PREF='🔒LBC1|';
+let EV_OBS={orig:'',dono:'',aberto:true};let obsCodigoSessao=null;
+const obsB64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));const obsDeB64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+function obsReservada(t){return String(t||'').startsWith(OBS_PREF);}
+function obsDono(t){return String(t||'').slice(OBS_PREF.length).split('|')[0]||'';}
+async function obsChave(nome,codigo,salt){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(codigo)+'|'+tarNormNome(nome)),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function obsCifrar(texto,nome,codigo){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await obsChave(nome,codigo,salt),new TextEncoder().encode(texto));
+  return OBS_PREF+nome+'|'+obsB64(salt)+'|'+obsB64(iv)+'|'+obsB64(ct);
+}
+async function obsDecifrar(t,codigo){
+  const [nome,s,i,c]=String(t).slice(OBS_PREF.length).split('|');
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:obsDeB64(i)},await obsChave(nome,codigo,obsDeB64(s)),obsDeB64(c));
+  return new TextDecoder().decode(pt);
+}
+function obsSouDono(dono){const eu=tarNormNome(meuNomeLBC()),d=tarNormNome(dono);if(!eu||!d)return false;if(eu===d)return true;
+  const a=eu.split(' '),b=d.split(' ');return a[0]===b[0]&&a[a.length-1]===b[b.length-1];}
+function obsPintar(){
+  const ta=document.getElementById('ev-observacoes'),lk=document.getElementById('ev-obs-lock'),cw=document.getElementById('ev-obs-res-wrap'),cb=document.getElementById('ev-obs-res');
+  if(!ta||!lk)return;
+  if(EV_OBS.dono&&!EV_OBS.aberto){
+    ta.style.display='none';lk.style.display='';cb.checked=true;
+    if(obsSouDono(EV_OBS.dono)){cw.style.display='none';
+      lk.innerHTML=`🔒 Observações reservadas — só tu as vês. <button class="btn btn-sm" style="margin-left:.4rem" onclick="obsAbrir()">🔓 Ver com o meu código</button>`;}
+    else{cw.style.display='none';lk.innerHTML=`🔒 Observações reservadas a <b>${escHtml(EV_OBS.dono)}</b>. A marcação vê-se; o conteúdo não.`;}
+  }else{ta.style.display='';lk.style.display='none';cw.style.display='';}
+}
+async function obsAbrir(){
+  const cod=obsCodigoSessao||prompt('O teu código para ver as observações reservadas:');if(!cod)return;
+  try{const t=await obsDecifrar(EV_OBS.orig,cod);obsCodigoSessao=cod;EV_OBS.aberto=true;
+    document.getElementById('ev-observacoes').value=t;document.getElementById('ev-obs-res').checked=true;obsPintar();}
+  catch(_){obsCodigoSessao=null;showToast('Código errado.','error');}
+}
+function obsCarregar(texto){
+  EV_OBS={orig:texto||'',dono:obsReservada(texto)?obsDono(texto):'',aberto:!obsReservada(texto)};
+  document.getElementById('ev-observacoes').value=EV_OBS.aberto?(texto||''):'';
+  document.getElementById('ev-obs-res').checked=!!EV_OBS.dono;
+  obsPintar();
+}
+/* O que vai para a lista ao gravar. null = cancelado. */
+async function obsParaGravar(){
+  if(EV_OBS.dono&&!EV_OBS.aberto)return EV_OBS.orig;           /* fechadas: ficam como estavam */
+  const texto=document.getElementById('ev-observacoes').value||'';
+  if(!document.getElementById('ev-obs-res').checked||!texto.trim())return texto;
+  let cod=obsCodigoSessao;
+  if(!cod){cod=prompt('Código para proteger as observações (o mesmo de sempre — não fica guardado; se o esqueceres, o conteúdo perde-se):');if(!cod)return null;
+    if(!EV_OBS.dono){const c2=prompt('Repete o código:');if(c2!==cod){showToast('Os códigos não coincidem.','error');return null;}}}
+  obsCodigoSessao=cod;
+  return obsCifrar(texto,meuNomeLBC(),cod);
+}
 function abrirModalEvento(dateStr){
   evItemId=null;setTimeout(()=>evPrivMostrar(false),0);
   document.getElementById('ev-data').value=dateStr;
@@ -7744,7 +7806,7 @@ function abrirModalEvento(dateStr){
   document.getElementById('ev-hora-fim').value='11:00';
   document.getElementById('ev-tipo').value='Escritura';
   document.getElementById('ev-responsavel').value='';
-  document.getElementById('ev-observacoes').value='';
+  document.getElementById('ev-observacoes').value='';obsCarregar('');
   // Campos novos
   const elEnt=document.getElementById('ev-entidade');if(elEnt)elEnt.value='';
   const elOutra=document.getElementById('ev-entidade-outra');if(elOutra)elOutra.value='';
@@ -7787,7 +7849,7 @@ function abrirEventoExistente(eventoId,ev){
   document.getElementById('ev-hora-fim').value=horaFim;
   document.getElementById('ev-tipo').value=e[A.tipo]||'Escritura';
   document.getElementById('ev-responsavel').value=e[A.responsavel]||'';
-  document.getElementById('ev-observacoes').value=e[A.observacoes]||'';
+  obsCarregar(e[A.observacoes]||'');
   // Campos novos: Entidade, NumProcesso, DataPedido, EstadoCGD
   const entidadeAtual=e[A.entidade]||e['Entidade']||'';
   const elNum=document.getElementById('ev-num-processo');
@@ -7842,7 +7904,7 @@ async function guardarEvento(){
   if(!hora){showToast('Define a hora de início.','error');return;}
   if(!horaFim){showToast('Define a hora de fim.','error');return;}
   if(horaFim<=hora){showToast('A hora de fim tem de ser depois da hora de início.','error');return;}
-  const observacoes=document.getElementById('ev-observacoes').value||'';
+  const observacoes=await obsParaGravar();if(observacoes===null)return;
   // IMPORTANTE: gravar a data como MEIA-DIA UTC (T12:00:00Z) para garantir que
   // o dia nunca muda independentemente do fuso horário. A hora real do evento
   // está guardada nas colunas separadas Hora e Hora_Fim (texto).
