@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-17.1</span>
+    <span class="page-sub">piloto · v2026-11-17.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1213,6 +1213,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
           <option value="apresentado">Declara que dispõe e apresenta — verifiquei o documento</option>
           <option value="declarado">Declara que dispõe mas não apresenta</option>
           <option value="nao-exigido">Declara que não dispõe por não ser exigido à data da construção</option>
+          <option value="nao-exigido-matriz">Não dispõe — verificado pela inscrição matricial (anterior à exigência legal no concelho)</option>
           <option value="nao-dispoe">Declara que não dispõe</option>
         </select></div>
 
@@ -1249,6 +1250,9 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
       <div class="form-group form-full tu-construcao" style="display:none"><label class="form-label">Época da construção (opcional)</label>
         <input class="form-input" id="f-tu-construcao" oninput="atualizar()" placeholder="Ex: em data anterior a 1951 · na década de 1940">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Sem certidão de anterioridade da câmara. Havendo certidão, escolha «Declara que dispõe e apresenta» → certidão de anterioridade. Entra como «… construído <i>[época]</i> …».</div></div>
+      <div class="form-group form-full tu-matriz" style="display:none"><label class="form-label">Concelho (opcional)</label>
+        <input class="form-input" id="f-tu-mat-concelho" oninput="atualizar()" placeholder="Ex: Évora">
+        <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Verificado pela caderneta: a inscrição matricial é anterior à exigência legal de licenciamento no concelho. No contrato sai «… conforme se verifica pela inscrição matricial»; no termo, o que verifiquei, sem advertência. A «Época da construção» de cima também entra, se a preencher.</div></div>
       <div class="form-group form-full tu-motivo" style="display:none"><label class="form-label">Motivo por que não é apresentado</label>
         <input class="form-input" id="f-tu-motivo" oninput="atualizar()" placeholder="Ex: se encontrar em poder da entidade bancária">
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:2px">Entra como «…, o qual não é apresentado neste ato por <i>[motivo]</i>.»</div></div>
@@ -2606,17 +2610,8 @@ function textoVendedor(v){
 /* ── IDENTIFICAÇÃO CURTA · CORPO DO CONTRATO ──
    Só nome, naturalidade e NIF. */
 function idCurta(nome,natural,nif){
-  /* A naturalidade saiu do CORPO DO CONTRATO — no termo mantém-se, porque é lá
-     que a identificação tem de ser completa. O parâmetro fica na assinatura
-     para não obrigar a mexer em todas as chamadas. */
-  void natural;
-  return`${nome||'…'}, número de identificação fiscal ${nif||'…'}`;
-}
-/* ── IDENTIFICAÇÃO DAS PARTES · CORPO DO CONTRATO ── (v2026-11-17.1)
-   A Liliana quer a naturalidade de volta no corpo do contrato: nome,
-   naturalidade e NIF. O idCurta fica como estava, porque também serve o
-   procurador do banco no mútuo (CGD), que é para não mexer. */
-function idParte(nome,natural,nif){
+  /* (17/11/2026) A naturalidade volta ao CORPO DO CONTRATO, a pedido da Liliana:
+     nome, naturalidade e NIF. */
   return`${nome||'…'}, natural de ${natural||'…'}, número de identificação fiscal ${nif||'…'}`;
 }
 function textoVendedorCurto(v){
@@ -2635,17 +2630,15 @@ function textoVendedorCurto(v){
     return`MUNICÍPIO DE ${(v['mun-nome']||'…').toUpperCase()}, pessoa coletiva n.º ${v['mun-nipc']||'…'}, com sede em ${v['mun-sede']||'…'}, neste ato representado por ${repCurto(v)}`;
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
-  const eu=idParte(v.nome,v.natural,v.nif);
+  const eu=idCurta(v.nome,v.natural,v.nif);
   /* Só são parte os que transmitem ou adquirem. Mas o cônjuge que apenas
      consente, ou que não outorga, tem de ficar identificado no contrato com
      nome e NIF — «A, casado com B, NIF …» —, senão o registo sai com
      suprimento. O consentimento continua a ser declarado no termo. */
   const co=v['conj-out']||'ambos';
-  /* Não casado: o estado civil sai a seguir ao NIF (viúva, solteiro, maior…),
-     como no «casada com» — antes não saía de todo. */
-  const base=!ehCasado(v.ec)?`${eu}, ${v.ec||'…'}`
-    :co==='ambos'?`${eu} e ${idParte(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
-    :`${eu}, ${v.ec||'…'} com ${idParte(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
+  const base=!ehCasado(v.ec)?eu
+    :co==='ambos'?`${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
+    :`${eu}, ${v.ec||'…'} com ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -2656,7 +2649,7 @@ function textoVendedorCurto(v){
   const varios=ehCasado(v.ec)&&(v['conj-out']||'ambos')==='ambos'&&v['conj-nome'];
   const fem=varios?false:(v.genero==='F'||/a$/.test(((v.ec||'').split(/[\s,]/)[0]||'')));
   const flex=varios?'representados':(fem?'representada':'representado');
-  return`${base}, neste ato ${flex} por ${idParte(v['proc-nome'],v['proc-natural'],v['proc-nif'])}`;
+  return`${base}, neste ato ${flex} por ${idCurta(v['proc-nome'],v['proc-natural'],v['proc-nif'])}`;
 }
 /* Géneros de todos os que outorgam — inclui cônjuges que outorgam.
    Empresa e CGD são femininas («a firma», «a Caixa»); Município é masculino. */
@@ -9054,6 +9047,7 @@ const TU_NOVO=[['','— por responder —'],
   ['apresentado','Declara que dispõe e apresenta — verifiquei o documento'],
   ['declarado','Declara que dispõe mas não apresenta'],
   ['nao-exigido','Declara que não dispõe por não ser exigido à data da construção'],
+  ['nao-exigido-matriz','Não dispõe — verificado pela inscrição matricial (anterior à exigência legal no concelho)'],
   ['nao-dispoe','Declara que não dispõe']];
 /* Documentos: género (para «o qual / a qual») e se é certidão camarária — às
    certidões aplica-se a verificação do Modelo 1 do IMI. */
@@ -9090,7 +9084,8 @@ function onTituloUrb(){
   mostra('.tu-anterior',c==='apresentado'&&doc.cert==='anterior','block');
   mostra('.tu-motivo',c==='declarado','block');
   mostra('.tu-advert',c==='declarado'||c==='nao-dispoe','block');
-  mostra('.tu-construcao',c==='nao-exigido','block');
+  mostra('.tu-construcao',c==='nao-exigido'||c==='nao-exigido-matriz','block');
+  mostra('.tu-matriz',c==='nao-exigido-matriz','block');
   mostra('.tu-mod1',c==='apresentado'&&!!doc.cert,'grid');
   mostra('.tu-areas',c==='apresentado'&&chk('t-tu-areas'),'block');
 }
@@ -9173,6 +9168,17 @@ function textosTituloUrb(){
     return{
       contrato:`${QUEM} ${DECL} que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção.`,
       termo:`— os outorgantes declararam que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção; não me tendo sido apresentado documento camarário que o ateste, adverti-os de que não posso confirmar essa situação;`};
+  }
+  /* ⚠ Nova (17/11/2026): sem título, mas verificado pela inscrição matricial que a construção é
+     anterior à exigência legal de licenciamento no concelho. Contrato como pedido pela Liliana
+     («… conforme se verifica pela inscrição matricial»); a frase do termo é minha, por validar. */
+  if(c==='nao-exigido-matriz'){
+    const ep=(v('f-tu-construcao')||'').trim().replace(/[.;,]\s*$/,'');
+    const epoca=ep?`, construído ${ep},`:'';
+    const conc=(v('f-tu-mat-concelho')||'').trim();
+    return{
+      contrato:`${QUEM} ${DECL} que o imóvel${epoca} não dispõe de título urbanístico por este não ser legalmente exigido à data da sua construção, conforme se verifica pela inscrição matricial.`,
+      termo:`— verifiquei, pela inscrição matricial do imóvel, que a sua construção é anterior à exigência legal de licenciamento${conc?` no concelho de ${conc}`:' no concelho'}, não carecendo de título urbanístico à data da sua construção;`};
   }
   return{
     contrato:`${QUEM} ${DECL} que o imóvel não dispõe de título urbanístico.`,

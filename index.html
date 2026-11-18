@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-17.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-18.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3944,6 +3944,9 @@ async function fechoAbrir(pastaId,nome){
   cont.ordem.forEach(k=>{const e=cont.esc[k];e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(nome);});
   /* Espelho com o Registo de escrituras: liga as linhas desta pasta e traz o que lá está. */
   try{await pRegs;const n=await fxLigarEPuxar(cont,nome,await pWeb);if(n)FECHO.sujo=true;}catch(err){console.warn('[Registo→Fecho]',err);}
+  /* Ficheiros espalhados por pastas diferentes (antes de 18/11/2026): junta-os e fixa a pasta. */
+  try{let mov=0;for(const k of cont.ordem){const e=cont.esc[k];if(!e.dpaDir&&(e.docs||[]).some(x=>x.fileId)){mov+=await dpzReunir(e);FECHO.sujo=true;}}
+    if(mov)setTimeout(()=>showToast(`Juntei ${mov} ficheiro(s) que estavam noutra pasta. Carrega em Gravar.`,'success'),800);}catch(err){console.warn('[Fecho] reunir',err);}
   FECHO.k=cont.ordem[0];
   fechoRender();
 }
@@ -3963,7 +3966,10 @@ function dpzNomeFicheiro(x,i){
   return `${n} - ${String(x.desc||'Documento').replace(/[\\/:*?"<>|#%]/g,'-').trim()}.pdf`;
 }
 /* Com várias escrituras na pasta, cada uma tem a sua subpasta dentro da DPA. */
-function dpzSubpasta(){const e=fechoEsc();return dpzMulti()?`${DPZ_SUB}/${String(e.label||'Escritura').replace(/[\\/:*?"<>|#%]/g,'-').trim()}`:DPZ_SUB;}
+/* (18/11/2026) A pasta de cada escritura fica fixa na primeira vez que se puxa um ficheiro
+   (e.dpaDir). Antes mudava conforme o número de escrituras da pasta — «DPA» com uma, «DPA/<nome>»
+   com várias — e os ficheiros da mesma escritura ficavam espalhados. */
+function dpzSubpasta(){const e=fechoEsc();if(e&&e.dpaDir)return e.dpaDir;return dpzMulti()?`${DPZ_SUB}/${String(e.label||'Escritura').replace(/[\\/:*?"<>|#%]/g,'-').trim()}`:DPZ_SUB;}
 function dpzIndice(k){const d=fechoEsc().docs;let i=0;for(let j=0;j<=k;j++)if(!d[j].fixo)i++;return i;}
 
 function fechoRender(msg){
@@ -4160,9 +4166,30 @@ async function dpzLerData(file){
     m=t.match(/(\d{2})[-\/.](\d{2})[-\/.](20\d{2})/);if(m)return `${m[3]}-${m[2]}-${m[1]}`;
   }catch(_){}return '';
 }
+async function dpzDirDoFicheiro(id){
+  try{const r=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${id}?$select=id,parentReference`);
+    const pth=decodeURIComponent(((r.parentReference||{}).path)||''),i=pth.indexOf('/'+DPZ_SUB);
+    return{dir:i>=0?pth.slice(i+1):'',parentId:(r.parentReference||{}).id||''};}catch(_){return null;}
+}
+/* Junta na mesma pasta os ficheiros de uma escritura que tenham ficado espalhados e fixa-a.
+   Fica a pasta onde está a maioria (em empate, a que tiver o primeiro da lista). */
+async function dpzReunir(e){
+  const com=(e.docs||[]).filter(x=>x.fileId);if(!com.length)return 0;
+  const info=[];for(const x of com){const d=await dpzDirDoFicheiro(x.fileId);if(d&&d.dir)info.push({x,...d});}
+  if(!info.length)return 0;
+  const cont={};info.forEach(i=>{cont[i.dir]=(cont[i.dir]||0)+1;});
+  const alvo=Object.keys(cont).sort((a,b)=>cont[b]-cont[a]||info.findIndex(i=>i.dir===a)-info.findIndex(i=>i.dir===b))[0];
+  const pid=info.find(i=>i.dir===alvo).parentId;let mov=0;
+  for(const i of info.filter(i=>i.dir!==alvo)){
+    try{await graphPatch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${i.x.fileId}`,{parentReference:{id:pid}});mov++;}
+    catch(err){console.warn('[Fecho] mover',i.x.ficheiro,err);}
+  }
+  e.dpaDir=alvo;return mov;
+}
 async function dpzEnviar(x,i,file){
   const nome=dpzNomeFicheiro(x,i);
   await renovarToken();
+  {const e=fechoEsc();if(e&&!e.dpaDir){const j=(e.docs||[]).find(d=>d.fileId&&d!==x);const d=j?await dpzDirDoFicheiro(j.fileId):null;e.dpaDir=(d&&d.dir)||dpzSubpasta();}}
   const sub=dpzSubpasta().split('/').map(encodeURIComponent).join('/');
   const url=`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/${sub}/${encodeURIComponent(nome)}:/content?@microsoft.graph.conflictBehavior=replace`;
   const r=await fetch(url,{method:'PUT',headers:{Authorization:'Bearer '+graphToken,'Content-Type':file.type||'application/pdf'},body:file});
@@ -4306,9 +4333,9 @@ function dpzEmail(){
 }
 async function dpzDescarregarTudo(){
   try{
-    const sub=dpzSubpasta().split('/').map(encodeURIComponent).join('/');
-    const r=await graphGetAll(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${FECHO.pastaId}:/${sub}:/children?$top=500`);
-    const fs=(r.value||[]).filter(x=>x.file);if(!fs.length){showToast('Ainda não há ficheiros.','');return;}
+    /* (18/11/2026) Os ficheiros desta escritura, onde quer que estejam — não só os de uma pasta. */
+    const fs=(fechoEsc().docs||[]).filter(x=>x.fileId).map(x=>({id:x.fileId,name:x.ficheiro||x.desc+'.pdf'}));
+    if(!fs.length){showToast('Ainda não há ficheiros.','');return;}
     if(!window.JSZip)await carregarScriptJustif('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js');
     const zip=new JSZip();
     for(const f of fs){await renovarToken();const b=await (await fetch(`${GRAPH_BASE}/drives/${bibliotecaId}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+graphToken}})).blob();zip.file(f.name,b);}
