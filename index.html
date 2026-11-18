@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-18.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-18.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3860,6 +3860,11 @@ async function dpzDoGerador(fileId,nome){
       if(o['conj-nome'])l.push({nome:o['conj-nome'],nif:o['conj-nif']||''});return l;});
     const quem=pessoas.find(p=>norm(p.nome)===cli)||pessoas.find(p=>cli&&norm(p.nome).includes(cli))||pessoas.find(p=>cli&&cli.includes(norm(p.nome)));
     const concDe=t=>String(t||'').replace(/^.*Registo Predial( de)?\s*/i,'').trim();
+    /* (18/11/2026) Matrizes: as do gerador (podem ser várias — urbana, rústica…); só se não houver,
+       o artigo do campo antigo. */
+    const NAT={urbana:'urbano',urbano:'urbano',rustica:'rústico',rústica:'rústico',rustico:'rústico',mista:'misto',misto:'misto'};
+    let matrizes=(g.matrizes||[]).filter(m=>m&&m.artigo).map(m=>({tipo:NAT[m.nat]||'urbano',artigo:m.artigo+(m.seccao?'-'+m.seccao:''),freg:m.freg||''}));
+    if(!matrizes.length&&c['f-im-artigo'])matrizes=[{tipo:NAT[c['f-im-tipo']]||'urbano',artigo:c['f-im-artigo'],freg:c['f-im-freg-mat']||''}];
     const predios=[];
     if(c['f-im-num'])predios.push({ficha:c['f-im-num'],fracao:c['f-im-letra']||'',freguesia:c['f-im-freg-crp']||'',concelho:concDe(c['f-im-crp']),distrito:''});
     (g.prediosExtra||[]).forEach(p=>{if(p.num)predios.push({ficha:p.num,fracao:p.letra||'',freguesia:p.freg||'',concelho:concDe(p.crp),distrito:''});});
@@ -3893,7 +3898,7 @@ async function dpzDoGerador(fileId,nome){
       valores:{compra:soMutuo?'':(c['f-preco']||'1')},
       predio:predios[0]?{descricao:predios[0].ficha,freguesia:predios[0].freguesia,fracao:predios[0].fracao}:null};
     return{preco:c['f-preco']||'',mutuo:c['f-mh-montante']||'',hipoteca:c['f-mh-hipoteca']||'',sujeitoNif:quem?quem.nif:'',predios,
-      produto,finalidade,entidade,codCRP:c['f-im-cert-cod']||'',matriz:c['f-im-artigo']?{tipo:c['f-im-tipo']||'',artigo:c['f-im-artigo']}:null,sintese};
+      produto,finalidade,entidade,codCRP:c['f-im-cert-cod']||'',matriz:matrizes[0]||null,matrizes,sintese};
   }catch(e){console.warn('[Fecho] gerador:',e);return null;}
 }
 /* Sugestões do gerador só para campos vazios. */
@@ -3904,6 +3909,7 @@ function dpzAplicarGerador(e,g){
   if(!e.proc.produto&&g.produto)e.proc.produto=g.produto;if(!e.proc.codCRP&&g.codCRP)e.proc.codCRP=g.codCRP;
   if(!e.proc.entidade&&g.entidade)e.proc.entidade=g.entidade;
   if(!e.finalidade&&g.finalidade)e.finalidade=g.finalidade;if(!e.matriz&&g.matriz)e.matriz=g.matriz;
+  if(!(e.matrizes&&e.matrizes.length)&&g.matrizes&&g.matrizes.length)e.matrizes=g.matrizes;
   if(g.sintese)e.sintese=g.sintese;
 }
 
@@ -4009,7 +4015,7 @@ function fechoRender(msg){
       <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:16px">Fecho da escritura</div>
         <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted)">${dpzEsc(FECHO.nome)}</div></div>
       <span style="font-size:11.5px;border-radius:20px;padding:3px 10px;border:1px solid;${DPZ_COR[st]||''}">${DPZ_TIT[st]}</span>
-      <button class="btn btn-primary btn-sm" onclick="dpzGravar()">Gravar</button>
+      <button class="btn btn-primary btn-sm" title="Grava o Fecho e a ficha do Registo de escrituras (cria-a, com n.º de arquivo, se ainda não existir)" onclick="fechoGravarTudo()">Gravar</button>
       <button class="btn btn-sm" onclick="fechoFechar()">Fechar</button>
       ${eu?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" title="Apagar: só os dados do Fecho, ou tudo (pasta de teste)" onclick="fechoApagarDados()">🗑</button>`:''}</div>`;
   /* As escrituras da pasta aparecem nos blocos 1 e 2; o «+» de qualquer um junta mais uma
@@ -4029,6 +4035,23 @@ function fechoRender(msg){
   if(FECHO.abertos[1])dpzEntidade();
   if(FECHO.regK!==FECHO.k&&!FECHO._aCarregarReg)fxCarregarRegisto(FECHO.k);
 }
+/* (18/11/2026) Um só Gravar: grava a ficha do Registo de escrituras (bloco 2 — cria-a com n.º de
+   arquivo da primeira vez, com tudo o que lá estiver, contactos incluídos) e o Fecho. */
+let _fxGravando=false;
+async function fechoGravarTudo(){
+  if(_fxGravando)return;_fxGravando=true;
+  try{
+    const p=document.getElementById('reg-painel');
+    if(p&&FECHO.regK===FECHO.k&&!FECHO._aCarregarReg&&typeof guardarPainel==='function'){
+      try{await guardarPainel();FECHO.regSujo=false;}catch(err){console.warn('[Fecho] ficha:',err);}
+    }
+    await dpzGravar();
+  }finally{_fxGravando=false;}
+}
+/* Alterações na ficha por gravar: não se perdem ao mudar de escritura nem ao fechar. */
+document.addEventListener('input',ev=>{if(FECHO&&!FECHO._aCarregarReg&&ev.target.closest&&ev.target.closest('#fx-reg-host'))FECHO.regSujo=true;},true);
+document.addEventListener('change',ev=>{if(FECHO&&!FECHO._aCarregarReg&&ev.target.closest&&ev.target.closest('#fx-reg-host'))FECHO.regSujo=true;},true);
+window.addEventListener('beforeunload',ev=>{try{if(FECHO&&(FECHO.regSujo||FECHO.sujo)){ev.preventDefault();ev.returnValue='';}}catch(_){}});
 function fechoAbrirFechar(n){FECHO.abertos[n]=!FECHO.abertos[n];fechoRender();}
 /* 🗑 do Fecho (só a Liliana). Duas opções:
    · DADOS — só os dados do Fecho desta pasta (lista, estados, valores);
@@ -4074,11 +4097,18 @@ async function fechoApagarDados(){
     fechoRender('Apagado: '+res.join(', ')+'. Pode fechar este separador.');
   }catch(e){showToast('Parei a meio — já apagado: '+(res.join(', ')||'nada')+'. Erro: '+e.message,'error');}
 }
-function fechoTab(k){FECHO.k=k;fechoRender();}
-function fechoNovaEscritura(){const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
+async function fechoTab(k){
+  if(k===FECHO.k)return;
+  if(FECHO.regSujo){
+    if(!confirm('A ficha do Registo de escrituras desta escritura tem alterações por gravar.\n\nOK = gravar agora e mudar · Cancelar = ficar aqui'))return;
+    await fechoGravarTudo();
+  }
+  FECHO.k=k;fechoRender();
+}
+function fechoNovaEscritura(){if(FECHO.regSujo&&!confirm('A ficha do Registo desta escritura tem alterações por gravar. Continuar sem gravar?'))return;FECHO.regSujo=false;const t=prompt('Nome da escritura (ex.: Mútuo obras):');if(!t)return;
   const k='e'+Date.now().toString(36);FECHO.cont.esc[k]=dpzNovaEsc(t.trim(),'',dpzDiaPasta(FECHO.nome));FECHO.cont.esc[k].labelManual=true;FECHO.cont.esc[k].sujeito={nome:dpzCliente(FECHO.nome)};FECHO.cont.ordem.push(k);FECHO.k=k;FECHO.sujo=true;fechoRender();}
 function fechoRenomear(){const e=fechoEsc();const t=prompt('Nome desta escritura:',e.label);if(t){e.label=t.trim();e.labelManual=true;FECHO.sujo=true;fechoRender();}}
-function fechoFechar(){if(FECHO&&FECHO.sujo&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;
+function fechoFechar(){if(FECHO&&(FECHO.sujo||FECHO.regSujo)&&!confirm('Há alterações por gravar. Fechar sem gravar?'))return;
   window.close();setTimeout(()=>{document.getElementById('fecho')?.remove();FECHO=null;},150);}
 
 /* ── 1 · Depósito ── */
@@ -4229,7 +4259,7 @@ function dpzRegDe(e){
   const p0=(e.predios||[])[0]||{};
   const reg={numProcesso:(e.proc||{}).numProcesso||'',codDeposito:(e.proc||{}).codDeposito||'',entidade:(e.proc||{}).entidade==='CGD'?'CGD':'',
     montCredito:(e.ato||{}).mutuo||'',predio:p0.ficha?(p0.ficha+(p0.fracao?'-'+p0.fracao:'')):'',freguesia:p0.freguesia||'',concelho:p0.concelho||'',
-    produto:(e.proc||{}).produto||'',codCRP:(e.proc||{}).codCRP||'',finalidade:e.finalidade||'',matriz:e.matriz||null};
+    produto:(e.proc||{}).produto||'',codCRP:(e.proc||{}).codCRP||'',finalidade:e.finalidade||'',matriz:e.matriz||null,matrizes:(e.matrizes&&e.matrizes.length)?e.matrizes:(e.matriz?[e.matriz]:[])};
   if(e.depositadoEm){reg.estado='Depositado';reg.quando=e.depositadoEm;}
   return reg;
 }
@@ -4395,7 +4425,7 @@ async function fxCarregarRegisto(k){
     /* Guarda o que foi sugerido, para se saber o que ainda se pode atualizar sozinho. */
     const reg=dpzRegDe(e);FECHO.sug=FECHO.sug||{};FECHO.sug[k]={};
     FX_MAPA_REG.forEach(([id,campo])=>{const el=document.getElementById(id);if(el&&reg[campo]&&el.value===String(reg[campo]))FECHO.sug[k][id]=el.value;});
-  }finally{FECHO._aCarregarReg=false;}
+  }finally{FECHO._aCarregarReg=false;FECHO.regSujo=false;}
 }
 let _fxSyncT=null;
 function fxSyncRegisto(){clearTimeout(_fxSyncT);_fxSyncT=setTimeout(()=>{
@@ -5778,8 +5808,11 @@ function regPreencherAuto(nome,dep,ag,silencio){
     por('p-predio',dep.predio,'prédio');por('p-freguesia',dep.freguesia,'freguesia');por('p-concelho',dep.concelho,'concelho');
     por('p-codCRP',dep.codCRP,'código CRP');por('p-montCredito',dep.montCredito,'montante do crédito');
     if(dep.estado==='Depositado'||dep.quando)por('p-procurador','Liliana Burrica Cardoso','ent. depósito');   /* só a Liliana deposita */
-    if(dep.matriz&&dep.matriz.artigo&&typeof matLer==='function'&&!matLer().length){
-      const l=el('p-mat-lista');if(l){const car=l.dataset.carregado;l.innerHTML='';matAdicionar({tipo:dep.matriz.tipo,artigo:dep.matriz.artigo,freg:''});l.dataset.carregado=car;feitos.push('matriz');}}
+    {const ms=(dep.matrizes&&dep.matrizes.length)?dep.matrizes:(dep.matriz&&dep.matriz.artigo?[dep.matriz]:[]);
+    if(ms.length&&typeof matLer==='function'&&!matLer().length){
+      const l=el('p-mat-lista');if(l){const car=l.dataset.carregado;l.innerHTML='';
+        ms.forEach(m=>matAdicionar({tipo:MAT_TIPOS.includes(m.tipo)?m.tipo:'urbano',artigo:m.artigo,freg:m.freg||''}));
+        l.querySelectorAll('input,select').forEach(x=>x.style.background='#FEF9C3');l.dataset.carregado=car;feitos.push('matriz');}}}
     if(dep.estado){const e=el('p-estado');if(e&&(!e.value||e.value==='Agendado')&&[...e.options].some(o=>o.value===dep.estado||o.text===dep.estado)){e.value=dep.estado;feitos.push('estado');e.style.background='#FEF9C3';(window._regAmarelos=window._regAmarelos||[]).push(e);}}
     if(dep.finalidade&&dep.finalidade!=='habitação própria permanente'&&feitos.includes('finalidade'))showToast(`Finalidade no título: ${dep.finalidade}`,'');
   }
