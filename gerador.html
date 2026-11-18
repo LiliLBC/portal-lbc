@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-11.1</span>
+    <span class="page-sub">piloto · v2026-11-17.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -2612,6 +2612,13 @@ function idCurta(nome,natural,nif){
   void natural;
   return`${nome||'…'}, número de identificação fiscal ${nif||'…'}`;
 }
+/* ── IDENTIFICAÇÃO DAS PARTES · CORPO DO CONTRATO ── (v2026-11-17.1)
+   A Liliana quer a naturalidade de volta no corpo do contrato: nome,
+   naturalidade e NIF. O idCurta fica como estava, porque também serve o
+   procurador do banco no mútuo (CGD), que é para não mexer. */
+function idParte(nome,natural,nif){
+  return`${nome||'…'}, natural de ${natural||'…'}, número de identificação fiscal ${nif||'…'}`;
+}
 function textoVendedorCurto(v){
   /* ── ENTIDADES · CONTRATO ──
      Inverso do termo: a entidade primeiro, em identificação simplificada, e o
@@ -2619,7 +2626,7 @@ function textoVendedorCurto(v){
      Sem regime de bens: no contrato não interessa. */
   const repCurto=o=>{
     const rs=(o.reps&&o.reps.length)?o.reps:[{}];
-    const p=rs.map(r=>r._sol?idCurta(r.nome,r.natural,r.nif):`${r.nome||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
+    const p=rs.map(r=>r._sol?idCurta(r.nome,r.natural,r.nif):`${r.nome||'…'}, natural de ${r.natural||'…'}, ${r.ec||'…'}, número de identificação fiscal ${r.nif||'…'}`);
     return p.length===1?p[0]:p.slice(0,-1).join(', ')+' e '+p[p.length-1];
   };
   if(v.tipo==='cgd')
@@ -2628,15 +2635,17 @@ function textoVendedorCurto(v){
     return`MUNICÍPIO DE ${(v['mun-nome']||'…').toUpperCase()}, pessoa coletiva n.º ${v['mun-nipc']||'…'}, com sede em ${v['mun-sede']||'…'}, neste ato representado por ${repCurto(v)}`;
   if(v.tipo==='empresa')
     return`${v.denom||'…'}, pessoa coletiva n.º ${v.nipc||'…'}, com sede em ${v.sede||'…'}, neste ato representada por ${repCurto(v)}`;
-  const eu=idCurta(v.nome,v.natural,v.nif);
+  const eu=idParte(v.nome,v.natural,v.nif);
   /* Só são parte os que transmitem ou adquirem. Mas o cônjuge que apenas
      consente, ou que não outorga, tem de ficar identificado no contrato com
      nome e NIF — «A, casado com B, NIF …» —, senão o registo sai com
      suprimento. O consentimento continua a ser declarado no termo. */
   const co=v['conj-out']||'ambos';
-  const base=!ehCasado(v.ec)?eu
-    :co==='ambos'?`${eu} e ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
-    :`${eu}, ${v.ec||'…'} com ${idCurta(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
+  /* Não casado: o estado civil sai a seguir ao NIF (viúva, solteiro, maior…),
+     como no «casada com» — antes não saía de todo. */
+  const base=!ehCasado(v.ec)?`${eu}, ${v.ec||'…'}`
+    :co==='ambos'?`${eu} e ${idParte(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`
+    :`${eu}, ${v.ec||'…'} com ${idParte(v['conj-nome'],v['conj-natural'],v['conj-nif'])}`;
   /* ── REPRESENTAÇÃO POR PROCURADOR ──
      No contrato a parte é o representado, e o procurador aparece a seguir, em
      identificação simplificada — mesma construção das entidades, que já diziam
@@ -2647,7 +2656,7 @@ function textoVendedorCurto(v){
   const varios=ehCasado(v.ec)&&(v['conj-out']||'ambos')==='ambos'&&v['conj-nome'];
   const fem=varios?false:(v.genero==='F'||/a$/.test(((v.ec||'').split(/[\s,]/)[0]||'')));
   const flex=varios?'representados':(fem?'representada':'representado');
-  return`${base}, neste ato ${flex} por ${idCurta(v['proc-nome'],v['proc-natural'],v['proc-nif'])}`;
+  return`${base}, neste ato ${flex} por ${idParte(v['proc-nome'],v['proc-natural'],v['proc-nif'])}`;
 }
 /* Géneros de todos os que outorgam — inclui cônjuges que outorgam.
    Empresa e CGD são femininas («a firma», «a Caixa»); Município é masculino. */
