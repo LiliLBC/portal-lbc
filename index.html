@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-18.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-18.3">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4233,12 +4233,76 @@ async function dpzEnviar(x,i,file){
   x.fileId=j.id;x.ficheiro=j.name;x.webUrl=j.webUrl;
   if(antigo){x.substituidoEm=new Date().toISOString();x.estado='digit';}else if(!x.estado||x.estado==='marcado')x.estado='digit';
 }
+/* ── Páginas em branco (18/11/2026) ──
+   Ao puxar um PDF digitalizado, vê-se cada página em miniatura e conta-se a «tinta» (fora das
+   margens, onde a digitalização deixa sombras). As páginas quase sem tinta são propostas para
+   retirar; a Liliana confirma ou desmarca antes de gravar. Sem páginas em branco, não aparece
+   nada e grava como antes. Corre tudo no navegador — o ficheiro não sai daqui. */
+const DPZ_BRANCO_LIMIAR=0.0002;   /* fração de píxeis escuros abaixo da qual a página é «em branco» */
+async function dpzPdfLibs(){
+  if(!window.pdfjsLib){await carregarScriptJustif('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+  if(!window.PDFLib)await carregarScriptJustif('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js');
+}
+async function dpzAnalisarBrancas(buf){
+  const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise,pags=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i),v0=pg.getViewport({scale:1}),sc=300/v0.width,vp=pg.getViewport({scale:sc});
+    const cv=document.createElement('canvas');cv.width=Math.ceil(vp.width);cv.height=Math.ceil(vp.height);
+    const cx=cv.getContext('2d',{willReadFrequently:true});cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);
+    await pg.render({canvasContext:cx,viewport:vp}).promise;
+    const mx=Math.round(cv.width*0.06),my=Math.round(cv.height*0.05),w=cv.width-2*mx,h=cv.height-2*my;
+    const d=cx.getImageData(mx,my,w,h).data;let esc=0;
+    for(let p=0;p<d.length;p+=4){if(0.299*d[p]+0.587*d[p+1]+0.114*d[p+2]<160)esc++;}
+    const tinta=esc/(w*h);pags.push({n:i,tinta,branca:tinta<DPZ_BRANCO_LIMIAR,img:cv.toDataURL('image/jpeg',0.6)});
+  }
+  return pags;
+}
+function dpzEscolherBrancas(nome,pags){
+  return new Promise(res=>{
+    document.getElementById('dpz-br')?.remove();
+    document.body.insertAdjacentHTML('beforeend',`<div id="dpz-br" style="position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:1rem">
+      <div style="background:var(--surface,#fff);border-radius:12px;max-width:900px;width:100%;max-height:90vh;display:flex;flex-direction:column;padding:1rem">
+        <div style="font-weight:700;font-size:14px">Páginas em branco — ${escHtml(nome)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin:.2rem 0 .6rem">As marcadas a vermelho saem do ficheiro. Clica numa página para a marcar ou desmarcar.</div>
+        <div id="dpz-br-g" style="overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem;padding:.2rem"></div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.7rem;flex-wrap:wrap">
+          <button class="btn btn-sm" id="dpz-br-nao">Gravar tal como está</button>
+          <button class="btn btn-primary btn-sm" id="dpz-br-sim"></button></div></div></div>`);
+    const g=document.getElementById('dpz-br-g'),sim=document.getElementById('dpz-br-sim');
+    const pintar=()=>{g.innerHTML=pags.map((p,i)=>`<div data-i="${i}" style="cursor:pointer;border:3px solid ${p.branca?'#DC2626':'transparent'};border-radius:6px;padding:2px;position:relative;${p.branca?'opacity:.55':''}">
+        <img src="${p.img}" style="width:100%;display:block;border:1px solid var(--border)"><div style="font-size:10.5px;text-align:center">${p.n}${p.branca?' · sai':''}</div></div>`).join('');
+      const n=pags.filter(p=>p.branca).length;sim.textContent=n?`Retirar ${n} página${n>1?'s':''} e gravar`:'Gravar';};
+    pintar();
+    g.onclick=ev=>{const c=ev.target.closest('[data-i]');if(!c)return;const p=pags[+c.dataset.i];p.branca=!p.branca;
+      if(pags.every(x=>x.branca)){p.branca=false;showToast('Tem de ficar pelo menos uma página.','');}pintar();};
+    const fim=v=>{document.getElementById('dpz-br')?.remove();res(v);};
+    sim.onclick=()=>fim(pags.filter(p=>p.branca).map(p=>p.n));
+    document.getElementById('dpz-br-nao').onclick=()=>fim([]);
+  });
+}
+/* Devolve o ficheiro a gravar (sem as páginas em branco, se a Liliana confirmar). */
+async function dpzSemBrancas(file){
+  try{
+    if(!file||!/pdf$/i.test(file.type||file.name))return file;
+    await dpzPdfLibs();
+    const buf=await file.arrayBuffer(),pags=await dpzAnalisarBrancas(buf);
+    if(pags.length<2||!pags.some(p=>p.branca))return file;
+    const tirar=await dpzEscolherBrancas(file.name,pags);if(!tirar.length)return file;
+    const doc=await PDFLib.PDFDocument.load(buf,{ignoreEncryption:true});
+    tirar.sort((a,b)=>b-a).forEach(n=>doc.removePage(n-1));
+    const out=await doc.save();
+    showToast(`Retirada${tirar.length>1?'s':''} ${tirar.length} página${tirar.length>1?'s':''} em branco.`,'success');
+    return new File([out],file.name,{type:'application/pdf'});
+  }catch(e){console.warn('[Fecho] páginas em branco:',e);return file;}
+}
 async function dpzPuxar(k,file){
   if(!file)return;const x=fechoEsc().docs[k];
   const jaDep=x.fileId&&(x.estado==='dep'||x.estado==='reg');
   if(x.fileId&&!confirm(`Este documento já tem ficheiro na pasta DPA:\n«${x.ficheiro||x.desc}»\n\nSubstituir pelo novo?`+(jaDep?'\n\nAtenção: estava marcado como depositado — volta a «digitalizado» até depositares o novo.':'')))return;
   const repor=!!x.fileId;
-  try{showToast('A gravar…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
+  try{showToast('A verificar páginas em branco…','');file=await dpzSemBrancas(file);
+    showToast('A gravar…','');if(!x.data){const dt=await dpzLerData(file);if(dt)x.data=dt;}
     await dpzEnviar(x,dpzIndice(k),file);FECHO.sujo=true;await dpzGravar(true);fechoRender();showToast((repor?'✓ Substituído: ':'✓ ')+x.ficheiro,'success');}
   catch(e){showToast('Não consegui gravar: '+e.message,'error');}
 }
@@ -4246,7 +4310,8 @@ async function dpzPuxar(k,file){
    sobrando, cria linha nova com o nome do ficheiro. */
 async function dpzPuxarVarios(files){
   const d=fechoEsc().docs;
-  for(const f of [...(files||[])]){
+  for(let f of [...(files||[])]){
+    f=await dpzSemBrancas(f);
     let k=d.findIndex(x=>!x.fileId&&!x.fixo);
     if(k<0){d.push({id:'d'+Date.now()+Math.random(),desc:f.name.replace(/\.[^.]+$/,''),data:'',estado:'marcado',obrig:false});k=d.length-1;}
     const x=d[k];
