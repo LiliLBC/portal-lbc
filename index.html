@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-18.3">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-19.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2266,6 +2266,11 @@ tbody tr:hover td{background:#FAFAF8}
               <div class="field-group field-full">
                 <div class="field-label">Notas</div>
                 <textarea class="form-textarea" id="av-p-notas" rows="3" placeholder="Observações..."></textarea>
+              </div>
+              <!-- Faturação (só a Liliana) — 19/11/2026 -->
+              <div class="field-group field-full" id="av-fat-wrap" style="display:none;border:1px solid var(--border);border-radius:10px;padding:.6rem .7rem">
+                <div class="field-label" style="margin-bottom:.35rem">Faturação deste processo</div>
+                <div id="av-fat-corpo"></div>
               </div>
               <!-- Pasta SP -->
               <div class="field-group field-full" id="av-p-pasta-wrap" style="display:none">
@@ -12296,7 +12301,7 @@ let todosClientes=[],cliItemId=null,cliListaId=null;
   /* O registo de cada pasta guarda etiquetas, nota, visto e ligações. Quem grava uma
      parte conserva as outras (extra) e só apaga o registo quando fica vazio. */
   const extra=it=>{const o={...(it||{})};delete o.spId;delete o.nome;return o;};
-  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio&&!d.crono&&!d.deposito;
+  const vazio=d=>!(d.tags&&d.tags.length)&&!d.nota&&!d.visto&&!(d.ligacoes&&d.ligacoes.length)&&!d.avisoVisto&&!d.registo&&!d.ficha&&!(d.contactos&&d.contactos.length)&&!d.bloqueio&&!d.crono&&!d.deposito&&!d.fatura&&!d.forn;
   let LID=null,COLD='Dados',ITENS={},carregado=false,aCarregar=null,selTags=[];
   const chave=(lib,id)=>`${lib}|${id}`;
 
@@ -13390,6 +13395,7 @@ async function carregarAvencasMensais(){
     const data=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasMensais}/items?$expand=fields($select=${sel})&$top=300`);
     todasAvencasMensais=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     avmRender();
+    avfGarantirProcessos().then(()=>avmRender());
   }catch(e){
     lista.innerHTML=`<div class="notice notice-error" style="font-size:11px">Erro ao carregar avenças mensais: ${e.message}</div>`;
   }finally{ if(loading)loading.style.display='none'; }
@@ -13410,6 +13416,8 @@ function avmRender(){
         <th style="padding:6px 8px">NIF</th>
         <th style="padding:6px 8px">Início</th>
         <th style="padding:6px 8px;text-align:right">Valor mensal</th>
+        <th style="padding:6px 8px;text-align:right" title="Adiantado por conta do cliente + honorários dos processos ainda não faturados">Acresce (processos)</th>
+        <th style="padding:6px 8px;text-align:right">A faturar</th>
         <th style="padding:6px 8px"></th>
       </tr></thead>
       <tbody>${items.map(i=>`
@@ -13418,6 +13426,9 @@ function avmRender(){
           <td style="padding:7px 8px;color:var(--text-muted)">${escHtml(i[AVM.nif]||'—')}</td>
           <td style="padding:7px 8px;color:var(--text-muted)">${i[AVM.inicio]?fmtData(i[AVM.inicio]):'—'}</td>
           <td style="padding:7px 8px;text-align:right;font-weight:600">${avmFmtEur(avmParseValor(i[AVM.valor]))}</td>
+          ${(()=>{const l=avfPorFaturar(avfFornecedorDe(i)),ex=l.reduce((s,x)=>s+avfTotal(x.f),0);
+            return`<td style="padding:7px 8px;text-align:right;color:${ex?'#92400E':'var(--text-faint)'}">${ex?avmFmtEur(ex)+` <span style="font-size:10px">(${l.length} proc.)</span>`:'—'}</td>
+            <td style="padding:7px 8px;text-align:right;font-weight:700"><a href="#" onclick="event.preventDefault();avfDetalhe('${i.id}')" title="Ver o detalhe">${avmFmtEur(avmParseValor(i[AVM.valor])+ex)}</a></td>`;})()}
           <td style="padding:7px 8px;text-align:right"><button class="btn btn-sm" onclick="avmAbrirPainelEditar('${i.id}')" style="padding:2px 9px;font-size:11px">Editar</button></td>
         </tr>`).join('')}
       </tbody>
@@ -13431,6 +13442,11 @@ function avmRenderTotais(items){
   const tm=document.getElementById('avm-total-mensal');
   const ta=document.getElementById('avm-total-anual');
   if(tm)tm.textContent=avmFmtEur(mensal);
+  /* (19/11/2026) O que acresce dos processos ainda não faturados. */
+  try{const ex=items.reduce((s,i)=>s+avfPorFaturar(avfFornecedorDe(i)).reduce((t,x)=>t+avfTotal(x.f),0),0);
+    let el=document.getElementById('avm-total-extra');
+    if(!el&&tm){tm.insertAdjacentHTML('afterend','<div id="avm-total-extra" style="font-size:11px;color:#92400E;font-weight:600"></div>');el=document.getElementById('avm-total-extra');}
+    if(el)el.textContent=ex?`+ ${avmFmtEur(ex)} dos processos = ${avmFmtEur(mensal+ex)} a faturar`:'';}catch(_){}
   if(ta)ta.textContent=avmFmtEur(mensal*12);
 }
 
@@ -13817,6 +13833,7 @@ function avRenderLista(lista){
         ${(i[AP.fornecedor]==='REMAX'&&/^AN[AÁ]LISE$/i.test(i[AP.servico]||'')&&i[AP.pasta])?`<button onclick="event.stopPropagation();anrAbrir('${i.id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent-dark);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit" title="Escrever o resultado (OK / intermédio / questões), gravar o PDF na pasta e publicar na Área REMAX">📋 Resultado</button>`:''}
         ${cpcvBtn}
         ${pastaBtn}
+        ${avfChip(i)}
         <span style="border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;${badgeStyle}">${escHtml(estado)}</span>
         <button onclick="event.stopPropagation();apagarAvenca('${i.id}')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-faint);cursor:pointer" title="Apagar avença" onmouseover="this.style.background='#FEE';this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-faint)';this.style.borderColor='var(--border)'">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M6 4V2.5A.5.5 0 016.5 2h3a.5.5 0 01.5.5V4M5 4l1 9.5a.5.5 0 00.5.5h3a.5.5 0 00.5-.5L11 4"/></svg>
@@ -13937,6 +13954,7 @@ function avPainelServicoChange(){
 }
 
 function abrirPainelAvencaNovo(){
+  setTimeout(()=>avfPintarPainel(null),0);
   avPainelItemId=null;
   document.getElementById('av-painel-titulo').textContent='Novo processo';
   document.getElementById('av-painel-sub').textContent='';
@@ -13957,6 +13975,111 @@ function abrirPainelAvencaNovo(){
   document.getElementById('av-painel').classList.add('open');
 }
 
+/* ── Faturação dos processos de avença (19/11/2026) ──
+   Por processo (guardado nas Etiquetas, campo «fatura» — sem mexer na lista Avencas_Processos):
+   { faturado, faturadoEm, linhas:[{tipo:'adiant'|'hon', desc, valor}], prestador, valorPrestador }
+   · «adiant» = valores adiantados por conta do cliente; «hon» = honorários além da avença.
+   · O que não está faturado soma-se, por entidade, no Dashboard financeiro (Avenças mensais).
+   · Prestador + valor (Andreia, Isa, outro colega) → Custos com pessoal, como os procuradores
+     das escrituras (ligação «AVP:<id do processo>»). */
+const AVF_TIPOS={adiant:'Adiantado por conta do cliente',hon:'Honorários'};
+let AVF_ATUAL=null;
+function avfDe(id){try{return window.etqDadoSync?(etqDadoSync('AVENCAS',id,'fatura')||null):null;}catch(_){return null;}}
+function avfNum(v){if(typeof v==='number')return v;let s=String(v||'').replace(/[\s€]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
+function avfTotal(f){return f&&f.linhas?f.linhas.reduce((s,l)=>s+avfNum(l.valor),0):0;}
+function avfEur(n){return (Number(n)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});}
+/* Bloco no painel do processo (só para a Liliana). */
+function avfPintarPainel(id){
+  const w=document.getElementById('av-fat-wrap');if(!w)return;
+  if(!(typeof financeiroDesbloqueado==='function'&&financeiroDesbloqueado())){w.style.display='none';return;}
+  w.style.display='';
+  AVF_ATUAL=JSON.parse(JSON.stringify(avfDe(id)||{faturado:false,linhas:[],prestador:'',valorPrestador:''}));
+  AVF_ATUAL.linhas=AVF_ATUAL.linhas||[];
+  avfRender();
+}
+function avfRender(){
+  const w=document.getElementById('av-fat-corpo');if(!w||!AVF_ATUAL)return;const f=AVF_ATUAL;
+  const tot=avfTotal(f),ad=f.linhas.filter(l=>l.tipo==='adiant').reduce((s,l)=>s+avfNum(l.valor),0);
+  w.innerHTML=`
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.45rem">
+      <button type="button" class="btn btn-sm" onclick="AVF_ATUAL.faturado=!AVF_ATUAL.faturado;AVF_ATUAL.faturadoEm=AVF_ATUAL.faturado?new Date().toISOString().slice(0,10):'';avfRender()"
+        style="${f.faturado?'background:#16A34A;border-color:#16A34A;color:#fff':'background:#F59E0B;border-color:#F59E0B;color:#fff'};font-weight:600">${f.faturado?'✓ Faturado'+(f.faturadoEm?' · '+f.faturadoEm.split('-').reverse().join('/'):''):'€ Não faturado'}</button>
+      <span style="font-size:11.5px;color:var(--text-muted)">A faturar: <b>${avfEur(tot)}</b>${ad?` (adiantado ${avfEur(ad)} · honorários ${avfEur(tot-ad)})`:''}</span></div>
+    ${f.linhas.map((l,i)=>`<div style="display:flex;gap:.3rem;margin-bottom:.3rem;align-items:center">
+      <select class="form-select" style="width:150px;flex-shrink:0;font-size:11.5px" onchange="AVF_ATUAL.linhas[${i}].tipo=this.value;avfRender()">
+        ${Object.entries(AVF_TIPOS).map(([k,t])=>`<option value="${k}"${l.tipo===k?' selected':''}>${t}</option>`).join('')}</select>
+      <input class="form-input" style="flex:1;min-width:0;font-size:12px" placeholder="Designação (ex.: Emolumentos registo AJ-68-CX)" value="${escHtml(l.desc||'')}" oninput="AVF_ATUAL.linhas[${i}].desc=this.value">
+      <input class="form-input" style="width:90px;flex-shrink:0;text-align:right;font-size:12px" inputmode="decimal" placeholder="0,00" value="${escHtml(String(l.valor??''))}" onchange="AVF_ATUAL.linhas[${i}].valor=this.value;avfRender()">
+      <button type="button" class="btn btn-sm" style="padding:1px 8px" onclick="AVF_ATUAL.linhas.splice(${i},1);avfRender()">×</button></div>`).join('')}
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+      <button type="button" class="btn btn-sm" onclick="AVF_ATUAL.linhas.push({tipo:'adiant',desc:'',valor:''});avfRender()">+ Adiantado por conta do cliente</button>
+      <button type="button" class="btn btn-sm" onclick="AVF_ATUAL.linhas.push({tipo:'hon',desc:'',valor:''});avfRender()">+ Honorários</button></div>
+    <div style="margin-top:.6rem;font-size:11px;color:var(--text-muted)">Serviço prestado por (vai para Custos com pessoal):</div>
+    <div style="display:flex;gap:.3rem;margin-top:.2rem">
+      <input class="form-input" list="av-fat-pessoas" style="flex:1;min-width:0;font-size:12px" placeholder="Andreia Cabanas, Isa Guerra, outro colega…" value="${escHtml(f.prestador||'')}" oninput="AVF_ATUAL.prestador=this.value">
+      <input class="form-input" style="width:90px;flex-shrink:0;text-align:right;font-size:12px" inputmode="decimal" placeholder="0,00" value="${escHtml(String(f.valorPrestador??''))}" oninput="AVF_ATUAL.valorPrestador=this.value"></div>
+    <datalist id="av-fat-pessoas"><option>Andreia Pessegueiro Cabanas</option><option>Isa Burrica Guerra</option></datalist>`;
+}
+async function avfGravar(id,nome){
+  if(!AVF_ATUAL||!id||!(typeof financeiroDesbloqueado==='function'&&financeiroDesbloqueado()))return;
+  const f=AVF_ATUAL;f.linhas=(f.linhas||[]).filter(l=>String(l.desc||'').trim()||avfNum(l.valor));
+  const vaz=!f.linhas.length&&!f.faturado&&!String(f.prestador||'').trim();
+  const antes=avfDe(id);if(vaz&&!antes)return;
+  await etqDadoGravar('AVENCAS',id,nome||'',  'fatura',vaz?null:f);
+}
+/* Botão na lista de processos: faturado / não faturado. */
+function avfChip(i){
+  if(!(typeof financeiroDesbloqueado==='function'&&financeiroDesbloqueado()))return'';
+  const f=avfDe(i.id)||{},tot=avfTotal(f);
+  return`<button class="btn btn-sm" onclick="event.stopPropagation();avfAlternar('${i.id}')" title="${f.faturado?'Faturado — clica para voltar a não faturado':'Por faturar — clica quando faturares'}"
+    style="padding:2px 9px;font-size:11px;font-weight:600;${f.faturado?'background:#DCFCE7;border-color:#16A34A;color:#166534':'background:#FEF3C7;border-color:#F59E0B;color:#92400E'}">${f.faturado?'✓ Faturado':'€ Não faturado'}${tot?' · '+avfEur(tot):''}</button>`;
+}
+async function avfAlternar(id){
+  const i=(todosProcessosAv||[]).find(r=>r.id===id);const f=JSON.parse(JSON.stringify(avfDe(id)||{linhas:[]}));
+  f.faturado=!f.faturado;f.faturadoEm=f.faturado?new Date().toISOString().slice(0,10):'';
+  try{await etqDadoGravar('AVENCAS',id,i?i[AP.titulo]:'','fatura',f);showToast(f.faturado?'Marcado como faturado':'Marcado como não faturado','success');avFiltrar();try{avmRender();}catch(_){}}
+  catch(e){showToast('Erro: '+e.message,'error');}
+}
+/* Dashboard: por entidade das avenças mensais, o que está por faturar nos processos. */
+function avfNorm(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\b(LDA|S\.?A|UNIPESSOAL|SOCIEDADE)\b\.?/g,'').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+function avfFornecedorDe(avm){
+  const manual=window.etqDadoSync?etqDadoSync('AVM',avm.id,'forn'):null;if(manual)return manual;
+  const n=avfNorm(avm[AVM.empresa]);
+  return Object.keys(AVENCAS_ENTIDADES).find(k=>{const f=avfNorm(k);return n&&(n===f||n.includes(f)||f.includes(n));})||'';
+}
+function avfPorFaturar(forn){
+  if(!forn)return[];
+  return (todosProcessosAv||[]).filter(p=>p[AP.fornecedor]===forn).map(p=>({p,f:avfDe(p.id)})).filter(x=>x.f&&!x.f.faturado&&avfTotal(x.f)>0);
+}
+async function avfGarantirProcessos(){
+  try{if(!(todosProcessosAv&&todosProcessosAv.length)&&typeof carregarAvencas==='function')await carregarAvencas();}catch(_){}
+  try{if(window.etqDadoLer)await etqDadoLer('AVENCAS','0','fatura');}catch(_){}
+}
+function avfDetalhe(avmId){
+  const a=(todasAvencasMensais||[]).find(x=>x.id===avmId);if(!a)return;const forn=avfFornecedorDe(a),l=avfPorFaturar(forn);
+  document.getElementById('avf-det')?.remove();
+  const mensal=avmParseValor(a[AVM.valor]),extra=l.reduce((s,x)=>s+avfTotal(x.f),0);
+  document.body.insertAdjacentHTML('beforeend',`<div id="avf-det" style="position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)this.remove()">
+   <div style="background:var(--surface,#fff);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:1rem 1.1rem">
+    <div style="display:flex;align-items:center;gap:.5rem"><div style="font-weight:700;font-size:15px;flex:1">A faturar — ${escHtml(a[AVM.empresa]||'')}</div>
+      <button class="btn btn-sm" onclick="document.getElementById('avf-det').remove()">×</button></div>
+    <div style="font-size:11.5px;color:var(--text-muted);margin:.15rem 0 .7rem">Processos de avença: <b>${escHtml(forn||'— sem ligação —')}</b>
+      · <a href="#" onclick="event.preventDefault();avfLigar('${a.id}')">mudar</a></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 4px">Avença mensal</td><td></td><td style="text-align:right;padding:5px 4px;font-weight:600">${avfEur(mensal)}</td></tr>
+      ${l.map(x=>`<tr><td colspan="3" style="padding:8px 4px 2px;font-weight:600">${escHtml(x.p[AP.titulo]||'')} <span style="font-weight:400;color:var(--text-muted)">· ${escHtml(x.p[AP.servico]||'')}${x.p[AP.inicio]?' · '+fmtData(x.p[AP.inicio]):''}</span>
+          <button class="btn btn-sm" style="margin-left:.4rem;padding:1px 7px;font-size:10.5px" onclick="avfAlternar('${x.p.id}').then(()=>avfDetalhe('${a.id}'))">marcar faturado</button></td></tr>
+        ${x.f.linhas.map(li=>`<tr><td style="padding:2px 4px 2px 16px;color:var(--text-muted)">${AVF_TIPOS[li.tipo]||''}</td><td style="padding:2px 4px">${escHtml(li.desc||'')}</td><td style="text-align:right;padding:2px 4px">${avfEur(avfNum(li.valor))}</td></tr>`).join('')}`).join('')||`<tr><td colspan="3" style="padding:8px 4px;color:var(--text-muted)">Sem valores por faturar nos processos.</td></tr>`}
+      <tr style="border-top:2px solid var(--border)"><td style="padding:7px 4px;font-weight:700">Total a faturar</td><td></td><td style="text-align:right;padding:7px 4px;font-weight:700">${avfEur(mensal+extra)}</td></tr>
+    </table></div></div>`);
+}
+async function avfLigar(avmId){
+  const a=(todasAvencasMensais||[]).find(x=>x.id===avmId);if(!a)return;
+  const ops=Object.keys(AVENCAS_ENTIDADES);
+  const r=prompt(`A que processos de avença corresponde «${a[AVM.empresa]}»?\n\nEscreve um destes: ${ops.join(', ')}`,avfFornecedorDe(a)||'');
+  if(r==null)return;const v=ops.find(o=>avfNorm(o)===avfNorm(r));if(!v&&r.trim()){showToast('Não conheço esse fornecedor.','error');return;}
+  await etqDadoGravar('AVM',a.id,a[AVM.empresa]||'','forn',v||null);avmRender();avfDetalhe(avmId);
+}
 function abrirPainelAvenca(itemId){
   const i=todosProcessosAv.find(r=>r.id===itemId);if(!i)return;
   avPainelItemId=itemId;
@@ -13989,6 +14112,7 @@ function abrirPainelAvenca(itemId){
   document.getElementById('av-p-responsavel').value=i[AP.responsavel]||'';
   document.getElementById('av-p-urgente').checked=!!i[AP.urgente];
   document.getElementById('av-p-notas').value=i[AP.notas]||'';
+  avfPintarPainel(itemId);
   const pastaWrap=document.getElementById('av-p-pasta-wrap');
   const pastaLink=document.getElementById('av-p-pasta-link');
   if(i[AP.pasta]){
@@ -14116,6 +14240,7 @@ async function guardarProcessoAvenca(){
       const estAntes=idx>-1?(todosProcessosAv[idx][AP.estado]||'Em curso'):null;
       if(idx>-1)Object.assign(todosProcessosAv[idx],body);
       if(idx>-1)await avCronoMudouEstado(todosProcessosAv[idx],estAntes,body[AP.estado]);
+      try{await avfGravar(avPainelItemId,titulo);}catch(e){showToast('Faturação não gravada: '+e.message,'error');}
       showToast('Guardado!','success');
     }else{
       // Novo processo — criar pasta na biblioteca AVENCAS primeiro (obrigatório)
@@ -14141,7 +14266,8 @@ async function guardarProcessoAvenca(){
       const pasta=await pastaRes.json();
       body[AP.pasta]=pasta.webUrl;
       // Só agora cria o registo na lista — se a pasta falhou, não cria registo órfão
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
+      const novo=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdAvencasProc}/items`,{fields:body});
+      try{if(novo&&novo.id)await avfGravar(String(novo.id),titulo);}catch(e){showToast('Faturação não gravada: '+e.message,'error');}
       showToast(`Processo criado em ${forn}${loja?'/'+loja:''}/${nomePasta}`,'success');
       await carregarAvencas();
     }
@@ -16189,6 +16315,44 @@ async function _sincronizarEscrituras(){
     if(!pagoReal(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
     else SYNC_AVISOS.push(`${m.Title||'Serviço'}: a escritura ligada já não existe, mas o serviço foi pago.`);
   }
+  /* (19/11/2026) Processos de avença com «serviço prestado por» + valor → serviço desse
+     colaborador (ligação «AVP:<id do processo>»), com as mesmas regras das escrituras. */
+  try{if(await _sincronizarAvencas(base,tipoServ))mudou=true;}catch(e){SYNC_AVISOS.push('Processos de avença: '+(e.message||e));}
+  return mudou;
+}
+const TAG_AVP='AVP:';
+async function _sincronizarAvencas(base,tipoServ){
+  if(typeof window._etq==='undefined')return false;
+  try{if(window.etqDadoLer)await etqDadoLer('AVENCAS','0','fatura');}catch(_){}
+  try{if(!(todosProcessosAv&&todosProcessosAv.length)&&typeof carregarAvencas==='function')await carregarAvencas();}catch(_){}
+  const procs=(typeof todosProcessosAv!=='undefined'&&todosProcessosAv)||[];
+  const itens=Object.values(window._etq.ITENS()).filter(it=>it.lib==='AVENCAS'&&it.fatura);
+  let mudou=false;const ligados={};
+  for(const m of MOVS){const p=String(m[FLD.mov.processo]||'');if(p.startsWith(TAG_AVP))ligados[p.slice(TAG_AVP.length)]=m;}
+  for(const it of itens){
+    const f=it.fatura,id=String(it.itemId),m=ligados[id];delete ligados[id];
+    const quem=String(f.prestador||'').trim(),valor=num(f.valorPrestador);
+    const pr=procs.find(x=>String(x.id)===id);
+    const ref=(pr&&pr[AP.titulo])||it.nome||('processo '+id);
+    if(!(quem&&valor>0)){
+      if(m&&!pagoReal(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+      else if(m)SYNC_AVISOS.push(`${ref}: o serviço já foi pago mas o processo deixou de ter prestador ou valor.`);
+      continue;}
+    const c=colPorNome(quem);
+    if(!c){SYNC_AVISOS.push(`${ref}: «${quem}» não está nos colaboradores do Pessoal.`);continue;}
+    const data=dia10((pr&&(pr[AP.conclusao]||pr[AP.inicio]))||f.faturadoEm||new Date().toISOString());
+    const body={Title:`Avença — ${ref}`};
+    body[FLD.mov.ref]=parseInt(c.id)||c.id;if(FLD.mov.nome)body[FLD.mov.nome]=cNome(c);
+    body[FLD.mov.data]=data+'T12:00:00Z';body[FLD.mov.tipo]=tipoServ;body[FLD.mov.valor]=valor;body[FLD.mov.processo]=TAG_AVP+id;
+    if(!m){if(FLD.mov.obs)body[FLD.mov.obs]='Lançado a partir dos processos de avença.';if(FLD.mov.pago)body[FLD.mov.pago]=false;
+      await graphPost(base,{fields:body});mudou=true;continue;}
+    if(mRef(m)===String(c.id)&&Math.abs(mValor(m)-valor)<0.005&&mData(m)===data)continue;
+    if(pagoReal(m)){SYNC_AVISOS.push(`${ref}: o serviço já foi pago (${eur(mValor(m))}) mas o processo foi alterado — confira.`);continue;}
+    await graphPatch(`${base}/${m.id}/fields`,body);mudou=true;
+  }
+  for(const m of Object.values(ligados)){
+    if(!pagoReal(m)){await graphDelete(`${base}/${m.id}`);mudou=true;}
+    else SYNC_AVISOS.push(`${m.Title||'Serviço'}: o processo de avença ligado já não tem prestador, mas o serviço foi pago.`);}
   return mudou;
 }
 function avisosSyncHTML(){
