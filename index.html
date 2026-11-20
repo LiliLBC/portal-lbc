@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-20.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-20.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3777,9 +3777,15 @@ function dpzDestino(k,v){const x=fechoEsc().docs[k];if(!x||x.fixo)return;x.arqui
 function dpzEstado(raw,nome){
   const c=dpzContentor(raw,nome);const docs=dpzTodasDocs(c);
   if(!docs.length)return 'vazio';
+  /* (20/11/2026) Depositado fica azul logo no próprio dia (antes só depois do dia da escritura).
+     Já depositado mas com documentos por juntar → rosa, mesmo no próprio dia. */
+  const dep=x=>x.estado==='dep'||x.estado==='reg';
+  if(docs.every(dep))return 'azul';
+  const jaDepositou=docs.some(dep)||Object.values(c.esc||{}).some(e=>e.depositadoEm);
+  if(jaDepositou)return 'rosa';
   const dia=dpzDiaPasta(nome),passou=dia&&dia<dpzHojeISO();
   if(!passou)return docs.every(x=>x.fileId)?'verde':'laranja';
-  return docs.every(x=>x.estado==='dep'||x.estado==='reg')?'azul':'rosa';
+  return 'rosa';
 }
 const DPZ_COR={vazio:'',laranja:'background:#FBEFD5;border-color:#E3B25B;color:#7A4F0C',verde:'background:#E3F2E9;border-color:#5FA77D;color:#1F5E3A',
   azul:'background:#E3EDFB;border-color:#6E9BD8;color:#1E3A8A',rosa:'background:#FBE3EE;border-color:#D98AAE;color:#8E2A55'};
