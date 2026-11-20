@@ -570,8 +570,13 @@
 
   /* ---------- public API ---------- */
   function getData(){ const d=JSON.parse(JSON.stringify(state)); d.atos.forEach(a=>a.sujeitos.forEach(s=>delete s._col)); d.doisPedidos = isJovem() && hasCanc(); d.totalAtos=Number($('#totalAtos').textContent.replace(/\./g,'').replace(',','.')); if(d.doisPedidos) d.totalCanc=Number($('#totalCanc').textContent.replace(/\./g,'').replace(',','.')); return d; }
+  /* (20/11/2026) Ordem dos atos no registo: 1.º cancelamentos (OIC), 2.º aquisição, 3.º novas
+     hipotecas; os outros ficam entre a aquisição e as hipotecas, pela ordem em que estavam. */
+  const ordemAtos=l=>{const r=a=>{const f=String((a&&a.facto)||'');if(/cancel/i.test(f)||(a&&a.cancelamentos&&!/aquisi|hipoteca/i.test(f)))return 0;if(/aquisi/i.test(f))return 1;if(/hipoteca/i.test(f))return 3;return 2;};
+    return (l||[]).map((a,i)=>[a,i]).sort((x,y)=>r(x[0])-r(y[0])||x[1]-y[1]).map(x=>x[0]);};
   function setData(d){
     Object.assign(state, {docs:[],atos:[],predios:[]}, d||{});
+    state.atos=ordemAtos(state.atos);
     state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
     renderAll();
   }

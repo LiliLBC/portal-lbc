@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-19.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-20.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18479,9 +18479,14 @@ function mountMapaRegisto(ROOT){
      do mapa anterior sempre que o novo não o trazia (um registo novo não traz
      nada). Agora parte sempre de um mapa vazio. (14/10/2026) */
   const VAZIO = () => ({dataDoc:'',legit:'sujeito',codDPA:'',docs:[],atos:[],predios:[],valorPredial:'',valorPredial2:'',isencao:'nao',isencaoTipo:'',isencaoOutra:'',decl:'',submetido:false,dataSub:'',obsSub:'',mbEnt:'',mbRef:'',mbVal:'',ref:'',tipoEsc:'CGD',processo:'',cliente:''});
+  /* (20/11/2026) Ordem dos atos no registo: 1.º cancelamentos (OIC), 2.º aquisição, 3.º novas
+     hipotecas; os outros ficam entre a aquisição e as hipotecas, pela ordem em que estavam. */
+  const ordemAtos=l=>{const r=a=>{const f=String((a&&a.facto)||'');if(/cancel/i.test(f)||(a&&a.cancelamentos&&!/aquisi|hipoteca/i.test(f)))return 0;if(/aquisi/i.test(f))return 1;if(/hipoteca/i.test(f))return 3;return 2;};
+    return (l||[]).map((a,i)=>[a,i]).sort((x,y)=>r(x[0])-r(y[0])||x[1]-y[1]).map(x=>x[0]);};
   function setData(d){
     Object.keys(state).forEach(k=>{ delete state[k]; });
     Object.assign(state, VAZIO(), d||{});
+    state.atos=ordemAtos(state.atos);
     state.atos.forEach(a=>{ a.cancs=a.cancs||[]; a.sujeitos=a.sujeitos||[]; a.sujeitos.forEach(s=>s._col=isColetiva(s.nif)); });
     renderAll();
   }
@@ -18617,7 +18622,7 @@ function mapaDeSintese(dados,S){
   (S.onusRegistar||[]).forEach((h,k)=>{const cred={nome:h.favor,nif:h.nif,ec:''};
     atos.push({id:id(),facto:'Hipoteca Voluntária Definitiva',data:d.dataDoc||'',valor:'',cancelamentos:false,cancs:[],
       sujeitos:[...(S.ativos||[]).map(x=>suj(x,'Passivo',S.ativos)),...(h.nif?[suj(cred,'Ativo',[])]:[{id:id(),tipo:'Ativo',nif:'',estado:'',regime:'',nifConjuge:'',_col:true}])]});});
-  d.atos=atos;
+  d.atos=atos.sort((x,y)=>(/cancel/i.test(x.facto)?0:/aquisi/i.test(x.facto)?1:3)-(/cancel/i.test(y.facto)?0:/aquisi/i.test(y.facto)?1:3));
   const P=S.predio||{};
   if(P.descricao&&!(d.predios&&d.predios.some(x=>x.numero)))d.predios=[{id:id(),concelho:(d.predios&&d.predios[0]&&d.predios[0].concelho)||'',freguesia:P.freguesia||'',numero:P.descricao,fracao:!!P.fracao,letra:P.fracao||''}];
   return d;
