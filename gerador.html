@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-17.2</span>
+    <span class="page-sub">piloto · v2026-11-22.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -4634,6 +4634,8 @@ function comporLeasing(){
   loc.map(o=>linhaEmpresa(o,entrada?'Primeira Outorgante':'Segunda Outorgante')).filter(Boolean)
     .forEach(t=>ver.push('— '+t.replace(/^Verifiquei\s+/,'').replace(/\.$/,';')));
   const pred=linhaPredio('f-im',null); if(pred)ver.push(pred);
+  /* (22/11/2026) Autorizações de cancelamento dos ónus (art. 56.º CRP), como na compra e venda. */
+  if(entrada)lerOnus().map(textoOnusTermo).filter(Boolean).forEach(l=>ver.push(l));
   /* ── GUIAS ──
      Redação da Liliana. Na saída do leasing a transmissão está isenta de IMT
      pelo benefício 31, do artigo 3.º do Decreto-Lei n.º 311/82; o Imposto do
@@ -4665,10 +4667,19 @@ function comporLeasing(){
        cancelamento — o leasing ainda não existe. */
     contrato.push({id:'c-lea-obj',T:cl('Objeto'),X:
       `${loc.length>1?'Os Primeiros Contratantes':'A Primeira Contratante'}, em nome da sua representada, vende${loc.length>1?'m':''} à representada da Segunda Contratante, que a aceita, a ${txtImovel}`});
+    /* (22/11/2026) Ónus da secção do imóvel também na entrada do leasing — antes saía sempre
+       «livre de ónus». Mesmas frases da compra e venda; a autorização de cancelamento vai ao termo.
+       ⚠ A alínea APB adaptada ao leasing (sem «conta dos mutuários» quando não há) é minha. */
+    const onusLea=lerOnus();
+    const apbLea=apbLista();
+    const txtApbLea=apbLea.map((a,i)=>`${3+i}. Na presente data e ao abrigo do protocolo APB, a CAIXA transfere o montante de ${a.valor?`${fmtValor(parseValor(a.valor))} EUROS (${valorExtenso(a.valor).toLowerCase()})`:'…'}${a.origem?`, da conta com o número ${a.origem}`:''}, para a conta com o IBAN ${a.iban||'…'}, titulada pelo banco ${a.banco||'…'}, para efeitos de liquidação do capital em dívida da representada ${loc.length>1?'dos Primeiros Contratantes':'da Primeira Contratante'} referente a este imóvel.`).join('\n');
     contrato.push({id:'c-lea-preco-e',T:cl('Preço'),X:
       `1. O Imóvel é vendido pelo preço de ${par('f-lea-preco')}, que ${loc.length>1?'os Primeiros Contratantes, em nome da sua representada, declaram':'a Primeira Contratante, em nome da sua representada, declara'} já ter recebido e de que ${loc.length>1?'dão':'dá'} aqui quitação.\n`
-      +`2. O pagamento foi efetuado integralmente na presente data através de ${v('f-lea-pag-entrada')||'…'}`});
-    contrato.push({id:'c-lea-onus-e',T:cl('Ónus e encargos'),X:`O Imóvel é vendido livre de qualquer ónus ou encargos.`});
+      +`2. O pagamento foi efetuado integralmente na presente data através de ${v('f-lea-pag-entrada')||'…'}`
+      +(txtApbLea?`\n${txtApbLea}`:'')});
+    contrato.push({id:'c-lea-onus-e',T:cl('Ónus e encargos'),X:(!chk('t-onus')&&!onusLea.length)
+      ?`O Imóvel é vendido livre de qualquer ónus ou encargos.`
+      :[...onusLea.map(o=>textoOnusContrato(o,false)).filter(Boolean),v('f-onus-txt')].filter(Boolean).join('\n')||'…'});
     contrato.push({id:'c-lea-lic-e',T:cl('Licenciamento camarário'),X:
       `O Imóvel tem a Licença de Utilização ${v('f-lea-licenca')||'…'}, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`});
     contrato.push({id:'c-lea-dest',T:cl('Destino do Imóvel adquirido'),X:
