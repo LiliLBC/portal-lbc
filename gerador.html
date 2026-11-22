@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-22.2</span>
+    <span class="page-sub">piloto · v2026-11-22.3</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -353,7 +353,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
 
     <div class="form-grid form-grid-2">
       <div class="form-group form-full"><label class="form-label">Ato <span>*</span></label>
-        <select class="form-select" id="f-tipo-ato" onchange="atualizar()">
+        <select class="form-select" id="f-tipo-ato" onchange="atualizar();leaEntradaParaCV()">
           <option value="cv">1 · Compra e Venda</option>
           <option value="doacao">2 · Doação</option>
           <option value="partilhas">3 · Partilhas / Divisão de Coisa Comum</option>
@@ -377,7 +377,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
         </select>
         <div style="font-size:10.5px;color:var(--text-faint);margin-top:3px">Entre vivos, cada verba diz se foi adquirida no casamento ou em comum, e o título compõe-se do que existir.</div></div>
       <div class="form-group form-full" id="g-subtipo-lea" style="display:none"><label class="form-label">Saída do leasing <span>*</span></label>
-        <select class="form-select" id="f-lea-tipo" onchange="atualizar()">
+        <select class="form-select" id="f-lea-tipo" onchange="atualizar();leaEntradaParaCV()">
           <option value="entrada">8.1 · Entrada — a CAIXA compra para locar</option>
           <option value="antecipada">8.2 · Redução de prazo e opção de compra</option>
           <option value="opcao">8.3 · Exercício da opção de compra — prazo cumprido</option>
@@ -4544,6 +4544,26 @@ function semEuroTxt(t){return String(t||'').replace(/\s*euros?$/,'').replace(/\s
    pelo gerador e a procuração do leasing das solicitadoras.                  */
 function leaTipo(){return v('f-lea-tipo')||'entrada';}
 function ehLeaEntrada(){return leaTipo()==='entrada';}
+/* (22/11/2026) A entrada do leasing (a CAIXA compra para dar em locação) faz-se como Compra e
+   venda com a CAIXA compradora: é esse o contrato completo (preferências, licenciamento,
+   condomínio, mediação, impostos) e o que tem o Reconhecimento de assinaturas da locação.
+   O 8.1 passa para lá; quem não quiser, cancela e fica o modelo curto antigo. */
+function leaEntradaParaCV(){
+  if(atoEscolhido()!=='leasing'||!ehLeaEntrada())return;
+  if(!confirm('A entrada do leasing (a CAIXA compra para dar em locação) faz-se como COMPRA E VENDA com a CAIXA como compradora — é o contrato completo, com o Reconhecimento de assinaturas da locação.\n\nMudar agora?'))return;
+  const s=document.getElementById('f-tipo-ato');s.value='cv';
+  const st=document.getElementById('f-subtipo-cv');if(st)st.value='simples';
+  const comps=[...document.querySelectorAll('.comp-block')];
+  if(!comps.some(b=>(document.getElementById(b.id+'-tipo')||{}).value==='cgd')){
+    const vazio=comps.find(b=>!(document.getElementById(b.id+'-nome')||{}).value);
+    if(vazio){const t=document.getElementById(vazio.id+'-tipo');t.value='cgd';try{onVendTipo(vazio.id);}catch(_){}}
+    else addComprador({tipo:'cgd'});
+  }
+  const lp=document.getElementById('f-lea-preco'),pp=document.getElementById('f-preco');
+  if(lp&&pp&&lp.value&&!pp.value)pp.value=lp.value;
+  atualizar();
+  showToast('Passou para Compra e venda com a CAIXA compradora — preenche o bloco «Locação financeira».','success');
+}
 function ehLeaAntecipada(){return leaTipo()==='antecipada';}
 function comporLeasing(){
   const sol=SOLICITADORAS[v('f-solicitadora')];
@@ -6142,12 +6162,16 @@ function comporBase(){
   /* ── (09/11/2026) Reescrito a partir do modelo da Liliana: um parágrafo por quem assina.
      A CAIXA sai do bloco da compradora (a Liliana, a Andreia ou os procuradores do banco),
      com a procuração e a certidão comercial; o locatário sai do bloco «Locação financeira». */
-  const cgdC=comps.find(o=>o.tipo==='cgd')||{};
+  const cgdC0=comps.find(o=>o.tipo==='cgd')||{};
+  /* (22/11/2026) Com a Liliana ou a Andreia escolhida em «cgd-quem», não há reps preenchidos:
+     sem isto o reconhecimento saía com «…» no lugar de quem assina pela CAIXA. */
+  const cgdC=(cgdC0['cgd-quem']&&!(cgdC0.reps||[]).some(r=>r&&r.nome))
+    ?{...cgdC0,reps:[{nome:(SOLICITADORAS[cgdC0['cgd-quem']]||{}).nome||'',genero:'F',_sol:cgdC0['cgd-quem']}]}:cgdC0;
   const pcR=procCGDDe(cgdC);
   const nomesCGD=(cgdC.reps||[]).map(r=>(r.nome||'').toUpperCase()).filter(Boolean);
   const plCGD=nomesCGD.length>1,femCGD=!plCGD&&(cgdC.reps||[])[0]&&(cgdC.reps[0].genero==='F'||cgdC.reps[0]._sol);
   const listaCGD=nomesCGD.length?(plCGD?nomesCGD.slice(0,-1).join(', ')+' e '+nomesCGD[nomesCGD.length-1]:nomesCGD[0]):'…';
-  const crcCGD=v('f-mut-crc-cod')||CGD_CRC||'…';
+  const crcCGD=v('f-mut-crc-cod')||(bancoAtual()||{}).crcCod||CGD_CRC||'…';
   /* (09/11/2026, 2.ª) Organização validada pela Liliana: alíneas, cada signatário com a sua
      identificação; primeiro a representação e o papel no contrato, depois o aval; o
      «Verifiquei ainda» em travessões. */
@@ -6158,7 +6182,7 @@ function comporBase(){
       return idPessoa(r.nome,S.cc||(mc&&mc[1]),S.ccValidade||(mc&&mc[2]),S.nif||(mn&&mn[1]));}
     return idPessoa(r.nome,r.cc,r.ccval,r.nif);});
   const listaIdCGD=idCGD.length?(idCGD.length>1?idCGD.slice(0,-1).join(', ')+' e '+idCGD[idCGD.length-1]:idCGD[0]):'…';
-  const valCRC=v('f-mut-crc-val')||CGD_CRC_VAL;
+  const valCRC=v('f-mut-crc-val')||(bancoAtual()||{}).crcVal||CGD_CRC_VAL;
   const linhasRec=[`${listaIdCGD}, feita${plCGD?'s':''} pelo próprio punho, na qualidade de ${plCGD?'procuradores':(femCGD?'procuradora':'procurador')} e em representação da CAIXA GERAL DE DEPÓSITOS, S.A., na qualidade de LOCADORA, qualidade e poderes que verifiquei pela consulta da procuração com o código de acesso ${pcR.cod||'…'}${pcR.data?`, de ${pcR.data}`:''}, e da certidão de registo comercial com o código ${crcCGD}${valCRC?`, válida até ${dPT(valCRC)}`:''};`];
   const sigs=(()=>{try{return JSON.parse(v('f-loc-sigs')||'[]');}catch(_){return [];}})().filter(x=>x&&x.nome);
   let jaNomeada=false;
@@ -6181,9 +6205,14 @@ function comporBase(){
   anexo.push({id:'a-corpo',T:'',X:`Reconheço presencialmente as assinaturas de:\n${linhasRec.map((t,i)=>`${ALIN[i]}) ${t}`).join('\n')}\napostas no documento anexo, que é o CONTRATO DE LOCAÇÃO FINANCEIRA IMOBILIÁRIA n.º ${v('f-loc-num')||'…'}, relativo ao Imóvel atrás identificado, ${txtLic}.`});
   const ataD=v('f-loc-ata-data');
   const ataTxt=ataD?(()=>{const [y,m,d]=ataD.split('-').map(Number);return `, de ${d} de ${MESES[m-1]} de ${y}`;})():'';
+  /* (22/11/2026) Faltavam os dados da CAIXA no «Verifiquei ainda» — redação da Liliana
+     (contrato CV_LF de 23/11/2026). Com procuradoras da LBC, a procuração conjuga-se com o
+     substabelecimento. */
+  const substCGD=(cgdC.reps||[]).some(r=>r._sol);
+  const linhaCGDRec=`— a qualidade e poderes de quem representa a CAIXA pela procuração${substCGD?', conjugada com a consulta do substabelecimento, depositadas':' depositada'} em www.procuracoesonline.mj.pt através do código de acesso ${pcR.cod||'…'}${pcR.data?`, de ${pcR.data}`:''} e Certidão de Registo Comercial com o número de acesso ${crcCGD}, disponível em www.eportugal.gov.pt${valCRC?`, válida até ${dPT(valCRC)}`:''};`;
   const txtVerif=locParticular
-    ?`Verifiquei ainda:\n— a identidade dos signatários, pela exibição dos respetivos documentos de identificação;\n— encontrar-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao Registo Central do Beneficiário Efetivo, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`
-    :`Verifiquei ainda:\n— a identidade dos signatários, pela exibição dos respetivos documentos de identificação;\n— a qualidade e os poderes de representação da LOCATÁRIA, pela consulta da certidão permanente${v('f-loc-crc')?` com o código de acesso ${v('f-loc-crc')}`:''}${v('f-loc-crc-val')?`, válida até ${dPT(v('f-loc-crc-val'))}`:''}${v('f-loc-ata-num')?`, e da ata n.º ${v('f-loc-ata-num')}${ataTxt}`:''};\n— o cumprimento, pela LOCATÁRIA, das obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída dessa obrigação, nos termos do artigo 4.º da mesma Lei.`;
+    ?`Verifiquei ainda:\n— a identidade dos signatários, pela exibição dos respetivos documentos de identificação;\n${linhaCGDRec}\n— encontrar-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída da obrigação declarativa ao Registo Central do Beneficiário Efetivo, nos termos do artigo 4.º da Lei n.º 89/2017, de 21 de agosto.`
+    :`Verifiquei ainda:\n— a identidade dos signatários, pela exibição dos respetivos documentos de identificação;\n${linhaCGDRec}\n— a qualidade e os poderes de representação da LOCATÁRIA, pela consulta da certidão permanente${v('f-loc-crc')?` com o código de acesso ${v('f-loc-crc')}`:''}${v('f-loc-crc-val')?`, válida até ${dPT(v('f-loc-crc-val'))}`:''}${v('f-loc-ata-num')?`, e da ata n.º ${v('f-loc-ata-num')}${ataTxt}`:''};\n— o cumprimento, pela LOCATÁRIA, das obrigações declarativas para efeitos do Registo Central do Beneficiário Efetivo, nos termos da Lei n.º 89/2017, de 21 de agosto, encontrando-se a CAIXA GERAL DE DEPÓSITOS, S.A. excluída dessa obrigação, nos termos do artigo 4.º da mesma Lei.`;
   anexo.push({id:'a-verif',T:'',X:txtVerif});
   anexo.push({id:'a-fecho',T:'',X:`Évora, ${dataExtenso(v('f-data-ato'))}\n\nA Solicitadora,`});
   }
