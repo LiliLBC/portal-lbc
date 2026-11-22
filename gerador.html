@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-22.1</span>
+    <span class="page-sub">piloto · v2026-11-22.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -4646,6 +4646,7 @@ function comporLeasing(){
     ver.push(`— As guias de liquidação apresentadas: a do Imposto Municipal sobre as Transmissões Onerosas de Imóveis, n.º ${v('f-lea-imt-num')||'…'}, sobre o valor declarado de ${fmtValor(declarado)} €, da qual não resultou coleta por a transmissão beneficiar da isenção prevista no artigo 3.º do Decreto-Lei n.º 311/82, de 4 de agosto — benefício 31${v('f-lea-is-num')?`, e a do Imposto do Selo, n.º ${v('f-lea-is-num')}, no valor de ${fmtValor(selo)} €`:''}, documentos que verifiquei e que se arquivam;`);
   }
   termo.push({id:'t-verifiquei',T:'',X:`Verifiquei:\n${ver.join('\n')}`});
+  if(entrada){const cd=condLeasing(loc.length);if(cd.termo)termo.push({id:'t-lea-cond',T:'',X:cd.termo});}
   termo.push({id:'t-apresentaram',T:'',X:`Os Outorgantes apresentaram o documento anexo que é um CONTRATO DE COMPRA E VENDA, tendo declarado que já o leram e que estão perfeitamente inteirados do seu conteúdo e o assinaram e que o mesmo exprime a sua vontade e a dos seus representados.`});
   termo.push({id:'t-leitura',T:'',X:fechoTermo(false)});
 
@@ -4682,6 +4683,10 @@ function comporLeasing(){
       :[...onusLea.map(o=>textoOnusContrato(o,false)).filter(Boolean),v('f-onus-txt')].filter(Boolean).join('\n')||'…'});
     contrato.push({id:'c-lea-lic-e',T:cl('Licenciamento camarário'),X:
       `O Imóvel tem a Licença de Utilização ${v('f-lea-licenca')||'…'}, para ${v('f-lea-lic-ambito')==='fracao'?'a fração autónoma objeto do presente contrato':'o prédio de que faz parte integrante'}.`});
+    /* (22/11/2026) Declaração de condomínio (art. 1424.º-A CC), como na compra e venda, logo a
+       seguir ao licenciamento. ⚠ Adaptação minha: «PARTE COMPRADORA/VENDEDORA» passam a ser os
+       Contratantes do leasing (a CAIXA compra; o locatário vende). */
+    {const cd=condLeasing(loc.length);if(cd.contrato)contrato.push({id:'c-lea-cond',T:'',X:cd.contrato});}
     contrato.push({id:'c-lea-dest',T:cl('Destino do Imóvel adquirido'),X:
       `O Imóvel destina-se a ser cedido em Locação Financeira a ${v('f-lea-destino')||'…'}`});
     contrato.push({id:'c-lea-data',T:'',X:`${foraEscritorio?(v('f-local-morada')||'…'):'Évora'}, ${dataExtenso(v('f-data-ato'))}.`});
@@ -9013,6 +9018,16 @@ function onCondominio(){
   document.querySelectorAll('.cond-dados').forEach(e=>e.style.display=(c==='arquivo'||c==='exibida')?'flex':'none');
   document.querySelectorAll('.cond-aviso').forEach(e=>e.style.display=c==='exibida'?'block':'none');
   document.querySelectorAll('.cond-advert').forEach(e=>e.style.display=(c&&c!=='arquivo')?'block':'none');
+}
+/* Condomínio na entrada do leasing: os mesmos textos, com as partes do leasing. ⚠ Por validar. */
+function condLeasing(nLoc){
+  const t=textosCondominio();const pl=nLoc>1;
+  const sub=x=>String(x||'')
+    .replace(/A PARTE COMPRADORA declara/g,'A Segunda Contratante, em nome da sua representada, declara')
+    .replace(/A Parte Compradora declara/g,'A Segunda Contratante, em nome da sua representada, declara')
+    .replace(/A PARTE VENDEDORA declara/g,pl?'Os Primeiros Contratantes, em nome da sua representada, declaram':'A Primeira Contratante, em nome da sua representada, declara');
+  /* No termo as partes são Outorgantes, no contrato Contratantes. */
+  return{contrato:sub(t.contrato),termo:sub(t.termo).replace(/Contratante/g,'Outorgante')};
 }
 function textosCondominio(){
   if(v('f-im-tipo')!=='fracao')return{contrato:'',termo:''};
