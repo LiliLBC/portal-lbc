@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-20.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-23.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3818,7 +3818,10 @@ function dpzPendentes(){
     const c=dpzContentor(JSON.parse(JSON.stringify(it.deposito)),it.nome||'');
     const docs=dpzTodasDocs(c);
     const depositada=Object.values(c.esc).some(e=>e.depositadoEm)||docs.some(x=>x.estado==='dep'||x.estado==='reg');
-    const falta=docs.filter(x=>x.estado!=='dep'&&x.estado!=='reg');
+    /* (23/11/2026) Com várias escrituras na pasta, diz-se de qual é o documento em falta. */
+    const varias=(c.ordem||[]).length>1,falta=[];
+    (c.ordem||[]).forEach(k=>{const e=c.esc[k];(e.docs||[]).filter(x=>!x.arquivo&&x.estado!=='dep'&&x.estado!=='reg')
+      .forEach(x=>falta.push({...x,desc:(varias?`[${e.label||'escritura'}] `:'')+(x.desc||'documento')}));});
     return{id:it.itemId,nome:it.nome||'',depositada,falta,st:dpzEstado(c,it.nome||'')};
   }).filter(x=>x.st==='rosa'&&x.depositada&&x.falta.length).sort((a,b)=>a.nome.localeCompare(b.nome));
 }
