@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-24.1</span>
+    <span class="page-sub">piloto · v2026-11-24.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -7050,7 +7050,7 @@ function funilMH(){
   setDisp('blk-uno',conexo?'block':'none');
   /* Sozinho, o UNO usa o 10.2; sendo conexo, o 10.2 é do TOIC e o UNO tem o 10.6. */
   setProp('ttl-mh-financeiro','textContent',
-    toic?'10.2 · Mútuo e Hipoteca — 4.1 · TOIC':contratoMH()==='acc'?'10.2 · Abertura de crédito e Hipoteca — 4.3':'10.2 · Mútuo e Hipoteca — 4.2 · UNO');
+    toic?'10.2 · Mútuo e Hipoteca — 4.1 · TOIC':contratoMH()==='acc'?'10.2 · Abertura de crédito e Hipoteca — 4.3':contratoMH()==='acgd'?'10.2 · Abertura de crédito com hipoteca e aval — 4.4 (CGD)':'10.2 · Mútuo e Hipoteca — 4.2 · UNO');
   nomearBloco('card-b3','Mutuários','Primeiros Outorgantes — quem contrai o empréstimo');
   nomearBloco('card-b4','Mutuante','Segunda Outorgante — a CAIXA');
   nomearBloco('card-b5','Imóvel','Objeto da hipoteca');
