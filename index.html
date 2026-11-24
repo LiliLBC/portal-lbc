@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-24.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-24.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3687,7 +3687,14 @@ async function carregarPastas(){
 
 /* Dia da escritura = data no início do nome da pasta (AAAAMMDD) (30/10/2026). */
 function pastaEhHoje(nome){const d=new Date();const h=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;return String(nome||'').slice(0,8)===h;}
+/* (24/11/2026) Pastas ordenadas pela data da escritura (AAAAMMDD no início do nome), da mais
+   recente para a mais antiga; no mesmo dia, a última modificada primeiro. Pastas sem data no
+   nome vão para o fim. */
+function pastaDataNome(n){const m=String(n||'').match(/^(\d{8})/);return m?m[1]:'';}
+function ordenarPastas(l){return[...l].sort((a,b)=>{const da=pastaDataNome(a.name),db=pastaDataNome(b.name);
+  if(da!==db)return db.localeCompare(da);return String(b.lastModifiedDateTime||'').localeCompare(String(a.lastModifiedDateTime||''));});}
 function renderPastas(lista){
+  lista=ordenarPastas(lista||[]);
   document.getElementById('pastas-loading').style.display='none';
   const el=document.getElementById('pastas-list'),count=document.getElementById('pastas-count');
   count.innerHTML=`${lista.length} pastas encontradas <button class="btn btn-sm" id="btn-por-rever" onclick="vistoFiltrar()" style="margin-left:.5rem;padding:2px 10px;font-size:11px;display:none"></button>`;count.style.display='block';
