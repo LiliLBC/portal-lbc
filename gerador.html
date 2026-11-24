@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-24.2</span>
+    <span class="page-sub">piloto · v2026-11-24.4</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -4082,6 +4082,8 @@ function comporACGD(){
   const F='f-mh';
   const num=x=>parseValor(v(x));
   const eur=x=>v(x)?`€ ${fmtValor(num(x))}`:'€ …';
+  const eurExt=x=>v(x)?`${fmtValor(num(x))} EUROS (${ext(x)})`:'… EUROS (…)';
+  const pctNum=x=>{const t=String(v(x)||'').replace(/\s/g,'').replace('.',',');if(!t)return'…%';const [i,d='']=t.split(',');return`${i},${d.padEnd(2,'0')}%`;};
   const ext=x=>v(x)?valorExtenso(v(x)).toLowerCase():'…';
   const semEuro=t=>t.replace(/ euros? e /,' vírgula ').replace(/ cêntimos?$/,'').replace(/ (de )?euros?$/,'');
   /* Percentagens por extenso com todas as casas decimais («quatro vírgula trezentos e
@@ -4094,23 +4096,31 @@ function comporACGD(){
   const nipcEsp=n=>String(n||'').replace(/\D/g,'').replace(/(\d{3})(?=\d)/g,'$1 ');
   const juntarE=a=>a.length<2?(a[0]||''):a.slice(0,-1).join(', ')+' e '+a[a.length-1];
 
-  /* ── PRIMEIRA CONTRATANTE · a CLIENTE / HIPOTECANTE ── */
+  /* ── PRIMEIRA CONTRATANTE · a CLIENTE (24/11: não há HIPOTECANTE — só CLIENTE, CAIXA e AVALISTA) ── */
   const cli=mut[0]||{};
   const idPessoa=(r,dom)=>`${(r.nome||'…').toUpperCase()}, contribuinte fiscal ${r.nif||'…'}, ${r.ec||'…'}, natural de ${r.natural||'…'}, ${r.genero==='F'?'portadora':'portador'} do cartão de cidadão n.º ${r.cc||'…'}, válido até ${r.ccval?dataCC(r.ccval):'…'}${dom}`;
   let txtPrimeira,nPrimeira=1,femPrim=false;
+  /* (24/11/2026) Versão final da Liliana (MH_ACGD_BIG_LDA): no contrato as partes vão em forma
+     curta — a sociedade «neste ato representada com poderes para o ato por …»; a CAIXA «neste
+     ato representada pela procuradora …»; o avalista sem morada. A identificação completa fica
+     só no termo. */
+  const curta=r=>`${(r.nome||'…').toUpperCase()}, contribuinte fiscal ${r.nif||'…'}, ${String(r.ec||'…').split(/[ ,]/)[0]}, natural de ${r.natural||'…'}`;
   if(cli.tipo==='empresa'){
     const reps=(cli.reps&&cli.reps.length)?cli.reps:[{}];nPrimeira=reps.length;femPrim=reps.every(r=>r.genero==='F');
     const pl=reps.length>1;
     const ids=reps.map(r=>idPessoa(r,`, com domicílio profissional ${r.morada?'na '+r.morada:'na sede da sua representada'}`));
     const quals=[...new Set(reps.map(r=>(r.qual||'gerente').toUpperCase()))].join(' e ');
-    txtPrimeira=`${juntarE(ids)}, adiante designad${pl?(femPrim?'as':'os'):(femPrim?'a':'o')} por ${pl?(femPrim?'Primeiras Contratantes':'Primeiros Contratantes'):(femPrim?'Primeira Contratante':'Primeiro Contratante')}, ${pl?'os quais outorgam':(femPrim?'a qual outorga':'o qual outorga')} na qualidade de ${quals} e em REPRESENTAÇÃO da sociedade comercial ${cli.denom||'…'}, com sede ${cli.sede?('na '+cli.sede.replace(/^(na|no|em)\s+/i,'')):'…'}, com o número único de matrícula e de pessoa coletiva ${nipcEsp(cli.nipc)||'…'}${cli.capital?`, com o capital social de ${fmtValor(parseValor(cli.capital))} Euros`:''}, adiante designada por CLIENTE ou por HIPOTECANTE;`;
+    void ids;
+    txtPrimeira=`${(cli.denom||'…').toUpperCase()}, NIPC ${nipcEsp(cli.nipc)||'…'}, neste ato representada com poderes para o ato por ${juntarE(reps.map(curta))}, adiante designada por CLIENTE;`;
+    if(false)txtPrimeira=`${juntarE(ids)}, adiante designad${pl?(femPrim?'as':'os'):(femPrim?'a':'o')} por ${pl?(femPrim?'Primeiras Contratantes':'Primeiros Contratantes'):(femPrim?'Primeira Contratante':'Primeiro Contratante')}, ${pl?'os quais outorgam':(femPrim?'a qual outorga':'o qual outorga')} na qualidade de ${quals} e em REPRESENTAÇÃO da sociedade comercial ${cli.denom||'…'}, com sede ${cli.sede?('na '+cli.sede.replace(/^(na|no|em)\s+/i,'')):'…'}, com o número único de matrícula e de pessoa coletiva ${nipcEsp(cli.nipc)||'…'}${cli.capital?`, com o capital social de ${fmtValor(parseValor(cli.capital))} Euros`:''}, adiante designada por CLIENTE ou por CLIENTE;`;
   }else{
     femPrim=cli.genero==='F';
-    txtPrimeira=`${idPessoa(cli,cli.morada?`, residente na ${cli.morada}`:'')}, adiante designad${femPrim?'a':'o'} por CLIENTE ou por HIPOTECANTE;`;
+    txtPrimeira=`${curta(cli)}, adiante designad${femPrim?'a':'o'} por CLIENTE;`;
   }
   /* ── SEGUNDO/A · procurador da CAIXA ── */
   const pf=v('f-mut-p-genero')!=='M';
   const dom=(v('f-mut-p-dom')||'').replace(/^(na|no|em)\s+/i,'');
+  const txtSegundaCurta=`CAIXA GERAL DE DEPÓSITOS, S.A., NIPC ${String(BK.nipc||'500960046').replace(/\s/g,'')}, neste ato representada ${pf?'pela procuradora':'pelo procurador'} com poderes para o ato ${curta({nome:v('f-mut-p-nome'),nif:v('f-mut-p-nif'),ec:v('f-mut-p-ec'),natural:v('f-mut-p-natural')})}, adiante identificada por CAIXA;`;
   const txtSegunda=[(v('f-mut-p-nome')||'…').toUpperCase(),
       v('f-acgd-p-assina')?`que também usa e assina ${v('f-acgd-p-assina')}`:'',
       `contribuinte fiscal ${v('f-mut-p-nif')||'…'}`,v('f-mut-p-ec')||'…',`natural de ${v('f-mut-p-natural')||'…'}`,
@@ -4119,7 +4129,7 @@ function comporACGD(){
     +`, adiante ${pf?'Segunda':'Segundo'} Contratante, ${pf?'a qual':'o qual'} outorga na qualidade de ${pf?'PROCURADORA SUBSTABELECIDA':'PROCURADOR SUBSTABELECIDO'} e em REPRESENTAÇÃO de CAIXA GERAL DE DEPÓSITOS, S.A., com sede ${BK.prep||'na'} ${BK.sede}, matriculada na Conservatória do Registo Comercial de Lisboa, sob o número único de matrícula e de identificação fiscal ${nipcEsp(BK.nipc)} com o capital social de € ${BK.capital}, adiante designada por CGD ou CAIXA;`;
   /* ── TERCEIROS · avalistas ── */
   const plA=aval.length>1,femA=aval.length>0&&aval.every(o=>o.genero==='F');
-  const idAval=o=>`${(o.nome||'…').toUpperCase()}, ${o.ec||'…'}, natural de ${o.natural||'…'}, contribuinte fiscal número ${o.nif||'…'}, residente na ${(o.morada||'…').replace(/^(na|no|em)\s+/i,'')}`;
+  const idAval=o=>`${(o.nome||'…').toUpperCase()}, ${String(o.ec||'…').split(/[ ,]/)[0]}, natural de ${o.natural||'…'}, contribuinte fiscal número ${o.nif||'…'}`;
   const txtTerceiros=aval.length?`${juntarE(aval.map(idAval))}, adiante designad${plA?(femA?'as':'os'):(femA?'a':'o')} por ${plA?(femA?'Terceiras Contratantes ou AVALISTAS':'Terceiros Contratantes ou AVALISTAS'):(femA?'Terceira Contratante ou AVALISTA':'Terceiro Contratante ou AVALISTA')}.`:'';
 
   /* ── Imóvel ── */
@@ -4132,37 +4142,38 @@ function comporACGD(){
     :'inscrito '+(mats.length?mats.map(m=>textoMatrizG(m,false)).join(' e '):'na respetiva matriz …');
   const imovel=tipo==='fracao'
     ?`a fração autónoma designada pela letra «${v('f-im-letra')||'…'}», do prédio em regime de propriedade horizontal sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'}, sob o número ${v('f-im-num')||'…'}, da freguesia de ${v('f-im-freg-crp')||'…'}, ${txtMat}`
-    :`o ${desig}${denom?`, denominado por ${denom}`:''}, sito em ${v('f-im-sito')||'…'}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'}, sob o número ${v('f-im-num')||'…'}, da freguesia de ${v('f-im-freg-crp')||'…'}, ${txtMat}`;
+    :`o ${desig}, sito em ${v('f-im-sito')||'…'}${denom?` e denominado ${denom}`:''}, descrito na Conservatória do Registo Predial de ${v('f-im-crp')||'…'}, sob o número ${v('f-im-num')||'…'}, da freguesia de ${v('f-im-freg-crp')||'…'}, ${txtMat}`;
   const valAtrib=v('f-mh-avaliacao')?`${fmtValor(num('f-mh-avaliacao'))} Euros`:'… Euros';
   const onus=lerOnus(),mantidos=onus.filter(o=>o.canc==='nao');
-  const txtMantidos=mantidos.length?mantidos.map(o=>textoOnusContrato(o,false)).filter(Boolean).join(' '):'';
+  const fragM=o=>`${o.desc||'hipoteca'} registada pela ${o.ap||'AP. …'}, a favor de ${o.ent||'…'}, que se mantém`;
+  const txtMantidos=mantidos.length?`O Imóvel encontra-se onerado com ${mantidos.map(fragM).join(' e ')}.`:'';
 
   /* ══════════ CONTRATO (modelo da CGD) ══════════ */
   const contrato=[];
   contrato.push({id:'g-c-cab',T:'CONTRATO DE ABERTURA DE CRÉDITO COM HIPOTECA E AVAL',X:''});
-  contrato.push({id:'g-c-primeira',T:nPrimeira>1?(femPrim?'PRIMEIRAS CONTRATANTES':'PRIMEIROS CONTRATANTES'):'PRIMEIRA CONTRATANTE',X:txtPrimeira});
-  contrato.push({id:'g-c-segunda',T:pf?'SEGUNDA CONTRATANTE':'SEGUNDO CONTRATANTE',X:txtSegunda});
+  contrato.push({id:'g-c-primeira',T:cli.tipo==='empresa'?'PRIMEIRA CONTRATANTE':(femPrim?'PRIMEIRA CONTRATANTE':'PRIMEIRO CONTRATANTE'),X:txtPrimeira});
+  contrato.push({id:'g-c-segunda',T:'SEGUNDA CONTRATANTE',X:txtSegundaCurta});
   if(aval.length)contrato.push({id:'g-c-terceiros',T:plA?'TERCEIROS CONTRATANTES':(femA?'TERCEIRA CONTRATANTE':'TERCEIRO CONTRATANTE'),X:txtTerceiros});
   contrato.push({id:'g-c-entre',T:'',X:`Entre os Contratantes, acima identificados, é celebrado o presente Contrato de abertura de crédito com hipoteca${aval.length?' e aval':''}, que se rege pelas cláusulas seguintes:`});
   contrato.push({id:'g-c-1',T:'PRIMEIRA\n(Abertura de crédito)',X:`Pelo presente contrato, a CAIXA concede à CLIENTE um empréstimo sob a forma de uma abertura de crédito até ao montante de ${eur(`${F}-montante`)} (${ext(`${F}-montante`)}), importância de que esta se confessa, desde já, devedora, o que a CAIXA aceita, que se rege pelas cláusulas constantes deste Contrato, bem como pelas cláusulas constantes do Documento Complementar que fica anexo e dele faz parte integrante para todos os efeitos legais e contratuais e demais disposições legais aplicáveis.`});
   const H=[
-    `1. Em garantia do capital emprestado, no referido montante de ${ext(`${F}-montante`)}, dos respetivos juros, por um período de três anos, que se fixam, para efeitos de registo, em ${pctExt(`${F}-juros`)} ao ano, acrescida de uma sobretaxa de até ${pctExt(`${F}-mora`)}, ao ano, em caso de mora, e das comissões, despesas, outros encargos e respetivos juros de mora emergentes do contrato de empréstimo que, em conjunto e para efeitos de registo, se fixam em ${ext(`${F}-despesas`)}, sendo assim o montante máximo garantido de ${eur(`${F}-hipoteca`)}, a HIPOTECANTE constitui hipoteca, a favor da CAIXA, que a aceita, sobre ${imovel}, ao qual a HIPOTECANTE atribui o valor de ${valAtrib} e doravante designado abreviadamente por Imóvel.`,
-    `2. O Imóvel hipotecado encontra-se já registado a favor da HIPOTECANTE pela inscrição ${v('f-im-apaq')||'AP. …'}.`];
+    `1. Em garantia do capital emprestado, no referido montante de ${eurExt(`${F}-montante`)}, dos respetivos juros, por um período de três anos, que se fixam, para efeitos de registo, em ${pctNum(`${F}-juros`)} (${pctExt(`${F}-juros`)} ao ano), acrescida de uma sobretaxa de até ${pctNum(`${F}-mora`)} (${pctExt(`${F}-mora`)}), ao ano, em caso de mora, das comissões, despesas, outros encargos e respetivos juros de mora emergentes do contrato de empréstimo que, em conjunto e para efeitos de registo, se fixam em ${eurExt(`${F}-despesas`)}, sendo assim o montante máximo garantido de ${eurExt(`${F}-hipoteca`)}, a CLIENTE constitui hipoteca, a favor da CAIXA, que a aceita, sobre ${imovel}, ao qual a CLIENTE atribui o valor de ${valAtrib} e doravante designado abreviadamente por Imóvel.`,
+    `2. O Imóvel hipotecado encontra-se já registado a favor da CLIENTE pela inscrição ${v('f-im-apaq')||'AP. …'}.`];
   if(txtMantidos)H.push(`3. ${txtMantidos}`);
   const R=[
-    `A hipoteca atrás referida é feita por tempo indeterminado, subsistirá enquanto se mantiver qualquer das responsabilidades que assegura, emergentes do empréstimo concedido, suas alterações, reformulações, renovações e prorrogações de prazos, sempre sem necessidade de qualquer outra formalidade e abrange, além do mais, (i) todas as construções e benfeitorias que existam à data do presente Contrato e as que, de futuro, venham a existir no referido Imóvel, como por exemplo as servidões, toda e qualquer coisa móvel ao mesmo ligadas, as árvores, arbustos e frutos naturais enquanto estiverem ligados ao solo, obrigando-se a HIPOTECANTE a requerer e promover, no prazo máximo de quinze dias após a verificação da situação, os respetivos averbamentos na Conservatória do Registo Predial competente, fazendo prova dos mesmos junto da CGD, ou não fazendo os averbamentos, fica a CAIXA desde já autorizada a requerê-los, caso em que os correspondentes recibos ficarão a constituir elementos referidos a este contrato para efeitos de exequibilidade; (ii) as indemnizações devidas por sinistro, expropriação ou quaisquer outras que a CGD possa, nos termos do artigo 692.º do Código Civil, receber, até pagamento integral das responsabilidades pela hipoteca garantidas.`,
-    `A HIPOTECANTE reconhece à CAIXA o poder de considerar os créditos emergentes deste Contrato imediata e integralmente vencidos se o Imóvel dado em garantia for objeto de venda, permuta, arrendamento, cedência de exploração ou qualquer outra forma de alienação ou oneração, incluindo a realização de quaisquer contratos-promessa, sem o prévio acordo, escrito, da CAIXA, bem como nos casos de desvalorização que não resulte de uso corrente, de penhora, arresto ou outro meio de apreensão judicial.`,
-    `A HIPOTECANTE obriga-se a segurar e a manter seguros o Imóvel em companhia de seguros aceite pela CAIXA, e a só com o seu acordo modificar o(s) respetivo(s) seguro(s), ficando a CAIXA, desde já, autorizada a alterá-los, a pagar por conta daquela os respetivos encargos, a celebrar um novo contrato de seguro por conta da mesma, a receber a indemnização em caso de sinistro e a aplicá-la diretamente no pagamento de prestações vencidas ou vincendas, e a averbar para estes fins as apólices a seu favor, se a HIPOTECANTE não o fizer. O(s) Seguro(s) deve(m) cobrir, de forma adequada, os riscos inerentes à propriedade, uso, detenção, posse e utilização do imóvel hipotecado, incluindo quanto ao risco de incêndio, inundação, sismos ou outros, pelo valor que a CGD indicar para o efeito.`,
-    `Enquanto se mantiver em vigor a presente hipoteca, a HIPOTECANTE obriga-se a pagar pontualmente todas as dívidas ao Estado, à Segurança Social, à Autoridade Tributária, bem como todas as demais que gozem de privilégios creditórios e a provar tais pagamentos sempre que a CGD o exija.`,
-    `Correrão por conta da HIPOTECANTE e serão por ela pagas quaisquer despesas ou encargos, incluindo fiscais, relacionados com a celebração, segurança, execução e extinção deste Contrato, incluindo as do registo da hipoteca, seu distrate e cancelamento.`,
+    `A hipoteca atrás referida é feita por tempo indeterminado, subsistirá enquanto se mantiver qualquer das responsabilidades que assegura, emergentes do empréstimo concedido, suas alterações, reformulações, renovações e prorrogações de prazos, sempre sem necessidade de qualquer outra formalidade e abrange, além do mais, (i) todas as construções e benfeitorias que existam à data do presente Contrato e as que, de futuro, venham a existir no referido Imóvel, como por exemplo as servidões, toda e qualquer coisa móvel ao mesmo ligadas, as árvores, arbustos e frutos naturais enquanto estiverem ligados ao solo, obrigando-se a CLIENTE a requerer e promover, no prazo máximo de quinze dias após a verificação da situação, os respetivos averbamentos na Conservatória do Registo Predial competente, fazendo prova dos mesmos junto da CGD, ou não fazendo os averbamentos, fica a CAIXA desde já autorizada a requerê-los, caso em que os correspondentes recibos ficarão a constituir elementos referidos a este contrato para efeitos de exequibilidade; (ii) as indemnizações devidas por sinistro, expropriação ou quaisquer outras que a CGD possa, nos termos do artigo 692.º do Código Civil, receber, até pagamento integral das responsabilidades pela hipoteca garantidas.`,
+    `A CLIENTE reconhece à CAIXA o poder de considerar os créditos emergentes deste Contrato imediata e integralmente vencidos se o Imóvel dado em garantia for objeto de venda, permuta, arrendamento, cedência de exploração ou qualquer outra forma de alienação ou oneração, incluindo a realização de quaisquer contratos-promessa, sem o prévio acordo, escrito, da CAIXA, bem como nos casos de desvalorização que não resulte de uso corrente, de penhora, arresto ou outro meio de apreensão judicial.`,
+    `A CLIENTE obriga-se a segurar e a manter seguros o Imóvel em companhia de seguros aceite pela CAIXA, e a só com o seu acordo modificar o(s) respetivo(s) seguro(s), ficando a CAIXA, desde já, autorizada a alterá-los, a pagar por conta daquela os respetivos encargos, a celebrar um novo contrato de seguro por conta da mesma, a receber a indemnização em caso de sinistro e a aplicá-la diretamente no pagamento de prestações vencidas ou vincendas, e a averbar para estes fins as apólices a seu favor, se a CLIENTE não o fizer. O(s) Seguro(s) deve(m) cobrir, de forma adequada, os riscos inerentes à propriedade, uso, detenção, posse e utilização do imóvel hipotecado, incluindo quanto ao risco de incêndio, inundação, sismos ou outros, pelo valor que a CGD indicar para o efeito.`,
+    `Enquanto se mantiver em vigor a presente hipoteca, a CLIENTE obriga-se a pagar pontualmente todas as dívidas ao Estado, à Segurança Social, à Autoridade Tributária, bem como todas as demais que gozem de privilégios creditórios e a provar tais pagamentos sempre que a CGD o exija.`,
+    `Correrão por conta da CLIENTE e serão por ela pagas quaisquer despesas ou encargos, incluindo fiscais, relacionados com a celebração, segurança, execução e extinção deste Contrato, incluindo as do registo da hipoteca, seu distrate e cancelamento.`,
     `Qualquer uma das partes inadimplente é responsável por todas as despesas judiciais e extrajudiciais, incluindo honorários de advogados e de solicitadores, devidamente documentadas, que a contraparte haja de fazer para garantia e cobrança do seu crédito, caso a mesma venha a ter vencimento de causa.`,
-    `Se a HIPOTECANTE não pagar atempadamente qualquer das mencionadas despesas, poderá a CAIXA fazê-lo, se assim o entender, tendo, nesse caso, direito ao respetivo reembolso. No entanto, o direito ao reembolso de despesas fundadas na mora da CLIENTE está limitado às despesas que, por conta desta, tenham sido suportadas pela CAIXA perante terceiros, mediante apresentação da respetiva justificação documental.`,
+    `Se a CLIENTE não pagar atempadamente qualquer das mencionadas despesas, poderá a CAIXA fazê-lo, se assim o entender, tendo, nesse caso, direito ao respetivo reembolso. No entanto, o direito ao reembolso de despesas fundadas na mora da CLIENTE está limitado às despesas que, por conta desta, tenham sido suportadas pela CAIXA perante terceiros, mediante apresentação da respetiva justificação documental.`,
     `Os documentos que representam os créditos da CAIXA constituirão títulos referidos a este Contrato e dele fazem parte integrante para fins de execução, se for caso disso.`];
   R.forEach(t=>H.push(`${H.length+1}. ${t}`));
   contrato.push({id:'g-c-2',T:'SEGUNDA\n(Hipoteca)',X:H.join('\n')});
   let nCl=3;const ORD=['','PRIMEIRA','SEGUNDA','TERCEIRA','QUARTA','QUINTA'];
   if(aval.length)contrato.push({id:'g-c-3',T:`${ORD[nCl++]}\n(Aval)`,X:`${plA?(femA?'As Terceiras Contratantes prestam':'Os Terceiros Contratantes prestam'):(femA?'A Terceira Contratante presta':'O Terceiro Contratante presta')} aval na livrança em branco entregue em titulação e garantia das obrigações pecuniárias emergentes do presente Contrato, livrança que será preenchida nos termos do respetivo pacto de preenchimento constante do Documento Complementar que é anexo e parte integrante deste Contrato.`});
-  contrato.push({id:'g-c-4',T:ORD[nCl++],X:`${pf?'A Segunda Contratante aceita':'O Segundo Contratante aceita'} para a CAIXA, que representa, a presente hipoteca${aval.length?' e aval':''}, nos termos e condições exarados.`});
+  contrato.push({id:'g-c-4',T:ORD[nCl++],X:`A Segunda Contratante aceita para a CAIXA, que representa, a presente hipoteca${aval.length?' e aval':''}, nos termos e condições exarados.`});
   contrato.push({id:'g-c-data',T:'',X:`${v('f-acgd-local')||'Évora'}, ${dataExtenso(v('f-data-ato'))}`});
 
   /* ══════════ TERMO ⚠ ══════════ */
@@ -4171,24 +4182,34 @@ function comporACGD(){
   const entTxt=sol?`${(sol.assinNome||sol.nome).toUpperCase()}, Solicitadora, titular da cédula profissional n.º ${sol.cedula}, número de identificação fiscal ${sol.nif}`+(fora?`, com domicílio profissional na ${sol.domicilio}`:''):'…';
   const localTxt=fora?`na ${v('f-local-morada')||'…'}`:(sol?`no meu escritório sito na ${sol.domicilio}`:'no meu escritório sito na …');
   termo.push({id:'g-t-cab',T:'TERMO DE AUTENTICAÇÃO',X:`No dia ${dataExtenso(v('f-data-ato'))}, ${localTxt}, perante mim, ${entTxt}, compareceram os seguintes outorgantes:`});
-  termo.push({id:'g-t-primeiro',T:nPrimeira>1?'PRIMEIROS':(femPrim?'PRIMEIRA':'PRIMEIRO'),X:mut.map(textoOutorgante).join(';\n')+'.'});
+  const nomesAval=new Set(aval.map(o=>String(o.nome||'').trim().toUpperCase()));
+  const repsT=cli.tipo==='empresa'?((cli.reps&&cli.reps.length)?cli.reps:[{}]):[];
+  const txtPrimeiroT=cli.tipo==='empresa'
+    ?repsT.map(r=>{const nm=(r.nome||'…').toUpperCase();
+        const id=nomesAval.has(nm)?`${nm}, melhor identificad${r.genero==='F'?'a':'o'} abaixo`:`${idCompleta(r.nome,r.natural,r.cc,r.ccval,r.nif,r.genero==='F')}, ${r.ec||'…'}`;
+        return`${id}, com domicílio profissional ${r.morada?'na '+r.morada:'na sede da sociedade'}, que outorga na qualidade de ${r.qual||'Gerente'}`;}).join(' e ')
+      +` e em representação da ${(cli.denom||'…').toUpperCase()}, pessoa coletiva n.º ${String(cli.nipc||'…').replace(/\s/g,'')}, com sede em ${(cli.sede||'…').replace(/^(na|no|em)\s+/i,'')}${cli.capital?`, com o capital social de ${fmtValor(parseValor(cli.capital))} Euros`:''}.`
+    :mut.map(textoOutorgante).join(';\n')+'.';
+  termo.push({id:'g-t-primeiro',T:(repsT.length>1?'PRIMEIROS':(repsT.length===1&&repsT[0].genero==='F')||(!repsT.length&&femPrim)?'PRIMEIRA':'PRIMEIRO'),X:txtPrimeiroT});
   termo.push({id:'g-t-segundo',T:pf?'SEGUNDA':'SEGUNDO',X:txtSegunda.replace(/, adiante (Segunda|Segundo) Contratante,/,',').replace(/, adiante designada por CGD ou CAIXA;$/,'.')});
   if(aval.length)termo.push({id:'g-t-terceiros',T:plA?(femA?'TERCEIRAS':'TERCEIROS'):(femA?'TERCEIRA':'TERCEIRO'),X:aval.map(textoOutorgante).join(';\n')+'.'});
+  termo.forEach(b=>{if(b.id==='g-t-segundo')b.T='SEGUNDA';});
   termo.push({id:'g-t-apresentaram',T:'',X:`Os signatários apresentaram o documento de CONTRATO DE ABERTURA DE CRÉDITO COM HIPOTECA${aval.length?' E AVAL':''} e respetivo Documento Complementar, que ficam anexos e que dele fazem parte integrante, tendo declarado que estão perfeitamente conscientes do seu conteúdo, que o mesmo exprime a sua vontade e nas invocadas qualidades o assinaram.`});
   const pc=partesProcuracao(v('f-mut-proc-cod')||ACGD_PROC_COD);
   const L=[];
   L.push(`— Que, nos termos da Lei n.º 78/2021, de 24 de novembro, o contrato que aqui se autentica é celebrado no âmbito da atividade financeira reservada a entidades habilitadas junto do Banco de Portugal, onde a CAIXA se encontra registada sob o n.º ${BK.bdp};`);
   L.push(`— A identidade de todos os outorgantes pela exibição dos respetivos documentos de identificação e a qualidade e poderes ${pf?'da':'do'} outorgante em representação da CAIXA pela procuração depositada em www.procuracoesonline.mj.pt através do código de acesso ${pc.cod||ACGD_PROC_COD}${pc.data?`, de ${pc.data}`:''};`);
   L.push(`— Os poderes de representação da ${BK.denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||BK.crcCod||CGD_CRC||'…'}, disponível em www.eportugal.gov.pt, válida até ${dPT(v('f-mut-crc-val')||BK.crcVal||CGD_CRC_VAL)}, verificando-se ainda a exclusão da ${BK.denom} do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do Regime Jurídico do Registo Central do Beneficiário Efetivo, aprovado pela Lei n.º 89/2017, de 21 de agosto;`);
-  [...mut,...aval].map(o=>linhaEmpresa(o,o===cli?'CLIENTE':'TERCEIRA CONTRATANTE')).filter(Boolean).forEach(l=>L.push('— '+l.replace(/^—\s*/,'')));
+  if(cli.tipo==='empresa')L.push(`— Verifiquei a qualidade e poderes de representação da PRIMEIRA OUTORGANTE através da Certidão de Registo Comercial com o código de acesso ${cli['crc-cod']||'…'}, disponível em www.eportugal.gov.pt em vigor e ata de Assembleia Geral n.º ${cli['ata-num']||'…'} lavrada em ${cli['ata-data']?dPT(cli['ata-data']):'…'}, que arquivo e também o cumprimento das obrigações declarativas para efeitos de Registo Central do Beneficiário Efetivo (RCBE) através de consulta em rcbe.justica.gov.pt nos termos da Lei n.º 89/2017, de 21 de agosto.`);
+  aval.map(o=>linhaEmpresa(o,'TERCEIRA OUTORGANTE')).filter(Boolean).forEach(l=>L.push('— '+l.replace(/^—\s*/,'')));
   linhasPredios().filter(Boolean).forEach(l=>L.push(l));
   [linhaRequerimento('f-im',null)].filter(Boolean).forEach(l=>L.push(l));
   onus.map(textoOnusTermo).filter(Boolean).forEach(l=>L.push(l));
   termo.push({id:'g-t-verifiquei',T:'',X:`Verifiquei:\n${L.join('\n')}`});
-  termo.push({id:'g-t-rgpd',T:'',X:`Informei:\nOs Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`});
+  const RGPD=`- Os Outorgantes prestam mutuamente o necessário e expresso consentimento para o tratamento e conservação dos seus dados pessoais, nos termos do Regulamento (UE) 2016/679 do Parlamento Europeu e do Conselho, de 27 de abril, na medida indispensável à celebração do presente contrato, e declaram ter sido informados de que os elementos de identificação e as reproduções dos documentos que lhe serviram de base são recolhidos e conservados pelo período legal de sete anos, nos termos da Lei n.º 83/2017, de 18 de agosto.`;
   const arq=(v('f-arquivados')||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>'— '+l.replace(/^—\s*/,'')).join('\n');
   if(arq)termo.push({id:'g-t-arquivados',T:'',X:`Arquivados:\n${arq}`});
-  termo.push({id:'g-t-leitura',T:'',X:`A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, que será efetuado em seguida nesta mesma data, em www.predialonline.mj.pt.\nAs partes dispensaram a leitura do Documento Complementar por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-o, ainda assim, como parte integrante do presente contrato.`});
+  termo.push({id:'g-t-leitura',T:'',X:`Informei:\n${RGPD}\n- A leitura e explicação do documento particular que aqui se autentica e do presente Termo de Autenticação, foram efetuadas em voz alta e na presença de todos os Outorgantes, que declararam estar plenamente esclarecidos quanto ao seu conteúdo e informei que nos termos do n.º 2 do artigo 24.º do Decreto-Lei n.º 116/2008, de 4 de julho, este Documento Particular Autenticado só produz efeitos após depósito eletrónico, que será efetuado em seguida nesta mesma data, em www.predialonline.mj.pt.\n- As partes dispensaram a leitura do Documento Complementar por já o haverem lido e conhecerem o seu conteúdo, reconhecendo-o, ainda assim, como parte integrante do presente contrato.`});
   return{termo,contrato,anexo:[]};
 }
 function comporMH_CCAM(variante){
