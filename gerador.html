@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-24.4</span>
+    <span class="page-sub">piloto · v2026-11-24.5</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -5967,7 +5967,8 @@ function comporBase(){
      coletiva, quem a representa em identificação simplificada, e a designação. */
   const txtMutuanteCurto=(()=>{
     if(!ehCVMH)return'';
-    if(v('f-mutuante')!=='cgd')return`${v('f-mutuante-txt')||'…'}, adiante designada por Terceira Contratante.`;
+    /* (24/11/2026) Qualquer banco da tabela BANCOS (CGD ou CCAM) — antes só a CGD passava. */
+    if(!BANCOS[v('f-mutuante')])return`${v('f-mutuante-txt')||'…'}, adiante designada por Terceira Contratante.`;
     const r=representanteCAIXA();
     return`${bancoAtual().denom}, pessoa coletiva n.º ${bancoAtual().nipc}, neste ato representada por ${r.curto||'…'}, adiante designada por Terceira Contratante ou ${bancoAtual().curto.replace(/^a /,'').toUpperCase()}.`;
   })();
@@ -5978,7 +5979,11 @@ function comporBase(){
      é do contrato, e daqui saiu. */
   const txtMutuante=(()=>{
     if(!ehCVMH)return'';
-    const base=v('f-mutuante')==='cgd'
+    const _bk=bancoAtual();
+    const base=!BANCOS[v('f-mutuante')]?(v('f-mutuante-txt')||'…')
+      :v('f-mutuante')!=='cgd'
+      ?`${_bk.denom}, com sede ${_bk.prep||'em'} ${_bk.sede}, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva ${_bk.nipc}, com o capital social de €${String(_bk.capital).replace(/\./g,' ')} (${valorExtenso(_bk.capital).toLowerCase()})`
+      :v('f-mutuante')==='cgd'
       ?`${bancoAtual().denom}, sociedade anónima, com sede ${bancoAtual().prep||'em'} ${bancoAtual().sede}, matriculada na Conservatória do Registo Comercial com o número único de matrícula e de identificação de pessoa coletiva ${bancoAtual().nipc}, com o capital social de ${bancoAtual().capital} Euros`
       :(v('f-mutuante-txt')||'…');
     if(v('f-mut-repr'))return`${v('f-mut-repr')}, em nome e em representação da ${base}.`;
@@ -6011,7 +6016,7 @@ function comporBase(){
         return ` e a qualidade e poderes de quem representa a CAIXA pela procuração, conjugada com a consulta do substabelecimento, depositadas em www.procuracoesonline.mj.pt através do código de acesso ${pc.cod||'…'}${pc.data?`, de ${pc.data}`:''}`;})()
     : cgdOut
     ? ` bem como a qualidade e poderes dos outorgantes em representação da CAIXA, mediante consulta da procuração depositada em www.procuracoesonline.mj.pt através dos códigos de acesso ${cgdOut['cgd-proc-cod']||'…'} nos termos ${cgdOut['cgd-proc-poderes']||'…'}`
-    : (ehCVMH&&v('f-mutuante')==='cgd'
+    : (ehCVMH&&BANCOS[v('f-mutuante')]
       ? (()=>{
           const r=representanteCAIXA();
           const cgd=v('f-mut-quem')==='cgd';
@@ -6019,15 +6024,15 @@ function comporBase(){
           const cod=pc.cod||'…', dt=pc.data||r.data;
           /* A data entra como «, de …», confirmado pela Liliana: o código é o
              mesmo para as duas solicitadoras e é a data que as distingue. */
-          return ` e a qualidade e poderes de quem representa a CAIXA pela procuração${cgd?'':', conjugada com a consulta do substabelecimento,'} depositada${cgd?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${cod}${dt?`, de ${dt}`:''}`;
+          return ` e a qualidade e poderes de quem representa ${v('f-mutuante')==='cgd'?'a CAIXA':bancoAtual().curto} pela procuração${cgd?'':', conjugada com a consulta do substabelecimento,'} depositada${cgd?'':'s'} em www.procuracoesonline.mj.pt através do código de acesso ${cod}${dt?`, de ${dt}`:''}`;
         })()
       : '');
   /* ── CVMH · certidão comercial da CAIXA e exclusão do RCBE ──
      Faltava por inteiro neste ramo: a CAIXA entra como Terceira Contratante e
      os seus poderes não eram verificados em lado nenhum. Mesma redação do
      tronco do mútuo. */
-  const linhaCertidaoCGD=((ehCVMH&&v('f-mutuante')==='cgd')||cgdOut)
-    ? `— Os poderes de representação da ${bancoAtual().denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||CGD_CRC}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):dPT(CGD_CRC_VAL)}${bancoAtual().rcbe?', verificando-se ainda a exclusão da '+bancoAtual().denom+' do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do '+(ehCVMH?'referido Regime Jurídico':'Regime Jurídico do Registo Central do Beneficiário Efetivo, aprovado pela Lei n.º 89/2017, de 21 de agosto'):''};`
+  const linhaCertidaoCGD=((ehCVMH&&BANCOS[v('f-mutuante')])||cgdOut)
+    ? `— Os poderes de representação da ${bancoAtual().denom} através da Certidão de Registo Comercial com o número de acesso ${v('f-mut-crc-cod')||(cgdOut||v('f-mutuante')==='cgd'?CGD_CRC:(bancoAtual().crcCod||'…'))}, disponível em www.eportugal.gov.pt, válida até ${v('f-mut-crc-val')?dPT(v('f-mut-crc-val')):(cgdOut||v('f-mutuante')==='cgd'?dPT(CGD_CRC_VAL):(bancoAtual().crcVal?dPT(bancoAtual().crcVal):'…'))}${bancoAtual().rcbe?', verificando-se ainda a exclusão da '+bancoAtual().denom+' do âmbito do RCBE, ao abrigo da alínea b) do artigo 4.º do '+(ehCVMH?'referido Regime Jurídico':'Regime Jurídico do Registo Central do Beneficiário Efetivo, aprovado pela Lei n.º 89/2017, de 21 de agosto'):''};`
     : '';
   /* A linha do município já cobre a identidade dos outorgantes, pelo que
      substitui a abertura genérica — mas só essa. As procurações, os assentos,
@@ -9723,7 +9728,7 @@ function calcularAlertas(){
     if(v('f-mut-proc-val')&&v('f-data-ato')&&v('f-mut-proc-val')<v('f-data-ato'))
       push('mh-proccad','bloqueio','Mútuo com Hipoteca',`Procuração do terceiro outorgante caducada à data do ato (válida até ${dPT(v('f-mut-proc-val'))}).`);
     /* A certidão comercial é declarada no termo como verificada e em vigor. */
-    if(ehMH()&&v('f-mutuante')==='cgd'){
+    if(ehMH()&&BANCOS[v('f-mutuante')]){
       const cv=v('f-mut-crc-val')||CGD_CRC_VAL;
       if(!v('f-mut-crc-cod'))push('mh-crccod','bloqueio','Mutuante','Certidão comercial da CAIXA sem código de acesso.');
       if(v('f-data-ato')&&cv<v('f-data-ato'))
