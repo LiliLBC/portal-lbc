@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-25.1</span>
+    <span class="page-sub">piloto · v2026-11-25.2</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -6148,7 +6148,7 @@ function comporBase(){
   termo.push({id:'t-dpa',T:'',X:`Este ato é titulado por documento particular autenticado, ao abrigo do D.L. n.º 76-A/2006, de 29 de março.`});
   
   if(ehCVMH&&seloMutuo().valor)
-    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que este contrato está sujeito a Imposto de Selo da verba 17.1.3, da TGIS e que será liquidado pela CAIXA no valor de ${seloMutuo().valor}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
+    termo.push({id:'t-mh-selo',T:'',X:`Informei os Outorgantes que este contrato está sujeito a Imposto de Selo da verba 17.1.3, da TGIS e que será liquidado pela ${v('f-mutuante')==='cgd'||!BANCOS[v('f-mutuante')]?'CAIXA':bancoAtual().curto.replace(/^a /,'')} no valor de ${seloMutuo().valor}, de acordo com o Artigo 23.º do Código do Imposto de Selo.`});
   if(arq)termo.push({id:'t-arquivados',T:'',X:`Arquivados:\n${arq}`});
   termo.push({id:'t-leitura',T:'',X:fechoTermo(ehCVMH)});
 
