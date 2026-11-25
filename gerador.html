@@ -184,7 +184,7 @@ body.doc-oculto .pane-form{max-width:none;width:100%;border-right:none}
     <a class="back-btn" href="index.html">‹ Portal</a>
     <span class="page-title">Gerador CT Compra e Venda Imóveis</span>
     <span class="tipo-contrato" id="tipo-badge">—</span>
-    <span class="page-sub">piloto · v2026-11-24.5</span>
+    <span class="page-sub">piloto · v2026-11-25.1</span>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-sm" onclick="document.body.classList.toggle('doc-oculto')">◫ Documento</button>
@@ -1723,6 +1723,7 @@ const BANCOS={
     sede:'Parque Industrial e Tecnológico de Évora, Rua Circular Norte, Lote 75, em Évora',
     nipc:'508574889',
     capital:'5.000.000,00',
+    capitalNota:'mínimo variável',   /* «5.000.000,00 Euros (mínimo variável)» — CVMH da Liliana, 25/11/2026 */
     prep:'no',            /* «com sede NO Parque Industrial…» */
     bdp:'6440',
     rcbe:false,
@@ -5969,6 +5970,15 @@ function comporBase(){
     if(!ehCVMH)return'';
     /* (24/11/2026) Qualquer banco da tabela BANCOS (CGD ou CCAM) — antes só a CGD passava. */
     if(!BANCOS[v('f-mutuante')])return`${v('f-mutuante-txt')||'…'}, adiante designada por Terceira Contratante.`;
+    /* (25/11/2026) CCAM — redação da Liliana (CVMH ativepoint): com sede, e o procurador
+       com naturalidade, estado civil e NIF. */
+    if(v('f-mutuante')!=='cgd'){
+      const bk=bancoAtual();
+      const rep=v('f-mut-quem')==='cgd'
+        ?[(v('f-mut-p-nome')||'…').toUpperCase(),v('f-mut-p-natural')?`natural de ${v('f-mut-p-natural')}`:'',String(v('f-mut-p-ec')||'').split(/[ ,]/)[0],v('f-mut-p-nif')?`número de identificação fiscal ${v('f-mut-p-nif')}`:''].filter(Boolean).join(', ')
+        :(representanteCAIXA().curto||'…');
+      return`${bk.denom}, pessoa coletiva n.º ${bk.nipc}, com sede em ${bk.sede}, neste ato representada por ${rep}, adiante designada por ${bk.curto.replace(/^a /,'').toUpperCase()} ou TERCEIRA CONTRATANTE.`;
+    }
     const r=representanteCAIXA();
     return`${bancoAtual().denom}, pessoa coletiva n.º ${bancoAtual().nipc}, neste ato representada por ${r.curto||'…'}, adiante designada por Terceira Contratante ou ${bancoAtual().curto.replace(/^a /,'').toUpperCase()}.`;
   })();
@@ -5982,7 +5992,7 @@ function comporBase(){
     const _bk=bancoAtual();
     const base=!BANCOS[v('f-mutuante')]?(v('f-mutuante-txt')||'…')
       :v('f-mutuante')!=='cgd'
-      ?`${_bk.denom}, com sede ${_bk.prep||'em'} ${_bk.sede}, matriculada na Conservatória do Registo Comercial sob o número único de matrícula e de pessoa coletiva ${_bk.nipc}, com o capital social de €${String(_bk.capital).replace(/\./g,' ')} (${valorExtenso(_bk.capital).toLowerCase()})`
+      ?`${_bk.denom}, com sede em ${_bk.sede}, com o capital social de ${_bk.capital} Euros${_bk.capitalNota?` (${_bk.capitalNota})`:''}`
       :v('f-mutuante')==='cgd'
       ?`${bancoAtual().denom}, sociedade anónima, com sede ${bancoAtual().prep||'em'} ${bancoAtual().sede}, matriculada na Conservatória do Registo Comercial com o número único de matrícula e de identificação de pessoa coletiva ${bancoAtual().nipc}, com o capital social de ${bancoAtual().capital} Euros`
       :(v('f-mutuante-txt')||'…');
