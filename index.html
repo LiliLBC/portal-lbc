@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-25.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-25.2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20839,6 +20839,8 @@ ${lista('✕ Impeditivo de escritura',p.impeditivo,'#8E2A22')}${lista('⚠ Recom
    O mapa global fica em Financeiro › Conta corrente processos.
    ════════════════════════════════════════════════════════════════════════════ */
 const LISTA_CONTA_PROC='Conta_Processos';
+/* graphDelete do portal vive dentro de outro módulo — este tem o seu (25/11/2026) */
+async function cprGraphDelete(url){await renovarToken();const r=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+graphToken}});if(!r.ok&&r.status!==204&&r.status!==404)throw new Error('Erro '+r.status);}
 let listaIdContaProc=null,CPR=null,CPRprom=null,cprAtual=null;
 /* Os valores deixam de viver nas tarefas (a Andreia via-os). Desligado, não apagado. */
 const VALORES_TAREFAS_ATIVO=false;
@@ -20921,7 +20923,7 @@ function cprDel(lista,k){cprAtual[lista].splice(k,1);cprPintarModal();}
 function cprPintarModal(){
   const r=cprAtual;const e=escHtml;
   document.getElementById('cpr-cab').innerHTML=r.procId
-    ?`<b>${e(r.processo||'—')}</b><div style="color:var(--text-faint)">${e(r.cliente||'')}</div>`
+    ?`<b>${e(r.processo||'—')}</b> <button class="btn btn-sm" onclick="cprEscolherProc()" style="padding:1px 8px;font-size:11px" title="Ligar esta conta a outro processo / cliente">Mudar processo</button><div style="color:var(--text-faint)">${e(r.cliente||'')}</div>`
     :`<b>${e(r.processo||'—')}</b> <span style="color:var(--red);font-size:11.5px">· sem processo ligado</span> <button class="btn btn-sm" onclick="cprEscolherProc()" style="padding:2px 8px;font-size:11px">Ligar a um processo</button><div style="color:var(--text-faint)">${e(r.cliente||'')}</div>`;
   const inp=(v,on,st='',tp='text',ph='')=>`<input type="${tp}" class="form-input" style="padding:4px 6px;font-size:12px;${st}" value="${e(v==null?'':String(v))}" placeholder="${ph}" ${on}>`;
   const tabela=(lista,cols,tit,bt)=>`<div style="margin-top:.8rem"><div style="font-weight:600;font-size:12.5px;margin-bottom:.3rem">${tit} <button class="btn btn-sm" onclick="cprAdd('${lista}')" style="padding:1px 8px;font-size:11px;margin-left:.4rem">+ ${bt}</button></div>
@@ -20975,7 +20977,7 @@ async function cprGravar(){
 async function cprApagar(){
   const r=cprAtual;if(!r||!r.spId)return;
   if(!confirm(`Apagar a conta corrente de «${r.processo}»? Os valores lançados perdem-se.`))return;
-  try{await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContaProc}/items/${r.spId}`);
+  try{await cprGraphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContaProc}/items/${r.spId}`);
     showToast('Conta apagada','success');cprFechar();await cprCarregar(true);cprPintarBotoes();cprMapa();}
   catch(e){showToast('Erro: '+e.message,'error');}
 }
@@ -21001,7 +21003,7 @@ async function cprPastaProcs(pastaId,nomeCliente){
   const el=document.getElementById('cpr-pl');el.innerHTML='<div style="font-size:11.5px">A carregar…</div>';
   try{const d=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}/children?$top=200`);
     const ps=(d.value||[]).filter(i=>i.folder).sort((a,b)=>(b.name||'').localeCompare(a.name||''));
-    el.innerHTML=`<div style="font-size:11px;color:var(--text-faint);padding:.2rem .5rem">${escHtml(nomeCliente)}</div>`+(ps.map(s=>{const usado=cprDoProc(s.id);
+    el.innerHTML=`<div style="font-size:11px;color:var(--text-faint);padding:.2rem .5rem">${escHtml(nomeCliente)}</div>`+(ps.map(s=>{const _u=cprDoProc(s.id);const usado=_u&&String(_u.spId)!==String(cprAtual&&cprAtual.spId);
       return`<div style="padding:.3rem .5rem;border-bottom:1px solid var(--border);cursor:${usado?'not-allowed':'pointer'};font-size:12px;${usado?'opacity:.5':''}" ${usado?'title="Este processo já tem conta"':`onclick="cprLigar('${s.id}',decodeURIComponent('${encodeURIComponent(s.name)}'),'${pastaId}',decodeURIComponent('${encodeURIComponent(nomeCliente)}'))"`}>📂 ${escHtml(s.name)}${usado?' · já tem conta':''}</div>`;}).join('')||'<div style="font-size:11.5px;color:var(--text-faint);padding:.3rem .5rem">Esta pasta não tem processos.</div>');}
   catch(e){el.innerHTML=`<div class="notice notice-error">${escHtml(e.message)}</div>`;}
 }
@@ -21066,14 +21068,14 @@ async function cprMigrarTarefas(){
         :((parseFloat(t[T.valorPago])||0)?[{data:'',tipo:'hon',valor:parseFloat(t[T.valorPago]),nota:'valor já registado antes'}]:[]);
       const desp=(parseFloat(t[T.despesasContaCliente])||0)?[{data:'',desc:'Despesas (vindas da tarefa)',valor:parseFloat(t[T.despesasContaCliente])}]:[];
       const o={procId:'',pastaId:'',cliente:t[T.cliente]||'',processo:t[T.titulo]||'Tarefa',adj:'sim',adjData:'',hon:parseFloat(t[T.valorServico])||'',iva:L.iva||'incluido',desp,ent,fat:[],notas:'Valores passados da tarefa em '+new Date().toLocaleDateString('pt-PT'),fechado:false,origem:'tarefa:'+t.id};
-      if((CPR||[]).some(x=>x.origem===o.origem))continue;
-      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContaProc}/items`,{fields:{Title:o.processo.slice(0,250),Dados:JSON.stringify(o)}});
+      /* já passada antes (p. ex. se a limpeza falhou a meio): não duplica, só acaba a limpeza */
+      if(!(CPR||[]).some(x=>x.origem===o.origem))await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContaProc}/items`,{fields:{Title:o.processo.slice(0,250),Dados:JSON.stringify(o)}});
       /* só depois de gravado na lista privada é que se apaga das tarefas */
       try{await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${t.id}/fields`,{[T.valorServico]:null,[T.despesasContaCliente]:null,[T.valorPago]:null});}
       catch(_){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${t.id}/fields`,{[T.valorServico]:0,[T.despesasContaCliente]:0,[T.valorPago]:0});}
       const r=m[String(t.id)];
-      if(r&&listaIdConta){for(const x of r.entradas)if(x.spId)await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${x.spId}`);
-        if(r.cfg)await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${r.cfg}`);}
+      if(r&&listaIdConta){for(const x of r.entradas)if(x.spId)await cprGraphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${x.spId}`);
+        if(r.cfg)await cprGraphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${r.cfg}`);}
       n++;
     }
     CCL=null;showToast(`${n} tarefa(s) passadas — ligue-as agora aos processos.`,'success');document.getElementById('cpr-f').value='semproc';cprMapa();
