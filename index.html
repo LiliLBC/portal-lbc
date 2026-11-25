@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-24.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-25.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6242,9 +6242,9 @@ function tarValores(i){const L=mtPagLer(i),pag=L.entradas;const vs=parseFloat(i[
   const pago=pag.length?rh+rd:(parseFloat(i[T.valorPago])||0);
   return{pag,vs,desp,pago,h,rh,rd,iva:L.iva,falta:(h.total+desp)-pago,semRecibo:pag.filter(x=>(parseFloat(x.valor)||0)>0&&x.recibo!=='sim'&&!x.nota).length};}
 const tarEur=n=>(n||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-function tarFaltaTxt(i){const v=tarValores(i);if(!v.vs&&!v.pago)return'';
+function tarFaltaTxt(i){if(typeof VALORES_TAREFAS_ATIVO!=='undefined'&&!VALORES_TAREFAS_ATIVO)return'';const v=tarValores(i);if(!v.vs&&!v.pago)return'';
   return v.falta>0.005?` · <span style="color:var(--red);font-weight:600">falta ${tarEur(v.falta)}</span>`:` · <span style="color:#166534;font-weight:600">pago</span>`;}
-function tarValoresHTML(i){const v=tarValores(i);
+function tarValoresHTML(i){if(typeof VALORES_TAREFAS_ATIVO!=='undefined'&&!VALORES_TAREFAS_ATIVO)return'';const v=tarValores(i);
   const bt=`<button class="btn btn-sm" onclick="event.stopPropagation();abrirTarefaModal('${i.id}','valores')" style="padding:2px 8px;font-size:11px;margin-left:.4rem">${v.vs||v.pago||v.desp?'Lançar entrada / editar':'Lançar valores'}</button>`;
   if(!v.vs&&!v.pago&&!v.desp)return`<div style="margin-top:.6rem"><span style="font-weight:600;color:var(--text)">💶 Conta corrente</span> <span style="color:var(--text-faint)">sem valores</span>${bt}</div>`;
   return`<div style="margin-top:.6rem"><div style="font-weight:600;color:var(--text);margin-bottom:.3rem">💶 Conta corrente${bt}</div>
@@ -8521,6 +8521,7 @@ async function toggleProcessosCliente(pastaId,nomeCliente){
           <button class="btn btn-sm" data-lig-btn="PROCESSOS|${s.id}" onclick="ligAbrir('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),decodeURIComponent('${encodeURIComponent(s.webUrl||'')}'))" title="Pastas ligadas" style="padding:2px 6px;font-size:10px">🔗</button>
           <button class="btn btn-sm" onclick="etqEditar('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'),'pasta',decodeURIComponent('${encodeURIComponent(nomeCliente||'')}'))" title="Etiquetas" style="padding:2px 6px;font-size:10px">🏷</button>
           ${ANALISADOR_ATIVO?`<button class="btn btn-sm" onclick="abrirAnalisador('PROCESSOS','${s.id}',decodeURIComponent('${encodeURIComponent(s.name||'')}'))" title="Analisador predial" style="padding:2px 6px;font-size:10px">🔎</button>`:''}
+          ${typeof cprBotao==='function'?cprBotao(s.id,s.name,pastaId,nomeCliente):''}
           <button class="btn btn-sm" onclick="editarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Renomear" style="padding:2px 6px;font-size:10px">✏️</button>
           <button class="btn btn-sm" onclick="apagarProcesso('${s.id}','${safeNomeProc}','${pastaId}')" title="Apagar" style="padding:2px 6px;font-size:10px;color:var(--red);border-color:var(--red)">🗑</button>
         </div>`;
@@ -15186,8 +15187,8 @@ init();
       <div class="form-group form-full"><label class="form-label">Observações</label><textarea class="form-input" id="mt-obs" rows="3" placeholder="Detalhes/descrição do que é preciso fazer..."></textarea></div>
     </div>
 
-    <!-- Caixa expansível: Valores -->
-    <div style="margin-top:1rem;border:1px solid var(--border-soft);border-radius:8px;overflow:hidden">
+    <!-- Caixa expansível: Valores — escondida desde 25/11/2026 (os valores passaram para a conta corrente privada dos processos) -->
+    <div id="mt-caixa-valores" style="margin-top:1rem;border:1px solid var(--border-soft);border-radius:8px;overflow:hidden">
       <div onclick="toggleMtSeccao('valores')" style="padding:.6rem .85rem;background:var(--bg-secondary);cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
         <div style="font-weight:500;font-size:13px">💶 Conta corrente (valores e entradas) <span id="mt-valores-resumo" style="font-weight:400;color:var(--text-muted);font-size:11px;margin-left:6px"></span></div>
         <svg id="mt-arr-valores" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .2s"><path d="M4 6l4 4 4-4"/></svg>
@@ -20824,6 +20825,297 @@ ${lista('✕ Impeditivo de escritura',p.impeditivo,'#8E2A22')}${lista('⚠ Recom
       await avCronoGravar(i,{ciclos,reaberto:null});
     }}finally{reparando=false;}
   };
+})();
+</script>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════
+   CONTA CORRENTE DOS PROCESSOS — só a Liliana (25/11/2026)
+   Cada processo (subpasta dentro da pasta do cliente, em Processos › 📂) tem a sua
+   conta: adjudicação, honorários (com IVA), despesas pagas pela LBC por conta do
+   cliente, entradas recebidas e faturas emitidas. Os dados ficam na lista
+   «Conta_Processos» (colunas Title + Dados), com permissões só da Liliana, como a
+   Contabilidade. O portal só mostra isto a quem tem a área financeira — mas quem
+   protege de facto é a permissão da lista no SharePoint.
+   O mapa global fica em Financeiro › Conta corrente processos.
+   ════════════════════════════════════════════════════════════════════════════ */
+const LISTA_CONTA_PROC='Conta_Processos';
+let listaIdContaProc=null,CPR=null,CPRprom=null,cprAtual=null;
+/* Os valores deixam de viver nas tarefas (a Andreia via-os). Desligado, não apagado. */
+const VALORES_TAREFAS_ATIVO=false;
+
+function cprPode(){try{return financeiroDesbloqueado();}catch(_){return false;}}
+const cprEur=n=>(Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const cprNum=x=>parseFloat(String(x==null?'':x).replace(/\s/g,'').replace(',','.'))||0;
+function cprCalc(d){
+  const h=honTotais(cprNum(d.hon),d.iva||'acresce');
+  const S=(a,f)=>(a||[]).filter(f||(()=>true)).reduce((t,x)=>t+cprNum(x.valor),0);
+  const rh=S(d.ent,x=>(x.tipo||'hon')==='hon'),rd=S(d.ent,x=>x.tipo==='desp');
+  const desp=S(d.desp),fat=S(d.fat);
+  return{h,rh,rd,desp,fat,faltaH:h.total-rh,faltaD:desp-rd,porFaturar:d.adj==='sim'?Math.max(0,h.total-fat):0,
+    falta:(h.total-rh)+(desp-rd)};
+}
+async function cprListaId(){
+  if(listaIdContaProc||!cprPode())return listaIdContaProc;
+  try{const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists?$filter=displayName eq '${LISTA_CONTA_PROC}'`);listaIdContaProc=r.value[0]?.id||null;}catch(_){listaIdContaProc=null;}
+  return listaIdContaProc;
+}
+async function cprCarregar(forcar){
+  if(!cprPode())return[];
+  if(CPR&&!forcar)return CPR;if(CPRprom&&!forcar)return CPRprom;
+  CPRprom=(async()=>{const id=await cprListaId();if(!id){CPR=[];return CPR;}
+    const d=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${id}/items?$expand=fields($select=Title,Dados)&$top=500`);
+    CPR=(d.value||[]).map(it=>{let o={};try{o=JSON.parse(it.fields?.Dados||'{}');}catch(_){o={};}
+      return{spId:it.id,...{desp:[],ent:[],fat:[],iva:'acresce',adj:''},...o,processo:o.processo||it.fields?.Title||''};});
+    CPRprom=null;return CPR;})();
+  return CPRprom;
+}
+function cprDoProc(procId){return(CPR||[]).find(x=>x.procId&&String(x.procId)===String(procId))||null;}
+
+/* ── botão 💶 nos processos (só a Liliana) ── */
+function cprBotao(procId,nome,pastaId,cliente){
+  if(!cprPode())return'';
+  const a=encodeURIComponent;
+  return`<button class="btn btn-sm" data-cpr="${escHtml(procId)}" onclick="cprAbrirProc('${escHtml(procId)}',decodeURIComponent('${a(nome||'')}'),'${escHtml(pastaId||'')}',decodeURIComponent('${a(cliente||'')}'))" title="Conta corrente do processo (só a Liliana vê)" style="padding:2px 6px;font-size:10px">💶</button>`;
+}
+async function cprPintarBotoes(){
+  if(!cprPode())return;await cprCarregar();
+  document.querySelectorAll('[data-cpr]').forEach(b=>{const r=cprDoProc(b.dataset.cpr);
+    if(!r){b.textContent='💶';b.style.borderColor='';return;}
+    const c=cprCalc(r);const falta=c.falta>0.005;
+    b.innerHTML=`💶 ${r.adj==='sim'?'':'<span style="color:var(--text-faint)">orç.</span> '}${falta?`<span style="color:var(--red)">${cprEur(c.falta)}</span>`:'<span style="color:#166534">pago</span>'}`;
+    b.style.borderColor=falta?'var(--red)':'#166534';});
+}
+async function cprAbrirProc(procId,nome,pastaId,cliente){
+  if(!cprPode())return;
+  if(!await cprListaId()){cprSemLista();return;}
+  await cprCarregar();
+  const r=cprDoProc(procId)||{procId,pastaId,cliente,processo:nome,adj:'',iva:'acresce',hon:'',desp:[],ent:[],fat:[]};
+  r.processo=nome||r.processo;r.cliente=cliente||r.cliente;r.pastaId=pastaId||r.pastaId;
+  cprModal(r);
+}
+function cprSemLista(){
+  showToast(`Falta criar a lista «${LISTA_CONTA_PROC}» no SharePoint (colunas Title e Dados), só com acesso seu.`,'error');
+}
+
+/* ── janela de um processo ── */
+function cprModal(r){
+  cprAtual=JSON.parse(JSON.stringify(r));
+  let ov=document.getElementById('cpr-modal');
+  if(!ov){ov=document.createElement('div');ov.className='modal-overlay';ov.id='cpr-modal';document.body.appendChild(ov);}
+  ov.innerHTML=`<div class="modal-box" style="max-width:820px;width:96%;max-height:90vh;overflow-y:auto">
+    <div class="modal-box-title">💶 Conta corrente do processo</div>
+    <div id="cpr-cab" style="font-size:12.5px;margin-bottom:.6rem"></div>
+    <div id="cpr-corpo"></div>
+    <div class="modal-actions" style="margin-top:.8rem;display:flex;gap:.5rem;justify-content:space-between;flex-wrap:wrap">
+      <div>${r.spId?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="cprApagar()">Apagar esta conta</button>`:''}</div>
+      <div style="display:flex;gap:.5rem"><button class="btn" onclick="cprFechar()">Fechar sem gravar</button><button class="btn btn-primary" onclick="cprGravar()">Gravar</button></div>
+    </div></div>`;
+  ov.classList.add('show');cprPintarModal();
+}
+function cprFechar(){document.getElementById('cpr-modal')?.classList.remove('show');cprAtual=null;}
+function cprSet(campo,val){cprAtual[campo]=val;cprPintarTotais();}
+function cprLinha(lista,k,campo,val){cprAtual[lista][k][campo]=val;cprPintarTotais();}
+function cprAdd(lista){const hoje=new Date().toISOString().slice(0,10);
+  cprAtual[lista].push(lista==='ent'?{data:hoje,tipo:'hon',valor:'',forma:'',nota:''}:lista==='fat'?{data:hoje,num:'',valor:''}:{data:hoje,desc:'',valor:''});cprPintarModal();}
+function cprDel(lista,k){cprAtual[lista].splice(k,1);cprPintarModal();}
+function cprPintarModal(){
+  const r=cprAtual;const e=escHtml;
+  document.getElementById('cpr-cab').innerHTML=r.procId
+    ?`<b>${e(r.processo||'—')}</b><div style="color:var(--text-faint)">${e(r.cliente||'')}</div>`
+    :`<b>${e(r.processo||'—')}</b> <span style="color:var(--red);font-size:11.5px">· sem processo ligado</span> <button class="btn btn-sm" onclick="cprEscolherProc()" style="padding:2px 8px;font-size:11px">Ligar a um processo</button><div style="color:var(--text-faint)">${e(r.cliente||'')}</div>`;
+  const inp=(v,on,st='',tp='text',ph='')=>`<input type="${tp}" class="form-input" style="padding:4px 6px;font-size:12px;${st}" value="${e(v==null?'':String(v))}" placeholder="${ph}" ${on}>`;
+  const tabela=(lista,cols,tit,bt)=>`<div style="margin-top:.8rem"><div style="font-weight:600;font-size:12.5px;margin-bottom:.3rem">${tit} <button class="btn btn-sm" onclick="cprAdd('${lista}')" style="padding:1px 8px;font-size:11px;margin-left:.4rem">+ ${bt}</button></div>
+    ${(r[lista]||[]).length?(r[lista]).map((x,k)=>`<div style="display:grid;grid-template-columns:${cols.map(c=>c.w).join(' ')} 24px;gap:.35rem;margin-bottom:.3rem;align-items:center">${cols.map(c=>c.h(x,k)).join('')}<button class="btn btn-sm" onclick="cprDel('${lista}',${k})" style="padding:1px 6px;color:var(--red)">✕</button></div>`).join('')
+      :'<div style="font-size:11.5px;color:var(--text-faint)">Nada lançado.</div>'}</div>`;
+  const dt=(lista)=>({w:'124px',h:(x,k)=>inp(x.data,`onchange="cprLinha('${lista}',${k},'data',this.value)"`,'','date')});
+  const vl=(lista)=>({w:'100px',h:(x,k)=>inp(x.valor,`oninput="cprLinha('${lista}',${k},'valor',this.value)"`,'text-align:right','text','0,00')});
+  const tx=(lista,campo,ph)=>({w:'1fr',h:(x,k)=>inp(x[campo],`oninput="cprLinha('${lista}',${k},'${campo}',this.value)"`,'','text',ph)});
+  document.getElementById('cpr-corpo').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+      <div class="form-group"><label class="form-label">Adjudicado</label><select class="form-select" onchange="cprSet('adj',this.value)">
+        <option value="">Ainda não (orçamento)</option><option value="sim"${r.adj==='sim'?' selected':''}>Sim</option><option value="nao"${r.adj==='nao'?' selected':''}>Não aceite</option></select></div>
+      <div class="form-group"><label class="form-label">Data</label>${inp(r.adjData,`onchange="cprSet('adjData',this.value)"`,'','date')}</div>
+      <div class="form-group"><label class="form-label">Honorários (€)</label>${inp(r.hon,`oninput="cprSet('hon',this.value)"`,'text-align:right','text','0,00')}</div>
+      <div class="form-group"><label class="form-label">IVA</label><select class="form-select" onchange="cprSet('iva',this.value)">
+        <option value="acresce">Acresce IVA</option><option value="incluido"${r.iva==='incluido'?' selected':''}>IVA incluído</option><option value="isento"${r.iva==='isento'?' selected':''}>Isento</option></select></div>
+    </div>
+    ${tabela('desp',[dt('desp'),tx('desp','desc','Despesa paga pela LBC (registo, certidão, IMT…)'),vl('desp')],'Despesas por conta do cliente','despesa')}
+    ${tabela('ent',[dt('ent'),{w:'118px',h:(x,k)=>`<select class="form-select" style="padding:4px 6px;font-size:12px" onchange="cprLinha('ent',${k},'tipo',this.value)"><option value="hon">Honorários</option><option value="desp"${x.tipo==='desp'?' selected':''}>Despesas</option></select>`},vl('ent'),tx('ent','nota','Forma / nota (MB Way, transferência…)')],'Entradas recebidas do cliente','entrada')}
+    ${tabela('fat',[dt('fat'),tx('fat','num','N.º da fatura'),vl('fat')],'Faturas emitidas','fatura')}
+    <div class="form-group" style="margin-top:.8rem"><label class="form-label">Notas</label><textarea class="form-textarea" rows="2" oninput="cprAtual.notas=this.value">${e(r.notas||'')}</textarea></div>
+    <label style="font-size:12px;display:flex;gap:.4rem;align-items:center;margin-top:.3rem"><input type="checkbox" ${r.fechado?'checked':''} onchange="cprAtual.fechado=this.checked"> Processo encerrado (contas fechadas)</label>
+    <div id="cpr-totais" style="margin-top:.8rem"></div>`;
+  cprPintarTotais();
+}
+function cprPintarTotais(){
+  const el=document.getElementById('cpr-totais');if(!el||!cprAtual)return;const c=cprCalc(cprAtual);
+  const cor=v=>v>0.005?'var(--red)':'#166534';
+  el.innerHTML=`<div style="display:flex;gap:.6rem;flex-wrap:wrap;font-size:12.5px">
+    <div style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem"><b>Honorários</b><br>
+      ${cprEur(c.h.total)} <span style="color:var(--text-faint)">(${cprEur(c.h.base)} + IVA ${cprEur(c.h.iva)})</span><br>recebido ${cprEur(c.rh)} · falta <b style="color:${cor(c.faltaH)}">${cprEur(c.faltaH)}</b></div>
+    <div style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem"><b>Despesas</b><br>
+      pagas pela LBC ${cprEur(c.desp)}<br>reembolsadas ${cprEur(c.rd)} · falta <b style="color:${cor(c.faltaD)}">${cprEur(c.faltaD)}</b></div>
+    <div style="flex:1;min-width:180px;border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem"><b>Faturação</b><br>
+      faturado ${cprEur(c.fat)}<br>${cprAtual.adj==='sim'?`por faturar <b style="color:${c.porFaturar>0.005?'#92400E':'#166534'}">${cprEur(c.porFaturar)}</b>`:'<span style="color:var(--text-faint)">ainda não adjudicado</span>'}</div>
+  </div>`;
+}
+async function cprGravar(){
+  const r=cprAtual;if(!r)return;const id=await cprListaId();if(!id){cprSemLista();return;}
+  const lim=a=>(a||[]).filter(x=>cprNum(x.valor)||String(x.desc||x.num||x.nota||'').trim());
+  const o={procId:r.procId||'',pastaId:r.pastaId||'',cliente:r.cliente||'',processo:r.processo||'',adj:r.adj||'',adjData:r.adjData||'',
+    hon:r.hon||'',iva:r.iva||'acresce',desp:lim(r.desp),ent:lim(r.ent),fat:lim(r.fat),notas:r.notas||'',fechado:!!r.fechado,origem:r.origem||''};
+  const body={Title:(o.processo||'—').slice(0,250),Dados:JSON.stringify(o)};
+  try{
+    if(r.spId)await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${id}/items/${r.spId}/fields`,body);
+    else{const n=await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${id}/items`,{fields:body});r.spId=n&&n.id;}
+    showToast('Conta do processo gravada','success');cprFechar();
+    await cprCarregar(true);cprPintarBotoes();if(document.getElementById('screen-ccproc')?.classList.contains('active'))cprMapa();
+  }catch(e){showToast('Erro ao gravar: '+e.message,'error');}
+}
+async function cprApagar(){
+  const r=cprAtual;if(!r||!r.spId)return;
+  if(!confirm(`Apagar a conta corrente de «${r.processo}»? Os valores lançados perdem-se.`))return;
+  try{await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContaProc}/items/${r.spId}`);
+    showToast('Conta apagada','success');cprFechar();await cprCarregar(true);cprPintarBotoes();cprMapa();}
+  catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+/* ── escolher o processo (pasta do cliente › subpasta) ── */
+async function cprEscolherProc(){
+  if(typeof todasPastasClientes==='undefined'||!todasPastasClientes||!todasPastasClientes.length){
+    try{const data=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/root/children?$top=500&$orderby=name asc`);
+      todasPastasClientes=(data.value||[]).filter(p=>p.folder&&p.name).map(p=>({id:p.id,nome:p.name,webUrl:p.webUrl}));}catch(e){showToast('Erro: '+e.message,'error');return;}}
+  const cab=document.getElementById('cpr-cab');
+  cab.innerHTML=`<b>Ligar «${escHtml(cprAtual.processo||'')}» a um processo</b>
+    <input class="form-input" id="cpr-pq" placeholder="Pesquisar a pasta do cliente…" value="${escHtml((cprAtual.cliente||'').split(/[,·]/)[0])}" oninput="cprPintarPastas()" style="margin-top:.4rem">
+    <div id="cpr-pl" style="max-height:220px;overflow:auto;margin-top:.3rem"></div>
+    <button class="btn btn-sm" onclick="cprPintarModal()" style="margin-top:.3rem">Cancelar</button>`;
+  cprPintarPastas();
+}
+function cprPintarPastas(){
+  const q=(document.getElementById('cpr-pq')?.value||'').toLowerCase().trim();
+  const l=todasPastasClientes.filter(p=>!q||p.nome.toLowerCase().includes(q)).slice(0,40);
+  document.getElementById('cpr-pl').innerHTML=l.map(p=>`<div style="padding:.3rem .5rem;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px" onclick="cprPastaProcs('${p.id}',decodeURIComponent('${encodeURIComponent(p.nome)}'))">📁 ${escHtml(p.nome)}</div>`).join('')||'<div style="font-size:11.5px;color:var(--text-faint)">Nenhuma pasta.</div>';
+}
+async function cprPastaProcs(pastaId,nomeCliente){
+  const el=document.getElementById('cpr-pl');el.innerHTML='<div style="font-size:11.5px">A carregar…</div>';
+  try{const d=await graphGet(`${GRAPH_BASE}/drives/${bibliotecaProcessosId}/items/${pastaId}/children?$top=200`);
+    const ps=(d.value||[]).filter(i=>i.folder).sort((a,b)=>(b.name||'').localeCompare(a.name||''));
+    el.innerHTML=`<div style="font-size:11px;color:var(--text-faint);padding:.2rem .5rem">${escHtml(nomeCliente)}</div>`+(ps.map(s=>{const usado=cprDoProc(s.id);
+      return`<div style="padding:.3rem .5rem;border-bottom:1px solid var(--border);cursor:${usado?'not-allowed':'pointer'};font-size:12px;${usado?'opacity:.5':''}" ${usado?'title="Este processo já tem conta"':`onclick="cprLigar('${s.id}',decodeURIComponent('${encodeURIComponent(s.name)}'),'${pastaId}',decodeURIComponent('${encodeURIComponent(nomeCliente)}'))"`}>📂 ${escHtml(s.name)}${usado?' · já tem conta':''}</div>`;}).join('')||'<div style="font-size:11.5px;color:var(--text-faint);padding:.3rem .5rem">Esta pasta não tem processos.</div>');}
+  catch(e){el.innerHTML=`<div class="notice notice-error">${escHtml(e.message)}</div>`;}
+}
+function cprLigar(procId,nome,pastaId,cliente){Object.assign(cprAtual,{procId,processo:nome,pastaId,cliente});cprPintarModal();showToast('Ligado — carregue em Gravar','success');}
+function cprNovaSemProc(){cprModal({procId:'',pastaId:'',cliente:'',processo:'Novo processo',adj:'',iva:'acresce',hon:'',desp:[],ent:[],fat:[]});cprEscolherProc();}
+
+/* ── mapa global (Financeiro › Conta corrente processos) ── */
+async function cprMapa(){
+  const box=document.getElementById('cpr-mapa');if(!box)return;
+  if(!cprPode()){box.innerHTML='<div class="notice notice-error">Sem acesso.</div>';return;}
+  box.innerHTML='<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">A carregar...</div></div>';
+  if(!await cprListaId()){box.innerHTML=`<div class="notice notice-info">Falta criar no SharePoint a lista <b>${LISTA_CONTA_PROC}</b> (colunas <b>Title</b> e <b>Dados</b> — várias linhas de texto simples) e tirar-lhe as permissões herdadas, como fez na Contabilidade. Depois carregue em ↺ Atualizar.</div>`;return;}
+  try{await cprCarregar(true);}catch(e){box.innerHTML=`<div class="notice notice-error">Erro: ${escHtml(e.message)}</div>`;return;}
+  cprPintarMapa();
+}
+function cprPintarMapa(){
+  const box=document.getElementById('cpr-mapa');if(!box)return;
+  const q=(document.getElementById('cpr-q')?.value||'').toLowerCase().trim(),f=document.getElementById('cpr-f')?.value||'';
+  const L=(CPR||[]).map(r=>({r,c:cprCalc(r)}));
+  const T0=L.filter(x=>x.r.adj==='sim').reduce((t,{c})=>{t.hon+=c.h.total;t.rh+=c.rh;t.desp+=c.desp;t.rd+=c.rd;t.fat+=c.fat;t.pf+=c.porFaturar;return t;},{hon:0,rh:0,desp:0,rd:0,fat:0,pf:0});
+  const nAdj=L.filter(x=>x.r.adj==='sim').length,nOrc=L.filter(x=>!x.r.adj).length,nSem=L.filter(x=>!x.r.procId).length;
+  const vis=L.filter(({r,c})=>(!q||`${r.processo} ${r.cliente}`.toLowerCase().includes(q))&&(
+    f==='falta'?c.falta>0.005&&!r.fechado:f==='adj'?r.adj==='sim':f==='orc'?!r.adj:f==='faturar'?c.porFaturar>0.005:f==='semproc'?!r.procId:f==='fechados'?r.fechado:true))
+    .sort((a,b)=>String(b.r.adjData||'').localeCompare(String(a.r.adjData||''))||String(a.r.processo).localeCompare(String(b.r.processo)));
+  const card=(t,v,s,cor)=>`<div class="metric-card"><div class="metric-label">${t}</div><div class="metric-value" style="${cor?'color:'+cor:''}">${v}</div><div class="metric-sub">${s}</div></div>`;
+  const cor=v=>v>0.005?'color:var(--red);font-weight:600':'color:#166534';
+  document.getElementById('cpr-count').textContent=`${L.length} processo${L.length===1?'':'s'} com conta · ${nAdj} adjudicado${nAdj===1?'':'s'} · ${nOrc} em orçamento${nSem?` · ${nSem} sem processo ligado`:''}`;
+  box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:.8rem">
+      ${card('Honorários adjudicados',cprEur(T0.hon),`recebido ${cprEur(T0.rh)}`)}
+      ${card('Honorários em falta',cprEur(T0.hon-T0.rh),'adjudicados, por receber','var(--red)')}
+      ${card('Despesas por reembolsar',cprEur(T0.desp-T0.rd),`pagas ${cprEur(T0.desp)} · reemb. ${cprEur(T0.rd)}`,'var(--amber)')}
+      ${card('Por faturar',cprEur(T0.pf),`faturado ${cprEur(T0.fat)}`,'#92400E')}
+    </div>
+    ${vis.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+    <thead><tr style="text-align:left;color:var(--text-faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
+      <th style="padding:.5rem .6rem">Processo</th><th>Adjudicado</th><th style="text-align:right">Honorários</th><th style="text-align:right">Recebido</th><th style="text-align:right">Falta</th>
+      <th style="text-align:right">Despesas</th><th style="text-align:right">Reemb.</th><th style="text-align:right">Falta</th><th style="text-align:right">Faturado</th><th></th></tr></thead>
+    <tbody>${vis.map(({r,c})=>`<tr style="border-top:1px solid var(--border);${r.fechado?'opacity:.6':''}">
+      <td style="padding:.45rem .6rem"><b>${escHtml(r.processo||'—')}</b>${r.procId?'':' <span style="color:var(--red);font-size:11px">· sem processo</span>'}<div style="font-size:11px;color:var(--text-faint)">${escHtml(r.cliente||'')}${r.fechado?' · encerrado':''}</div></td>
+      <td style="font-size:11.5px">${r.adj==='sim'?`✓ ${r.adjData?fmtData(r.adjData+'T12:00:00'):''}`:r.adj==='nao'?'não aceite':'<span style="color:var(--text-faint)">orçamento</span>'}</td>
+      <td style="text-align:right">${cprEur(c.h.total)}</td><td style="text-align:right">${cprEur(c.rh)}</td><td style="text-align:right;${cor(c.faltaH)}">${cprEur(c.faltaH)}</td>
+      <td style="text-align:right">${cprEur(c.desp)}</td><td style="text-align:right">${cprEur(c.rd)}</td><td style="text-align:right;${cor(c.faltaD)}">${cprEur(c.faltaD)}</td>
+      <td style="text-align:right">${cprEur(c.fat)}${c.porFaturar>0.005?`<div style="font-size:10.5px;color:#92400E">falta ${cprEur(c.porFaturar)}</div>`:''}</td>
+      <td style="padding-right:.5rem"><button class="btn btn-sm" onclick="cprModal((CPR||[]).find(x=>String(x.spId)==='${r.spId}'))">✏️</button></td></tr>`).join('')}</tbody></table></div>`
+    :'<div class="notice notice-info">Nenhum processo neste filtro. Os valores lançam-se em Processos › 📂 › 💶 em cada processo, ou em «+ Nova conta».</div>'}`;
+}
+
+/* ── passar os valores que estavam nas tarefas para a lista privada e apagá-los lá ── */
+async function cprMigrarTarefas(){
+  if(!cprPode())return;if(!await cprListaId()){cprSemLista();return;}
+  try{await renovarToken();
+    const sel=`${T.titulo},${T.cliente},${T.valorServico},${T.despesasContaCliente},${T.valorPago}`;
+    const d=await graphGetAll(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items?$expand=fields($select=${sel})&$top=500`);
+    const m=listaIdConta?await cclCarregar(true):{};
+    const tar=(d.value||[]).map(i=>({id:i.id,...i.fields})).filter(i=>(parseFloat(i[T.valorServico])||0)||(parseFloat(i[T.despesasContaCliente])||0)||(parseFloat(i[T.valorPago])||0)||(m[String(i.id)]&&m[String(i.id)].entradas.length));
+    if(!tar.length){showToast('Não há valores nas tarefas para passar.','success');return;}
+    if(!confirm(`Passar os valores de ${tar.length} tarefa(s) para a conta corrente privada dos processos e apagá-los das tarefas?\n\n${tar.map(t=>'• '+(t[T.titulo]||'—')).join('\n')}\n\nDepois liga cada uma ao processo certo («sem processo ligado»).`))return;
+    await cprCarregar(true);let n=0;
+    for(const t of tar){
+      const L=m[String(t.id)]||{iva:'incluido',entradas:[]};
+      const ent=L.entradas.length?L.entradas.map(x=>({data:x.data||'',tipo:x.tipo||'hon',valor:x.valor,nota:[x.nota,x.recibo==='sim'?'recibo emitido':'',x.fatura?'fatura '+x.fatura:''].filter(Boolean).join(' · ')}))
+        :((parseFloat(t[T.valorPago])||0)?[{data:'',tipo:'hon',valor:parseFloat(t[T.valorPago]),nota:'valor já registado antes'}]:[]);
+      const desp=(parseFloat(t[T.despesasContaCliente])||0)?[{data:'',desc:'Despesas (vindas da tarefa)',valor:parseFloat(t[T.despesasContaCliente])}]:[];
+      const o={procId:'',pastaId:'',cliente:t[T.cliente]||'',processo:t[T.titulo]||'Tarefa',adj:'sim',adjData:'',hon:parseFloat(t[T.valorServico])||'',iva:L.iva||'incluido',desp,ent,fat:[],notas:'Valores passados da tarefa em '+new Date().toLocaleDateString('pt-PT'),fechado:false,origem:'tarefa:'+t.id};
+      if((CPR||[]).some(x=>x.origem===o.origem))continue;
+      await graphPost(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdContaProc}/items`,{fields:{Title:o.processo.slice(0,250),Dados:JSON.stringify(o)}});
+      /* só depois de gravado na lista privada é que se apaga das tarefas */
+      try{await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${t.id}/fields`,{[T.valorServico]:null,[T.despesasContaCliente]:null,[T.valorPago]:null});}
+      catch(_){await graphPatch(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdTarefas}/items/${t.id}/fields`,{[T.valorServico]:0,[T.despesasContaCliente]:0,[T.valorPago]:0});}
+      const r=m[String(t.id)];
+      if(r&&listaIdConta){for(const x of r.entradas)if(x.spId)await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${x.spId}`);
+        if(r.cfg)await graphDelete(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaIdConta}/items/${r.cfg}`);}
+      n++;
+    }
+    CCL=null;showToast(`${n} tarefa(s) passadas — ligue-as agora aos processos.`,'success');document.getElementById('cpr-f').value='semproc';cprMapa();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+/* ── instalação: ecrã, menu Financeiro, botão nos processos ── */
+(function(){
+  function instalar(){
+    if(document.getElementById('screen-ccproc'))return;
+    const base=document.querySelector('.screen');if(!base)return;
+    const scr=document.createElement('div');scr.className='screen';scr.id='screen-ccproc';
+    scr.innerHTML=`<div class="section-header">
+        <div><div class="section-title">Conta corrente dos processos</div><div class="section-sub" id="cpr-count">Só a Liliana vê esta página</div></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-sm" onclick="cprMigrarTarefas()" title="Passa para aqui os valores que estavam nas tarefas e apaga-os de lá">⇢ Trazer valores das tarefas</button>
+          <button class="btn btn-sm" onclick="cprMapa()">↺ Atualizar</button><button class="btn btn-primary btn-sm" onclick="cprNovaSemProc()">+ Nova conta</button></div></div>
+      <div class="reg-search-bar"><div class="reg-search-wrap"><svg class="reg-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+        <input class="reg-search-input" id="cpr-q" placeholder="Pesquisar por processo ou cliente..." oninput="cprPintarMapa()"></div>
+        <select class="form-select" id="cpr-f" onchange="cprPintarMapa()" style="max-width:240px">
+          <option value="falta">Com valores em falta</option><option value="adj">Adjudicados</option><option value="orc">Em orçamento</option>
+          <option value="faturar">Por faturar</option><option value="semproc">Sem processo ligado</option><option value="fechados">Encerrados</option><option value="">Todos</option></select></div>
+      <div id="cpr-mapa" style="margin-top:.6rem"></div>`;
+    base.parentNode.appendChild(scr);
+    const ref=document.getElementById('nav-fin-contabilidade');
+    const item=document.createElement('div');item.className='nav-item';item.id='nav-fin-ccproc';item.style.display='none';
+    item.setAttribute('onclick',"nav('ccproc',this)");
+    item.innerHTML='<span class="nav-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v9H2z"/><path d="M5 4V2h6v2"/><path d="M5 8h6M5 11h4"/></svg></span>Conta corrente processos';
+    if(ref&&ref.parentNode)ref.insertAdjacentElement('afterend',item);
+    if(typeof pageTitles!=='undefined')pageTitles.ccproc='Conta corrente dos processos';
+    const _n=window.nav;window.nav=function(id,el){
+      if(id==='ccproc'&&!cprPode())return;
+      if(id==='contacorrente'&&!VALORES_TAREFAS_ATIVO)id='ccproc';   /* a página antiga passa a ser esta (só a Liliana) */
+      const r=_n.apply(this,[id,id==='ccproc'?document.getElementById('nav-fin-ccproc'):el]);if(id==='ccproc')cprMapa();return r;};
+    const _m=window.mostrarMenuFinanceiro;window.mostrarMenuFinanceiro=function(){const r=_m.apply(this,arguments);const it=document.getElementById('nav-fin-ccproc');if(it)it.style.display='flex';return r;};
+    if(cprPode()){const it=document.getElementById('nav-fin-ccproc');if(it&&document.getElementById('nav-fin-contabilidade')?.style.display==='flex')it.style.display='flex';}
+    /* a «Conta corrente» de Clientes & Serviços deixa de aparecer (a Andreia via-a) */
+    if(!VALORES_TAREFAS_ATIVO){document.querySelectorAll('.nav-item').forEach(n=>{if((n.getAttribute('onclick')||'').includes("nav('contacorrente'"))n.style.display='none';});}
+    if(!VALORES_TAREFAS_ATIVO){const st=document.createElement('style');st.textContent='#mt-caixa-valores{display:none!important}';document.head.appendChild(st);}
+    /* processos: pinta os 💶 depois de abrir a lista de processos de um cliente */
+    const _t=window.toggleProcessosCliente;window.toggleProcessosCliente=async function(){const r=await _t.apply(this,arguments);try{cprPintarBotoes();}catch(_){}return r;};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',instalar);else instalar();
 })();
 </script>
 </body>
