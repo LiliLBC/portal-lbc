@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-25.2">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-26.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3986,7 +3986,7 @@ async function fechoAbrir(pastaId,nome){
   /* O sujeito é o cliente da pasta: vem já escrito; muda-se só se se editar (14/11/2026). */
   cont.ordem.forEach(k=>{const e=cont.esc[k];e.sujeito=e.sujeito||{};if(!e.sujeito.nome)e.sujeito.nome=dpzCliente(nome);});
   /* Espelho com o Registo de escrituras: liga as linhas desta pasta e traz o que lá está. */
-  try{await pRegs;const n=await fxLigarEPuxar(cont,nome,await pWeb);if(n)FECHO.sujo=true;}catch(err){console.warn('[Registo→Fecho]',err);}
+  try{await pRegs;FECHO.webUrl=await pWeb;const n=await fxLigarEPuxar(cont,nome,FECHO.webUrl);if(n)FECHO.sujo=true;}catch(err){console.warn('[Registo→Fecho]',err);}
   /* Ficheiros espalhados por pastas diferentes (antes de 18/11/2026): junta-os e fixa a pasta. */
   try{let mov=0;for(const k of cont.ordem){const e=cont.esc[k];if(!e.dpaDir&&(e.docs||[]).some(x=>x.fileId)){mov+=await dpzReunir(e);FECHO.sujo=true;}}
     if(mov)setTimeout(()=>showToast(`Juntei ${mov} ficheiro(s) que estavam noutra pasta. Carrega em Gravar.`,'success'),800);}catch(err){console.warn('[Fecho] reunir',err);}
@@ -4065,12 +4065,17 @@ function fechoRender(msg){
   const cab=(n,tit,extra)=>`<div class="fx-h" onclick="fechoAbrirFechar(${n})"><span style="color:var(--text-muted);width:12px">${FECHO.abertos[n]?'▾':'▸'}</span><span class="fx-n">${n}</span> ${tit} ${extra||''}</div>`;
   document.getElementById('fx-b1').innerHTML=`<div class="fx-card">${cab(1,'Depósito',chips('+ Depósito','Mais uma escritura nesta pasta (mais um depósito)'))}
     ${FECHO.abertos[1]?fechoBlocoDeposito(e,eu):''}</div>`;
+  if(!FECHO_REG_EMBUTIDO){
+    document.getElementById('fx-b2h').innerHTML=cab(2,'Registo de escritura',chips('+ Registo de escritura','Mais uma escritura nesta pasta (mais uma linha no Registo de escrituras)'))+(FECHO.abertos[2]?fechoBlocoRegistoLigacao(e):'');
+    document.getElementById('fx-reg-host').style.display='none';
+  }else{
   document.getElementById('fx-b2h').innerHTML=cab(2,'Registo de escritura',chips('+ Registo de escritura','Mais uma escritura nesta pasta (mais uma linha no Registo de escrituras)')+fechoEstadoRegisto(e));
-  document.getElementById('fx-reg-host').style.display=FECHO.abertos[2]?'':'none';
-  document.getElementById('fx-b3').innerHTML=`<div class="fx-card">${cab(3,'Registos prediais','<span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">— toda a pasta</span><button class="btn btn-sm fx-c" onclick="event.stopPropagation();fechoNovoPedido()">+ Registo</button>')}
+  document.getElementById('fx-reg-host').style.display=FECHO.abertos[2]?'':'none';}
+  if(!FECHO_BLOCO3_ATIVO)document.getElementById('fx-b3').innerHTML='';
+  else document.getElementById('fx-b3').innerHTML=`<div class="fx-card">${cab(3,'Registos prediais','<span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">— toda a pasta</span><button class="btn btn-sm fx-c" onclick="event.stopPropagation();fechoNovoPedido()">+ Registo</button>')}
     ${FECHO.abertos[3]?fechoBlocoRegistos():''}</div>`;
   if(FECHO.abertos[1])dpzEntidade();
-  if(FECHO.regK!==FECHO.k&&!FECHO._aCarregarReg)fxCarregarRegisto(FECHO.k);
+  if(FECHO_REG_EMBUTIDO&&FECHO.regK!==FECHO.k&&!FECHO._aCarregarReg)fxCarregarRegisto(FECHO.k);
 }
 /* (18/11/2026) Um só Gravar: grava a ficha do Registo de escrituras (bloco 2 — cria-a com n.º de
    arquivo da primeira vez, com tudo o que lá estiver, contactos incluídos) e o Fecho. */
@@ -4078,7 +4083,7 @@ let _fxGravando=false;
 async function fechoGravarTudo(){
   if(_fxGravando)return;_fxGravando=true;
   try{
-    const p=document.getElementById('reg-painel');
+    const p=FECHO_REG_EMBUTIDO&&document.getElementById('reg-painel');
     if(p&&FECHO.regK===FECHO.k&&!FECHO._aCarregarReg&&typeof guardarPainel==='function'){
       try{await guardarPainel();FECHO.regSujo=false;}catch(err){console.warn('[Fecho] ficha:',err);}
     }
@@ -4442,7 +4447,7 @@ async function dpzGravarJa(silencio){
       if(e.sintese){let sAnt=null;try{sAnt=etqDadoSync('ESCRITURAS',FECHO.pastaId,'sintese');}catch(_){}
         if(!sAnt||sAnt._fonte==='gerador')await etqDadoGravar('ESCRITURAS',FECHO.pastaId,FECHO.nome,'sintese',{...e.sintese,predio:fechoPredioSint(e)});}}
     FECHO.sujo=false;
-    try{await fxEspelharParaRegisto();}catch(err){console.warn('[Fecho→Registo]',err);}
+    try{await fxEspelharParaRegisto();}catch(err){console.warn('[Fecho→Registo]',err);showToast('Fecho gravado, mas não passou para o Registo de escrituras: '+err.message,'error');}
     try{await fechoPedidosSincronizar();}catch(err){console.warn('[Fecho] pedidos:',err);}
     if(!silencio)showToast('Gravado.','success');
     try{if(window.opener&&window.opener.dpzPintarBotoes){window.opener.etqRecarregar&&await window.opener.etqRecarregar();window.opener.dpzPintarBotoes();}}catch(_){}
@@ -4617,7 +4622,8 @@ async function fxEspelharParaRegisto(){
   for(const k of c.ordem){const e=c.esc[k];if(!e.registoId)continue;
     let it=(todosRegistosReg||[]).find(i=>String(i.id)===String(e.registoId));
     if(!it){try{const r=await graphGet(`${GRAPH_BASE}/sites/${siteIdDados}/lists/${listaId}/items/${e.registoId}?$expand=fields`);it={id:r.id,...r.fields};}catch(_){continue;}}
-    const b=fxParaRegisto(e,it);if(Object.keys(b).length){try{await fxPatchRegisto(e.registoId,b);}catch(err){console.warn('[Fecho→Registo]',err);}}}
+    const b=fxParaRegisto(e,it);if(Object.keys(b).length){try{await fxPatchRegisto(e.registoId,b);}
+      catch(err){console.warn('[Fecho→Registo]',err);showToast(`Não consegui passar «${e.label||'escritura'}» para o Registo de escrituras: ${err.message}`,'error');}}}
 }
 /* Ficha do Registo guardada fora do Fecho (ecrã Registo de escrituras) → Fecho da pasta. */
 async function fxRegistoParaFecho(id){
@@ -4633,6 +4639,8 @@ async function fxRegistoParaFecho(id){
   if(!raw)return;   /* pasta ainda sem Fecho: fica tudo no Registo */
   const cont=dpzContentor(JSON.parse(JSON.stringify(raw)),nome);
   let k=cont.ordem.find(x=>String(cont.esc[x].registoId)===String(id));
+  /* aberto pelo botão do Fecho para uma escritura concreta (26/11/2026) */
+  {const a=window._fxAlvo;if(!k&&a&&a.pastaId===pastaId&&cont.esc[a.k]&&!cont.esc[a.k].registoId){k=a.k;cont.esc[k].registoId=String(id);}}
   if(!k){const l=cont.ordem.filter(x=>!cont.esc[x].registoId);if(l.length===1){k=l[0];cont.esc[k].registoId=String(id);}}
   if(!k)return;
   fxDoRegisto(cont.esc[k],it);
@@ -4643,6 +4651,77 @@ async function fxRegistoParaFecho(id){
   catch(err){console.warn('[Registo→Fecho]',err);}
   finally{FECHO=guarda;}
 }
+
+/* ════ (26/11/2026) Fecho ↔ Registo de escrituras SEM ficha embutida ════
+   A ficha do Registo dentro do Fecho dava entropia e não gravava como devia. Agora o bloco 2
+   mostra o que está no Registo e um botão que abre a ficha no próprio módulo «Registo de
+   escrituras», noutro separador — o Fecho fica aberto. O que se grava lá passa para o Fecho
+   (fxRegistoParaFecho) e o Fecho volta a ler ao regressar ao separador; o que se grava no Fecho
+   (código de depósito, n.º de processo…) passa para o Registo (fxEspelharParaRegisto).
+   Os blocos antigos ficam desligados, não apagados. */
+const FECHO_REG_EMBUTIDO=false;
+/* Bloco 3 «Registos prediais» desligado a pedido da Liliana (26/11/2026). Os pedidos para o
+   Portal Registos continuam a criar-se ao gravar, como antes. */
+const FECHO_BLOCO3_ATIVO=false;
+function fechoBlocoRegistoLigacao(e){
+  const i=e.registoId&&typeof todosRegistosReg!=='undefined'?(todosRegistosReg||[]).find(x=>String(x.id)===String(e.registoId)):null;
+  const val=c=>i?String(i[F[c]]==null?'':i[F[c]]).trim():'';
+  const dt=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'';
+  const lin=(t,v)=>`<div style="font-size:12px"><span style="color:var(--text-muted)">${t}:</span> ${v?dpzEsc(v):'<span style="color:var(--text-faint)">—</span>'}</div>`;
+  const num=i&&(i['Num_Ordem']||i['NumOrdem']);
+  return `<div class="fx-card" style="margin-top:.4rem">
+    ${i?`<div style="color:#1F5E3A;font-size:12.5px;font-weight:600;margin-bottom:.35rem">✓ No Registo de escrituras${num?' · n.º de arquivo '+dpzEsc(num):''}</div>
+      <div class="fx-g2" style="display:grid;grid-template-columns:1fr 1fr;gap:.15rem .9rem">
+        ${lin('Cliente',val('nome'))}${lin('Data',dt(val('data')))}${lin('Produto',val('produto'))}${lin('Entidade',val('entidade'))}
+        ${lin('N.º processo',val('numProcesso'))}${lin('Código de depósito',val('codDeposito'))}${lin('Prédio',val('predio'))}${lin('Concelho',val('concelho'))}</div>`
+      :e.registoId?`<div style="font-size:12.5px;color:#92400E">Ligada à linha ${dpzEsc(e.registoId)} do Registo de escrituras, que não encontrei — pode ter sido apagada.</div>`
+      :`<div style="font-size:12.5px;color:#92400E">Esta escritura ainda não está no Registo de escrituras.</div>`}
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.55rem;align-items:center">
+      <button class="btn btn-primary btn-sm" onclick="fechoAbrirNoRegisto()">${i?'Abrir no Registo de escrituras ↗':'Criar no Registo de escrituras ↗'}</button>
+      <button class="btn btn-sm" onclick="fechoReler()" title="Voltar a ler o Registo de escrituras">↺ Atualizar</button>
+      <span style="font-size:11px;color:var(--text-muted)">Abre noutro separador; o Fecho fica aberto. Depois de Guardar lá, volte a este separador.</span></div></div>`;
+}
+function fechoAbrirNoRegisto(){
+  const e=fechoEsc();if(!e)return;
+  const u=location.pathname+(e.registoId?`?reg=${encodeURIComponent(e.registoId)}`:`?regNovo=${encodeURIComponent(FECHO.pastaId)}&n=${encodeURIComponent(FECHO.nome)}&k=${encodeURIComponent(FECHO.k)}`);
+  window.open(u,'_blank');
+}
+let _fxRelendo=false,_fxRelidoEm=0;
+async function fechoReler(manual=true){
+  if(!FECHO||!FECHO.cont||_fxRelendo)return;_fxRelendo=true;
+  try{
+    registosCarregados=false;await fxRegistosCarregados();
+    let raw=null;try{await etqDadoLer('ESCRITURAS',FECHO.pastaId,'deposito');raw=etqDadoSync('ESCRITURAS',FECHO.pastaId,'deposito');}catch(_){}
+    if(raw&&!fxIgual(raw,FECHO.base)){const g=dpzContentor(JSON.parse(JSON.stringify(raw)),FECHO.nome);
+      FECHO.cont=fxSemDuplicados(fxJuntar(FECHO.base,FECHO.cont,g));FECHO.base=JSON.parse(JSON.stringify(g));if(!FECHO.cont.esc[FECHO.k])FECHO.k=FECHO.cont.ordem[0];}
+    const n=await fxLigarEPuxar(FECHO.cont,FECHO.nome,FECHO.webUrl||'');if(n)FECHO.sujo=true;
+    fechoRender();if(manual)showToast(n?'Trouxe o que mudou no Registo de escrituras — carregue em Gravar.':'Registo de escrituras lido.',n?'':'success');
+  }catch(err){if(manual)showToast('Erro ao ler o Registo: '+err.message,'error');}
+  finally{_fxRelendo=false;_fxRelidoEm=Date.now();}
+}
+/* Ao voltar ao separador do Fecho, lê outra vez (no máximo de 5 em 5 segundos). */
+window.addEventListener('focus',()=>{if(FECHO&&FECHO.cont&&!FECHO_REG_EMBUTIDO&&Date.now()-_fxRelidoEm>5000)fechoReler(false);});
+/* Arranque do separador do Registo: index.html?reg=<id> ou ?regNovo=<pasta>&n=<nome>&k=<escritura>. */
+(function(){
+  const q=new URLSearchParams(location.search),rid=q.get('reg'),pid=q.get('regNovo');if(!rid&&!pid)return;
+  const t=setInterval(async()=>{
+    if(!(typeof listaId!=='undefined'&&listaId&&typeof bibliotecaId!=='undefined'&&bibliotecaId&&typeof graphToken!=='undefined'&&graphToken))return;
+    clearInterval(t);
+    try{
+      const nv=[...document.querySelectorAll('.nav-item')].find(n=>(n.getAttribute('onclick')||'').includes("nav('registo'"));
+      nav('registo',nv||null);
+      registosCarregados=false;await carregarRegistos();
+      if(rid){abrirPainelRegisto(rid);return;}
+      const nome=q.get('n')||'',k=q.get('k')||'';window._fxAlvo={pastaId:pid,k};
+      if(!pastasPainel.length)await carregarPastasPainel();
+      abrirPainelNovo();
+      const pasta=pastasPainel.find(x=>x.id===pid||x.nome===nome);if(pasta)selecionarPastaPainel(pasta);
+      let e=null;try{await etqDadoLer('ESCRITURAS',pid,'deposito');const raw=etqDadoSync('ESCRITURAS',pid,'deposito');if(raw){const c=dpzContentor(JSON.parse(JSON.stringify(raw)),nome);e=c.esc[k]||c.esc[c.ordem[0]];}}catch(_){}
+      await new Promise(r=>setTimeout(r,250));
+      if(e)regPreencherAuto(nome,dpzRegDe(e),null,true);
+    }catch(err){showToast('Erro ao abrir o Registo: '+err.message,'error');}
+  },400);
+})();
 
 /* ── 3 · Registos prediais ── */
 /* Proposta: um pedido por entidade. Cada pedido pode dividir-se (conservatórias diferentes). */
