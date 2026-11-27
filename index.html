@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta name="versao" content="Portal LBC · piloto · v2026-11-26.1">
+<meta name="versao" content="Portal LBC · piloto · v2026-11-27.1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -793,6 +793,7 @@ tbody tr:hover td{background:#FAFAF8}
                 </span>
                 <svg id="contactos-chevron" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="transition:transform .2s"><path d="M4 6l4 4 4-4"/></svg>
               </button>
+              <button type="button" class="btn btn-sm" onclick="regIntegrarContactos()" title="Copia para aqui, tal e qual, os contactos escritos no Fecho desta escritura" style="margin-top:.4rem;font-size:11px">⇩ Integrar contactos do Fecho</button>
               <div id="contactos-wrap" style="display:none;margin-top:.5rem;padding:.6rem;background:var(--surface2);border-radius:7px;border:1px solid var(--border)">
                 <!-- TELEFONES -->
                 <div style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">📞 Telefones</div>
@@ -4066,7 +4067,7 @@ function fechoRender(msg){
   document.getElementById('fx-b1').innerHTML=`<div class="fx-card">${cab(1,'Depósito',chips('+ Depósito','Mais uma escritura nesta pasta (mais um depósito)'))}
     ${FECHO.abertos[1]?fechoBlocoDeposito(e,eu):''}</div>`;
   if(!FECHO_REG_EMBUTIDO){
-    document.getElementById('fx-b2h').innerHTML=cab(2,'Registo de escritura',chips('+ Registo de escritura','Mais uma escritura nesta pasta (mais uma linha no Registo de escrituras)'))+(FECHO.abertos[2]?fechoBlocoRegistoLigacao(e):'');
+    document.getElementById('fx-b2h').innerHTML=cab(2,'Registo de escritura',chips('+ Registo de escritura','Mais uma escritura nesta pasta (mais uma linha no Registo de escrituras)'))+(FECHO.abertos[2]?fechoContactosHTML(e)+fechoBlocoRegistoLigacao(e):'');
     document.getElementById('fx-reg-host').style.display='none';
   }else{
   document.getElementById('fx-b2h').innerHTML=cab(2,'Registo de escritura',chips('+ Registo de escritura','Mais uma escritura nesta pasta (mais uma linha no Registo de escrituras)')+fechoEstadoRegisto(e));
@@ -4578,6 +4579,9 @@ function fxDoRegisto(e,it){
   FX_ESP.forEach(([c,p])=>{const v=it[F[c]];if(v==null||String(v).trim()==='')return;muda(p,String(v).trim());});
   const mc=Number(it[F.montCredito])||0;if(mc&&fxNumPt(fxCam(e,'ato.mutuo'))!==mc)muda('ato.mutuo',mc.toFixed(2).replace('.',','));
   const ent=String(it[F.entidade]||'').trim();if(ent)muda('proc.entidade',ent==='CGD'?'CGD':'Particular');
+  /* contactos (27/11/2026): só se o Fecho ainda não tiver nenhum — nunca apaga o que se escreveu no Fecho */
+  if(!fxTemContactos(e)&&it[F.contactos]){try{const c=typeof it[F.contactos]==='string'?JSON.parse(it[F.contactos]):it[F.contactos];
+    if(c&&((c.telefones||[]).length||(c.emails||[]).length)){e.contactos={telefones:(c.telefones||[]).slice(0,4),emails:(c.emails||[]).slice(0,4)};mud=true;}}catch(_){}}
   const pr=String(it[F.predio]||'').trim();
   if(pr){const m=pr.match(/^(\d+)\s*-\s*([A-Z]{1,3})$/i);muda('predios.0.ficha',m?m[1]:pr);if(m)muda('predios.0.fracao',m[2].toUpperCase());}
   return mud;
@@ -4722,6 +4726,59 @@ window.addEventListener('focus',()=>{if(FECHO&&FECHO.cont&&!FECHO_REG_EMBUTIDO&&
     }catch(err){showToast('Erro ao abrir o Registo: '+err.message,'error');}
   },400);
 })();
+
+/* ════ Contactos dos clientes no Fecho (27/11/2026) ════
+   Ficam em cada escritura do Fecho (e.contactos = {telefones:[{valor,tipo}], emails:[…]}, até 4
+   de cada, como no Registo) e gravam-se com o Gravar do Fecho. No Registo de escrituras, o botão
+   «⇩ Integrar contactos do Fecho» copia-os tal e qual para a ficha. */
+function fxTemContactos(e){const c=e&&e.contactos;return!!(c&&((c.telefones||[]).some(x=>String(x.valor||'').trim())||(c.emails||[]).some(x=>String(x.valor||'').trim())));}
+function fechoContactosHTML(e){
+  const c=e.contactos||{};const T=(c.telefones||[]),E=(c.emails||[]);
+  const tipos=typeof CONTACTOS_TIPOS!=='undefined'?CONTACTOS_TIPOS:['Vendedor','Comprador','Imobiliária','Outro'];
+  const linha=(lista,i,x,ph,tp)=>`<div style="display:grid;grid-template-columns:1fr 120px;gap:.4rem;margin-bottom:.3rem">
+    <input class="form-input" type="${tp}" style="font-size:12px;padding:5px 8px" placeholder="${ph} ${i+1}" value="${dpzEsc((x&&x.valor)||'')}" oninput="fechoContacto('${lista}',${i},'valor',this.value)">
+    <select class="form-select" style="font-size:12px;padding:5px 8px" onchange="fechoContacto('${lista}',${i},'tipo',this.value)"><option value="">—</option>${tipos.map(t=>`<option${x&&x.tipo===t?' selected':''}>${t}</option>`).join('')}</select></div>`;
+  const n=T.filter(x=>String(x.valor||'').trim()).length+E.filter(x=>String(x.valor||'').trim()).length;
+  return `<div class="fx-card" style="margin-top:.4rem">
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:.45rem">📞 Contactos dos clientes <span style="font-weight:400;font-size:11px;color:var(--text-muted)">${n?n+(n===1?' contacto':' contactos'):'sem contactos'} · gravam-se com o Gravar do Fecho · no Registo de escrituras use «⇩ Integrar contactos do Fecho»</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem">
+      <div><div style="font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Telefones</div>${[0,1,2,3].map(i=>linha('telefones',i,T[i],'Telefone','tel')).join('')}</div>
+      <div><div style="font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">E-mails</div>${[0,1,2,3].map(i=>linha('emails',i,E[i],'E-mail','email')).join('')}</div>
+    </div></div>`;
+}
+function fechoContacto(lista,i,campo,val){
+  const e=fechoEsc();if(!e)return;e.contactos=e.contactos||{telefones:[],emails:[]};const L=e.contactos[lista]=e.contactos[lista]||[];
+  while(L.length<=i)L.push({valor:'',tipo:''});L[i][campo]=campo==='valor'?val.trim():val;FECHO.sujo=true;
+}
+/* Registo de escrituras: copia os contactos do Fecho da pasta desta ficha. */
+async function regIntegrarContactos(){
+  try{
+    let pastaId=null,nome='';
+    const it=painelItemId?(todosRegistosReg||[]).find(i=>String(i.id)===String(painelItemId)):null;
+    const url=(it&&it[F.ligacaoPasta])||painelPastaUrl||'';
+    if(window._painelPasta&&(!it||!it[F.ligacaoPasta]||fxUrlIgual(painelPastaUrl||'',it[F.ligacaoPasta]))){pastaId=window._painelPasta.id;nome=window._painelPasta.nome;}
+    if(!pastaId&&url){const p=[...((typeof todasPastas!=='undefined'&&todasPastas)||[]),...((typeof pastasPainel!=='undefined'&&pastasPainel)||[])].find(x=>fxUrlIgual(x.webUrl,url));
+      if(p){pastaId=p.id;nome=p.name||p.nome;}
+      else{const enc='u!'+btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+        const d=await graphGet(`${GRAPH_BASE}/shares/${enc}/driveItem?$select=id,name`);pastaId=d.id;nome=d.name;}}
+    if(!pastaId){showToast('Esta ficha ainda não está ligada a uma pasta — escolha a pasta primeiro.','error');return;}
+    await etqDadoLer('ESCRITURAS',pastaId,'deposito');const raw=etqDadoSync('ESCRITURAS',pastaId,'deposito');
+    if(!raw){showToast('Esta pasta ainda não tem Fecho.','error');return;}
+    const cont=dpzContentor(JSON.parse(JSON.stringify(raw)),nome);
+    const a=window._fxAlvo;
+    let k=painelItemId?cont.ordem.find(x=>String(cont.esc[x].registoId)===String(painelItemId)):null;
+    if(!k&&a&&a.pastaId===pastaId&&cont.esc[a.k])k=a.k;
+    if(!k||!fxTemContactos(cont.esc[k])){const com=cont.ordem.filter(x=>fxTemContactos(cont.esc[x]));if(!k&&com.length)k=com[0];else if(k&&!fxTemContactos(cont.esc[k])&&com.length===1)k=com[0];}
+    const e=k&&cont.esc[k];
+    if(!e||!fxTemContactos(e)){showToast('O Fecho desta pasta não tem contactos escritos.','error');return;}
+    const atual=recolherContactos();
+    if((atual.telefones.length||atual.emails.length)&&JSON.stringify(atual)!==JSON.stringify({telefones:(e.contactos.telefones||[]).filter(x=>x.valor),emails:(e.contactos.emails||[]).filter(x=>x.valor)})
+       &&!confirm('A ficha já tem contactos. Substituir pelos do Fecho?'))return;
+    restaurarContactos({telefones:(e.contactos.telefones||[]).filter(x=>String(x.valor||'').trim()),emails:(e.contactos.emails||[]).filter(x=>String(x.valor||'').trim())});
+    const w=document.getElementById('contactos-wrap');if(w&&w.style.display==='none')toggleContactos();
+    showToast(`Contactos do Fecho integrados${cont.ordem.length>1?' ('+(e.label||'escritura')+')':''} — carregue em Guardar.`,'success');
+  }catch(err){showToast('Erro ao integrar contactos: '+err.message,'error');}
+}
 
 /* ── 3 · Registos prediais ── */
 /* Proposta: um pedido por entidade. Cada pedido pode dividir-se (conservatórias diferentes). */
@@ -5530,7 +5587,7 @@ function selecionarPastaPainel(pasta){
   document.getElementById('painel-pasta-dropdown').style.display='none';
   document.getElementById('painel-pasta-ok-nome').textContent=pasta.nome;
   document.getElementById('painel-pasta-ok').style.display='block';
-  painelPastaUrl=pasta.webUrl;
+  painelPastaUrl=pasta.webUrl;window._painelPasta={id:pasta.id,nome:pasta.nome};
   // Só extrai o nome do cliente — data fica para preenchimento manual
   const match=pasta.nome.match(/^\d{8}\s+(.+)$/);
   if(match) document.getElementById('p-nome').value=match[1].trim();
